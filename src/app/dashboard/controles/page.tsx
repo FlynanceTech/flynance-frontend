@@ -81,7 +81,7 @@ export default function SpendingControlPage() {
         })
       )
     }
-  }, [controlsQuery.data])
+  }, [controlsQuery.data, addControl, resetControls])
 
   const onSubmit = async (data: FormData) => {
     try {

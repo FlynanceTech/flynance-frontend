@@ -1,6 +1,5 @@
 'use client'
 
-import { categoriaIcone } from '@/util/categoriesIcone'
 import clsx from 'clsx'
 import { Pencil, Trash2 } from 'lucide-react'
 import React from 'react'

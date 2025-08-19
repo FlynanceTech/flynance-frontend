@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import Header from '../components/Header'
 import { useTransactionFilter } from '@/stores/useFilter'
 import { Pagination } from '../components/Pagination'
@@ -14,8 +14,21 @@ import { useUserSession } from '@/stores/useUserSession'
 
 const PAGE_SIZE = 10
 
+function SkeletonSection() {
+  return (
+    <section className="w-full h-full pt-8 lg:px-8 px-4 flex flex-col gap-8">
+      <Header title="Transactions" subtitle="Your latest financial movements" />
+      <div className="w-full h-full bg-white rounded-xl border border-gray-200 p-8">
+        <Skeleton type="table" rows={9} />
+      </div>
+    </section>
+  )
+}
+
 export default function TransactionsPage() {
   const { user } = useUserSession()
+  const userId = user?.account?.userId ?? '' // evita condicionar hooks
+
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -24,28 +37,32 @@ export default function TransactionsPage() {
 
   const selectedCategories = useTransactionFilter((s) => s.selectedCategories)
   const searchTerm = useTransactionFilter((s) => s.searchTerm)
-  const dateRange = useTransactionFilter((s) => s.dateRange)
+  const dateRange = useTransactionFilter((s) => s.dateRange) // número de dias (ex.: 7, 30 etc.)
 
-  if (!user?.account) return null
-
+  // CHAME SEMPRE os hooks (sem if/return antes). Se seu hook aceitar, ative enabled:
   const { transactionsQuery, deleteMutation } = useTranscation({
-    userId: user.account.userId,
+    userId,
     page: currentPage,
     limit: PAGE_SIZE,
     filters: {
-      category: selectedCategories.map(c => c.id).join(','),
+      category: selectedCategories.map((c) => c.id).join(','),
       search: searchTerm,
       days: dateRange,
     },
+    // enabled: Boolean(userId),
   })
 
-  const allTransactions: Transaction[] = transactionsQuery.data || []
-  const isLoading = transactionsQuery.isLoading
+  // Referência estável do array base
+  const allTransactions: Transaction[] = useMemo(
+    () => (transactionsQuery.data ?? []) as Transaction[],
+    [transactionsQuery.data]
+  )
 
   const filteredTransactions = useMemo(() => {
     const today = new Date()
     const cutoffDate = new Date()
-    cutoffDate.setDate(today.getDate() - dateRange)
+    const daysNum = Number(dateRange) || 0
+    cutoffDate.setDate(today.getDate() - daysNum)
 
     return allTransactions.filter((item) => {
       const matchCategory =
@@ -56,15 +73,19 @@ export default function TransactionsPage() {
         !searchTerm || item.description.toLowerCase().includes(searchTerm.toLowerCase())
 
       const itemDate = new Date(item.date)
-      const matchDate = itemDate >= cutoffDate
+      const matchDate = daysNum > 0 ? itemDate >= cutoffDate : true
 
       return matchCategory && matchSearch && matchDate
     })
   }, [allTransactions, selectedCategories, searchTerm, dateRange])
 
-  const paginatedTransactions = filteredTransactions.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
+  const paginatedTransactions = useMemo(
+    () =>
+      filteredTransactions.slice(
+        (currentPage - 1) * PAGE_SIZE,
+        currentPage * PAGE_SIZE
+      ),
+    [filteredTransactions, currentPage]
   )
 
   const totalPages = Math.ceil(filteredTransactions.length / PAGE_SIZE)
@@ -72,10 +93,15 @@ export default function TransactionsPage() {
   const toggleSelectRow = (id: string) => {
     setSelectedIds((prev) => {
       const updated = new Set(prev)
-      updated.has(id) ? updated.delete(id) : updated.add(id)
+      if (updated.has(id)) {
+        updated.delete(id)
+      } else {
+        updated.add(id)
+      }
       return updated
     })
   }
+  
 
   const toggleSelectAll = () => {
     const currentIds = paginatedTransactions.map((item) => item.id)
@@ -85,7 +111,6 @@ export default function TransactionsPage() {
 
   const handleDeleteSelected = async () => {
     const idsToDelete = Array.from(selectedIds)
-
     try {
       await Promise.all(idsToDelete.map((id) => deleteMutation.mutateAsync(id)))
       setSelectedIds(new Set())
@@ -108,17 +133,15 @@ export default function TransactionsPage() {
     }
   }
 
-  if (isLoading) {
+  // RETURNS condicionais APENAS DEPOIS DOS HOOKS
+  if (!userId) return <SkeletonSection />
+  if (transactionsQuery.isLoading) return <SkeletonSection />
+  if (transactionsQuery.error) {
     return (
       <section className="w-full h-full pt-8 lg:px-8 px-4 flex flex-col gap-8">
-        <Header
-          title="Transactions"
-          subtitle="Your latest financial movements"
-          asFilter
-          dataToFilter={[]}
-        />
+        <Header title="Transactions" subtitle="Your latest financial movements" />
         <div className="w-full h-full bg-white rounded-xl border border-gray-200 p-8">
-          <Skeleton type="table" rows={9} />
+          <p className="text-sm text-red-600">Erro ao carregar transações.</p>
         </div>
       </section>
     )
@@ -133,9 +156,12 @@ export default function TransactionsPage() {
         dataToFilter={Array.from(new Set(allTransactions.map((t) => t.category)))}
       />
 
-      <div className='flex flex-wrap gap-2'>
+      <div className="flex flex-wrap gap-2">
         {selectedCategories.map((item) => (
-          <div key={item.id} className='px-4 py-1 text-sm font-light flex items-center justify-center rounded-full bg-[#CEF2E1]'>
+          <div
+            key={item.id}
+            className="px-4 py-1 text-sm font-light flex items-center justify-center rounded-full bg-[#CEF2E1]"
+          >
             {item.name}
           </div>
         ))}

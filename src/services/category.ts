@@ -1,6 +1,7 @@
 // src/services/categories.ts
 
 import api from '@/lib/axios'
+import { getErrorMessage } from '@/utils/getErrorMessage'
 
 import { IconName } from '@/utils/icon-map'
 
@@ -24,7 +25,8 @@ export interface CategoryResponse {
   color: string
   icon: IconName
   type: string
-  keywords: Keyword[]   // ← CORREÇÃO AQUI
+  period: string
+  keywords: Keyword[]
   accountId?: string | null
   createdAt?: string
   updatedAt?: string
@@ -36,9 +38,10 @@ export const createCategory = async (data: CategoryDTO): Promise<CategoryRespons
     const response = await api.post(`/category`, data)
 
     return response.data
-  } catch (error: any) {
-    console.error('Erro ao criar categoria:', error.response?.data || error.message)
-    throw new Error(error.response?.data?.message || 'Erro ao criar categoria.')
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, "Erro ao criar categoria.");
+    console.error("Erro ao criar categoria:", msg);
+    throw new Error(msg);
   }
 }
 
@@ -46,9 +49,10 @@ export const getCategories = async (): Promise<CategoryResponse[]> => {
   try {
     const response = await api.get(`/categories`)
     return response.data
-  } catch (error: any) {
-    console.error('Erro ao buscar categorias:', error.response?.data || error.message)
-    throw new Error(error.response?.data?.message || 'Erro ao buscar categorias.')
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, "Erro ao buscar categorias.");
+    console.error("Erro ao buscar categorias:", msg);
+    throw new Error(msg);
   }
 }
 
@@ -56,9 +60,10 @@ export const updateCategory = async (id: string, data: CategoryDTO): Promise<Cat
   try {
     const response = await api.put(`/category/${id}`, data)
     return response.data
-  } catch (error: any) {
-    console.error('Erro ao atualizar categoria:', error.response?.data || error.message)
-    throw new Error(error.response?.data?.message || 'Erro ao atualizar categoria.')
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, "Erro ao atualizar categoria.");
+    console.error("Erro ao atualizar categoria:", msg);
+    throw new Error(msg);
   }
 }
 
@@ -66,8 +71,9 @@ export const deleteCategory = async (id: string): Promise<{ message: string }> =
   try {
     const response = await api.delete(`/category/${id}`)
     return response.data
-  } catch (error: any) {
-    console.error('Erro ao deletar categoria:', error.response?.data || error.message)
-    throw new Error(error.response?.data?.message || 'Erro ao deletar categoria.')
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, "Erro ao deletar categoria.");
+    console.error("Erro ao deletar categoria:", msg);
+    throw new Error(msg);
   }
 }

@@ -2,7 +2,6 @@
 
 import { ArrowDown, ArrowUp, Wallet } from 'lucide-react'
 import FinanceCard from '../FinanceCard'
-import clsx from 'clsx'
 import { TabGroup, TabList, Tab, TabPanels, TabPanel } from '@headlessui/react'
 
 interface FinanceStatusProps {
@@ -23,7 +22,7 @@ interface FinanceStatusProps {
 }
 
 
-export default function FinanceStatus({ period, accumulated, isLoading }: FinanceStatusProps) {
+export default function FinanceStatus({ period, isLoading }: FinanceStatusProps) {
   const formatCurrency = (value?: number) => {
     if (typeof value !== 'number' || isNaN(value)) return 'R$ 0,00'
     return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`

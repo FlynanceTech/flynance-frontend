@@ -1,5 +1,6 @@
 import api from "@/lib/axios"
 import { Transaction } from "@/types/Transaction"
+import { getErrorMessage } from "@/utils/getErrorMessage"
 
 export interface TransactionDTO {
   value: number,
@@ -11,17 +12,19 @@ export interface TransactionDTO {
 }
 
 
+interface GetTransactionParams {
+  userId: string;
+  page?: number;
+  limit?: number;
+  filters?: Record<string, string | number | boolean | undefined>;
+}
+
 export async function getTransaction({
   userId,
   page = 1,
   limit = 10,
   filters = {},
-}: {
-  userId: string
-  page?: number
-  limit?: number
-  filters?: Record<string, any>
-}) {
+}: GetTransactionParams) {
   const params = new URLSearchParams({
     userId,
     page: page.toString(),
@@ -39,9 +42,10 @@ export const createTransaction = async (data: TransactionDTO): Promise<Transacti
     const response = await api.post(`/transactions`, data)
 
     return response.data
-  } catch (error: any) {
-    console.error('Erro ao criar transações:', error.response?.data || error.message)
-    throw new Error(error.response?.data?.message || 'Erro ao criar transações.')
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, "Erro ao criar transações.");
+    console.error("Erro ao criar transações:", msg);
+    throw new Error(msg);
   }
 }
 
@@ -49,9 +53,10 @@ export const updateTransaction = async (id: string, data: TransactionDTO): Promi
   try {
     const response = await api.put(`/transactions/${id}`, data)
     return response.data
-  } catch (error: any) {
-    console.error('Erro ao atualizar transações:', error.response?.data || error.message)
-    throw new Error(error.response?.data?.message || 'Erro ao atualizar transações.')
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, "Erro ao atualizar transações.");
+    console.error("Erro ao atualizar transações:", msg);
+    throw new Error(msg);
   }
 }
 
@@ -59,8 +64,9 @@ export const deleteTransaction = async (id: string): Promise<{ message: string }
   try {
     const response = await api.delete(`/transactions/${id}`)
     return response.data
-  } catch (error: any) {
-    console.error('Erro ao deletar transações:', error.response?.data || error.message)
-    throw new Error(error.response?.data?.message || 'Erro ao deletar transações.')
+  }catch (e: unknown) {
+    const msg = getErrorMessage(e, "Erro ao deletar transações.");
+    console.error("Erro ao deletar transações:", msg);
+    throw new Error(msg)
   }
 }

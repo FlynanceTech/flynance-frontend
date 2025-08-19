@@ -69,7 +69,7 @@ export function CategoryForm({
       setColor(editing.color)
       setIcon(editing.icon as IconName)
     }
-  }, [editing])
+  }, [editing, reset])
   
 
   const handleAddKeyword = () => {

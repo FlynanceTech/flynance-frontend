@@ -43,7 +43,7 @@ export function SpendingControl({ transactions, isLoading }: GoalCategoryProps) 
         })
       )
     }
-  }, [controlsQuery.data])
+  }, [controlsQuery.data, resetControls, addControl])
 
   const valoresPorCategoria = transactions?.reduce((acc, curr) => {
     const controleRelacionado = controls.find((c) => c.categoryId === curr.categoryId)

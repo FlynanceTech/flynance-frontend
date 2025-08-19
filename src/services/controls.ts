@@ -9,6 +9,7 @@ export interface CreateControlDTO {
 }
 
 export interface ControlResponse {
+  period: "monthly" | "weekly" | "bimonthly" | "quarterly" | "half_yearly" | "annually"
   id: string
   categoryId: string
   goal: number

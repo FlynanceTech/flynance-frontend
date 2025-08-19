@@ -16,6 +16,7 @@ import youtube from "../../../assets/icons/youtube-fill-icon.png"
 
 import { sendLoginCode, verifyCode } from '@/services/auth'
 import { OtpInput } from '@/components/ui/input'
+import { getErrorMessage } from '@/utils/getErrorMessage'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -34,8 +35,8 @@ export default function Login() {
     try {
       await sendLoginCode({ email })
       setStep('code')
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false)
     }
@@ -49,7 +50,7 @@ export default function Login() {
       setMessage('')
       await verifyCode({ email, code })
       router.push('/dashboard')
-    } catch (err: any) {
+    } catch {
       setError('Código inválido ou expirado.')
     } finally {
       setLoading(false)
@@ -65,8 +66,8 @@ export default function Login() {
     setError('')
     try {
       await sendLoginCode({ email })
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false)
     }

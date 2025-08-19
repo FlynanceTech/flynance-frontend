@@ -6,7 +6,7 @@ import { useTransactionFilter } from '@/stores/useFilter'
 import clsx from 'clsx'
 import { useCategories } from '@/hooks/query/useCategory'
 import { CategoryResponse } from '@/services/category'
-import { Category, CategoryType } from '@/types/Transaction'
+import { CategoryType } from '@/types/Transaction'
 
 
 
@@ -14,7 +14,7 @@ export function CategoriesSelectWithCheck() {
   const selectedCategories = useTransactionFilter((s) => s.selectedCategories)
   const setSelectedCategories = useTransactionFilter((s) => s.setSelectedCategories)
   const {
-    categoriesQuery: { data: category = [], isLoading },
+    categoriesQuery: { data: category = [] },
   } = useCategories()
 
   if (!category) return null
@@ -91,7 +91,7 @@ interface Props {
 
 export function CategoriesSelect({ value, onChange, className }: Props) {
   const {
-    categoriesQuery: { data: category = [], isLoading },
+    categoriesQuery: { data: category = [] },
   } = useCategories()
 
   
