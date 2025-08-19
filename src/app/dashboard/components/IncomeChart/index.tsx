@@ -38,10 +38,10 @@ export default function IncomeChart({ transactions, isLoading }:IncomeChartProps
     )
   }
 
-  const receitas = transactions.filter((l) => l.categoria === 'Receita')
+  const receitas = transactions.filter((t) => t.type === 'INCOME')
 
   const receitaPorFonte = receitas.reduce((acc: Record<string, number>, item) => {
-    acc[item.descricao] = (acc[item.descricao] || 0) + item.valor
+    acc[item.description] = (acc[item.description] || 0) + item.value
     return acc
   }, {})
 
