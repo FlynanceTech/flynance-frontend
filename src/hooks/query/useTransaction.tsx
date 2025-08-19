@@ -5,7 +5,7 @@ type UseTransactionParams = {
     userId?: string
     page?: number
     limit?: number
-    filters?: Record<string, any>
+    filters?: Record<string, string | number | boolean | undefined>;
   }
   
 

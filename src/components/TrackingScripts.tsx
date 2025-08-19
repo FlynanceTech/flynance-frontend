@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image';
 import Script from 'next/script';
 
 export default function TrackingScripts() {
@@ -42,9 +43,10 @@ export default function TrackingScripts() {
 
       {/* Facebook Pixel NoScript */}
       <noscript>
-        <img
+        <Image
           height="1"
           width="1"
+          alt="Facebook Pixel NoScript"
           style={{ display: 'none' }}
           src="https://www.facebook.com/tr?id=1218688706562730&ev=PageView&noscript=1"
         />
