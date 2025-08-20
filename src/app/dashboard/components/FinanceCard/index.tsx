@@ -16,10 +16,8 @@ export default function FinanceCard({
   percentage,
   isExpense = false
 }: FinanceCardProps) {
-  console.log('percentage',title, value, percentage)
 
   const getTrendText = () => {
-    console.log('isExpense', isExpense)
     if(isExpense) {
       if (percentage < 0)
         return `${Math.abs(percentage).toFixed(0)}% melhor que o mês anterior`

@@ -4,7 +4,7 @@ import { ArrowDown, ArrowUp, Wallet } from 'lucide-react'
 import FinanceCard from '../FinanceCard'
 import { TabGroup, TabList, Tab, TabPanels, TabPanel } from '@headlessui/react'
 
-interface FinanceStatusProps {
+export interface FinanceStatusProps {
   period: {
     income: number
     expense: number
@@ -21,12 +21,11 @@ interface FinanceStatusProps {
   isLoading: boolean
 }
 
-
-export default function FinanceStatus({ period, isLoading }: FinanceStatusProps) {
-  const formatCurrency = (value?: number) => {
-    if (typeof value !== 'number' || isNaN(value)) return 'R$ 0,00'
-    return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-  }
+export default function FinanceStatus({ period, accumulated, isLoading }: FinanceStatusProps) {
+  const fmt = (v?: number) =>
+    typeof v === 'number' && Number.isFinite(v)
+      ? `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+      : 'R$ 0,00'
 
   if (isLoading) {
     return (
@@ -41,6 +40,19 @@ export default function FinanceStatus({ period, isLoading }: FinanceStatusProps)
     )
   }
 
+  const hasPeriod =
+    (period.income ?? 0) !== 0 ||
+    (period.expense ?? 0) !== 0 ||
+    (period.balance ?? 0) !== 0
+
+  const income = hasPeriod ? period.income : accumulated.totalIncome
+  const expense = hasPeriod ? period.expense : accumulated.totalExpense
+  const balance = hasPeriod ? period.balance : accumulated.totalBalance
+
+  const incomeChange = hasPeriod ? Math.trunc(period.incomeChange) : 0
+  const expenseChange = hasPeriod ? Math.trunc(period.expenseChange) : 0
+  const balanceChange = hasPeriod ? Math.trunc(period.balanceChange) : 0
+
   return (
     <div className="w-full">
       {/* Mobile */}
@@ -52,9 +64,7 @@ export default function FinanceStatus({ period, isLoading }: FinanceStatusProps)
                 key={label}
                 className={({ selected }) =>
                   `px-4 py-2 text-sm font-medium rounded-full whitespace-nowrap outline-none ${
-                    selected
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-gray-100 text-gray-600'
+                    selected ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
                   }`
                 }
               >
@@ -66,36 +76,36 @@ export default function FinanceStatus({ period, isLoading }: FinanceStatusProps)
           <TabPanels className="mt-4">
             <TabPanel>
               <FinanceCard
-                percentage={+period.balanceChange.toFixed(0)}
+                percentage={balanceChange}
                 title={
-                  <h2 className={`font-medium flex gap-2 ${period.balance < 0 ? 'text-[#F15959]' : 'text-[#41B46B]'}`}>
+                  <h2 className={`font-medium flex gap-2 ${balance < 0 ? 'text-[#F15959]' : 'text-[#41B46B]'}`}>
                     <Wallet /> Saldo
                   </h2>
                 }
-                value={formatCurrency(period.balance)}
+                value={fmt(balance)}
               />
             </TabPanel>
             <TabPanel>
               <FinanceCard
-                percentage={+period.incomeChange.toFixed(0)}
+                percentage={incomeChange}
                 title={
                   <h2 className="text-[#41B46B] font-medium flex gap-2">
                     <ArrowUp /> Receita
                   </h2>
                 }
-                value={formatCurrency(period.income)}
+                value={fmt(income)}
               />
             </TabPanel>
             <TabPanel>
               <FinanceCard
-                percentage={+period.expenseChange.toFixed(0)}
+                percentage={expenseChange}
                 title={
                   <h2 className="text-[#F15959] font-medium flex gap-2">
                     <ArrowDown /> Despesas
                   </h2>
                 }
-                value={formatCurrency(period.expense)}
-                isExpense={true}
+                value={fmt(expense)}
+                isExpense
               />
             </TabPanel>
           </TabPanels>
@@ -105,24 +115,24 @@ export default function FinanceStatus({ period, isLoading }: FinanceStatusProps)
       {/* Desktop */}
       <div className="hidden lg:grid lg:grid-flow-col gap-4 lg:gap-8">
         <FinanceCard
-          percentage={+period.incomeChange.toFixed(0)}
+          percentage={incomeChange}
           title={<h2 className="text-[#41B46B] font-medium flex gap-2"><ArrowUp /> Receita</h2>}
-          value={formatCurrency(period.income)}
+          value={fmt(income)}
         />
         <FinanceCard
-          percentage={+period.expenseChange.toFixed(0)}
+          percentage={expenseChange}
           title={<h2 className="text-[#F15959] font-medium flex gap-2"><ArrowDown /> Despesas</h2>}
-          value={formatCurrency(period.expense)}
-          isExpense={true}
+          value={fmt(expense)}
+          isExpense
         />
         <FinanceCard
-          percentage={+period.balanceChange.toFixed(0)}
+          percentage={balanceChange}
           title={
-            <h2 className={`font-medium flex gap-2 ${period.balance < 0 ? 'text-[#F15959]' : 'text-[#41B46B]'}`}>
+            <h2 className={`font-medium flex gap-2 ${balance < 0 ? 'text-[#F15959]' : 'text-[#41B46B]'}`}>
               <Wallet /> Saldo
             </h2>
           }
-          value={formatCurrency(period.balance)}
+          value={fmt(balance)}
         />
       </div>
     </div>
