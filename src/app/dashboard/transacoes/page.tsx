@@ -138,7 +138,7 @@ export default function TransactionsPage() {
   if (transactionsQuery.error) {
     return (
       <section className="w-full h-full pt-8 lg:px-8 px-4 flex flex-col gap-8">
-        <Header userId={userId} subtitle="Your latest financial movements" />
+        <Header title="Transações" subtitle="Seus últimos movimentos financeiros" />
         <div className="w-full h-full bg-white rounded-xl border border-gray-200 p-8">
           <p className="text-sm text-red-600">Erro ao carregar transações.</p>
         </div>
@@ -149,10 +149,9 @@ export default function TransactionsPage() {
   return (
     <section className="w-full h-full pt-8 lg:px-8 px-4 pb-24 lg:pb-0 flex flex-col gap-4 overflow-auto">
       <Header
-        title="Transactions"
-        subtitle="Your latest financial movements"
+        title="Transações"
+        subtitle="Seus últimos movimentos financeiros"
         asFilter
-        userId={userId}
         dataToFilter={Array.from(new Set(allTransactions.map((t) => t.category)))}
       />
 

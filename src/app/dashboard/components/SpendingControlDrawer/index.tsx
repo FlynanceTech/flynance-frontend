@@ -171,12 +171,12 @@ const toggleChannel = (ch: Channel, checked: boolean) => {
                         value={form.periodType}
                         onChange={(e) => updateForm('periodType', e.target.value as PeriodType)}
                       >
-                        <option value="MONTHLY">monthly</option>
-                        <option value="WEEKLY">weekly</option>
-                        <option value="BIMONTHLY">bimonthly</option>
-                        <option value="QUARTERLY">quarterly</option>
-                        <option value="HALF_YEARLY">half_yearly</option>
-                        <option value="ANNUALLY">annually</option>
+                        <option value="MONTHLY">Mensal</option>
+                        <option value="WEEKLY">Semanal</option>
+                        <option value="BIMONTHLY">Bimestral</option>
+                        <option value="QUARTERLY">Trimestral</option>
+                        <option value="HALF_YEARLY">Semestral</option>
+                        <option value="ANNUALLY">Anual</option>
                       </select>
                     </div>
 
