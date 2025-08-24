@@ -9,7 +9,7 @@ import {
   ResponsiveContainer,
   Cell
 } from 'recharts'
-import { categoriaCores } from '@/util/categoriesIcone'
+import { categoriaCores } from '@/utils/categoriesIcone'
 import { Transaction } from '@/types/Transaction'
 
 interface IncomeChartProps {
