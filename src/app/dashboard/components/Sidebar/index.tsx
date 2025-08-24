@@ -26,7 +26,7 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className='bg-white py-8 rounded-2xl border border-[#E2E8F0] flex flex-col gap-8 min-w-64'>
+    <aside className='bg-white py-8 rounded-2xl border border-[#E2E8F0] flex flex-col gap-8 min-w-44'>
       <div className='px-8'>
         <Image
           src={logo}

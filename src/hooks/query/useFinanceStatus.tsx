@@ -22,12 +22,12 @@ export function useFinanceStatus({ userId, days, month }: FinanceStatusParams) {
   const monthNorm = month && month.length >= 7 ? month : undefined
 
   return useQuery<FinanceStatusResponse>({
-    queryKey: ['financeStatus', userId, { days: daysNorm ?? null, month: monthNorm ?? null }],
+    queryKey: ['transactions', userId, { days: daysNorm ?? null, month: monthNorm ?? null }],
     enabled: Boolean(userId) && (Boolean(daysNorm) || Boolean(monthNorm)), 
 
     queryFn: async () => {
       const params: Record<string, string> = { userId }
-      if (daysNorm) params.days = String(daysNorm)
+      if (daysNorm) params.days = String(daysNorm) 
       if (monthNorm) params.month = monthNorm
 
       const res = await api.get<FinanceStatusResponse>('/dashboard/finance-status', {

@@ -7,6 +7,7 @@ import clsx from 'clsx'
 import { useCategories } from '@/hooks/query/useCategory'
 import { CategoryResponse } from '@/services/category'
 import { CategoryType } from '@/types/Transaction'
+import { useMemo } from 'react'
 
 
 
@@ -87,46 +88,57 @@ interface Props {
   value: string
   onChange: (value: CategoryResponse) => void
   className?: string
+  typeFilter?: 'EXPENSE' | 'INCOME'   
 }
 
-export function CategoriesSelect({ value, onChange, className }: Props) {
+export function CategoriesSelect({ value, onChange, className, typeFilter }: Props) {
   const {
-    categoriesQuery: { data: category = [] },
+    categoriesQuery: { data: categories = [] },
   } = useCategories()
 
-  
-  const selectedNames = category
-  .filter((c) => value.includes(c.id))
-  .map((c) => c.name)
+  // Filtra por tipo (quando fornecido)
+  const filtered = useMemo<CategoryResponse[]>(
+    () => (typeFilter ? categories.filter((c) => c.type === typeFilter) : categories),
+    [categories, typeFilter]
+  )
 
-  const displayText =
-    selectedNames.length === 0
-      ? 'Todas categorias'
-      : selectedNames.length === 1
-      ? selectedNames[0]
-      : `${selectedNames.length} selecionadas`
+  // Nome exibido do item selecionado
+  const selected = useMemo<CategoryResponse | undefined>(
+    () => categories.find((c) => c.id === value),
+    [categories, value]
+  )
+
+  const displayText = selected ? selected.name : 'Categoria'
 
   return (
-    <Menu as="div" className={clsx("relative", className)}>
+    <Menu as="div" className={clsx('relative', className)}>
       <MenuButton className="flex items-center justify-between gap-2 px-4 py-2 w-full rounded-full border border-[#E2E8F0] bg-white text-[#1A202C] text-sm font-medium shadow-sm hover:bg-gray-50 cursor-pointer">
-        {value.length > 0 ? displayText : 'Categoria'}
+      {displayText}
         <ChevronDown size={16} />
       </MenuButton>
 
       <MenuItems
         anchor="bottom"
-        className="flex flex-col gap-1 bg-white outline-none py-4 shadow-lg w-48 rounded-md mt-2 z-50"
+        className="flex flex-col gap-1 bg-white outline-none py-2 shadow-lg w-56 rounded-md mt-2 z-50"
       >
-        {category.map((cat) => (
-          <MenuItem
-            key={cat.id}
-            as="div"
-            onClick={() => onChange(cat)}
-            className="flex items-center gap-2 px-4 py-1 text-sm cursor-pointer hover:bg-[#F0FDF4]"
-          >
-            {cat.name}
-          </MenuItem>
-        ))}
+        {filtered.length === 0 ? (
+          <div className="px-4 py-2 text-xs text-gray-500">Nenhuma categoria</div>
+        ) : (
+          filtered.map((cat) => (
+            <MenuItem
+              key={cat.id}
+              as="button"
+              onClick={() => onChange(cat)}
+              className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-[#F0FDF4] text-left"
+            >
+              <span
+                className="inline-block h-2.5 w-2.5 rounded-full"
+                style={{ backgroundColor: cat.color ?? '#CBD5E1' }}
+              />
+              <span className="truncate">{cat.name}</span>
+            </MenuItem>
+          ))
+        )}
       </MenuItems>
     </Menu>
   )

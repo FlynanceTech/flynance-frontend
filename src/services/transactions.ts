@@ -2,13 +2,17 @@ import api from "@/lib/axios"
 import { Transaction } from "@/types/Transaction"
 import { getErrorMessage } from "@/utils/getErrorMessage"
 
+export type PaymentType = 'DEBIT_CARD' | 'CREDIT_CARD' | 'PIX' | 'MONEY'
+
+
 export interface TransactionDTO {
   value: number,
   description: string,
   categoryId: string,
   date: string,
   type: 'EXPENSE' | 'INCOME',
-  origin: 'DASHBOARD' | 'TEXT' | 'IMAGE' | 'AUDIO' 
+  origin: 'DASHBOARD' | 'TEXT' | 'IMAGE' | 'AUDIO'
+  paymentType: PaymentType
 }
 
 

@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   createControl,
   getAllControls,
@@ -6,46 +6,37 @@ import {
   deleteControl,
   CreateControlDTO,
   ControlResponse,
-} from "@/services/controls"
+} from '@/services/controls'
 
 export function useControls() {
-  const queryClient = useQueryClient()
+  const qc = useQueryClient()
 
-  // GET - Buscar todos os controles
-  const controlsQuery = useQuery<ControlResponse[]>({
-    queryKey: ["controls"],
-    queryFn: getAllControls,
+  const controlsQuery = useQuery<ControlResponse[] | unknown[]>({
+    queryKey: ['controls', { withProgress: true }],
+    queryFn: () => getAllControls(true), // já busca com progresso
   })
 
-  // POST - Criar controle
   const createMutation = useMutation({
     mutationFn: (data: CreateControlDTO) => createControl(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["controls"] })
+      qc.invalidateQueries({ queryKey: ['controls'] })
     },
   })
 
-  // PUT - Atualizar controle
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<CreateControlDTO> }) =>
-        updateControl(id, data),
-        onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["controls"] })
+      updateControl(id, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['controls'] })
     },
   })
 
-  // DELETE - Remover controle
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteControl(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["controls"] })
+      qc.invalidateQueries({ queryKey: ['controls'] })
     },
   })
 
-  return {
-    controlsQuery,
-    createMutation,
-    updateMutation,
-    deleteMutation,
-  }
+  return { controlsQuery, createMutation, updateMutation, deleteMutation }
 }

@@ -1,45 +1,60 @@
-import api from "@/lib/axios"
+import api from '@/lib/axios'
+
+export type PeriodType = 'MONTHLY' | 'WEEKLY' | 'BIMONTHLY' | 'QUARTERLY' | 'HALF_YEARLY' | 'ANNUALLY'
+export type Channel = 'IN_APP' | 'EMAIL' | 'WHATSZAPP'
 
 export interface CreateControlDTO {
-  categoryId: string
+  categoryId: string | null
   goal: number
   limit: number
-  periodType?: "MONTHLY" | "WEEKLY" | "BIMONTHLY" | "QUARTERLY" | "HALF_YEARLY" | "ANNUALLY"
-  alert?: boolean
+  periodType: PeriodType
+  resetDay: number | null
+  resetWeekday: number | null
+  includeSubcategories: boolean
+  carryOver: boolean
+  notify: boolean
+  notifyAtPct: number[]
+  channels: Channel[]
 }
 
 export interface ControlResponse {
-  period: "monthly" | "weekly" | "bimonthly" | "quarterly" | "half_yearly" | "annually"
   id: string
-  categoryId: string
+  userId?: string
+  accountId?: string
+  categoryId: string | null
   goal: number
   limit: number
-  periodType?: "MONTHLY" | "WEEKLY" | "BIMONTHLY" | "QUARTERLY" | "HALF_YEARLY" | "ANNUALLY"
-  alert: boolean
+  periodType: PeriodType
+  resetDay: number | null
+  resetWeekday: number | null
+  includeSubcategories: boolean
+  carryOver: boolean
+  notify: boolean
+  notifyAtPct: number[]
+  channels: Channel[]
   createdAt: string
   updatedAt: string
 }
 
-// Criar controle
+// Criar
 export async function createControl(data: CreateControlDTO) {
-  const response = await api.post<ControlResponse>('/controls', data)
-  return response.data
+  const res = await api.post<ControlResponse>('/controls', data)
+  return res.data
 }
 
-// Listar todos os controles
-export async function getAllControls(): Promise<ControlResponse[]> {
-  const response = await api.get('/controls')
-  return response.data
+// Listar (sem/ com progresso? use params se quiser)
+export async function getAllControls(withProgress = false) {
+  const response = await api.get('/controls', { params: { withProgress } });
+  return response.data;
 }
 
-// Atualizar controle
+// Atualizar
 export async function updateControl(id: string, data: Partial<CreateControlDTO>) {
-  const response = await api.put<ControlResponse>(`/controls/${id}`, data)
-  return response.data
+  const res = await api.put<ControlResponse>(`/controls/${id}`, data)
+  return res.data
 }
 
-// Deletar controle
+// Remover
 export async function deleteControl(id: string) {
-  const response = await api.delete(`/controls/${id}`)
-  return response.data
+  await api.delete(`/controls/${id}`)
 }

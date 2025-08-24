@@ -1,10 +1,10 @@
 'use client'
 
-import { categoriaIcone } from '@/util/categoriesIcone'
 import clsx from 'clsx'
 import { Pencil, Trash2 } from 'lucide-react'
 import React from 'react'
 import { Transaction } from '@/types/Transaction'
+import { IconResolver } from '@/utils/IconResolver'
 
 interface Props {
   transactions: Transaction[]
@@ -34,9 +34,8 @@ TransactionCardList({
                 onChange={() => onToggleSelectRow(item.id)}
                 className="mr-2"
               />
-              {categoriaIcone[item.category.icon as keyof typeof categoriaIcone] ?? (
-                <span className="w-4 h-4 bg-gray-300 rounded-full" />
-              )}
+              <IconResolver name={item.category.icon} size={16} />
+
               <h4 className="font-semibold text-gray-800 truncate">{item.description}</h4>
             </div>
             <div className="flex gap-4">

@@ -29,7 +29,7 @@ export default function CategoriasPage() {
   
 
   return (
-    <section className="w-full h-full lg:px-8 px-4 flex flex-col gap-4 pt-8">
+    <section className="w-full h-full px-4 md:px-0 flex flex-col gap-4 pt-4 md:pt-0">
       <Header title="Gerenciar Categorias" subtitle="Personalize as categorias para melhor organizar suas finanças" />
 
       <TabGroup onChange={() => {

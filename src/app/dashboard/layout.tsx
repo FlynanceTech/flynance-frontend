@@ -1,7 +1,6 @@
 'use client'
 import { Toaster } from "react-hot-toast"
 import BottomMenu from "./components/buttonMenu"
-import ChatbotWidget from "./components/ChatBotWidget"
 import Sidebar from "./components/Sidebar"
 import { useSession } from "@/hooks/useSession"
 import { Providers } from "@/providers/Providers"
@@ -30,7 +29,6 @@ export default function DashboardLayout({
         <BottomMenu />
       </aside>
       <Toaster />
-      <ChatbotWidget />
       <Providers>
         {children}
       </Providers>

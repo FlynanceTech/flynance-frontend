@@ -24,7 +24,9 @@ export function useTranscation(params: UseTransactionParams) {
     const createMutation = useMutation({
         mutationFn: createTransaction,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['transactions'] })
+            queryClient.invalidateQueries({ queryKey: ['transactions'] });
+            queryClient.invalidateQueries({ queryKey: ['financeStatus'] });
+            queryClient.invalidateQueries({ queryKey: ['controls', { withProgress: true }] });
         },
     })
 

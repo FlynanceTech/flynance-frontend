@@ -1,3 +1,4 @@
+import { PaymentType } from "@/services/transactions"
 import { IconName } from "@/utils/icon-map"
 
 export type CategoryType = 'EXPENSE' | 'INCOME'
@@ -23,6 +24,7 @@ export interface Transaction {
   type: CategoryType
   origin: TransactionOrigin
   category: Category 
+  paymentType: PaymentType
 }
 
 export interface User {

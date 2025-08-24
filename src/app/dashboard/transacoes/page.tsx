@@ -17,7 +17,6 @@ const PAGE_SIZE = 10
 function SkeletonSection() {
   return (
     <section className="w-full h-full pt-8 lg:px-8 px-4 flex flex-col gap-8">
-      <Header title="Transactions" subtitle="Your latest financial movements" />
       <div className="w-full h-full bg-white rounded-xl border border-gray-200 p-8">
         <Skeleton type="table" rows={9} />
       </div>
@@ -139,7 +138,7 @@ export default function TransactionsPage() {
   if (transactionsQuery.error) {
     return (
       <section className="w-full h-full pt-8 lg:px-8 px-4 flex flex-col gap-8">
-        <Header title="Transactions" subtitle="Your latest financial movements" />
+        <Header userId={userId} subtitle="Your latest financial movements" />
         <div className="w-full h-full bg-white rounded-xl border border-gray-200 p-8">
           <p className="text-sm text-red-600">Erro ao carregar transações.</p>
         </div>
@@ -153,6 +152,7 @@ export default function TransactionsPage() {
         title="Transactions"
         subtitle="Your latest financial movements"
         asFilter
+        userId={userId}
         dataToFilter={Array.from(new Set(allTransactions.map((t) => t.category)))}
       />
 
