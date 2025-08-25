@@ -62,11 +62,11 @@ export const LastTransactions: React.FC = () => {
     }
 
     // só as 5 primeiras
-    return filtered.slice(0, 5)
+    return filtered.slice(0, 7)
   }, [transactions, filter])
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow border border-gray-200 w-full">
+    <div className="bg-white p-6 rounded-xl shadow border border-gray-200 w-full h-full">
       <div className="flex items-center justify-between gap-3 mb-4">
         <div>
           <h2 className="text-lg font-semibold text-gray-800">Últimas Transações</h2>
@@ -83,7 +83,7 @@ export const LastTransactions: React.FC = () => {
 
       <div className="divide-y divide-gray-100">
         {isLoading ? (
-          Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
+          Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
         ) : filteredSortedTop5.length === 0 ? (
           <div className="text-sm text-gray-500 py-6 flex items-center gap-2">
             <CalendarDays className="w-4 h-4 text-gray-400" />

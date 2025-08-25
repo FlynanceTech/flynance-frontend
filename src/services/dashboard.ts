@@ -25,7 +25,34 @@ interface GetFinanceStatusParams {
   days?: number
   month?: string // 'YYYY-MM'
 }
+export type PaymentType = 'DEBIT_CARD' | 'CREDIT_CARD' | 'PIX' | 'MONEY'
 
+export type PaymentBucket = {
+  type: PaymentType
+  total: number
+  count: number
+  avg: number
+  sharePct: number
+  deltaPct: number
+}
+
+export type PaymentTypeSummary = {
+  range: { start: string; end: string }
+  total: number
+  buckets: PaymentBucket[]
+}
+
+export async function getPaymentTypeSummary(params?: {
+  mode?: 'days' | 'month'
+  days?: number
+  year?: number
+  month?: number
+}) {
+  const { data } = await api.get<PaymentTypeSummary>('/dashboard/payment-summary', {
+    params: params ?? { mode: 'days', days: 30 },
+  })
+  return data
+}
 export async function getFinanceStatus(params?: GetFinanceStatusParams): Promise<FinanceStatusResponse> {
   const query = new URLSearchParams()
 

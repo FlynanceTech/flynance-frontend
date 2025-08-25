@@ -93,7 +93,6 @@ export default function CategorySpendingDistribution() {
               cy="50%"
               dataKey="value"
               outerRadius={120}
-              label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
             >
               {data.map((entry, i) => (
                 <Cell key={i} fill={entry.color} />

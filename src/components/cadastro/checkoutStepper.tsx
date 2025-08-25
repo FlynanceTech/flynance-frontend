@@ -14,6 +14,7 @@ import { useUsers } from "@/hooks/query/useUsers";
 import { usePaymentMutations } from "@/hooks/query/usePayment";
 import { UserDTO } from "@/types/user";
 import { ClientData, CreatePaymentPayload } from "@/types/payment";
+import Link from "next/link";
 
 const steps = ["Informacoes do cliente", "Pagamento", "Finalizacao"];
 
@@ -190,6 +191,10 @@ export default function CheckoutStepper() {
     }
   };
 
+  const msgToFly = 'Olá fly, vamos organizar minha vida financeira'
+
+  const talkToFly = `https://wa.me/+55 54 9307-5665?text=${msgToFly}`
+
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-4xl mx-auto py-6 px-4 flex justify-between text-sm">
@@ -360,10 +365,10 @@ export default function CheckoutStepper() {
           </div>
         ): 
         <div className="flex flex-col lg:flex-row lg:justify-between gap-8">
-          <button className="px-4 py-2 border rounded-md border-gray-300 flex gap-2 items-center justify-center">Ir para o dashboard <MoveRight /></button>
-          <button className={clsx("px-4 py-2 rounded-md font-medium cursor-pointer flex gap-2 items-center justify-center bg-[#00B066] text-white hover:opacity-90")}>
+          <Link href="/login" className="px-4 py-2 border rounded-md border-gray-300 flex gap-2 items-center justify-center">Ir para o dashboard <MoveRight /></Link>
+          <Link href={talkToFly} className={clsx("px-4 py-2 rounded-md font-medium cursor-pointer flex gap-2 items-center justify-center bg-[#00B066] text-white hover:opacity-90")}>
             <span className="flex gap-2">Falar com a fly <Image src={whatsappIcon} alt="whatsapp icone" width="24" height="24"/></span>
-          </button>
+          </Link>
         </div>
         }
       </div>

@@ -13,6 +13,7 @@ export interface TransactionDTO {
   type: 'EXPENSE' | 'INCOME',
   origin: 'DASHBOARD' | 'TEXT' | 'IMAGE' | 'AUDIO'
   paymentType: PaymentType
+  cardId?: string
 }
 
 

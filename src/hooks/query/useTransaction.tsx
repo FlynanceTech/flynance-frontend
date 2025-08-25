@@ -1,5 +1,6 @@
 import { createTransaction, deleteTransaction, getTransaction, TransactionDTO, updateTransaction } from "@/services/transactions";
 import {  useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { cardKeys } from "./cardkeys";
 
 type UseTransactionParams = {
     userId?: string
@@ -23,10 +24,15 @@ export function useTranscation(params: UseTransactionParams) {
 
     const createMutation = useMutation({
         mutationFn: createTransaction,
-        onSuccess: () => {
+        onSuccess: (_data, variables) => {
             queryClient.invalidateQueries({ queryKey: ['transactions'] });
             queryClient.invalidateQueries({ queryKey: ['financeStatus'] });
             queryClient.invalidateQueries({ queryKey: ['controls', { withProgress: true }] });
+                // 🔑 se for crédito e veio cardId, invalida o resumo do cartão
+            if (variables?.paymentType === 'CREDIT_CARD' && variables?.cardId) {
+                queryClient.invalidateQueries({ queryKey: ['creditCard-summary', { cardId: variables.cardId }] });
+                queryClient.invalidateQueries({ queryKey: cardKeys.card(variables.cardId) });
+            }
         },
     })
 
@@ -34,7 +40,10 @@ export function useTranscation(params: UseTransactionParams) {
         mutationFn: ({ id, data }: { id: string; data: TransactionDTO }) =>
             updateTransaction(id, data),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['transactions'] })
+            queryClient.invalidateQueries({ queryKey: ['transactions'] });
+            queryClient.invalidateQueries({
+                predicate: q => Array.isArray(q.queryKey) && q.queryKey[0] === 'cards' && q.queryKey[1] === 'summary',
+              });
         },
     })
 
