@@ -102,7 +102,6 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
     }
     // cardId vai somente quando for crédito
     if (data.paymentType === 'CREDIT_CARD' && data.cardId) {
-      // @ts-expect-error: seu TransactionDTO deve permitir cardId?: string
       base.cardId = data.cardId
     }
     console.log('base', base)
