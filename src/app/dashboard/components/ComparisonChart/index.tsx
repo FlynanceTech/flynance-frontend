@@ -227,7 +227,7 @@ export default function ComparisonChart({ userId }: ComparisonChartProps) {
   return (
     <div
       ref={containerRef}
-      className="bg-white p-4 rounded-xl shadow border border-gray-200 w-full h-full md:max-h-[450px]"
+      className="bg-white p-4 rounded-xl shadow border border-gray-200 w-full h-full"
     >
       <div className="flex justify-between items-center px-4 pt-4">
         <div className="w-full flex flex-col gap-2 lg:flex-row lg:justify-between items-start">

@@ -6,9 +6,6 @@ import { SpendingControl } from './components/SpendingControl'
 import CategorySpendingDistribution from './components/CategorySpendingDistribution'
 import { useUserSession } from '@/stores/useUserSession'
 import ComparisonChart from './components/ComparisonChart'
-import LastTransactions from './components/LastTransactions.tsx'
-import PaymentTypeCard from './components/PaymentTypeCard'
-import CreditCardsPanel from './components/CreditCardsPanel'
 
 
 
@@ -35,19 +32,14 @@ export default function Dashboard() {
       />
 
       <section className="grid md:grid-cols-4 grid-cols-1 gap-4 lg:gap-4 w-full">
-        <div className='md:col-span-3 flex gap-4 flex-col w-full'>
+        <div className='md:col-span-4 flex gap-4 flex-col w-full'>
           <div className="flex flex-col lg:flex-row gap-4 lg:gap-4">
-            <SpendingControl userId={userId} />
             <ComparisonChart userId={userId} />
+            <SpendingControl userId={userId} />
           </div>
           <div className='flex flex-col lg:flex-row gap-4 h-full'>
-            <PaymentTypeCard />
             <CategorySpendingDistribution/>
           </div>
-        </div>
-        <div className='flex flex-col gap-4 w-full'>
-          <CreditCardsPanel />
-          <LastTransactions />
         </div>
       </section>
     </section>

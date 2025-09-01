@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import TrackingScripts from "@/components/TrackingScripts";
+import PWARegister from "@/components/PWARegister";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -13,6 +14,7 @@ export const metadata: Metadata = {
   description:
     "Simplifique sua vida financeira com a Flynance. Controle seus gastos, acompanhe seu saldo e receba insights inteligentes para alcançar seus objetivos financeiros.",
   icons: "/src/app/favicon.ico",
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({
@@ -20,6 +22,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body className={inter.variable}>
@@ -31,6 +34,7 @@ export default function RootLayout({
             style={{ display: "none", visibility: "hidden" }}
           ></iframe>
         </noscript>
+          <PWARegister/>
           <TrackingScripts />
           {children}
       </body>

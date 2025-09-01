@@ -9,7 +9,7 @@ import Image from "next/image";
 import { detectCardBrand } from "@/utils/detectCardBrand";
 import { CleaveInput } from "../ui/input";
 import AlternatePlanModal from "./alternatePlan";
-import whatsappIcon from '../../../public/icon/whatsapp.svg'
+import whatsappIcon from '../../../public/icons/whatsapp.svg'
 import { useUsers } from "@/hooks/query/useUsers";
 import { usePaymentMutations } from "@/hooks/query/usePayment";
 import { UserDTO } from "@/types/user";

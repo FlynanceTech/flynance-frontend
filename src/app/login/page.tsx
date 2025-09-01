@@ -17,6 +17,7 @@ import youtube from "../../../assets/icons/youtube-fill-icon.png"
 import { sendLoginCode, verifyCode } from '@/services/auth'
 import { OtpInput } from '@/components/ui/input'
 import { getErrorMessage } from '@/utils/getErrorMessage'
+import InstallPrompt from '@/components/cadastro/InstallPrompt/InstallPrompt'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -74,18 +75,22 @@ export default function Login() {
   }
 
   return (
-    <main className='w-screen h-screen flex flex-col lg:grid lg:grid-cols-2 bg-[#1f6645] lg:pr-8'>
-      {/* Lado esquerdo */}
+    <main className="
+      w-screen h-screen flex flex-col 
+      bg-gradient-to-r from-[#3ECC89] to-[#1F6645]
+      lg:bg-none lg:bg-[#1F6645] 
+      lg:grid lg:grid-cols-2 lg:pr-8
+    ">
       <section className='relative w-full h-full bg-gradient-to-r from-[#3ECC89] to-[#1F6645] flex items-center justify-center px-8'>
         <Image src={texture} alt="texture" className='absolute z-10 max-h-screen min-h-screen' />
         <div className="flex flex-col items-center z-20 text-center">
-          <div className="flex flex-col gap-6 lg:gap-8 items-center max-w-[500px]">
+          <div className="flex flex-col gap-4 lg:gap-8 items-center max-w-[500px] lg:pt-4">
             <Image src={logo} className="w-[120px] lg:w-[150px]" alt="Flynance Logo" />
-            <h1 className="text-2xl lg:text-3xl font-bold text-white">Bem-vindo de volta à Flynance.</h1>
-            <p className="text-white font-light text-sm lg:text-base">
+            <h1 className="text-xl lg:text-3xl font-bold text-white">Bem-vindo à Flynance.</h1>
+            <p className="text-white font-light text-sm lg:text-base hidden lg:block">
               Organizar sua vida financeira está a apenas um passo.
             </p>
-            <div className="flex flex-col gap-4 lg:gap-8 items-center">
+            <div className="flex-col gap-4 lg:gap-8 items-center hidden lg:flex">
               <span className="text-sm font-light text-white">Ainda não tem uma conta?</span>
               <Link href="/cadastro/checkout?plano=mensal" className="border border-white text-white py-2 px-8 lg:py-4 lg:px-16 rounded-full text-base lg:text-xl hover:bg-white hover:text-green-700 transition-all">
                 Crie agora mesmo
@@ -95,16 +100,15 @@ export default function Login() {
         </div>
       </section>
 
-      {/* Lado direito */}
-      <section className="w-full h-full lg:py-8 flex flex-col gap-8 items-center justify-center z-30 -mt-4 lg:mt-0">
+      <section className="w-full h-full lg:py-8 flex flex-col gap-8 items-center justify-center z-30 lg:mt-0 ">
         <div className="flex flex-col gap-8 items-center justify-center w-full h-full bg-white rounded-t-[48px] lg:rounded-[64px]">
           <form
             onSubmit={step === 'email' ? handleSendCode : handleVerifyCode}
             className="flex flex-col gap-6 items-center justify-center w-full text-center max-w-md px-8 lg:px-0"
           >
             {step === 'email' ? (
-              <>
-                <h2 className="font-semibold text-xl lg:text-2xl text-[#333C4D] mt-4">
+              <div className='pt-8 flex flex-col gap-4'>
+                <h2 className="font-semibold text-xl lg:text-2xl text-[#333C4D] mt-4 hidden lg:block">
                   Entre com seu e-mail
                 </h2>
 
@@ -141,14 +145,14 @@ export default function Login() {
                         Enviando...
                       </div>
                     ) : (
-                      'Enviar código'
+                      'Enviar código de acesso'
                     )}
                 </button>
 
                 <p className="text-sm text-gray-500 max-w-sm">
                   Enviaremos um código de acesso para o e-mail informado.
                 </p>
-              </>
+              </div>
             ) : (
               <>
                 <h2 className="font-semibold text-xl text-[#333C4D] mt-4">Digite o código enviado por e-mail</h2>
@@ -168,7 +172,14 @@ export default function Login() {
             )}
             {message && <p className="text-sm text-green-600">{message}</p>}
 
-            <div className="flex flex-col gap-4 items-center mt-6">
+            <div className="flex-col gap-4 lg:gap-8 items-center lg:hidden flex">
+              <span className="text-sm font-light">Ainda não tem uma conta?</span>
+              <Link href="/cadastro/checkout?plano=mensal" className=" rounded-full text-xs hover:bg-white hover:text-green-700 transition-all">
+                Crie agora mesmo
+              </Link>
+            </div>
+
+            <div className="flex flex-col gap-4 items-center pb-4">
               <h3 className="text-lg lg:text-xl text-green-700">Nos siga nas redes sociais</h3>
               <div className="flex gap-6">
                 <Link href="https://www.instagram.com/flynance.app/" target="_blank">
@@ -185,6 +196,8 @@ export default function Login() {
           </form>
         </div>
       </section>
+      
+      <InstallPrompt  />
     </main>
   )
 }
