@@ -3,6 +3,8 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import TrackingScripts from "@/components/TrackingScripts";
 import PWARegister from "@/components/PWARegister";
+import { Analytics } from "@vercel/analytics/next"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 const inter = Inter({
   variable: "--font-inter",
@@ -37,6 +39,8 @@ export default function RootLayout({
           <PWARegister/>
           <TrackingScripts />
           {children}
+          <Analytics />
+          <SpeedInsights />
       </body>
     </html>  
   );
