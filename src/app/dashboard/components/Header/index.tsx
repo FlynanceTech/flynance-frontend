@@ -93,7 +93,7 @@ export default function Header({ title, subtitle, asFilter = false, dataToFilter
           onClose={() => setDrawerOpen(false)}
         />
       </div>
-      <p className="text-sm font-light pb-4 md:pt-0">{subtitle}</p>
+      <p className="text-sm font-light md:pt-0">{subtitle}</p>
 
     </header>
   )

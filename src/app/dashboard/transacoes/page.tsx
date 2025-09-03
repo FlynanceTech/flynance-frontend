@@ -12,7 +12,7 @@ import { Transaction } from '@/types/Transaction'
 import { useTranscation } from '@/hooks/query/useTransaction'
 import { useUserSession } from '@/stores/useUserSession'
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 12
 
 function SkeletonSection() {
   return (
@@ -137,7 +137,7 @@ export default function TransactionsPage() {
   if (transactionsQuery.isLoading) return <SkeletonSection />
   if (transactionsQuery.error) {
     return (
-      <section className="w-full h-full pt-8 lg:px-8 px-4 flex flex-col gap-8">
+      <section className="w-full h-full px-4 lg:pl-0 lg:pr-8 flex flex-col gap-4 pt-4 md:pt-0">
         <Header title="Transações" subtitle="Seus últimos movimentos financeiros" />
         <div className="w-full h-full bg-white rounded-xl border border-gray-200 p-8">
           <p className="text-sm text-red-600">Erro ao carregar transações.</p>
@@ -147,7 +147,7 @@ export default function TransactionsPage() {
   }
 
   return (
-    <section className="w-full h-full pt-8 lg:px-8 px-4 pb-24 lg:pb-0 flex flex-col gap-4 overflow-auto">
+    <section className="w-full h-full px-4 lg:pl-0 lg:pr-8 flex flex-col gap-4 pt-4 md:pt-0">
       <Header
         title="Transações"
         subtitle="Seus últimos movimentos financeiros"
@@ -155,26 +155,29 @@ export default function TransactionsPage() {
         dataToFilter={Array.from(new Set(allTransactions.map((t) => t.category)))}
       />
 
-      <div className="flex flex-wrap gap-2">
-        {selectedCategories.map((item) => (
-          <div
-            key={item.id}
-            className="px-4 py-1 text-sm font-light flex items-center justify-center rounded-full bg-[#CEF2E1]"
-          >
-            {item.name}
-          </div>
-        ))}
-        {selectedIds.size > 0 && (
-          <div className="flex justify-end">
-            <button
-              onClick={handleDeleteSelected}
-              className="px-4 py-2 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+      {
+        selectedIds.size > 0 && 
+        <div className="flex flex-wrap gap-2">
+          {selectedCategories.map((item) => (
+            <div
+              key={item.id}
+              className="px-4 py-1 text-sm font-light flex items-center justify-center rounded-full bg-[#CEF2E1]"
             >
-              Delete Selected
-            </button>
-          </div>
-        )}
-      </div>
+              {item.name}
+            </div>
+          ))}
+          {selectedIds.size > 0 && (
+            <div className="flex justify-end">
+              <button
+                onClick={handleDeleteSelected}
+                className="px-4 py-2 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+              >
+                Delete Selected
+              </button>
+            </div>
+          )}
+        </div>
+      }
 
       <TransactionTable
         transactions={paginatedTransactions}
@@ -201,7 +204,7 @@ export default function TransactionsPage() {
       />
 
       {totalPages > 1 && (
-        <div className="mt-4 flex justify-center">
+        <div className="lg:mt-4 flex justify-center pb-24 lg:pb-0">
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}

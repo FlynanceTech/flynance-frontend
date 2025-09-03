@@ -11,8 +11,8 @@ import type { Transaction } from '@/types/Transaction'
 import { CategoriesSelect, TransactionTypeSelect } from '../CategorySelect'
 import { useTranscation } from '@/hooks/query/useTransaction'
 import type { TransactionDTO, PaymentType } from '@/services/transactions'
-import { useState, useMemo } from 'react'
-import { useCardMutations } from '@/hooks/query/useCreditCards'
+import { useState } from 'react'
+/* import { useCardMutations } from '@/hooks/query/useCreditCards' */
 import CreditCardDrawer from '../CreditCardDrawer'
 
 // ---- enums do front para validação / UX
@@ -48,7 +48,7 @@ interface TransactionDrawerProps {
 
 export default function TransactionDrawer({ open, onClose, initialData }: TransactionDrawerProps) {
   const { createMutation, updateMutation } = useTranscation({})
-  const { cardQuery } = useCardMutations()
+/*   const { cardQuery } = useCardMutations() */
   const [openCardDrawer, setOpenCardDrawer] = useState(false)
 
   const {
@@ -64,7 +64,7 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
     defaultValues: {
       description: initialData?.description ?? '',
       categoryId: initialData?.category?.id ?? '',
-      value: initialData?.value ?? 0,
+      value: initialData?.value ?? undefined,
       type: initialData?.type ?? 'EXPENSE',
       paymentType: (initialData?.paymentType as PaymentTypeEnum) ?? 'DEBIT_CARD',
       // caso já tenha cardId em uma transação de crédito
@@ -77,8 +77,8 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
 
   const categorySelecionada = watch('categoryId')
   const typeSelected = watch('type')
-  const paymentTypeSelected = watch('paymentType')
-  const cardIdSelected = watch('cardId')
+/*   const paymentTypeSelected = watch('paymentType') */
+/*   const cardIdSelected = watch('cardId')
 
   const hasCards = (cardQuery.data?.length ?? 0) > 0
   const cardsOptions = useMemo(
@@ -89,7 +89,7 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
       })),
     [cardQuery.data],
   )
-
+ */
   function buildPayload(data: FormData): TransactionDTO {
     const base: TransactionDTO = {
       description: data.description,
@@ -104,7 +104,6 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
     if (data.paymentType === 'CREDIT_CARD' && data.cardId) {
       base.cardId = data.cardId
     }
-    console.log('base', base)
     return base
   }
 
@@ -119,7 +118,7 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
           reset({
             description: '',
             categoryId: '',
-            value: 0,
+            value: undefined,
             type: 'EXPENSE',
             paymentType: 'DEBIT_CARD',
             cardId: undefined,
@@ -192,7 +191,7 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
                       allowNegative={false}
                       placeholder="R$ 0,00"
                       className="outline-none w-full border border-gray-200 rounded-full px-4 py-2 shadow text-sm"
-                      onValueChange={(values) => field.onChange(values.floatValue ?? 0)}
+                      onValueChange={(values) => field.onChange(values.floatValue ?? undefined)}
                     />
                   )}
                 />
@@ -211,7 +210,7 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
               </div>
 
               {/* Forma de pagamento */}
-              <div>
+        {/*       <div>
                 <label className="block text-sm text-gray-700 mb-1">Forma de pagamento</label>
                 <select
                   className="w-full border border-gray-300 rounded-full px-4 py-2 text-sm"
@@ -229,10 +228,10 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
                   <option value="MONEY">Dinheiro</option>
                 </select>
                 {errors.paymentType && <span className="text-red-500 text-xs">{errors.paymentType.message}</span>}
-              </div>
+              </div> */}
 
               {/* Se for cartão de crédito, escolher o cartão */}
-              {paymentTypeSelected === 'CREDIT_CARD' && (
+           {/*    {paymentTypeSelected === 'CREDIT_CARD' && (
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-sm text-gray-700">Cartão</label>
@@ -267,7 +266,7 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
                   )}
                   {errors.cardId && <span className="text-red-500 text-xs">{errors.cardId.message}</span>}
                 </div>
-              )}
+              )} */}
 
               <button
                 type="submit"

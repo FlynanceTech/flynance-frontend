@@ -53,7 +53,7 @@ export function Pagination({ currentPage, totalPages, onChange }: PaginationProp
     )
 
   return (
-    <div className="flex justify-center items-center gap-2 mt-4">
+    <div className="flex justify-center items-center gap-2 ">
       <button
         onClick={() => onChange(Math.max(1, currentPage - 1))}
         className="text-gray-500 hover:text-[#15B8A6] disabled:opacity-30 cursor-pointer"

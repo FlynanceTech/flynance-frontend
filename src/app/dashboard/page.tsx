@@ -6,6 +6,7 @@ import { SpendingControl } from './components/SpendingControl'
 import CategorySpendingDistribution from './components/CategorySpendingDistribution'
 import { useUserSession } from '@/stores/useUserSession'
 import ComparisonChart from './components/ComparisonChart'
+import InstallPrompt from '@/components/cadastro/InstallPrompt/InstallPrompt'
 
 
 
@@ -42,6 +43,8 @@ export default function Dashboard() {
           </div>
         </div>
       </section>
+      
+      <InstallPrompt  />
     </section>
   )
 }

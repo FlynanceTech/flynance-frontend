@@ -26,10 +26,12 @@ export default function CategoriasPage() {
   const handleEdit = (categoria: CategoryResponse) => setCategoriaEditando(categoria)
   const handleCancelEdit = () => setCategoriaEditando(null)
 
-  
+  const handleDelete = (id:string) => {
+    deleteMutation.mutate(id)
+  }
 
   return (
-    <section className="w-full h-full px-4 md:px-0 flex flex-col gap-4 pt-4 md:pt-0">
+    <section className="w-full h-full px-4 lg:pl-0 lg:pr-8 flex flex-col gap-4 pt-4 md:pt-0">
       <Header title="Gerenciar Categorias" subtitle="Personalize as categorias para melhor organizar suas finanças" />
 
       <TabGroup onChange={() => {
@@ -74,7 +76,7 @@ export default function CategoriasPage() {
                 tab={tabIndex}
                 categories={categoriaList}
                 onEdit={handleEdit}
-                onDelete={(id) => deleteMutation.mutate(id)}
+                onDelete={(id) => handleDelete(id)}
               />
 
               </TabPanel>
@@ -82,6 +84,8 @@ export default function CategoriasPage() {
           })}
         </TabPanels>
       </TabGroup>
+
+
     </section>
   )
 }

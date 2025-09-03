@@ -2,9 +2,10 @@
 
 import clsx from 'clsx'
 import { Pencil, Trash2 } from 'lucide-react'
-import React from 'react'
+import React, { useState } from 'react'
 import { Transaction } from '@/types/Transaction'
 import { IconResolver } from '@/utils/IconResolver'
+import DeleteConfirmModal from '../DeleteConfirmModal'
 
 interface Props {
   transactions: Transaction[]
@@ -14,14 +15,22 @@ interface Props {
   onDelete: (index: string) => void
 }
 
-export function 
-TransactionCardList({
+export function TransactionCardList({
   transactions,
   selectedIds,
   onToggleSelectRow,
   onEdit,
   onDelete,
 }: Props) {
+  const [open, setOpen] = useState(false)
+  
+  const [targetId, setTargetId] = useState<string | null>(null)
+
+  
+  function handleConfirmDelete() {
+    if (targetId) onDelete(targetId)
+  }
+
   return (
     <div className="lg:hidden flex flex-col gap-4">
       {transactions.map((item, i) => (
@@ -40,14 +49,17 @@ TransactionCardList({
             </div>
             <div className="flex gap-4">
               <button
+                className="text-gray-500 hover:text-blue-300 cursor-pointer"
                 onClick={() => onEdit(item)}
-                className="text-blue-500"
               >
                 <Pencil size={16} />
               </button>
               <button
-                onClick={() => onDelete(item.id)}
-                className="text-red-500"
+                className="text-gray-500 hover:text-red-400 cursor-pointer"
+                onClick={() => {
+                  setTargetId(item.id)
+                  setOpen(true)
+                }}
               >
                 <Trash2 size={16} />
               </button>
@@ -63,7 +75,7 @@ TransactionCardList({
                 item.category.type === 'EXPENSE' ? 'bg-[#22C55E]' : 'bg-[#EF4444]'
               )}
             >
-              {item.category.type === 'EXPENSE' ? 'Receita' : 'Despesas' }
+              {item.category.type === 'EXPENSE' ? 'Receita' : 'Despesas'}
             </span>
             <span
               className={clsx(
@@ -78,6 +90,15 @@ TransactionCardList({
           </div>
         </div>
       ))}
+
+      <DeleteConfirmModal
+        isOpen={open}
+        onClose={() => setOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Excluir transação"
+        description="Tem certeza que deseja excluir esta transação?"
+      />
+
     </div>
   )
 }

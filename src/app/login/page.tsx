@@ -17,7 +17,6 @@ import youtube from "../../../assets/icons/youtube-fill-icon.png"
 import { sendLoginCode, verifyCode } from '@/services/auth'
 import { OtpInput } from '@/components/ui/input'
 import { getErrorMessage } from '@/utils/getErrorMessage'
-import InstallPrompt from '@/components/cadastro/InstallPrompt/InstallPrompt'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -197,7 +196,6 @@ export default function Login() {
         </div>
       </section>
       
-      <InstallPrompt  />
     </main>
   )
 }

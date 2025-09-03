@@ -1,10 +1,13 @@
+// Atualizado para usar DeleteConfirmModal nos dois componentes
+
 'use client'
 
 import clsx from 'clsx'
 import { Pencil, Trash2 } from 'lucide-react'
-import React from 'react'
+import React, { useState } from 'react'
 import { Transaction } from '@/types/Transaction'
 import { IconMap, IconName } from '@/utils/icon-map'
+import DeleteConfirmModal from '../DeleteConfirmModal'
 
 interface Props {
   transactions: Transaction[]
@@ -25,8 +28,23 @@ export function TransactionTable({
   onEdit,
   onDelete,
 }: Props) {
+  const [open, setOpen] = useState(false)
+  const [targetId, setTargetId] = useState<string | null>(null)
+
+  function handleConfirmDelete() {
+    if (targetId) onDelete(targetId)
+  }
+
   return (
     <div className="w-full h-full bg-white rounded-md border border-gray-200 p-8 hidden lg:block">
+      <DeleteConfirmModal
+        isOpen={open}
+        onClose={() => setOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Excluir transação"
+        description="Tem certeza que deseja excluir esta transação?"
+      />
+
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead className="text-gray-500 border-b border-gray-200">
@@ -52,42 +70,26 @@ export function TransactionTable({
                   />
                 </td>
                 <td className="py-4 max-w-52">
-                  <div className='truncate max-w-72'>
+                  <div className="truncate max-w-72">
                     <span className="text-gray-800 truncate max-w-72" title={item.description}>{item.description}</span>
                   </div>
                 </td>
                 <td className="py-4 flex items-center gap-3">
-                  <div className={clsx('flex items-center gap-2 px-3 py-1 rounded-full text-white',
-                     item.category.type === 'INCOME' ? 'bg-[#22C55E]' : 'bg-[#EF4444]'
-                  )}>
-                    {
-                      IconMap[item.category.icon as IconName] && (
-                      React.createElement(IconMap[item.category.icon as IconName], { size: 16 }))
-                    }
-                    <span
-                      className={clsx(
-                        'text-xs font-semibold'
-                      )}
-                    >
-                    
-                      {item.category.name}
-                    </span>
+                  <div className={clsx('flex items-center gap-2 px-3 py-1 rounded-full text-white', item.category.type === 'INCOME' ? 'bg-[#22C55E]' : 'bg-[#EF4444]')}>  
+                    {IconMap[item.category.icon as IconName] && (
+                      React.createElement(IconMap[item.category.icon as IconName], { size: 16 })
+                    )}
+                    <span className="text-xs font-semibold">{item.category.name}</span>
                   </div>
                 </td>
-                <td className="text-gray-600">{
-                    new Intl.DateTimeFormat('pt-BR', {
-                        dateStyle: 'short',
-                        timeStyle: 'short',
-                        timeZone: 'UTC',
-                        }).format(new Date(item.date))
-                    }
+                <td className="text-gray-600">
+                  {new Intl.DateTimeFormat('pt-BR', {
+                    dateStyle: 'short',
+                    timeStyle: 'short',
+                    timeZone: 'UTC',
+                  }).format(new Date(item.date))}
                 </td>
-                <td
-                  className={clsx(
-                    'font-medium',
-                    item.category.type === 'INCOME' ? 'text-[#22C55E]' : 'text-[#EF4444]'
-                  )}
-                >
+                <td className={clsx('font-medium', item.category.type === 'INCOME' ? 'text-[#22C55E]' : 'text-[#EF4444]')}>
                   {item.category.type === 'INCOME'
                     ? `R$ ${item.value.toFixed(2)}`
                     : `- R$ ${item.value.toFixed(2)}`}
@@ -101,7 +103,10 @@ export function TransactionTable({
                   </button>
                   <button
                     className="text-gray-500 hover:text-red-400 cursor-pointer"
-                    onClick={() => onDelete(item.id)}
+                    onClick={() => {
+                      setTargetId(item.id)
+                      setOpen(true)
+                    }}
                   >
                     <Trash2 size={16} />
                   </button>
