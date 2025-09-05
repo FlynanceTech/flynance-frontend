@@ -15,6 +15,7 @@ import { usePaymentMutations } from "@/hooks/query/usePayment";
 import { UserDTO } from "@/types/user";
 import { ClientData, CreatePaymentPayload } from "@/types/payment";
 import Link from "next/link";
+import axios from "axios";
 
 const steps = ["Informacoes do cliente", "Pagamento", "Finalizacao"];
 
@@ -185,10 +186,15 @@ export default function CheckoutStepper() {
   
       }
     } catch (err: unknown) {
-      console.log("err", err?.response?.data.message
-      );
-      setLoading(false);
-      setError(getErrorMessage(err?.response?.data.message));
+      // Verifica se é um erro do Axios
+      if (axios.isAxiosError(err)) {
+        const message = err.response?.data?.message
+        console.log('Erro do Axios:', message)
+        setError(getErrorMessage(message))
+      } else {
+        console.log('Erro desconhecido:', err)
+        setError('Ocorreu um erro inesperado.')
+  }
     }
   };
 
