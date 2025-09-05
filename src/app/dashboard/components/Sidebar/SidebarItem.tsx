@@ -5,23 +5,25 @@ export interface SidebarItemProps {
   label: string
   icon: React.ReactNode
   active?: boolean
+  collapsed?: boolean
   onClick?: () => void
 }
 
-export default function SidebarItem({ label, icon, active = false, onClick }: SidebarItemProps) {
+export default function SidebarItem({ label, icon, active = false, collapsed = false, onClick }: SidebarItemProps) {
   return (
     <li
       onClick={onClick}
       className={clsx(
-        'pl-8 flex gap-2 text-sm items-center cursor-pointer transition-colors duration-200',
+        'flex items-center gap-2 px-4 py-2 text-sm cursor-pointer transition-colors duration-200 rounded-lg',
         {
-          'bg-[#CEF2E1] border-r-4 border-[#3ECC89] py-2 text-[#3ECC89] font-semibold': active,
+          'bg-[#CEF2E1] text-[#3ECC89] font-semibold': active,
           'text-[#333C4D] hover:text-[#3ECC89]': !active,
+          'justify-center': collapsed,
         }
       )}
     >
-      {icon}
-      {label}
+      <span className="text-lg">{icon}</span>
+      {!collapsed && <span>{label}</span>}
     </li>
   )
 }

@@ -185,9 +185,10 @@ export default function CheckoutStepper() {
   
       }
     } catch (err: unknown) {
-      console.log("err", err);
+      console.log("err", err?.response?.data.message
+      );
       setLoading(false);
-      setError(getErrorMessage(err));
+      setError(getErrorMessage(err?.response?.data.message));
     }
   };
 
