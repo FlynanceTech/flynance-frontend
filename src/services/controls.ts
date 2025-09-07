@@ -1,15 +1,13 @@
 import api from '@/lib/axios'
 
-export type PeriodType = 'MONTHLY' | 'WEEKLY' | 'BIMONTHLY' | 'QUARTERLY' | 'HALF_YEARLY' | 'ANNUALLY'
+export type PeriodType = "monthly"
 export type Channel = 'IN_APP' | 'EMAIL' | 'WHATSZAPP'
 
 export interface CreateControlDTO {
   categoryId: string | null
   goal: number
-  limit: number
   periodType: PeriodType
   resetDay: number | null
-  resetWeekday: number | null
   includeSubcategories: boolean
   carryOver: boolean
   notify: boolean
@@ -23,7 +21,6 @@ export interface ControlResponse {
   accountId?: string
   categoryId: string | null
   goal: number
-  limit: number
   periodType: PeriodType
   resetDay: number | null
   resetWeekday: number | null
@@ -48,6 +45,14 @@ export async function getAllControls(withProgress = false) {
   return response.data;
 }
 
+export async function getControlsById(id: string, date?: Date) {
+  const params = date
+    ? { date: date.toISOString().split('T')[0] } 
+    : {}
+
+  const response = await api.get(`/controls/${id}`, { params })
+  return response.data
+}
 // Atualizar
 export async function updateControl(id: string, data: Partial<CreateControlDTO>) {
   const res = await api.put<ControlResponse>(`/controls/${id}`, data)

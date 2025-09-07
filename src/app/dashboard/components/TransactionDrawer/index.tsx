@@ -9,29 +9,17 @@ import { NumericFormat } from 'react-number-format'
 import type { Transaction } from '@/types/Transaction'
 import { CategoriesSelect, TransactionTypeSelect } from '../CategorySelect'
 import { useTranscation } from '@/hooks/query/useTransaction'
-import type { TransactionDTO, PaymentType } from '@/services/transactions'
+import type { TransactionDTO } from '@/services/transactions'
 import { useState, useEffect } from 'react'
 import CreditCardDrawer from '../CreditCardDrawer'
 
-const paymentTypeValues = ['DEBIT_CARD', 'CREDIT_CARD', 'PIX', 'MONEY'] as const
-type PaymentTypeEnum = (typeof paymentTypeValues)[number]
 
 const schema = z.object({
   description: z.string().min(1, 'Descrição obrigatória'),
   categoryId: z.string().min(1, 'Categoria obrigatória'),
-  value: z.number({ invalid_type_error: 'Informe um valor válido' }).positive('Valor deve ser maior que zero'),
+  value: z.number({ invalid_type_error: 'Informe um valor válido' }).positive('Valor deve ser maior que zero').optional(),
   date: z.string().min(1, 'Data obrigatória'),
   type: z.enum(['EXPENSE', 'INCOME'], { required_error: 'Tipo é obrigatório' }),
-  paymentType: z.enum(paymentTypeValues, { required_error: 'Forma de pagamento é obrigatória' }),
-  cardId: z.string().uuid('Cartão inválido').optional(),
-}).superRefine((data, ctx) => {
-  if (data.paymentType === 'CREDIT_CARD' && !data.cardId) {
-    ctx.addIssue({
-      path: ['cardId'],
-      code: z.ZodIssueCode.custom,
-      message: 'Selecione um cartão',
-    })
-  }
 })
 
 type FormData = z.infer<typeof schema>
@@ -42,9 +30,17 @@ interface TransactionDrawerProps {
   initialData?: Transaction
 }
 
-export default function TransactionDrawer({ open, onClose, initialData }: TransactionDrawerProps) {
+export default function TransactionDrawer({ open, onClose, initialData}: TransactionDrawerProps) {
   const { createMutation, updateMutation } = useTranscation({})
   const [openCardDrawer, setOpenCardDrawer] = useState(false)
+
+  const defaultValues: FormData = {
+    description: '',
+    categoryId: '',
+    value: undefined,
+    type: 'EXPENSE',
+    date: new Date().toISOString().slice(0, 16),
+  }
 
   const {
     register,
@@ -56,33 +52,24 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      description: '',
-      categoryId: '',
-      value: undefined,
-      type: 'EXPENSE',
-      paymentType: 'DEBIT_CARD',
-      cardId: undefined,
-      date: new Date().toISOString().slice(0, 16),
-    },
+    defaultValues,
   })
 
-  // 🔁 Resetar o formulário ao abrir ou mudar a transação
   useEffect(() => {
-    if (open) {
+    if (initialData) {
       reset({
-        description: initialData?.description ?? '',
-        categoryId: initialData?.category?.id ?? '',
-        value: initialData?.value ?? undefined,
-        type: initialData?.type ?? 'EXPENSE',
-        paymentType: (initialData?.paymentType as PaymentTypeEnum) ?? 'DEBIT_CARD',
-        cardId: (initialData as unknown as { cardId?: string })?.cardId,
-        date: initialData?.date
+        description: initialData.description ?? '',
+        categoryId: initialData.category?.id ?? '',
+        value: initialData.value ?? undefined,
+        type: initialData.type ?? 'EXPENSE',
+        date: initialData.date
           ? new Date(initialData.date).toISOString().slice(0, 16)
           : new Date().toISOString().slice(0, 16),
       })
+    } else {
+      reset(defaultValues)
     }
-  }, [open, initialData, reset])
+  }, [initialData, reset])
 
   const categorySelecionada = watch('categoryId')
   const typeSelected = watch('type')
@@ -91,21 +78,17 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
     const base: TransactionDTO = {
       description: data.description,
       categoryId: data.categoryId,
-      value: data.value,
+      value: data.value ?? 0,
       date: data.date,
       type: data.type,
-      paymentType: data.paymentType as PaymentType,
+      paymentType: 'DEBIT_CARD',
       origin: 'DASHBOARD',
-    }
-    if (data.paymentType === 'CREDIT_CARD' && data.cardId) {
-      base.cardId = data.cardId
     }
     return base
   }
 
   const onSubmit = (data: FormData) => {
     const payload = buildPayload(data)
-    console.log('data', data)
 
     if (initialData?.id) {
       updateMutation.mutate({ id: initialData.id, data: payload })
@@ -117,8 +100,6 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
             categoryId: '',
             value: undefined,
             type: 'EXPENSE',
-            paymentType: 'DEBIT_CARD',
-            cardId: undefined,
             date: new Date().toISOString().slice(0, 16),
           })
         },

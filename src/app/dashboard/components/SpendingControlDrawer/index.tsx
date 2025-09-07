@@ -1,23 +1,22 @@
-// components/controls/SpendingControlDrawer.tsx
 'use client'
 
-import { Fragment, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react'
-import { CalendarDays, Plus } from 'lucide-react'
+import { CalendarDays, Pencil } from 'lucide-react'
 import type { CreateControlDTO, PeriodType, Channel } from '@/services/controls'
-import { useControls } from '@/hooks/query/useSpendingControl'
+import { ControlWithProgress, useControls } from '@/hooks/query/useSpendingControl'
 import { useCategories } from '@/hooks/query/useCategory'
+import { ControlWithTransactions } from '../../controles/[id]/page'
 
 type Props = {
   open: boolean
   onClose: () => void
+  editing?: ControlWithProgress | ControlWithTransactions | null
 }
 
-/** Estado local do formulário (UI), independente do DTO do backend */
 type FormState = {
   categoryId: string | null
   goal: number
-  limit: number
   periodType: PeriodType
   notify: boolean
   notifyAtPct: number[]
@@ -26,40 +25,58 @@ type FormState = {
   channels: Channel[]
 }
 
-export default function SpendingControlDrawer({ open, onClose }: Props) {
-  const { createMutation } = useControls()
+const defaultFormState: FormState = {
+  categoryId: null,
+  goal: 0,
+  periodType: 'monthly',
+  notify: false,
+  notifyAtPct: [],
+  includeSubcategories: true,
+  carryOver: false,
+  channels: ['IN_APP', 'WHATSZAPP', 'EMAIL'],
+}
+
+export default function SpendingControlDrawer({ open, onClose, editing }: Props) {
+  const { createMutation, updateMutation } = useControls()
   const {
     categoriesQuery: { data: categories = [] },
   } = useCategories()
 
-  const [form, setForm] = useState<FormState>({
-    categoryId: null,
-    goal: 0,
-    limit: 0,
-    periodType: 'MONTHLY',
-    notify: false,
-    notifyAtPct: [],
-    includeSubcategories: true,
-    carryOver: false,
-    channels: ['IN_APP'] as Channel[],
-  })
+  const [form, setForm] = useState<FormState>(defaultFormState)
+
+  const resetForm = () => setForm(defaultFormState)
+
+  useEffect(() => {
+    if (editing) {
+      setForm({
+        categoryId: editing.categoryId,
+        goal: editing.goal,
+        periodType: 'monthly',
+        notify: editing.notify,
+        notifyAtPct: editing.notifyAtPct,
+        includeSubcategories: editing.includeSubcategories,
+        carryOver: editing.carryOver,
+        channels: editing.channels,
+      })
+    } else {
+      resetForm()
+    }
+  }, [editing])
+
+  useEffect(() => {
+    if (!open) resetForm()
+  }, [open])
 
   function updateForm<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm(prev => ({ ...prev, [key]: value }))
   }
 
-  /** Converte o estado do formulário no DTO esperado pelo backend */
   function toDTO(f: FormState): CreateControlDTO {
-    const resetDay: number | null = f.periodType === 'MONTHLY' ? 1 : null
-    const resetWeekday: number | null = f.periodType === 'WEEKLY' ? 0 : null
-
     return {
       categoryId: f.categoryId,
       goal: f.goal,
-      limit: f.limit,
       periodType: f.periodType,
-      resetDay,
-      resetWeekday,
+      resetDay: f.periodType === 'monthly' ? 1 : null,
       includeSubcategories: f.includeSubcategories,
       carryOver: f.carryOver,
       notify: f.notify,
@@ -68,26 +85,31 @@ export default function SpendingControlDrawer({ open, onClose }: Props) {
     }
   }
 
-  // no componente
-const toggleChannel = (ch: Channel, checked: boolean) => {
+  const toggleChannel = (ch: Channel, checked: boolean) => {
     updateForm(
       'channels',
       checked
-        ? Array.from(new Set<Channel>([...form.channels, ch])) // -> Channel[]
+        ? Array.from(new Set<Channel>([...form.channels, ch]))
         : form.channels.filter((c) => c !== ch)
     )
   }
-  
+
   async function handleSubmit() {
     const payload = toDTO(form)
-    await createMutation.mutateAsync(payload)
+
+    if (editing) {
+      await updateMutation.mutateAsync({ id: editing.id, data: payload })
+    } else {
+      await createMutation.mutateAsync(payload)
+    }
+
     onClose()
+    resetForm()
   }
 
   return (
     <Transition appear show={open} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
-        {/* backdrop */}
         <TransitionChild
           as="div"
           enter="ease-out duration-200"
@@ -114,112 +136,75 @@ const toggleChannel = (ch: Channel, checked: boolean) => {
               >
                 <DialogPanel className="h-full flex flex-col bg-white shadow-xl">
                   <div className="p-6 border-b border-gray-200">
-                    <h2 className="text-lg font-semibold">Novo controle de gastos</h2>
+                    <h2 className="text-lg font-semibold">
+                      {editing ? 'Editar controle de Metas' : 'Novo controle de Metas'}
+                    </h2>
                   </div>
 
                   <div className="flex-1 overflow-auto p-6 space-y-4">
-                    {/* Categoria */}
                     <div>
                       <label className="text-sm text-gray-600">Categoria</label>
                       <select
                         className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                        value={form.categoryId ?? ''} // não permitir null no value do select
+                        value={form.categoryId ?? ''}
                         onChange={(e) => updateForm('categoryId', e.target.value || null)}
                       >
                         <option value="">Selecione…</option>
-                        {categories
-                          .filter((c) => c.type === 'EXPENSE')
-                          .map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.name}
-                            </option>
-                          ))}
+                        {categories.filter((c) => c.type === 'EXPENSE').map((c) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
                       </select>
                     </div>
 
-                    {/* Meta e Limite */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-sm text-gray-600">Meta</label>
-                        <input
-                          type="number"
-                          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                          value={form.goal}
-                          onChange={(e) => updateForm('goal', Number(e.target.value) || 0)}
-                          min={0}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm text-gray-600">Limite</label>
-                        <input
-                          type="number"
-                          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                          value={form.limit}
-                          onChange={(e) => updateForm('limit', Number(e.target.value) || 0)}
-                          min={0}
-                        />
-                      </div>
+                    <div>
+                      <label className="text-sm text-gray-600">Meta</label>
+                      <input
+                        type="number"
+                        className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                        value={form.goal}
+                        onChange={(e) => updateForm('goal', Number(e.target.value) || 0)}
+                        min={0}
+                      />
                     </div>
 
-                    {/* Período */}
                     <div>
                       <label className="text-sm text-gray-600 flex items-center gap-2">
                         <CalendarDays className="w-4 h-4" /> Período
                       </label>
-                      <select
-                        className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                        value={form.periodType}
-                        onChange={(e) => updateForm('periodType', e.target.value as PeriodType)}
-                      >
-                        <option value="MONTHLY">Mensal</option>
-                        <option value="WEEKLY">Semanal</option>
-                        <option value="BIMONTHLY">Bimestral</option>
-                        <option value="QUARTERLY">Trimestral</option>
-                        <option value="HALF_YEARLY">Semestral</option>
-                        <option value="ANNUALLY">Anual</option>
-                      </select>
+                      <input
+                        type="text"
+                        disabled
+                        value="Mensal"
+                        className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm bg-gray-100 text-gray-500 cursor-not-allowed"
+                      />
                     </div>
 
-                    {/* Notificações */}
                     <div className="space-y-2">
                       <label className="flex items-center gap-2">
                         <input
                           type="checkbox"
                           checked={form.notify}
-                          onChange={(e) => updateForm('notify', e.target.checked)}
+                          onChange={(e) => {
+                            const checked = e.target.checked
+                            updateForm('notify', checked)
+                            if (!checked) updateForm('channels', [])
+                          }}
                         />
                         <span className="text-sm text-gray-700">Receber notificação</span>
                       </label>
 
-                      {/* Canais (exemplo simples) */}
                       <div className="flex gap-4">
-                      <label className="flex items-center gap-2 text-sm">
-  <input
-    type="checkbox"
-    checked={form.channels.includes('IN_APP')}
-    onChange={(e) => toggleChannel('IN_APP', e.target.checked)}
-  />
-  In‑app
-</label>
-
-<label className="flex items-center gap-2 text-sm">
-  <input
-    type="checkbox"
-    checked={form.channels.includes('EMAIL')}
-    onChange={(e) => toggleChannel('EMAIL', e.target.checked)}
-  />
-  Email
-</label>
-
-<label className="flex items-center gap-2 text-sm">
-  <input
-    type="checkbox"
-    checked={form.channels.includes('WHATSZAPP')}
-    onChange={(e) => toggleChannel('WHATSZAPP', e.target.checked)}
-  />
-  WhatsApp
-</label>
-
+                        {['IN_APP', 'EMAIL', 'WHATSZAPP'].map((channel) => (
+                          <label key={channel} className="flex items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={form.channels.includes(channel as Channel)}
+                              onChange={(e) => toggleChannel(channel as Channel, e.target.checked)}
+                              disabled={!form.notify}
+                            />
+                            {channel === 'IN_APP' ? 'Dashboard' : channel === 'EMAIL' ? 'Email' : 'WhatsApp'}
+                          </label>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -235,7 +220,7 @@ const toggleChannel = (ch: Channel, checked: boolean) => {
                       onClick={handleSubmit}
                       className="inline-flex items-center gap-2 rounded-md bg-emerald-500 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600"
                     >
-                      <Plus className="w-4 h-4" /> Adicionar Controle
+                      <Pencil className="w-4 h-4" /> {editing ? 'Salvar alterações' : 'Adicionar Controle'}
                     </button>
                   </div>
                 </DialogPanel>

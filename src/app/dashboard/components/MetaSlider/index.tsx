@@ -48,16 +48,6 @@ export function MetaSlider({
           </Slider.Track>
           <Slider.Thumb className="block w-4 h-4 bg-green-600 rounded-full hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-400" />
         </Slider.Root>
-        <div className="hidden lg:flex flex-col text-end w-1/5">
-          <label className="text-sm font-medium text-gray-600">Meu Limite</label>
-          <NumericFormat
-            value={max}
-            displayType="text"
-            thousandSeparator="."
-            decimalSeparator=","
-            prefix="R$ "
-          />
-        </div>
       </div>
       {/* Mobile */}
       <div className="lg:hidden flex items-center justify-between">
@@ -65,16 +55,6 @@ export function MetaSlider({
           <label className="text-sm font-medium text-gray-600">{label}</label>
           <NumericFormat
             value={value}
-            displayType="text"
-            thousandSeparator="."
-            decimalSeparator=","
-            prefix="R$ "
-          />
-        </div>
-        <div className="flex flex-col text-end">
-          <label className="text-sm font-medium text-gray-600">Meu Limite</label>
-          <NumericFormat
-            value={max}
             displayType="text"
             thousandSeparator="."
             decimalSeparator=","

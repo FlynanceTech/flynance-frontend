@@ -13,8 +13,8 @@ import {
   LogOut,
   Tag,
   User,
-  ChevronLeft,
-  ChevronRight
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react'
 import SidebarItem from './SidebarItem'
 import { useUserSession } from '@/stores/useUserSession'
@@ -57,8 +57,8 @@ export default function Sidebar() {
           >
             {
               collapsed ? 
-              <ChevronRight size={20} />:
-              <ChevronLeft size={20} />
+              <PanelLeftOpen  size={20} />:
+              <PanelLeftClose size={20} />
             }
         </button>
       </div>

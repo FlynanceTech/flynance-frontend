@@ -6,14 +6,33 @@ import {
   deleteControl,
   CreateControlDTO,
   ControlResponse,
+  getControlsById,
 } from '@/services/controls'
 
-export function useControls() {
+export interface ControlWithProgress extends ControlResponse {
+  spent: number
+  remainingToGoal: number
+  usagePctOfGoal: number
+  usagePctOfLimit: number
+  overLimit: boolean
+  periodStart: string
+  periodEnd: string
+  nextResetAt: string
+}
+
+export function useControls(id?: string, date?: Date) {
   const qc = useQueryClient()
 
-  const controlsQuery = useQuery<ControlResponse[] | unknown[]>({
+
+  const controlsQuery = useQuery<ControlWithProgress[]>({
     queryKey: ['controls', { withProgress: true }],
-    queryFn: () => getAllControls(true), // já busca com progresso
+    queryFn: () => getAllControls(true),
+  })
+
+  const controlsByIdQuery = useQuery({
+    queryKey: ['controls', id, date?.toISOString()],
+    queryFn: () => getControlsById(id as string, date),
+    enabled: !!id,
   })
 
   const createMutation = useMutation({
@@ -38,5 +57,5 @@ export function useControls() {
     },
   })
 
-  return { controlsQuery, createMutation, updateMutation, deleteMutation }
+  return { controlsQuery, controlsByIdQuery, createMutation, updateMutation, deleteMutation }
 }

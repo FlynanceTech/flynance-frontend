@@ -36,7 +36,7 @@ export default function Dashboard() {
         <div className='md:col-span-4 flex gap-4 flex-col w-full'>
           <div className="flex flex-col lg:flex-row gap-4 lg:gap-4">
             <ComparisonChart userId={userId} />
-            <SpendingControl userId={userId} />
+            <SpendingControl />
           </div>
           <div className='flex flex-col lg:flex-row gap-4 h-full'>
             <CategorySpendingDistribution/>
