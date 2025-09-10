@@ -1,7 +1,7 @@
 'use client'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  LayoutDashboard, Landmark, Tag, BookOpenCheck, User
+  LayoutDashboard, Landmark, Tag, User
 } from 'lucide-react'
 import React from 'react'
 
@@ -13,14 +13,21 @@ export default function BottomMenu() {
     { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
     { label: 'Transações', icon: Landmark, path: '/dashboard/transacoes' },
     { label: 'Categorias', icon: Tag, path: '/dashboard/categorias' },
-    { label: 'Educação', icon: BookOpenCheck, path: '/dashboard/educacao' },
+    /* { label: 'Educação', icon: BookOpenCheck, path: '/dashboard/educacao' }, */
     { label: 'Perfil', icon: User, path: '/dashboard/perfil' },
   ]
+
+  const isPathActive = (itemPath: string) => {
+    if (itemPath === '/dashboard') {
+      return pathname === '/dashboard' || pathname.startsWith('/dashboard/controles')
+    }
+    return pathname === itemPath
+  }
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center py-4 z-50">
       {navItems.map(({ label, icon: Icon, path }) => {
-        const isActive = pathname === path
+        const isActive = isPathActive(path)
         return (
           <button
             key={label}

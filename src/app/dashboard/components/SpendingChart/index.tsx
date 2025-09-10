@@ -38,9 +38,12 @@ export function SpendingChart({
     goal: number
   }) {
     const percent = spent / goal
-    let stroke = '#3ECC89' // verde
-    if (percent >= 0.75) stroke = '#FFB200' // amarelo
-    if (percent >= 1) stroke = '#FF4D4F' // vermelho
+
+    function getStrokeColor(percent: number) {
+      if (percent > 0.9) return '#FF4D4F' 
+      if (percent > 0.6) return '#FFB200' 
+      return '#3ECC89' 
+    }
 
     const chartData =
     data.length === 1
@@ -58,8 +61,8 @@ export function SpendingChart({
         <AreaChart data={chartData}>
         <defs>
           <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor={stroke} stopOpacity={0.5} />
-            <stop offset="95%" stopColor={stroke} stopOpacity={0} />
+            <stop offset="5%" stopColor={getStrokeColor(percent)} stopOpacity={0.5} />
+            <stop offset="95%" stopColor={getStrokeColor(percent)} stopOpacity={0} />
           </linearGradient>
         </defs>
             <XAxis dataKey="date" stroke="#666" tickLine={false}
@@ -72,10 +75,10 @@ export function SpendingChart({
             <Area
                 type="monotone"
                 dataKey="valor"
-                stroke={stroke}
+                stroke={getStrokeColor(percent)}
                 strokeWidth={3}
                 fill="url(#colorValue)"
-                activeDot={{ r: 6, stroke: stroke, strokeWidth: 2, fill: '#fff' }}
+                activeDot={{ r: 6, stroke: getStrokeColor(percent), strokeWidth: 2, fill: '#fff' }}
             />
         </AreaChart>
       </ResponsiveContainer>

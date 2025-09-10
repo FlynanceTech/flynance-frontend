@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import Header from './components/Header/overview'
 import { SpendingControl } from './components/SpendingControl'
-import CategorySpendingDistribution from './components/CategorySpendingDistribution'
+import CategorySpendingDistribution from './components/CategorySpendingDistribution/index.jsx'
 import { useUserSession } from '@/stores/useUserSession'
 import ComparisonChart from './components/ComparisonChart'
 import InstallPrompt from '@/components/cadastro/InstallPrompt/InstallPrompt'

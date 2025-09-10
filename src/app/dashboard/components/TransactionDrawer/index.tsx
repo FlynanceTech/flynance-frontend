@@ -12,6 +12,7 @@ import { useTranscation } from '@/hooks/query/useTransaction'
 import type { TransactionDTO } from '@/services/transactions'
 import { useState, useEffect } from 'react'
 import CreditCardDrawer from '../CreditCardDrawer'
+import { getLocalISOString } from '@/utils/formatter'
 
 
 const schema = z.object({
@@ -39,7 +40,7 @@ export default function TransactionDrawer({ open, onClose, initialData}: Transac
     categoryId: '',
     value: undefined,
     type: 'EXPENSE',
-    date: new Date().toISOString().slice(0, 16),
+    date: getLocalISOString(),
   }
 
   const {
@@ -63,8 +64,8 @@ export default function TransactionDrawer({ open, onClose, initialData}: Transac
         value: initialData.value ?? undefined,
         type: initialData.type ?? 'EXPENSE',
         date: initialData.date
-          ? new Date(initialData.date).toISOString().slice(0, 16)
-          : new Date().toISOString().slice(0, 16),
+        ? getLocalISOString(new Date(initialData.date))
+        : getLocalISOString(),
       })
     } else {
       reset(defaultValues)
@@ -100,7 +101,7 @@ export default function TransactionDrawer({ open, onClose, initialData}: Transac
             categoryId: '',
             value: undefined,
             type: 'EXPENSE',
-            date: new Date().toISOString().slice(0, 16),
+            date: getLocalISOString(),
           })
         },
       })
@@ -129,7 +130,7 @@ export default function TransactionDrawer({ open, onClose, initialData}: Transac
               onSubmit={handleSubmit(onSubmit)} 
               className="space-y-4"
             >
-              <div>
+              <div className='flex flex-col gap-2'>
                 <label className="block text-sm text-gray-700 mb-1">Descrição</label>
                 <input
                   type="text"
@@ -139,13 +140,13 @@ export default function TransactionDrawer({ open, onClose, initialData}: Transac
                 {errors.description && <span className="text-red-500 text-xs">{errors.description.message}</span>}
               </div>
 
-              <div>
+              <div className='flex flex-col gap-2'>
                 <label className="block text-sm text-gray-700 mb-1">Tipo de transação</label>
                 <TransactionTypeSelect value={typeSelected} onChange={(value) => setValue('type', value)} />
                 {errors.type && <span className="text-red-500 text-xs">{errors.type.message}</span>}
               </div>
 
-              <div>
+              <div className='flex flex-col gap-2'>
                 <label className="block text-sm text-gray-700 mb-1">Categoria</label>
                 <CategoriesSelect
                   value={categorySelecionada}
@@ -155,7 +156,7 @@ export default function TransactionDrawer({ open, onClose, initialData}: Transac
                 {errors.categoryId && <span className="text-red-500 text-xs">{errors.categoryId.message}</span>}
               </div>
 
-              <div>
+              <div className='flex flex-col gap-2'>
                 <label className="block text-sm text-gray-700 mb-1">Valor</label>
                 <Controller
                   name="value"
@@ -176,7 +177,7 @@ export default function TransactionDrawer({ open, onClose, initialData}: Transac
                 {errors.value && <span className="text-red-500 text-xs">{errors.value.message}</span>}
               </div>
 
-              <div>
+              <div className='flex flex-col gap-2'>
                 <label className="block text-sm text-gray-700 mb-1">Data</label>
                 <input
                   type="datetime-local"

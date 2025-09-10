@@ -7,7 +7,6 @@ import { useState } from 'react'
 import logoFlynance from '../../../../../assets/logo-flynance.png'
 import logoFly from '../../../../../public/icons/logo-192x192.png'
 import {
-  BookOpenCheck,
   Landmark,
   LayoutDashboard,
   LogOut,
@@ -31,9 +30,18 @@ export default function Sidebar() {
     { label: 'Dashboard', icon: <LayoutDashboard />, path: '/dashboard' },
     { label: 'Transações', icon: <Landmark />, path: '/dashboard/transacoes' },
     { label: 'Categorias', icon: <Tag />, path: '/dashboard/categorias' },
-    { label: 'Educação', icon: <BookOpenCheck />, path: '/dashboard/educacao' },
+  /*   { label: 'Educação', icon: <BookOpenCheck />, path: '/dashboard/educacao' }, */
     { label: 'Perfil', icon: <User />, path: '/dashboard/perfil' },
   ]
+
+
+  const isPathActive = (itemPath: string) => {
+    if (itemPath === '/dashboard') {
+      return pathname === '/dashboard' || pathname.startsWith('/dashboard/controles')
+    }
+    return pathname === itemPath
+  }
+
 
   const handleLogout = async () => {
     await logout()
@@ -79,9 +87,7 @@ export default function Sidebar() {
             width={100}
             height={40}
           /> 
-          
         }
-
       </div>
      
 
@@ -93,7 +99,7 @@ export default function Sidebar() {
               label={label}
               icon={icon}
               collapsed={collapsed}
-              active={pathname === path}
+              active={isPathActive(path)}
               onClick={() => router.push(path)}
             />
           ))}

@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Pencil, Trash2, Plus } from 'lucide-react'
+import Link from 'next/link'
+import { Pencil, Trash2, Plus, ExternalLink } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Header from '../components/Header'
 import { ControlWithProgress, useControls } from '@/hooks/query/useSpendingControl'
@@ -81,7 +82,7 @@ export default function SpendingControlPage() {
 
   return (
     <section className="w-full h-full pt-8 lg:px-8 px-4 pb-24 lg:pb-0 flex flex-col gap-6 overflow-auto">
-      <Header title="Controle de Gastos" subtitle="" newTransation={false} />
+      <Header title="Controle de Metas" subtitle="" newTransation={false} />
       <div className='w-full flex justify-between items-center gap-2'>
         <h2 className="text-lg font-semibold text-[#333C4D]">Todos os controles</h2>
         <button
@@ -110,7 +111,8 @@ export default function SpendingControlPage() {
               : 'bg-emerald-100 text-emerald-800'
 
           return (
-            <li
+            <Link
+              href={`/dashboard/controles/${c.id}`}
               key={c.id}
               className="w-full flex flex-col gap-3 p-4 bg-white rounded-md border border-gray-200"
             >
@@ -124,9 +126,12 @@ export default function SpendingControlPage() {
                 </div>
 
                 <div className="flex gap-4">
+                  <Link href={`/dashboard/controles/${c.id}`}>
+                    <ExternalLink  size={16}/>
+                  </Link>
                   <button
                     onClick={() => handleEdit(c)}
-                    className="text-gray-500 hover:text-blue-500"
+                    className="text-gray-500 hover:text-blue-400"
                     title="Editar"
                   >
                     <Pencil size={16} />
@@ -150,7 +155,7 @@ export default function SpendingControlPage() {
                 <div className="flex justify-between"><span>Meta:</span><strong>{toBRL(c.goal)}</strong></div>
                 <div className="flex justify-between"><span>Restante:</span><strong>{toBRL(restante)}</strong></div>
               </div>
-            </li>
+            </Link>
           )
         })}
       </ul>

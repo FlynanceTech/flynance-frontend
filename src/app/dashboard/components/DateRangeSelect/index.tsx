@@ -53,7 +53,7 @@ export default function DateRangeSelect({
       <MenuButton
         className={
           className ??
-          `h-9 ${withDisplay  ? ' px-4 py-2' :'w-9 p-0' }  flex items-center justify-center gap-2 rounded-full border border-[#E2E8F0] bg-white text-[#1A202C] text-sm font-medium  hover:bg-gray-50 cursor-pointer`
+          `h-9 ${withDisplay  ? ' px-4 py-2' :'w-9 p-0' }  flex items-center justify-center gap-2 rounded-full border border-[#E2E8F0] bg-white text-gray-500 text-sm font-medium  hover:bg-gray-50 cursor-pointer`
         }
         aria-label="Selecionar período"
         title="Selecionar período"

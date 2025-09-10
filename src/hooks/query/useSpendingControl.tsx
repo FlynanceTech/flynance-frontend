@@ -23,7 +23,6 @@ export interface ControlWithProgress extends ControlResponse {
 export function useControls(id?: string, date?: Date) {
   const qc = useQueryClient()
 
-
   const controlsQuery = useQuery<ControlWithProgress[]>({
     queryKey: ['controls', { withProgress: true }],
     queryFn: () => getAllControls(true),
