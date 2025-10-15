@@ -1,10 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
 
 import React, { useRef, useState, forwardRef } from 'react'
 import Cleave from 'cleave.js/react'
-
-
+import { cn } from "@/lib/utils"
 
 interface OtpInputProps {
   length?: number
@@ -19,17 +17,24 @@ type CleaveInputProps = {
 } & React.InputHTMLAttributes<HTMLInputElement>
 
 
-export function Input({ label, ...props }: { label?: string } & React.InputHTMLAttributes<HTMLInputElement>) {
+const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
+  ({ className, type, ...props }, ref) => {
     return (
-      <div className="space-y-1">
-        <label className="block text-sm font-medium text-gray-700">{label}</label>
-        <input
-          {...props}
-          className="w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500"
-        />
-      </div>
+      <input
+        type={type}
+        className={cn(
+          "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+          className
+        )}
+        ref={ref}
+        {...props}
+      />
     )
   }
+)
+Input.displayName = "Input"
+
+export { Input }
 
 
 export function OtpInput({ length = 6, onComplete }: OtpInputProps) {

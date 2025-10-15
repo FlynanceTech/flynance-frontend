@@ -69,12 +69,29 @@ export default function ControlePage({
 
   const control = controlsByIdQuery.data as ControlWithTransactions
   const {spent, goal, categoryIconName, categoryName, transactions} = control
-  const chartData = control.transactions
+
+  const chartDataMap = new Map<string, { date: string; valor: number; acumulado: number }>()
+let acumulado = 0
+
+const chartData = control.transactions
   .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-  .map((t) => ({
-    date: t.date,
-    valor: t.value,
-  }))
+  .reduce((acc, t) => {
+    const date = format(new Date(t.date), 'yyyy-MM-dd')
+
+    const existing = chartDataMap.get(date)
+    if (existing) {
+      existing.valor += t.value
+      existing.acumulado += t.value
+    } else {
+      acumulado += t.value
+      const entry = { date, valor: t.value, acumulado }
+      chartDataMap.set(date, entry)
+      acc.push(entry)
+    }
+
+    return acc
+  }, [] as { date: string; valor: number; acumulado: number }[])
+
 
   const exceeded = spent > goal
   const percentage = (spent / goal) * 100

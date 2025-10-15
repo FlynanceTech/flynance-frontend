@@ -10,6 +10,11 @@ const nextConfig = {
         hostname: "cdn.builder.io",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "www.facebook.com",
+        pathname: "/**",
+      },
     ],
   },
 }
