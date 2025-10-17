@@ -14,13 +14,12 @@ export function useTranscation(params: UseTransactionParams) {
     const queryClient = useQueryClient()
     
     const transactionsQuery = useQuery({
-        enabled: !!params,
-        queryKey: ['transactions', params],
-        queryFn: () => {
-            if (!params.userId) throw new Error('userId é obrigatório')
-            return getTransaction(params as Required<UseTransactionParams>)
-          },
-      })
+        queryKey: ['transactions', params],          // chave depende de params (memoizado no caller)
+        queryFn: () => getTransaction(params as Required<UseTransactionParams>),
+        enabled: !!params.userId,                    // <<< só roda quando userId existir
+        staleTime: 30_000,
+        retry: 1,
+    });
 
     const createMutation = useMutation({
         mutationFn: createTransaction,

@@ -12,7 +12,7 @@ import { Transaction } from '@/types/Transaction'
 import { useTranscation } from '@/hooks/query/useTransaction'
 import { useUserSession } from '@/stores/useUserSession'
 
-const PAGE_SIZE = 12
+const PAGE_SIZE = 10
 
 function SkeletonSection() {
   return (
@@ -26,7 +26,7 @@ function SkeletonSection() {
 
 export default function TransactionsPage() {
   const { user } = useUserSession()
-  const userId = user?.account?.userId ?? '' // evita condicionar hooks
+  const userId = user?.user.id ?? ''
 
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
@@ -36,21 +36,20 @@ export default function TransactionsPage() {
 
   const selectedCategories = useTransactionFilter((s) => s.selectedCategories)
   const searchTerm = useTransactionFilter((s) => s.searchTerm)
-  const dateRange = useTransactionFilter((s) => s.dateRange) // número de dias (ex.: 7, 30 etc.)
+  const dateRange = useTransactionFilter((s) => s.dateRange)
 
-  // CHAME SEMPRE os hooks (sem if/return antes). Se seu hook aceitar, ative enabled:
-  const { transactionsQuery, deleteMutation } = useTranscation({
+  const params = React.useMemo(() => ({
     userId,
     page: currentPage,
     limit: PAGE_SIZE,
     filters: {
-      category: selectedCategories.map((c) => c.id).join(','),
-      search: searchTerm,
-      days: dateRange,
+      category: selectedCategories.map(c => c.id).join(',') || undefined,
+      search: searchTerm || undefined,
+      days: dateRange || undefined,
     },
-    // enabled: Boolean(userId),
-  })
+  }), [userId, currentPage, selectedCategories, searchTerm, dateRange]);
 
+  const { transactionsQuery, deleteMutation } = useTranscation(params);
   // Referência estável do array base
   const allTransactions: Transaction[] = useMemo(
     () => (transactionsQuery.data ?? []) as Transaction[],
@@ -71,12 +70,14 @@ export default function TransactionsPage() {
       const matchSearch =
         !searchTerm || item.description.toLowerCase().includes(searchTerm.toLowerCase())
 
-      const itemDate = new Date(item.date)
-      const matchDate = daysNum > 0 ? itemDate >= cutoffDate : true
+     /*  const itemDate = new Date(item.date)
+      const matchDate = daysNum > 0 ? itemDate >= cutoffDate : true */
 
-      return matchCategory && matchSearch && matchDate
+      return matchCategory && matchSearch /* && matchDate */
     })
   }, [allTransactions, selectedCategories, searchTerm, dateRange])
+
+  console.log('Filtered Transactions:', filteredTransactions);
 
   const paginatedTransactions = useMemo(
     () =>
@@ -88,6 +89,12 @@ export default function TransactionsPage() {
   )
 
   const totalPages = Math.ceil(filteredTransactions.length / PAGE_SIZE)
+  const totalAll = allTransactions.length
+  const totalFiltered = filteredTransactions.length
+  const startIndex = totalFiltered === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1
+  const endIndex = Math.min(currentPage * PAGE_SIZE, totalFiltered)
+  const isFiltered =
+    selectedCategories.length > 0 || !!searchTerm || !!dateRange
 
   const toggleSelectRow = (id: string) => {
     setSelectedIds((prev) => {
@@ -145,6 +152,7 @@ export default function TransactionsPage() {
       </section>
     )
   }
+  
 
   return (
     <section className="w-full h-full px-4 lg:pl-0 lg:pr-8 flex flex-col gap-4 pt-4 md:pt-0">
@@ -179,50 +187,66 @@ export default function TransactionsPage() {
         </div>
       }
 
-      <TransactionTable
-        transactions={paginatedTransactions}
-        selectedIds={selectedIds}
-        selectAll={selectAll}
-        onToggleSelectAll={toggleSelectAll}
-        onToggleSelectRow={toggleSelectRow}
-        onEdit={(t) => {
-          setSelectedTransaction(t)
-          setDrawerOpen(true)
-        }}
-        onDelete={handleDeleteSingle}
-      />
-
-      <TransactionCardList
-        transactions={paginatedTransactions}
-        selectedIds={selectedIds}
-        onToggleSelectRow={toggleSelectRow}
-        onEdit={(t) => {
-          setSelectedTransaction(t)
-          setDrawerOpen(true)
-        }}
-        onDelete={handleDeleteSingle}
-      />
-
-      {totalPages > 1 && (
-        <div className="lg:mt-4 flex justify-center pb-24 lg:pb-0">
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onChange={(page) => setCurrentPage(page)}
+      <section className='flex flex-col gap-4 lg:gap-0 overflow-auto'>
+          <TransactionTable
+            transactions={paginatedTransactions}
+            selectedIds={selectedIds}
+            selectAll={selectAll}
+            onToggleSelectAll={toggleSelectAll}
+            onToggleSelectRow={toggleSelectRow}
+            onEdit={(t) => {
+              setSelectedTransaction(t)
+              setDrawerOpen(true)
+            }}
+            onDelete={handleDeleteSingle}
           />
-        </div>
-      )}
 
-      {selectedTransaction && (
-        <TransactionDrawer
-          open={drawerOpen}
-          onClose={() => {
-            setSelectedTransaction(null)
-            setDrawerOpen(false)
-          }}
-          initialData={selectedTransaction}
-        />
-      )}
+          <TransactionCardList
+            transactions={paginatedTransactions}
+            selectedIds={selectedIds}
+            onToggleSelectRow={toggleSelectRow}
+            onEdit={(t) => {
+              setSelectedTransaction(t)
+              setDrawerOpen(true)
+            }}
+            onDelete={handleDeleteSingle}
+          />
+          <div className='flex items-center justify-between lg:flex-row flex-col gap-4'>
+            <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+              <span className="text-sm text-muted-foreground">
+                {totalFiltered > 0
+                  ? <>Exibindo <span className="font-medium">{startIndex}–{endIndex}</span> de <span className="font-medium">{totalFiltered}</span> transações</>
+                  : <>Nenhuma transação encontrada</>
+                }
+                {isFiltered && totalAll > 0 && (
+                  <> (de <span className="font-medium">{totalAll}</span> no total)</>
+                )}
+              </span>
+            </div>
+
+            {totalPages > 1 && (
+              <div className="lg:mt-4 flex justify-center pb-24 lg:pb-0">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onChange={(page) => setCurrentPage(page)}
+                />
+              </div>
+            )}
+          </div>
+
+          {selectedTransaction && (
+            <TransactionDrawer
+              open={drawerOpen}
+              onClose={() => {
+                setSelectedTransaction(null)
+                setDrawerOpen(false)
+              }}
+              initialData={selectedTransaction}
+            />
+          )}
+      </section>
+
     </section>
   )
 }

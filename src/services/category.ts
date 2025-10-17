@@ -48,6 +48,7 @@ export const createCategory = async (data: CategoryDTO): Promise<CategoryRespons
 export const getCategories = async (): Promise<CategoryResponse[]> => {
   try {
     const response = await api.get(`/categories`)
+    console.log('Fetched categories:', response.data);
     return response.data
   } catch (e: unknown) {
     const msg = getErrorMessage(e, "Erro ao buscar categorias.");

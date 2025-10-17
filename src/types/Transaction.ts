@@ -6,7 +6,6 @@ export type TransactionOrigin = 'DASHBOARD' | 'WHATSAPP'
 
 export interface Category {
   id: string
-  accountId: string | null
   name: string
   icon: IconName
   color: string
@@ -16,7 +15,6 @@ export interface Category {
 export interface Transaction {
   id: string
   userId: string
-  accountId: string
   value: number
   description: string
   categoryId: string
@@ -36,17 +34,6 @@ export interface User {
   planId: string | null
 }
 
-export type AccountType = 'TEMPORARY' | 'BANK' | 'CASH' | 'CREDIT_CARD'
-
-export interface Account {
-  id: string
-  name: string
-  userId: string
-  accountType: AccountType
-  transaction: Transaction[]
-  user: User
-}
-
 export interface SessionResponse {
-  account: Account
+  user: User
 }

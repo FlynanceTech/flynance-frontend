@@ -66,16 +66,20 @@ export function TransactionCardList({
             </div>
           </div>
 
-          <div className="text-sm text-gray-500 mt-1">{item.date}</div>
+          <div className="text-sm text-gray-500 mt-1"> {new Intl.DateTimeFormat('pt-BR', {
+                    dateStyle: 'short',
+                    timeStyle: 'short',
+                    timeZone: 'UTC',
+                  }).format(new Date(item.date))}</div>
 
           <div className="flex justify-between items-center mt-2">
             <span
               className={clsx(
                 'text-xs font-semibold px-3 py-1 rounded-full text-white',
-                item.category.type === 'EXPENSE' ? 'bg-[#22C55E]' : 'bg-[#EF4444]'
+                item.category.type !== 'EXPENSE' ? 'bg-[#22C55E]' : 'bg-[#EF4444]'
               )}
             >
-              {item.category.type === 'EXPENSE' ? 'Receita' : 'Despesas'}
+              {item.category.type !== 'EXPENSE' ? 'Receita' : 'Despesas'}
             </span>
             <span
               className={clsx(

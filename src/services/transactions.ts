@@ -11,7 +11,7 @@ export interface TransactionDTO {
   categoryId: string,
   date: string,
   type: 'EXPENSE' | 'INCOME',
-  origin: 'DASHBOARD' | 'TEXT' | 'IMAGE' | 'AUDIO'
+  origin: 'DASHBOARD' | 'TEXT' | 'IMAGE' | 'AUDIO' | 'CHATBOT'
   paymentType: PaymentType
   cardId?: string
 }
@@ -24,21 +24,13 @@ interface GetTransactionParams {
   filters?: Record<string, string | number | boolean | undefined>;
 }
 
-export async function getTransaction({
-  userId,
-  page = 1,
-  limit = 10,
-  filters = {},
-}: GetTransactionParams) {
-  const params = new URLSearchParams({
-    userId,
-    page: page.toString(),
-    limit: limit.toString(),
-    ...filters,
-  })
-
-  const response = await api.get(`/transactions?${params.toString()}`)
-  return response.data
+export async function getTransaction({ userId, page = 1, limit = 10, filters = {} }: GetTransactionParams) {
+  const params = new URLSearchParams({ userId, page: String(page), limit: String(limit) });
+  Object.entries(filters).forEach(([k, v]) => {
+    if (v !== undefined && v !== '' && v !== null) params.set(k, String(v));
+  });
+  const response = await api.get(`/transactions?${params.toString()}`);
+  return response.data;
 }
 
 

@@ -36,7 +36,7 @@ export function TransactionTable({
   }
 
   return (
-    <div className="w-full h-full bg-white rounded-md border border-gray-200 p-8 hidden lg:block">
+    <div className="w-full h-full bg-white rounded-md border border-gray-200 p-8 hidden lg:block lg:max-h-[720px]">
       <DeleteConfirmModal
         isOpen={open}
         onClose={() => setOpen(false)}
@@ -45,8 +45,8 @@ export function TransactionTable({
         description="Tem certeza que deseja excluir esta transação?"
       />
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
+      <div className="h-full">
+        <table className="w-full lg:max-h-[720px] text-left text-sm">
           <thead className="text-gray-500 border-b border-gray-200">
             <tr>
               <th className="py-2 px-2">
@@ -59,7 +59,7 @@ export function TransactionTable({
               <th className="py-2 text-right">Ações</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className='lg:max-h-[500px] overflow-auto'>
             {transactions.map((item, i) => (
               <tr key={i} className="border-b border-gray-200 hover:bg-gray-50">
                 <td className="py-4 px-2">

@@ -14,7 +14,6 @@ import SpendingControlDrawer from '../../components/SpendingControlDrawer'
 export interface Transaction {
   id: string
   userId: string
-  accountId: string
   value: number
   description: string
   categoryId: string
@@ -27,7 +26,6 @@ export interface Transaction {
 
 export interface ControlWithTransactions {
   id: string
-  accountId: string
   categoryId: string
   userId: string
   goal: number
