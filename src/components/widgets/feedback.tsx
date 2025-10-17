@@ -51,7 +51,7 @@ export default function FeedbackWidget({  onSuccess, className }: Props) {
       setStatus('idle');
       const payload = {
         ...data,
-        user: user?.account ?? null,
+        user: user?.user.id ?? null,
         meta: {
           userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
           url: typeof window !== 'undefined' ? window.location.href : null,

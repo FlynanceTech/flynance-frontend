@@ -69,7 +69,7 @@ export default function Header({
 
   const { user } = useUserSession()
   const firstName =
-    user?.account?.name?.split(' ')[0]?.toLowerCase()?.replace(/^\w/, (c) => c.toUpperCase()) ?? ''
+    user?.user?.name?.split(' ')[0]?.toLowerCase()?.replace(/^\w/, (c) => c.toUpperCase()) ?? ''
 
   // Monta params de query a partir do filtro local
   const { monthParam, daysParam, monthStr } = useMemo(() => {
