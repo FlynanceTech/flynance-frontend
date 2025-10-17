@@ -9,6 +9,7 @@ import { Providers } from "@/providers/Providers";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import { useTheme } from "next-themes";
 import '../globals.css'
+import FeedbackWidget from "@/components/widgets/feedback";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { loading: loadingSession } = useSession();
@@ -24,9 +25,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <aside className="flex lg:hidden">
           <BottomMenu />
         </aside>
-
+          
         <Toaster />
         <Providers>{children}</Providers>
+        
       </DashboardShell>
     </ThemeProvider>
   );
@@ -38,11 +40,12 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <main
       className={clsx(
-        "lg:py-8 lg:pl-8 h-screen w-full lg:flex gap-8",
+        "lg:py-8 lg:pl-8 h-screen w-full lg:flex gap-8 relative",
         theme === "dark" ? "bg-gray-800 text-white" : "bg-[#F7F8FA]"
       )}
     >
       {children}
+      <FeedbackWidget />
     </main>
   );
 }
