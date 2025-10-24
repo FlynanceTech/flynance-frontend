@@ -3,6 +3,7 @@ import { Shield, Mail, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { useSession } from "@/hooks/useSession";
 
 interface AuthMethod {
   id: string;
@@ -13,20 +14,21 @@ interface AuthMethod {
 }
 
 const AuthPreferencesCard = () => {
+  const {user} = useSession()
   const [selectedMethod, setSelectedMethod] = useState("email");
 
   const authMethods: AuthMethod[] = [
     {
       id: "email",
       name: "E-mail",
-      description: "Código enviado para joao.silva@email.com",
+      description: `Código enviado para ${user?.user.email}`,
       icon: Mail,
       value: "email",
     },
     {
       id: "whatsapp",
       name: "WhatsApp",
-      description: "Código enviado via WhatsApp",
+      description: `Código enviado via WhatsApp ${user?.user.phone}`,
       icon: MessageCircle,
       value: "whatsapp",
     },
