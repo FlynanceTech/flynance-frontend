@@ -1,13 +1,12 @@
 'use client'
 
 import Header from '../components/Header'
-import ActivityCard from '@/components/perfil/ActivityCard'
+/* import ActivityCard from '@/components/perfil/ActivityCard' */
 import AuthPreferencesCard from '@/components/perfil/AuthPreferencesCard'
-import DataExportCard from '@/components/perfil/DataExportCard'
+/* import DataExportCard from '@/components/perfil/DataExportCard' */
 import NotificationsCard from '@/components/perfil/NotificationsCard'
-import PaymentHistoryCard from '@/components/perfil/PaymentHistoryCard'
 import { ProfileSidebar } from '@/components/perfil/ProfileSidebar'
-import SecurityCard from '@/components/perfil/SecurityCard'
+/* import SecurityCard from '@/components/perfil/SecurityCard' */
 import SubscriptionCard from '@/components/perfil/SubscriptionCard'
 import UserInfoCard from '@/components/perfil/UserInfoCard'
 
@@ -29,10 +28,10 @@ export default function ProfilePage() {
                 <div id="subscription">
                   <SubscriptionCard />
                 </div>
-                
+       {/*          
                 <div id="payment-history">
                   <PaymentHistoryCard />
-                </div>
+                </div> */}
                 
                 <div id="auth-preferences">
                   <AuthPreferencesCard />
@@ -42,17 +41,17 @@ export default function ProfilePage() {
                   <NotificationsCard />
                 </div>
                 
-                <div id="security">
+              {/*   <div id="security">
                   <SecurityCard />
-                </div>
+                </div> */}
                 
-                <div id="data-export">
+                {/* <div id="data-export">
                   <DataExportCard />
-                </div>
+                </div> */}
                 
-                <div id="activity">
+               {/*  <div id="activity">
                   <ActivityCard />
-                </div>
+                </div> */}
               </div>
             </div>
           </main>

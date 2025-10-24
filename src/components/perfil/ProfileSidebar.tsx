@@ -1,16 +1,16 @@
 'use client';
 
-import { User, CreditCard, Bell, Shield, Clock, FileDown } from "lucide-react";
+import { User, CreditCard, Bell, Shield} from "lucide-react";
 
 const menuItems = [
   { title: "Informações Pessoais", icon: User, id: "user-info" },
   { title: "Assinatura e Plano", icon: CreditCard, id: "subscription" },
-  { title: "Histórico de Pagamentos", icon: Clock, id: "payment-history" },
+/*   { title: "Histórico de Pagamentos", icon: Clock, id: "payment-history" }, */
   { title: "Autenticação", icon: Shield, id: "auth-preferences" },
   { title: "Notificações", icon: Bell, id: "notifications" },
-  { title: "Segurança", icon: Shield, id: "security" },
+/*   { title: "Segurança", icon: Shield, id: "security" },
   { title: "Dados e Privacidade", icon: FileDown, id: "data-export" },
-  { title: "Atividade Recente", icon: Clock, id: "activity" },
+  { title: "Atividade Recente", icon: Clock, id: "activity" }, */
 ];
 
 export function ProfileSidebar() {

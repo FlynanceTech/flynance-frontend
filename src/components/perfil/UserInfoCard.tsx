@@ -1,16 +1,24 @@
 import { useState } from "react";
-import { User, Mail, Phone, Camera } from "lucide-react";
+import { User, Mail, Phone, Camera, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { useUserSession } from "@/stores/useUserSession";
+import { useUsers } from "@/hooks/query/useUsers";
 
 const UserInfoCard = () => {
+  const { user, setUser } = useUserSession()
+  console.log('user', user?.user)
+  const {updateMutation} = useUsers()
   const [formData, setFormData] = useState({
-    name: "João Silva",
-    email: "joao.silva@email.com",
-    whatsapp: "(11) 99999-9999",
+    name: user?.user.name || '',
+    email: user?.user.email || '',
+    whatsapp: user?.user.phone || '',
   });
+  
+  const [loading, setLoading] = useState(false);
+  if(!user) return null
 
   const formatWhatsApp = (value: string) => {
     const numbers = value.replace(/\D/g, "");
@@ -27,12 +35,50 @@ const UserInfoCard = () => {
     setFormData({ ...formData, whatsapp: formatted });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("Informações atualizadas com sucesso!", {
-      description: "Suas alterações foram salvas.",
-    });
+
+    if (!user?.user.id) {
+      toast.error("Usuário não identificado.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await updateMutation.mutateAsync({
+        id: user.user.id,
+        data: {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.whatsapp,
+        },
+      });
+
+      // atualiza store local
+      setUser({
+        ...user,
+        user: {
+          ...user.user,
+          name: formData.name,
+          email: formData.email,
+          phone: formData.whatsapp,
+        },
+      });
+
+      toast.success("Informações atualizadas com sucesso!", {
+        description: "Suas alterações foram salvas.",
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error("Falha ao atualizar informações.", {
+        description: "Tente novamente mais tarde.",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
+
 
   return (
     <div className="bg-white rounded-2xl p-6 shadow-sm border border-border animate-slide-up">
@@ -103,7 +149,13 @@ const UserInfoCard = () => {
           </div>
         </div>
 
-        <Button type="submit" className="w-full" size="lg">
+        <Button
+          type="submit"
+          className="w-full"
+          size="lg"
+          disabled={loading}
+        >
+          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Salvar alterações
         </Button>
       </form>
