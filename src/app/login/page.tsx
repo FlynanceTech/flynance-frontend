@@ -1,7 +1,7 @@
 'use client'
 import { Mail } from 'lucide-react'
 import Link from 'next/link'
-import React, { useState } from 'react'
+import React, { useState, useTransition } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import Lottie from 'lottie-react'
@@ -16,7 +16,7 @@ import youtube from "../../../assets/icons/youtube-fill-icon.png"
 
 import { sendLoginCode, verifyCode } from '@/services/auth'
 import { OtpInput } from '@/components/ui/input'
-import { getErrorMessage } from '@/utils/getErrorMessage'
+import { getErrorMessage } from '@/lib/getErrorMessage'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -25,6 +25,7 @@ export default function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [isPending, startTransition] = useTransition() 
 
   const router = useRouter()
 
@@ -49,11 +50,12 @@ export default function Login() {
     try {
       setMessage('')
       await verifyCode({ email, code })
-      router.push('/dashboard')
+      startTransition(() => {
+        router.push('/dashboard')
+      })
     } catch {
       setError('Código inválido ou expirado.')
-    } finally {
-      setLoading(false)
+      setLoading(false)     
     }
   }
 
@@ -165,7 +167,7 @@ export default function Login() {
                   type="submit"
                   className="w-full bg-gradient-to-r from-green-400 to-green-700 text-white py-3 rounded-md"
                 >
-                  {loading ? 'Verificando...' : 'Entrar'}
+                  {loading ? 'Verificando...' : isPending ? 'Redirecionando...' : 'Entrar'}
                 </button>
               </>
             )}

@@ -15,6 +15,11 @@ const nextConfig = {
         hostname: "www.facebook.com",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+        pathname: "/**",
+      },
     ],
   },
 }

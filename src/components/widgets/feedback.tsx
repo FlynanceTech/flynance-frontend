@@ -25,6 +25,39 @@ type Props = {
   className?: string;
 };
 
+type SessionUser = {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+};
+
+// aceita `user`, `{ user }`, ou `null/undefined` e retorna `SessionUser | null`
+function pickSessionUser(value: unknown): SessionUser | null {
+  const isObj = (v: unknown): v is Record<string, unknown> =>
+    typeof v === 'object' && v !== null;
+
+  // caso 1: value é o próprio usuário
+  if (isObj(value) && typeof value.id === 'string') {
+    return {
+      id: value.id,
+      name: typeof value.name === 'string' ? value.name : null,
+      email: typeof value.email === 'string' ? value.email : null,
+    };
+  }
+
+  // caso 2: value possui nested `.user`
+  if (isObj(value) && isObj(value.user) && typeof value.user.id === 'string') {
+    return {
+      id: value.user.id as string,
+      name: typeof value.user.name === 'string' ? (value.user.name as string) : null,
+      email: typeof value.user.email === 'string' ? (value.user.email as string) : null,
+    };
+  }
+
+  return null;
+}
+
+
 export default function FeedbackWidget({  onSuccess, className }: Props) {
     const { user } = useUserSession()
   const [submitting, setSubmitting] = React.useState(false);
@@ -49,34 +82,41 @@ export default function FeedbackWidget({  onSuccess, className }: Props) {
     try {
       setSubmitting(true);
       setStatus('idle');
+
+      const sessionUser = pickSessionUser(user);
+      if (!sessionUser) {
+        throw new Error('Sem usuário logado para enviar feedback.');
+      }
+
       const payload = {
         ...data,
-        user: user?.user.id ?? null,
-        meta: {
-          userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-          url: typeof window !== 'undefined' ? window.location.href : null,
-          referrer: typeof document !== 'undefined' ? document.referrer : null,
-        },
+        user: sessionUser, // { id, name?, email? }
       };
-
 
       const res = await fetch('/api/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error('fail');
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        console.error('Feedback error:', err);
+        throw new Error('fail');
+      }
 
       setStatus('ok');
       reset({ category: 'melhoria', subject: '', message: '' });
       onSuccess?.();
-    } catch {
+    } catch (e) {
+      console.error(e);
       setStatus('err');
     } finally {
       setSubmitting(false);
     }
   };
+
+  const hasUser = Boolean(pickSessionUser(user));
 
   const toggleWidget = () => {
     setIsOpen(!isOpen)
@@ -192,19 +232,20 @@ export default function FeedbackWidget({  onSuccess, className }: Props) {
 
                             {/* enviar */}
                             <div className="flex flex-col items-stretch sm:items-center gap-2">
+                                
                                 <Button
-                                onClick={handleSubmit(submit)}
-                                disabled={submitting}
-                                className="w-full "
+                                  onClick={handleSubmit(submit)}
+                                  disabled={submitting || !hasUser}
+                                  className="w-full"
                                 >
-                                {submitting ? (
+                                  {submitting ? (
                                     <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Enviando…
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      Enviando…
                                     </>
-                                ) : (
+                                  ) : (
                                     'Enviar feedback'
-                                )}
+                                  )}
                                 </Button>
 
                                 <div className="text-sm">

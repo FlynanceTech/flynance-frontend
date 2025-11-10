@@ -1,7 +1,8 @@
 'use client'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  LayoutDashboard, Landmark, Tag, User
+  LayoutDashboard, Landmark, Tag, User,
+  BookOpenCheck
 } from 'lucide-react'
 import React from 'react'
 
@@ -13,13 +14,16 @@ export default function BottomMenu() {
     { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
     { label: 'Transações', icon: Landmark, path: '/dashboard/transacoes' },
     { label: 'Categorias', icon: Tag, path: '/dashboard/categorias' },
-    /* { label: 'Educação', icon: BookOpenCheck, path: '/dashboard/educacao' }, */
+    { label: 'Educação', icon: BookOpenCheck, path: '/dashboard/educacao' },
     { label: 'Perfil', icon: User, path: '/dashboard/perfil' },
   ]
 
   const isPathActive = (itemPath: string) => {
     if (itemPath === '/dashboard') {
       return pathname === '/dashboard' || pathname.startsWith('/dashboard/controles')
+    }
+    if (itemPath.includes('/dashboard/educacao')){
+      return true
     }
     return pathname === itemPath
   }

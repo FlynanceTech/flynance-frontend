@@ -13,7 +13,8 @@ import {
   Tag,
   User,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  BookOpenCheck
 } from 'lucide-react'
 import SidebarItem from './SidebarItem'
 import { useUserSession } from '@/stores/useUserSession'
@@ -30,17 +31,22 @@ export default function Sidebar() {
     { label: 'Dashboard', icon: <LayoutDashboard />, path: '/dashboard' },
     { label: 'Transações', icon: <Landmark />, path: '/dashboard/transacoes' },
     { label: 'Categorias', icon: <Tag />, path: '/dashboard/categorias' },
-  /*   { label: 'Educação', icon: <BookOpenCheck />, path: '/dashboard/educacao' }, */
+    { label: 'Educação', icon: <BookOpenCheck />, path: '/dashboard/educacao' },
     { label: 'Perfil', icon: <User />, path: '/dashboard/perfil' },
   ]
 
+  const normalize = (p: string) => p.replace(/\/+$/, '');
+  const current = normalize(pathname ?? '');
 
   const isPathActive = (itemPath: string) => {
-    if (itemPath === '/dashboard') {
-      return pathname === '/dashboard' || pathname.startsWith('/dashboard/controles')
+    const base = normalize(itemPath);
+
+    if (base === '/dashboard') {
+      return current === '/dashboard' || current.startsWith('/dashboard/controles');
     }
-    return pathname === itemPath
-  }
+
+    return current === base || current.startsWith(`${base}/`);
+  };
 
 
   const handleLogout = async () => {

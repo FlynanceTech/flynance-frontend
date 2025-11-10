@@ -10,18 +10,22 @@ export const dynamic = 'force-dynamic';
 // ➜ use a credencial que você já tem
 import credentials from '../../../../credentials/credentialsFeedback.json';
 
+
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
-const auth = new google.auth.GoogleAuth({ credentials, scopes: SCOPES });
+const auth = new google.auth.GoogleAuth({
+  credentials,
+  scopes: SCOPES,
+});
 const sheets = google.sheets({ version: 'v4', auth });
 
-// ▶️ troque pelo ID da sua planilha, se quiser use ENV
 const SPREADSHEET_ID =
-  process.env.GS_FEEDBACK_SHEET_ID ||
+  process.env.GS_FEEDBACK_DEFAULT_ID ||
   '1jvHLbdwFigsY7IYtthOTol6QikYuw0aqp2x5wC3TlQ8';
 
 // ▶️ nome padrão da aba que vamos formatar/usar
 const TABLE_SHEET_TITLE = 'Feedbacks';
 
+/* ----------------------------- Schema (sem meta) ----------------------------- */
 const FeedbackSchema = z.object({
   category: z.enum(['bug', 'melhoria', 'outros']),
   subject: z.string().min(3).max(120),
@@ -31,14 +35,6 @@ const FeedbackSchema = z.object({
     name: z.string().nullish().optional(),
     email: z.string().email().nullish().optional(),
   }),
-  meta: z
-    .object({
-      url: z.string().optional(),
-      ua: z.string().optional(),
-      vp: z.string().optional(),
-      lang: z.string().optional(),
-    })
-    .optional(),
 });
 
 export async function GET() {
@@ -64,6 +60,7 @@ async function ensureSheet(
     fields:
       'sheets(properties(sheetId,title,gridProperties),bandedRanges,basicFilter)',
   });
+
 
   const all = meta.data.sheets ?? [];
   const found = all.find(
@@ -105,7 +102,7 @@ async function applyPrettyTable(
     tabName
   );
 
-  // Cabeçalhos
+  // Cabeçalhos (A..G)
   const headers = [
     'Data/Hora',
     'Categoria',
@@ -114,14 +111,10 @@ async function applyPrettyTable(
     'UserId',
     'UserName',
     'UserEmail',
-    'URL',
-    'Idioma',
-    'Viewport',
-    'UserAgent',
   ];
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: `${title}!A1:K1`,
+    range: `${title}!A1:G1`,
     valueInputOption: 'USER_ENTERED',
     requestBody: { values: [headers] },
   });
@@ -136,7 +129,7 @@ async function applyPrettyTable(
         fields: 'gridProperties.frozenRowCount',
       },
     },
-    // Estilo de cabeçalho (vermelho + branco, centralizado, bold)
+    // Estilo de cabeçalho (verde + branco, centralizado, bold)
     {
       repeatCell: {
         range: {
@@ -144,7 +137,7 @@ async function applyPrettyTable(
           startRowIndex: 0,
           endRowIndex: 1,
           startColumnIndex: 0,
-          endColumnIndex: 11,
+          endColumnIndex: 7, // A..G
         },
         cell: {
           userEnteredFormat: {
@@ -165,16 +158,14 @@ async function applyPrettyTable(
         fields: 'pixelSize',
       },
     },
-    // Larguras das colunas
-    ...[160, 120, 280, 520, 220, 180, 240, 320, 110, 140, 520].map(
-      (pixelSize, i) => ({
-        updateDimensionProperties: {
-          range: { sheetId, dimension: 'COLUMNS', startIndex: i, endIndex: i + 1 },
-          properties: { pixelSize },
-          fields: 'pixelSize',
-        },
-      })
-    ),
+    // Larguras das colunas (7)
+    ...[160, 120, 280, 520, 220, 180, 240].map((pixelSize, i) => ({
+      updateDimensionProperties: {
+        range: { sheetId, dimension: 'COLUMNS', startIndex: i, endIndex: i + 1 },
+        properties: { pixelSize },
+        fields: 'pixelSize',
+      },
+    })),
     // Formato data/hora em A
     {
       repeatCell: {
@@ -187,7 +178,7 @@ async function applyPrettyTable(
         fields: 'userEnteredFormat.numberFormat',
       },
     },
-    // Wrap em Mensagem (D)
+    // Wrap em Mensagem (D = index 3)
     {
       repeatCell: {
         range: { sheetId, startRowIndex: 1, startColumnIndex: 3, endColumnIndex: 4 },
@@ -195,7 +186,7 @@ async function applyPrettyTable(
         fields: 'userEnteredFormat.wrapStrategy',
       },
     },
-    // Validação em Categoria (B)
+    // Validação em Categoria (B = index 1)
     {
       setDataValidation: {
         range: { sheetId, startRowIndex: 1, startColumnIndex: 1, endColumnIndex: 2 },
@@ -268,12 +259,12 @@ async function applyPrettyTable(
     },
   ];
 
-  // ↪️ só adiciona banding se ainda não houver
+  // ↪️ só adiciona banding se ainda não houver (A..G)
   if (!hasBanding) {
     requests.push({
       addBanding: {
         bandedRange: {
-          range: { sheetId, startRowIndex: 1, startColumnIndex: 0, endColumnIndex: 11 },
+          range: { sheetId, startRowIndex: 1, startColumnIndex: 0, endColumnIndex: 7 },
           rowProperties: {
             headerColor: { red: 0.85, green: 0.27, blue: 0.25 },
             firstBandColor: { red: 1, green: 1, blue: 1 },
@@ -284,12 +275,12 @@ async function applyPrettyTable(
     });
   }
 
-  // ↪️ só adiciona filtro se ainda não houver
+  // ↪️ só adiciona filtro se ainda não houver (A..G)
   if (!hasFilter) {
     requests.push({
       setBasicFilter: {
         filter: {
-          range: { sheetId, startRowIndex: 0, startColumnIndex: 0, endColumnIndex: 11 },
+          range: { sheetId, startRowIndex: 0, startColumnIndex: 0, endColumnIndex: 7 },
         },
       },
     });
@@ -317,24 +308,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { category, subject, message, user, meta } = parsed.data;
+    const { category, subject, message, user } = parsed.data;
 
     const date = new Date().toLocaleString('pt-BR', {
       timeZone: 'America/Sao_Paulo',
     });
 
     const row = [
-      date, // Data/Hora
-      category, // Categoria
-      subject, // Assunto
-      message, // Mensagem
-      user.id, // UserId
-      user.name ?? '', // UserName
-      user.email ?? '', // UserEmail
-      meta?.url ?? '', // URL
-      meta?.lang ?? '', // Idioma
-      meta?.vp ?? '', // Viewport
-      meta?.ua ?? '', // UserAgent
+      date,             // A: Data/Hora
+      category,         // B: Categoria
+      subject,          // C: Assunto
+      message,          // D: Mensagem
+      user.id,          // E: UserId
+      user.name ?? '',  // F: UserName
+      user.email ?? '', // G: UserEmail
     ];
 
     // 1) garante a aba e aplica o estilo (idempotente)
@@ -343,7 +330,7 @@ export async function POST(req: NextRequest) {
     // 2) append na aba já formatada
     const res = await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${title}!A:K`,
+      range: `${title}!A:G`,
       valueInputOption: 'USER_ENTERED',
       requestBody: { values: [row] },
     });
@@ -352,10 +339,10 @@ export async function POST(req: NextRequest) {
       { message: 'Feedback registrado com sucesso!', result: res.data },
       { status: 200 }
     );
-  } catch (error) {
-    console.error('[feedback][POST] erro:', error);
+  }  catch (error) {
+    console.error('[feedback][POST] erro detalhado:', error);
     return NextResponse.json(
-      { message: 'Erro ao salvar feedback.' },
+      { message: 'Erro ao salvar feedback.', details: String(error) },
       { status: 500 }
     );
   }
