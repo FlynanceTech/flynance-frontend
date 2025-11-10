@@ -3,17 +3,71 @@ import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { z } from 'zod';
 
-// ✅ garantir Node runtime (googleapis não roda em edge)
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// ➜ use a credencial que você já tem
-import credentials from '../../../../credentials/credentialsFeedback.json';
+/** ================= GCP CREDS VIA ENVs (sem arquivo) ================= **/
 
+// 1) Tente carregar de uma env única (JSON)
+function fromJsonEnv() {
+  const raw = process.env.GCP_SA_KEY_JSON;
+  if (!raw) return null;
+  try {
+    const obj = JSON.parse(raw);
+    // normaliza quebra de linha do PEM se necessário
+    if (obj.private_key && typeof obj.private_key === 'string') {
+      obj.private_key = obj.private_key.replace(/\\n/g, '\n');
+    }
+    return obj;
+  } catch {
+    throw new Error('GCP_SA_KEY_JSON inválido: não é um JSON válido.');
+  }
+}
+
+// 2) Ou de envs individuais
+function fromSplitEnvs() {
+  const required = [
+    'GCP_TYPE',
+    'GCP_PROJECT_ID',
+    'GCP_PRIVATE_KEY',
+    'GCP_CLIENT_EMAIL',
+    'GCP_CLIENT_ID',
+    'GCP_AUTH_URI',
+    'GCP_TOKEN_URI',
+    'GCP_AUTH_PROVIDER_X509_CERT_URL',
+  ] as const;
+
+  const missing = required.filter((k) => !process.env[k]);
+  if (missing.length) return null;
+
+  return {
+    type: process.env.GCP_TYPE,
+    project_id: process.env.GCP_PROJECT_ID,
+    private_key_id: process.env.GCP_PRIVATE_KEY_ID ?? '',
+    private_key: process.env.GCP_PRIVATE_KEY!.replace(/\\n/g, '\n'),
+    client_email: process.env.GCP_CLIENT_EMAIL,
+    client_id: process.env.GCP_CLIENT_ID,
+    auth_uri: process.env.GCP_AUTH_URI,
+    token_uri: process.env.GCP_TOKEN_URI,
+    auth_provider_x509_cert_url: process.env.GCP_AUTH_PROVIDER_X509_CERT_URL,
+    client_x509_cert_url: process.env.GCP_CLIENT_X509_CERT_URL ?? '',
+    universe_domain: process.env.GCP_UNIVERSE_DOMAIN ?? 'googleapis.com',
+  };
+}
+
+function loadGcpCredentials() {
+  return fromJsonEnv() ?? fromSplitEnvs();
+}
+
+const credentials = loadGcpCredentials();
+if (!credentials) {
+  // Falha rápida e clara em dev/preview; em prod isso vira 500 no POST
+  console.warn('[feedback] Credenciais GCP não configuradas nas variáveis de ambiente.');
+}
 
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
 const auth = new google.auth.GoogleAuth({
-  credentials,
+  credentials: credentials ?? undefined, // undefined deixa a lib tentar ADC, se existir
   scopes: SCOPES,
 });
 const sheets = google.sheets({ version: 'v4', auth });
@@ -22,7 +76,6 @@ const SPREADSHEET_ID =
   process.env.GS_FEEDBACK_DEFAULT_ID ||
   '1jvHLbdwFigsY7IYtthOTol6QikYuw0aqp2x5wC3TlQ8';
 
-// ▶️ nome padrão da aba que vamos formatar/usar
 const TABLE_SHEET_TITLE = 'Feedbacks';
 
 /* ----------------------------- Schema (sem meta) ----------------------------- */
@@ -54,13 +107,11 @@ async function ensureSheet(
   spreadsheetId: string,
   desiredTitle = TABLE_SHEET_TITLE
 ): Promise<EnsureSheetResult> {
-  // já traz informações úteis (bandedRanges/basicFilter)
   const meta = await sheets.spreadsheets.get({
     spreadsheetId,
     fields:
       'sheets(properties(sheetId,title,gridProperties),bandedRanges,basicFilter)',
   });
-
 
   const all = meta.data.sheets ?? [];
   const found = all.find(
@@ -78,7 +129,6 @@ async function ensureSheet(
     };
   }
 
-  // não existe? cria
   const add = await sheets.spreadsheets.batchUpdate({
     spreadsheetId,
     requestBody: { requests: [{ addSheet: { properties: { title: desiredTitle } } }] },
@@ -102,7 +152,6 @@ async function applyPrettyTable(
     tabName
   );
 
-  // Cabeçalhos (A..G)
   const headers = [
     'Data/Hora',
     'Categoria',
@@ -119,46 +168,26 @@ async function applyPrettyTable(
     requestBody: { values: [headers] },
   });
 
-  // Lote de formatações (idempotente)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const requests: any[] = [
-    // Congelar 1ª linha
-    {
-      updateSheetProperties: {
+    { updateSheetProperties: {
         properties: { sheetId, gridProperties: { frozenRowCount: 1 } },
         fields: 'gridProperties.frozenRowCount',
-      },
-    },
-    // Estilo de cabeçalho (verde + branco, centralizado, bold)
-    {
-      repeatCell: {
-        range: {
-          sheetId,
-          startRowIndex: 0,
-          endRowIndex: 1,
-          startColumnIndex: 0,
-          endColumnIndex: 7, // A..G
-        },
-        cell: {
-          userEnteredFormat: {
-            backgroundColor: { red: 0.25, green: 0.45, blue: 0.25 },
-            textFormat: { foregroundColor: { red: 1, green: 1, blue: 1 }, bold: true },
-            horizontalAlignment: 'CENTER',
-          },
-        },
-        fields:
-          'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)',
-      },
-    },
-    // Altura do cabeçalho
-    {
-      updateDimensionProperties: {
+    }},
+    { repeatCell: {
+        range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 7 },
+        cell: { userEnteredFormat: {
+          backgroundColor: { red: 0.25, green: 0.45, blue: 0.25 },
+          textFormat: { foregroundColor: { red: 1, green: 1, blue: 1 }, bold: true },
+          horizontalAlignment: 'CENTER',
+        }},
+        fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)',
+    }},
+    { updateDimensionProperties: {
         range: { sheetId, dimension: 'ROWS', startIndex: 0, endIndex: 1 },
         properties: { pixelSize: 36 },
         fields: 'pixelSize',
-      },
-    },
-    // Larguras das colunas (7)
+    }},
     ...[160, 120, 280, 520, 220, 180, 240].map((pixelSize, i) => ({
       updateDimensionProperties: {
         range: { sheetId, dimension: 'COLUMNS', startIndex: i, endIndex: i + 1 },
@@ -166,29 +195,17 @@ async function applyPrettyTable(
         fields: 'pixelSize',
       },
     })),
-    // Formato data/hora em A
-    {
-      repeatCell: {
+    { repeatCell: {
         range: { sheetId, startRowIndex: 1, startColumnIndex: 0, endColumnIndex: 1 },
-        cell: {
-          userEnteredFormat: {
-            numberFormat: { type: 'DATE_TIME', pattern: 'dd/MM/yyyy HH:mm' },
-          },
-        },
+        cell: { userEnteredFormat: { numberFormat: { type: 'DATE_TIME', pattern: 'dd/MM/yyyy HH:mm' } } },
         fields: 'userEnteredFormat.numberFormat',
-      },
-    },
-    // Wrap em Mensagem (D = index 3)
-    {
-      repeatCell: {
+    }},
+    { repeatCell: {
         range: { sheetId, startRowIndex: 1, startColumnIndex: 3, endColumnIndex: 4 },
         cell: { userEnteredFormat: { wrapStrategy: 'WRAP' } },
         fields: 'userEnteredFormat.wrapStrategy',
-      },
-    },
-    // Validação em Categoria (B = index 1)
-    {
-      setDataValidation: {
+    }},
+    { setDataValidation: {
         range: { sheetId, startRowIndex: 1, startColumnIndex: 1, endColumnIndex: 2 },
         rule: {
           condition: {
@@ -203,63 +220,39 @@ async function applyPrettyTable(
           strict: true,
           showCustomUi: true,
         },
-      },
-    },
-    // Cores por categoria (B)
-    {
-      addConditionalFormatRule: {
+    }},
+    { addConditionalFormatRule: {
         index: 0,
         rule: {
-          ranges: [
-            { sheetId, startRowIndex: 1, startColumnIndex: 1, endColumnIndex: 2 },
-          ],
+          ranges: [{ sheetId, startRowIndex: 1, startColumnIndex: 1, endColumnIndex: 2 }],
           booleanRule: {
             condition: { type: 'TEXT_EQ', values: [{ userEnteredValue: 'melhoria' }] },
-            format: {
-              backgroundColor: { red: 0.87, green: 0.97, blue: 0.9 },
-              textFormat: { bold: true },
-            },
+            format: { backgroundColor: { red: 0.87, green: 0.97, blue: 0.9 }, textFormat: { bold: true } },
           },
         },
-      },
-    },
-    {
-      addConditionalFormatRule: {
+    }},
+    { addConditionalFormatRule: {
         index: 0,
         rule: {
-          ranges: [
-            { sheetId, startRowIndex: 1, startColumnIndex: 1, endColumnIndex: 2 },
-          ],
+          ranges: [{ sheetId, startRowIndex: 1, startColumnIndex: 1, endColumnIndex: 2 }],
           booleanRule: {
             condition: { type: 'TEXT_EQ', values: [{ userEnteredValue: 'bug' }] },
-            format: {
-              backgroundColor: { red: 1, green: 0.9, blue: 0.9 },
-              textFormat: { bold: true },
-            },
+            format: { backgroundColor: { red: 1, green: 0.9, blue: 0.9 }, textFormat: { bold: true } },
           },
         },
-      },
-    },
-    {
-      addConditionalFormatRule: {
+    }},
+    { addConditionalFormatRule: {
         index: 0,
         rule: {
-          ranges: [
-            { sheetId, startRowIndex: 1, startColumnIndex: 1, endColumnIndex: 2 },
-          ],
+          ranges: [{ sheetId, startRowIndex: 1, startColumnIndex: 1, endColumnIndex: 2 }],
           booleanRule: {
             condition: { type: 'TEXT_EQ', values: [{ userEnteredValue: 'outros' }] },
-            format: {
-              backgroundColor: { red: 1, green: 0.98, blue: 0.86 },
-              textFormat: { bold: true },
-            },
+            format: { backgroundColor: { red: 1, green: 0.98, blue: 0.86 }, textFormat: { bold: true } },
           },
         },
-      },
-    },
+    }},
   ];
 
-  // ↪️ só adiciona banding se ainda não houver (A..G)
   if (!hasBanding) {
     requests.push({
       addBanding: {
@@ -275,7 +268,6 @@ async function applyPrettyTable(
     });
   }
 
-  // ↪️ só adiciona filtro se ainda não houver (A..G)
   if (!hasFilter) {
     requests.push({
       setBasicFilter: {
@@ -298,8 +290,14 @@ async function applyPrettyTable(
 
 export async function POST(req: NextRequest) {
   try {
-    const json = await req.json();
+    if (!credentials) {
+      return NextResponse.json(
+        { message: 'Credenciais GCP não configuradas.' },
+        { status: 500 }
+      );
+    }
 
+    const json = await req.json();
     const parsed = FeedbackSchema.safeParse(json);
     if (!parsed.success) {
       return NextResponse.json(
@@ -315,19 +313,17 @@ export async function POST(req: NextRequest) {
     });
 
     const row = [
-      date,             // A: Data/Hora
-      category,         // B: Categoria
-      subject,          // C: Assunto
-      message,          // D: Mensagem
-      user.id,          // E: UserId
-      user.name ?? '',  // F: UserName
-      user.email ?? '', // G: UserEmail
+      date,
+      category,
+      subject,
+      message,
+      user.id,
+      user.name ?? '',
+      user.email ?? '',
     ];
 
-    // 1) garante a aba e aplica o estilo (idempotente)
     const { title } = await applyPrettyTable(SPREADSHEET_ID, TABLE_SHEET_TITLE);
 
-    // 2) append na aba já formatada
     const res = await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
       range: `${title}!A:G`,
@@ -339,7 +335,7 @@ export async function POST(req: NextRequest) {
       { message: 'Feedback registrado com sucesso!', result: res.data },
       { status: 200 }
     );
-  }  catch (error) {
+  } catch (error) {
     console.error('[feedback][POST] erro detalhado:', error);
     return NextResponse.json(
       { message: 'Erro ao salvar feedback.', details: String(error) },
