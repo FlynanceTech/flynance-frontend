@@ -59,7 +59,7 @@ const CustomRect = (props) => {
 
 export default function CategorySpendingDistribution() {
   const { user } = useUserSession()
-  const userId = user?.user.id ?? ''
+  const userId =  user?.userData.user.id ?? ''
   const { transactionsQuery } = useTranscation({ userId })
   const isLoading = transactionsQuery.isLoading
   const transactions = transactionsQuery.data || []

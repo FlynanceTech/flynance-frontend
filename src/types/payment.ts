@@ -10,7 +10,7 @@ export enum PersonType {
 export interface ClientData {
   name: string;
   email: string;
-  cpfCnpj: string;        // apenas dígitos
+  cpfCnpj?: string;        // apenas dígitos
   mobilePhone: string;    // apenas dígitos (DDD + número)
   externalReference: string;
 }

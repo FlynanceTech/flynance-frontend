@@ -10,6 +10,7 @@ import { ThemeProvider } from "@/providers/ThemeProvider";
 import { useTheme } from "next-themes";
 import '../globals.css'
 import FeedbackWidget from "@/components/widgets/feedback";
+import { AuthGuardProvider } from "@/providers/authGuardProvider";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { loading: loadingSession } = useSession();
@@ -17,6 +18,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <ThemeProvider /* attribute='class' defaultTheme='light' enableSystem={false} se quiser */>
+      <AuthGuardProvider>
       <DashboardShell>
         <aside className="hidden lg:flex">
           <Sidebar />
@@ -30,6 +32,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <Providers>{children}</Providers>
         
       </DashboardShell>
+      </AuthGuardProvider>
     </ThemeProvider>
   );
 }

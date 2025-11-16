@@ -9,13 +9,11 @@ export async function sendLoginCode(data: { email: string }) {
 
 export async function verifyCode(data: { email: string; code: string }) {
   const res = await axios.post(`${baseURL}/auth/verify-code`, data) 
-  // ⚠️ Aqui você precisa extrair o token corretamente:
 
   const token = res.data.user.token
   
   if (token) {
     localStorage.setItem('token', token)
-    // Se usar Zustand, setUser(res.data.user) também
   } else {
     console.error('Token não recebido no login!')
   }

@@ -32,8 +32,17 @@ export interface User {
   name: string
   createdAt: string
   planId: string | null
+  role: string
+  signatureId: string
 }
 
+export interface Signature {
+  id: string
+  status: string
+}
 export interface SessionResponse {
-  user: User
+  userData: {
+    user: User,
+    signature: Signature
+  }
 }

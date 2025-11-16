@@ -17,12 +17,14 @@
   --popover: 0 0% 100%;
   --popover-foreground: 222 47% 11%;
 
-  /* primária (verde fly) */
-  --primary: 142 76% 36%;
+  /* primária (azul fly) */
+  --primary: 203, 100%, 32%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 210 20% 96%;
+  --secondary: 199, 100%, 42%;
   --secondary-foreground: 222 47% 11%;
+
+  --yellow-fly: 49, 100%, 54%
 
   --muted: 210 20% 96%;
   --muted-foreground: 215 16% 47%;
@@ -33,9 +35,9 @@
   --destructive: 0 63% 31%;
   --destructive-foreground: 0 0% 100%;
 
-  --border: 214 32% 91%;
+  --border: 203, 100%, 32%;
   --input: 214 32% 91%;
-  --ring: 142 76% 36%;
+  --ring: 203, 100%, 32%;
 
   /* opcionais */
   --success: 142 76% 36%;

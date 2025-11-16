@@ -29,7 +29,7 @@ const SkeletonRow: React.FC = () => (
 
 export const LastTransactions: React.FC = () => {
   const { user } = useUserSession()
-  const userId = user?.user.id ?? ''
+  const userId =  user?.userData.user.id ?? ''
 
   const { transactionsQuery } = useTranscation({ userId })
   const isLoading: boolean = transactionsQuery.isLoading

@@ -161,3 +161,72 @@ export default function CreditCard({
     </div>
   )
 }
+
+
+type CheckoutCardProps = {
+  name: string
+  brand: CardBrand
+  number: string // número completo digitado (pode vir mascarado)
+  expiry?: string
+  className?: string
+}
+
+export function CheckoutCreditCard({
+  name,
+  brand,
+  number,
+  expiry,
+  className,
+}: CheckoutCardProps) {
+  const style = BRAND_STYLES[brand]
+
+  const digitsOnly = number.replace(/\D/g, '')
+  const padded = (digitsOnly + '••••••••••••••••').slice(0, 16)
+  const groups = padded.match(/.{1,4}/g)?.join(' ') ?? '•••• •••• •••• ••••'
+
+  const safeName = name || 'Nome do titular'
+  const safeExpiry = expiry || 'MM/AA'
+
+  return (
+    <div
+      className={clsx(
+        'relative w-full rounded-3xl p-5 text-white',
+        'bg-gradient-to-br', style.from, style.to,
+        'shadow-[0_10px_30px_-10px_rgba(0,0,0,0.35)]',
+        'ring-1 backdrop-blur-md', style.ring,
+        className
+      )}
+    >
+      <div className="pointer-events-none absolute inset-0 rounded-3xl bg-white/5" />
+
+      <div className="relative z-[1] flex items-center justify-between">
+        <BrandLogo brand={brand} />
+        <Chip />
+      </div>
+
+      <div className="relative z-[1] mt-6 space-y-3">
+        <div>
+          <div className="text-xs/5 text-white/70">Número do cartão</div>
+          <div className="text-lg tracking-[0.22em] font-medium">
+            {groups}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 text-xs">
+          <div>
+            <div className="text-white/70">Nome no cartão</div>
+            <div className="mt-1 text-sm font-medium truncate max-w-[180px]">
+              {safeName}
+            </div>
+          </div>
+          <div>
+            <div className="text-white/70">Validade</div>
+            <div className="mt-1 text-sm font-medium">
+              {safeExpiry}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

@@ -26,7 +26,7 @@ function SkeletonSection() {
 
 export default function TransactionsPage() {
   const { user } = useUserSession()
-  const userId = user?.user.id ?? ''
+  const userId =  user?.userData.user.id ?? ''
 
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)

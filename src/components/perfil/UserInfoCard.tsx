@@ -39,7 +39,7 @@ const UserInfoCard = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!user?.user.id) {
+    if (! user?.userData.user.id) {
       toast.error("Usuário não identificado.");
       return;
     }
