@@ -20,7 +20,7 @@ type Props = {
 /** Cores/gradientes por bandeira */
 const BRAND_STYLES: Record<CardBrand, { from: string; to: string; ring: string }> = {
   VISA:        { from: 'from-indigo-600',  to: 'to-blue-500',   ring: 'ring-indigo-400/40' },
-  MASTERCARD:  { from: 'from-rose-600',    to: 'to-amber-500',  ring: 'ring-rose-400/40' },
+  MASTERCARD:  { from: 'from-rose-600/80',    to: 'to-amber-500',  ring: 'ring-rose-400/40' },
   ELO:         { from: 'from-slate-800',   to: 'to-zinc-600',   ring: 'ring-zinc-400/40' },
   AMEX:        { from: 'from-cyan-600',    to: 'to-emerald-500',ring: 'ring-cyan-400/40' },
   HIPERCARD:   { from: 'from-red-700',     to: 'to-rose-600',   ring: 'ring-red-400/40' },

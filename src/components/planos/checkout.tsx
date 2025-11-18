@@ -1,22 +1,19 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState } from "react";
 import clsx from "clsx";
-import { CheckCircle } from "lucide-react";
-import { CleaveInput } from "../../components/ui/input";
-import { usePaymentMutations } from "@/hooks/query/usePayment";
-import { ClientData, CreatePaymentPayload } from "@/types/payment";
+import { CheckCircle, CreditCard } from "lucide-react";
 import axios from "axios";
-import CreditCard, { CheckoutCreditCard, CardBrand } from "../../app/dashboard/components/CreditCard"; 
+import { CleaveInput } from "../ui/input";
+import { usePaymentMutations } from "@/hooks/query/usePayment";
+import { ClientData } from "@/types/payment";
+import { CheckoutCreditCard, CardBrand } from "@/app/dashboard/components/CreditCard";
 import { detectCardBrand } from "@/utils/detectCardBrand";
 
-// ---------- utils reutilizados ----------
-const digits = (s: string) => s.replace(/\D/g, "");
 
-function getPlanAmountInCents(plan: "anual" | "mensal") {
-  if (plan === "anual") return Math.round(17.91 * 100); // por parcela
-  return Math.round(19.9 * 100); // mensal
-}
+
+const digits = (s: string) => s.replace(/\D/g, "");
 
 function splitExpiry(expiry: string) {
   const [m = "", y = ""] = expiry.split("/");
@@ -37,46 +34,73 @@ function getErrorMessage(err: unknown): string {
   return "Erro inesperado.";
 }
 
-function mapToCardBrand(raw: string | null): CardBrand {
-  if (!raw) return "OTHER";
-  const normalized = raw.toUpperCase();
-
-  if (normalized.includes("VISA")) return "VISA";
-  if (normalized.includes("MASTER")) return "MASTERCARD";
-  if (normalized.includes("ELO")) return "ELO";
-  if (normalized.includes("AMEX")) return "AMEX";
-  if (normalized.includes("HIPER")) return "HIPERCARD";
-
-  return "OTHER";
-}
-
 type PlanPaymentProps = {
-  selectedPlan: "anual" | "mensal";
+  planId: string;
+  planCode: "anual" | "mensal";
+  planDescription?: string;
   user: {
     id: string;
     name: string;
     email: string;
     phone: string;
+    cpfCnpj: string;
   };
-  onSuccess?: () => void; // opcional: redirecionar, fechar modal, etc.
+  onSuccess?: () => void;
 };
 
-// ---------- componente principal ----------
-export function PlanPayment({ selectedPlan, user, onSuccess }: PlanPaymentProps) {
-  const { createCustomerMutation, createPaymentMutation } =
-    usePaymentMutations();
+type SignaturePayload = {
+  userId: string;
+  planId: string;
+  asaasCustomerId: string;
+  billingType: "CREDIT_CARD";
+  cycle: "WEEKLY" | "MONTHLY" | "YEARLY";
+  description: string;
+  externalReference: string;
+  nextDueDate: string;
+  creditCard: {
+    holderName: string;
+    number: string;
+    expiryMonth: string;
+    expiryYear: string;
+    ccv: string;
+  };
+  creditCardHolderInfo: {
+    name: string;
+    email: string;
+    cpfCnpj: string;
+    phone: string;
+  };
+};
+
+export function PlanPayment({
+  planId,
+  planCode,
+  planDescription = "Assinatura Flynance",
+  user,
+  onSuccess,
+}: PlanPaymentProps) {
+  const { createCustomerMutation } = usePaymentMutations();
 
   const [cardNumber, setCardNumber] = useState("");
   const [cardName, setCardName] = useState("");
   const [expiry, setExpiry] = useState("");
   const [cvv, setCvv] = useState("");
-  const [cardBrand, setCardBrand] = useState<CardBrand>("OTHER");
+const [cardBrand, setCardBrand] = useState<CardBrand>("OTHER");
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
   const inputClasses =
-    "p-3 border border-gray-300 rounded-md w-full focus:outline focus:outline-2 focus:outline-green-500 focus:outline-offset-2";
+    "p-3 border border-gray-300 rounded-md w-full focus:outline focus:outline-2 focus:outline-secondary focus:outline-offset-2";
+
+  const cycle: SignaturePayload["cycle"] =
+    planCode === "anual" ? "YEARLY" : "MONTHLY";
+
+  const valorTexto =
+    planCode === "anual"
+      ? "12x R$ 17,91 (cobrança anual R$ 214,92)"
+      : "R$ 19,90 / mês";
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -91,11 +115,11 @@ export function PlanPayment({ selectedPlan, user, onSuccess }: PlanPaymentProps)
         return;
       }
 
-      // 1) criar customer no gateway
       const customerPayload: ClientData = {
         name: user.name,
         email: user.email,
         mobilePhone: digits(user.phone),
+        cpfCnpj: digits(user.cpfCnpj),
         externalReference: user.id,
       };
 
@@ -103,29 +127,35 @@ export function PlanPayment({ selectedPlan, user, onSuccess }: PlanPaymentProps)
         customerPayload
       );
 
-      // 2) cobrar no cartão
       const { month, year } = splitExpiry(expiry);
-      const amountInCents = getPlanAmountInCents(selectedPlan);
 
-      const paymentPayload: CreatePaymentPayload = {
-        customerId: customer.id,
-        paymentDetails: {
-          amount: amountInCents / 100, // se a API espera em reais
-          description: `Assinatura Flynance - ${selectedPlan}`,
-          creditCard: {
-            holderName: cardName,
-            number: digits(cardNumber),
-            expiryMonth: month,
-            expiryYear: year,
-            ccv: digits(cvv),
-          },
+      const signaturePayload: SignaturePayload = {
+        userId: user.id,
+        planId,
+        asaasCustomerId: customer.id,
+        billingType: "CREDIT_CARD",
+        cycle,
+        description: `${planDescription} - ${planCode}`,
+        externalReference: user.id,
+        nextDueDate: new Date().toISOString(),
+        creditCard: {
+          holderName: cardName,
+          number: digits(cardNumber),
+          expiryMonth: month,
+          expiryYear: year,
+          ccv: digits(cvv),
+        },
+        creditCardHolderInfo: {
+          name: user.name,
+          email: user.email,
+          cpfCnpj: digits(user.cpfCnpj),
+          phone: digits(user.phone),
         },
       };
 
-      const paymentRes = await createPaymentMutation.mutateAsync(
-        paymentPayload
-      );
-      console.log("payment", paymentRes);
+      await axios.post("/api/signatures", signaturePayload, {
+        withCredentials: true,
+      });
 
       setSuccess(true);
       if (onSuccess) onSuccess();
@@ -135,25 +165,27 @@ export function PlanPayment({ selectedPlan, user, onSuccess }: PlanPaymentProps)
         setError(getErrorMessage(message));
       } else {
         console.error(err);
-        setError("Ocorreu um erro inesperado ao processar o pagamento.");
+        setError("Ocorreu um erro inesperado ao criar a assinatura.");
       }
     } finally {
       setLoading(false);
     }
   };
 
-  const valorTexto =
-    selectedPlan === "anual"
-      ? "12x R$ 17,91 (cobrança anual R$ 214,92)"
-      : "R$ 19,90 / mês";
+const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const { value } = e.target;
+  if (value) {
+    setCardBrand(detectCardBrand(value));
+    setCardNumber(value);
+  }
+};
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 flex flex-col gap-6 w-full max-w-4xl mx-auto">
-      {/* sucesso */}
+    <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 flex flex-col gap-6 w-full max-w-3xl mx-auto">
       {success && (
         <div className="border border-emerald-200 bg-emerald-50 text-emerald-800 px-4 py-3 rounded flex items-center gap-2 text-sm">
           <CheckCircle className="w-5 h-5" />
-          Assinatura ativada com sucesso! Seu pagamento foi aprovado. 🎉
+          Assinatura criada com sucesso! Seu pagamento foi aprovado. 🎉
         </div>
       )}
 
@@ -162,63 +194,50 @@ export function PlanPayment({ selectedPlan, user, onSuccess }: PlanPaymentProps)
           {error}
         </div>
       )}
+      <div className="flex flex-col lg:flex-row gap-2 justify-between lg:items-center">
+        <h2 className="text-2xl font-bold flex items-center gap-2">
+          <CreditCard /> Cartao de credito
+        </h2>
+      </div>
 
-      {/* layout: cartão + formulário */}
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1.4fr)] gap-6">
-        {/* Cartão visual */}
-        <div className="flex items-center justify-center">
+      <div className="grid grid-cols-4 gap-4">
+        <div className="col-span-2">
           <CheckoutCreditCard
-            name={cardName}
-            brand={cardBrand}
+            name={cardName }
             number={cardNumber}
             expiry={expiry}
-            className="max-w-xs w-full"
+            className="mb-4"
+            brand={cardBrand}
           />
         </div>
 
-        {/* Formulário */}
-        <div className="flex flex-col gap-4">
-          <h2 className="text-2xl font-bold flex items-center gap-2 text-[#333C4D]">
-            {/* <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">
-              <CreditCard className="w-5 h-5" />
-            </span> */}
-            Pagamento com cartão
-          </h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="col-span-2 flex flex-col gap-4">
+          <CleaveInput
+            name="cardNumber"
+            placeholder="Número do cartão"
+            options={{ creditCard: true }}
+            className={inputClasses}
+            value={cardNumber}
+            onChange={handleChange}
+          />
+          <div className="flex gap-4">
             <CleaveInput
-              name="cardNumber"
-              placeholder="Número do cartão"
-              options={{ creditCard: true }}
-              className={`${inputClasses} col-span-2`}
-              value={cardNumber}
-              onChange={(e) => {
-                const value = e.target.value;
-                setCardNumber(value);
-                const detected = detectCardBrand(value); // ex: 'visa'
-                setCardBrand(mapToCardBrand(detected));
-              }}
+              name="expiry"
+              placeholder="MM/AA"
+              options={{ date: true, datePattern: ["m", "y"] }}
+              className={inputClasses}
+              value={expiry}
+              onChange={(e) => setExpiry(e.target.value)}
             />
-            <div className="flex gap-4 ">
-              <CleaveInput
-                name="expiry"
-                placeholder="MM/AA"
-                options={{ date: true, datePattern: ["m", "y"] }}
-                className={inputClasses}
-                value={expiry}
-                onChange={(e) => setExpiry(e.target.value)}
-              />
-              <CleaveInput
-                name="cvv"
-                placeholder="CVV"
-                options={{ blocks: [3], numericOnly: true }}
-                className={inputClasses}
-                value={cvv}
-                onChange={(e) => setCvv(e.target.value)}
-              />
-            </div>
+            <CleaveInput
+              name="cvv"
+              placeholder="CVV"
+              options={{ blocks: [3], numericOnly: true }}
+              className={inputClasses}
+              value={cvv}
+              onChange={(e) => setCvv(e.target.value)}
+            />
           </div>
-
           <input
             name="cardName"
             placeholder="Nome impresso no cartão"
@@ -230,20 +249,23 @@ export function PlanPayment({ selectedPlan, user, onSuccess }: PlanPaymentProps)
       </div>
 
       {/* resumo */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4 border-t border-gray-200 mt-4">
-        <div className="flex flex-col gap-2 text-sm">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4 border-t border-gray-200 text-sm">
+        <div className="flex flex-col gap-2">
           <h3 className="text-base font-semibold text-[#333C4D] mb-1">
             Resumo da assinatura
           </h3>
           <p>
-            <strong>Plano:</strong> Flynance {selectedPlan}
+            <strong>Plano:</strong> {planDescription} ({planCode})
           </p>
           <p>
             <strong>Valor:</strong> {valorTexto}
           </p>
+          <p>
+            <strong>Ciclo:</strong> {cycle === "YEARLY" ? "Anual" : "Mensal"}
+          </p>
         </div>
 
-        <div className="flex flex-col gap-2 text-sm">
+        <div className="flex flex-col gap-2">
           <h3 className="text-base font-semibold text-[#333C4D] mb-1">
             Informações do cliente
           </h3>
@@ -255,6 +277,9 @@ export function PlanPayment({ selectedPlan, user, onSuccess }: PlanPaymentProps)
           </p>
           <p>
             <strong>WhatsApp:</strong> {user.phone}
+          </p>
+          <p>
+            <strong>CPF:</strong> {user.cpfCnpj}
           </p>
         </div>
       </div>
@@ -269,7 +294,11 @@ export function PlanPayment({ selectedPlan, user, onSuccess }: PlanPaymentProps)
             : "bg-primary text-white hover:opacity-90"
         )}
       >
-        {loading ? "Processando..." : success ? "Pagamento aprovado" : "Confirmar pagamento"}
+        {loading
+          ? "Processando..."
+          : success
+          ? "Assinatura criada"
+          : "Confirmar pagamento"}
       </button>
     </div>
   );

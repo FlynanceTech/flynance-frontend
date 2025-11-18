@@ -46,7 +46,7 @@ export default function IconSelector({ value, label,onChange }: IconSelectorProp
                   className={clsx(
                     'p-2 rounded-md flex items-center justify-center',
                     value === name
-                      ? 'bg-green-100 border border-green-500 text-green-600'
+                      ? 'bg-green-100 border border-secondary text-primary'
                       : active
                       ? 'bg-gray-100 text-gray-700'
                       : 'text-gray-600'

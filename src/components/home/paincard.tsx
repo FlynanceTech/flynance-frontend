@@ -13,7 +13,7 @@ export default function Paincard({
   }: props) {
     return (
       <div className='flex flex-col gap-4 items-center justify-center p-8 border border-[#E2E8F0] rounded-2xl bg-white min-h-[300px] max-w-[370px] md:max-w-full shadow-sm'>
-        <div className='rounded-full p-4 bg-[#15B8A6] w-[80px] h-[80px] flex items-center justify-center'>
+        <div className='rounded-full p-4 bg-secondary w-[80px] h-[80px] flex items-center justify-center'>
          {icon}
         </div>
         <h1 className='text-[#333C4D] text-xl md:text-2xl font-semibold text-center'>{title}</h1>

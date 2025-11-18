@@ -249,7 +249,7 @@ export default function FeedbackWidget({  onSuccess, className }: Props) {
                                 </Button>
 
                                 <div className="text-sm">
-                                {status === 'ok' && <span className="text-green-600">Obrigado! Recebemos seu feedback. ✅</span>}
+                                {status === 'ok' && <span className="text-primary">Obrigado! Recebemos seu feedback. ✅</span>}
                                 {status === 'err' && <span className="text-destructive">Não foi possível enviar. Tente novamente.</span>}
                                 </div>
                             </div>

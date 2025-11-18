@@ -6,6 +6,7 @@ import PWARegister from "@/components/PWARegister";
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import PWAInstallListener from "@/components/PWAInstallListener";
+import { Providers } from "@/providers/Providers";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -40,7 +41,9 @@ export default function RootLayout({
           <PWAInstallListener />
           <PWARegister/>
           <TrackingScripts />
-          {children}
+          <Providers>
+            {children}
+          </Providers>
           <Analytics />
           <SpeedInsights />
       </body>

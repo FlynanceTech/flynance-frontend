@@ -51,7 +51,7 @@ export default function NotificationBell({asFilter}:props) {
       <PopoverButton className="relative focus:outline-none">
         <Bell className="text-[#333C4D] cursor-pointer" size={20} />
         {newCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-green-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+          <span className="absolute -top-1 -right-1 bg-secondary text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
             {newCount}
           </span>
         )}
@@ -84,11 +84,11 @@ export default function NotificationBell({asFilter}:props) {
               >
                 <div className="flex items-center justify-between font-semibold text-[#1A202C]">
                   <div className="flex items-center gap-1">
-                    <span className="text-green-500 text-xl">•</span>
+                    <span className="text-secondary text-xl">•</span>
                     {n.title}
                   </div>
                   {n.isNew && (
-                    <span className="bg-[#A0EBC4] text-green-700 text-xs font-medium px-2 py-0.5 rounded-full">
+                    <span className="bg-[#A0EBC4] text-primary text-xs font-medium px-2 py-0.5 rounded-full">
                       Novo
                     </span>
                   )}

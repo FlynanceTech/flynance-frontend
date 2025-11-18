@@ -150,7 +150,7 @@ export function CategoryForm({
             <button
               type="button"
               onClick={handleAddKeyword}
-              className="h-12 min-w-12 flex items-center justify-center bg-[#3ECC89] text-white rounded-full hover:bg-[#3ecc8ae1] text-sm cursor-pointer"
+              className="h-12 min-w-12 flex items-center justify-center bg-secondary text-white rounded-full hover:bg-[#3ecc8ae1] text-sm cursor-pointer"
             >
               <Plus />
             </button>
@@ -174,7 +174,7 @@ export function CategoryForm({
           <IconSelector value={icon} onChange={setIcon} label='Ícone' />
         </div>
 
-        <button type="submit" className="h-12 flex items-center justify-center gap-2 bg-[#3ECC89] rounded-full text-white px-4 py-2 hover:bg-bg-[#3ecc8ae1] w-full cursor-pointer lg:w-auto">
+        <button type="submit" className="h-12 flex items-center justify-center gap-2 bg-secondary rounded-full text-white px-4 py-2 hover:bg-bg-[#3ecc8ae1] w-full cursor-pointer lg:w-auto">
           {editing ? <Check /> : <Plus />}
           {editing ? 'Atualizar' : 'Adicionar'}
         </button>

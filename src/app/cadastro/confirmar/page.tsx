@@ -7,7 +7,7 @@ import Link from "next/link";
 export default function Confirmar() {
   return (
     <div className='min-h-screen bg-white flex flex-col '>
-      <header className='bg-gradient-to-r from-green-400 to-green-700 text-white px-6 py-4 flex justify-center'>
+      <header className='bg-gradient-to-r from-secondary to-primary text-white px-6 py-4 flex justify-center'>
         <div className="w-full max-w-[1080px] flex justify-between items-center">
             <div className='flex items-center gap-2'>
                 <Link href="/" className="flex gap-4 items-center">
@@ -27,7 +27,7 @@ export default function Confirmar() {
       </header>
       <main className='flex flex-col items-center justify-center w-full'>
         <section className="p-8 flex flex-col items-center gap-8">
-          <div className="p-4 bg-[#15B8A6] rounded-full w-16 h-16 flex items-center justify-center">
+          <div className="p-4 bg-secondary rounded-full w-16 h-16 flex items-center justify-center">
             <Check size={48} color="#fff"/>
           </div>
           <h1 className="text-5xl text-[#333C4D] font-bold">Tudo certo por aqui!</h1>

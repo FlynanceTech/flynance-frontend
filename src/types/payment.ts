@@ -82,6 +82,9 @@ export type CreditCard = {
 export type CreditCardPayment = {
   customer: string;     // id do customer
   amount: number;
+  userId: string,
+  planId: string,
+  billingType: string,
   description: string;
   creditCard: CreditCard;
 };
@@ -121,5 +124,8 @@ export interface RecurringPaymentResult {
 // --- Orquestrador (cartão) ---
 export type CreatePaymentPayload = {
   customerId: string;
+  userId: string,
+  planId: string,
+  billingType: 'CREDIT_CARD',
   paymentDetails: Omit<CreditCardPayment, "customer">;
 };

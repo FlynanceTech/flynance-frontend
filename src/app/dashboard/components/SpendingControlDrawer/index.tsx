@@ -190,7 +190,7 @@ export default function SpendingControlDrawer({ open, onClose, editing }: Props)
             
             <button
               type="submit"
-              className="w-full mt-4 bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-2 px-4 rounded-md flex justify-center items-center gap-2"
+              className="w-full mt-4 bg-blue-500 hover:bg-primary text-white font-medium py-2 px-4 rounded-md flex justify-center items-center gap-2"
             >
               <Pencil className="w-4 h-4" />
               {editing ? 'Salvar Alterações' : 'Adicionar Controle'}

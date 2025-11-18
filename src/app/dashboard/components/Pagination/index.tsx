@@ -48,15 +48,15 @@ export function Pagination({ currentPage, totalPages, onChange }: PaginationProp
     clsx(
       'w-8 h-8 rounded-full text-sm font-medium transition cursor-pointer',
       page === currentPage
-        ? 'bg-[#15B8A6] text-white'
-        : 'text-gray-600 hover:text-[#15B8A6]'
+        ? 'bg-secondary text-white'
+        : 'text-gray-600 hover:text-secondary'
     )
 
   return (
     <div className="flex justify-center items-center gap-2 ">
       <button
         onClick={() => onChange(Math.max(1, currentPage - 1))}
-        className="text-gray-500 hover:text-[#15B8A6] disabled:opacity-30 cursor-pointer"
+        className="text-gray-500 hover:text-secondary disabled:opacity-30 cursor-pointer"
         disabled={currentPage === 1}
       >
         <ChevronLeft size={18} />
@@ -66,7 +66,7 @@ export function Pagination({ currentPage, totalPages, onChange }: PaginationProp
 
       <button
         onClick={() => onChange(Math.min(totalPages, currentPage + 1))}
-        className="text-gray-500 hover:text-[#15B8A6] disabled:opacity-30 cursor-pointer"
+        className="text-gray-500 hover:text-secondary disabled:opacity-30 cursor-pointer"
         disabled={currentPage === totalPages}
       >
         <ChevronRight size={18} />

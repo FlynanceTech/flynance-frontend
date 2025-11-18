@@ -44,9 +44,9 @@ export function MetaSlider({
           onValueChange={(val) => onChange?.(val[0])} // 👈 Aqui emitimos a mudança
         >
           <Slider.Track className="bg-gray-200 relative grow rounded-full h-2">
-            <Slider.Range className="absolute bg-green-500 rounded-full h-full" />
+            <Slider.Range className="absolute bg-secondary rounded-full h-full" />
           </Slider.Track>
-          <Slider.Thumb className="block w-4 h-4 bg-green-600 rounded-full hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-400" />
+          <Slider.Thumb className="block w-4 h-4 bg-primary rounded-full hover:bg-primary focus:outline-none focus:ring-2 focus:ring-secondary" />
         </Slider.Root>
       </div>
       {/* Mobile */}

@@ -37,14 +37,14 @@ export default function HowUseSection({isHome = true}: props) {
             <div className="gap-2.5 self-end px-4 py-2 mt-7 text-base text-center text-gray-700 bg-emerald-300 rounded-tl-xl rounded-bl-xl">
               Adiciona R$ 3200,00 como salário
             </div>
-            <div className="gap-2.5 self-start px-4 py-2 mt-8 text-base leading-6 text-white bg-emerald-400 rounded-tr-xl rounded-br-xl w-[277px]">
+            <div className="gap-2.5 self-start px-4 py-2 mt-8 text-base leading-6 text-white bg-blue-400 rounded-tr-xl rounded-br-xl w-[277px]">
               Receita de R$ 3.200 adicionada à categoria Salário. Seu saldo
               atual é R$ 3.200,00.
             </div>
             <div className="gap-2.5 self-end px-4 py-2 mt-8 text-base text-center text-gray-700 bg-emerald-300 rounded-tl-xl rounded-bl-xl">
               Paguei R$ 300 de internet
             </div>
-            <div className="gap-2.5 self-start px-4 py-2 mt-3 text-base leading-6 text-white bg-emerald-400 rounded-tr-xl rounded-br-xl w-[277px]">
+            <div className="gap-2.5 self-start px-4 py-2 mt-3 text-base leading-6 text-white bg-blue-400 rounded-tr-xl rounded-br-xl w-[277px]">
               Despesa de R$ 300 adicionada à categoria Moradia. Seu saldo
               atual é R$ 2.200,00.
             </div>
@@ -92,7 +92,7 @@ export default function HowUseSection({isHome = true}: props) {
         isHome &&
         <Link href="#pricing"  onClick={(e) => scrollToSection(e, "pricing")} 
         className="w-3xs flex items-center justify-center py-3 px-8 text-white bg-gradient-to-r 
-        from-[#3ECC89] via-[#3B82F5] to-[#3ECC89] 
+        from-secondary via-[#3B82F5] to-secondary 
         bg-[length:200%_200%] animate-gradient rounded-full">
             Falar com a Fly
         </Link>

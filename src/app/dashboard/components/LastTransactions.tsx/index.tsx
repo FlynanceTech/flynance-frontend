@@ -92,7 +92,7 @@ export const LastTransactions: React.FC = () => {
         ) : (
           filteredSortedTop5.map((t) => {
             const isIncome = t.type === 'INCOME'
-            const colorClass = isIncome ? 'text-green-600' : 'text-red-500'
+            const colorClass = isIncome ? 'text-primary' : 'text-red-500'
             const Icon = isIncome ? ArrowUp : ArrowDown
             const categoryName = t.category?.name ?? 'Sem categoria'
 

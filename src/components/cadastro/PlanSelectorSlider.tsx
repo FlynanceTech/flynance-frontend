@@ -61,10 +61,10 @@ export default function PlanSelectorSlider({ plans, selectedPlan, setSelectedPla
         key={plan.value}
         onClick={() => setSelectedPlan(plan.value)}
         className={`relative border rounded-xl text-left transition-all w-full h-full
-          ${isSelected ? 'border-green-600 bg-green-50 shadow-md' : 'border-gray-300 bg-white'}
+          ${isSelected ? 'border-primary bg-green-50 shadow-md' : 'border-gray-300 bg-white'}
           flex flex-col justify-between  cursor-pointer`}
       >
-        <div className={`p-4 flex items-center justify-between rounded-t-xl ${isSelected ? 'bg-green-600' : 'bg-gray-600'}`}>
+        <div className={`p-4 flex items-center justify-between rounded-t-xl ${isSelected ? 'bg-primary' : 'bg-gray-600'}`}>
           <div className='flex items-center gap-2'>
             <p className='text-white text-base font-semibold'>{plan.label}</p>
             <span className='bg-green-200 text-green-800 text-xs px-2 py-1 rounded-full'>
@@ -86,7 +86,7 @@ export default function PlanSelectorSlider({ plans, selectedPlan, setSelectedPla
           {plan.value === 'anual' && (
                 <p className='text-xs text-red-500 line-through'>De R$ 19,90 por...</p>
           )}
-          <p className={`${plan.value === 'mensal' ? `text-4xl font-bold text-green-700` : 'text-4xl font-bold text-gray-500'}`}>{plan.price}</p>
+          <p className={`${plan.value === 'mensal' ? `text-4xl font-bold text-primary` : 'text-4xl font-bold text-gray-500'}`}>{plan.price}</p>
          {/*  {plan.value === 'anual' && (
                 <p className='text-sm text-gray-600'>Equivalente a R$ 17,91 / mês</p>
           )} */}
@@ -95,7 +95,7 @@ export default function PlanSelectorSlider({ plans, selectedPlan, setSelectedPla
         <ul className='px-6 pb-4 space-y-2 text-sm text-gray-700'>
           {plan.benefits.map((benefit, idx) => (
             <li key={idx} className='flex items-center gap-2'>
-              <CheckCircle className='text-green-500' size={16} />
+              <CheckCircle className='text-secondary' size={16} />
               <span>{benefit}</span>
             </li>
           ))}

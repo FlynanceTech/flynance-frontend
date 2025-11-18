@@ -15,7 +15,7 @@ const FeatureItem: React.FC<FeatureItemProps> = ({
   icon,
   title,
   description,
-  iconBgColor = "bg-[#15B8A6]",
+  iconBgColor = "bg-secondary",
   widthIcon = 28,
   heightIcon = 28,
 }) => {

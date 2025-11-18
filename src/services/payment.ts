@@ -89,7 +89,9 @@ export async function createCustomer(
 ): Promise<CreateCustomerResponse> {
   try {
     const payload = normalizeClientData(data);
+    console.log('check payload', payload)
     const { data: res } = await api.post<CreateCustomerResponse>("/payment/client", payload);
+    console.log('data res', res)
     return res;
   } catch (err) {
     throw asApiError(err, "Erro ao criar cliente");
@@ -130,20 +132,17 @@ export async function createRecurringPayment(
   }
 }
 
-/* =========================
-   Orquestrador (cartão)
-   ========================= */
+
 export async function createPayment({
   customerId,
   paymentDetails,
+  planId,
+  userId,
+  billingType,
 }: CreatePaymentPayload): Promise<PaymentResult> {
-  return createCreditCardPayment({ ...paymentDetails, customer: customerId });
+  return createCreditCardPayment({ ...paymentDetails, customer: customerId, planId,userId, billingType});
 }
 
-/* =========================
-   (Opcional) atualizar pagamento
-   Caso exista no seu backend: PUT /payment/{id}
-   ========================= */
 export async function updatePayment(
   id: string,
   partial: Partial<PaymentResult>

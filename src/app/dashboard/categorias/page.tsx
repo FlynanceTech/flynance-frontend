@@ -43,7 +43,7 @@ export default function CategoriasPage() {
           <Tab className={({ selected }) =>
             clsx(
               'px-4 py-2 text-sm font-medium outline-none cursor-pointer',
-              selected ? 'bg-green-100 text-green-700 rounded-full' : 'bg-gray-100 text-gray-600'
+              selected ? 'bg-green-100 text-primary rounded-full' : 'bg-gray-100 text-gray-600'
             )
           }>
             Despesas
@@ -51,7 +51,7 @@ export default function CategoriasPage() {
           <Tab className={({ selected }) =>
             clsx(
               'px-4 py-2 text-sm font-medium outline-none cursor-pointer',
-              selected ? 'bg-green-100 text-green-700 rounded-full' : 'text-gray-500 hover:text-black'
+              selected ? 'bg-green-100 text-primary rounded-full' : 'text-gray-500 hover:text-black'
             )
           }>
             Receitas

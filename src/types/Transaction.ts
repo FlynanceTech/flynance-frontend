@@ -34,6 +34,7 @@ export interface User {
   planId: string | null
   role: string
   signatureId: string
+  cpfCnpj: string
 }
 
 export interface Signature {

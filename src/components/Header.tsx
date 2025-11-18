@@ -97,7 +97,7 @@ const Header = () => {
         isScrolled ? " shadow-md pt-4 pb-4" : "bg-transparent pt-8"
       }`}
     >
-     <nav role="navigation" aria-label="Navegação principal" className={`w-full ${isScrolled ? 'fixed top-0 left-0 z-50 bg-gradient-to-r from-[#EBF7F5] to-[#15B8A6] shadow-md' : ''}`}>
+     <nav role="navigation" aria-label="Navegação principal" className={`w-full ${isScrolled ? 'fixed top-0 left-0 z-50 bg-gradient-to-r from-[#EBF7F5] to-secondary shadow-md' : ''}`}>
      <div className="max-w-[1280px] mx-auto px-4 py-4 flex justify-between items-center">
           <a href="#hero" onClick={(e) => scrollToSection(e, "hero")}>
             <Image
@@ -124,7 +124,7 @@ const Header = () => {
             ))}
             <Link
               href="/login"
-              className="px-6 py-2 font-bold text-white bg-emerald-400 rounded-lg hover:bg-emerald-500 transition"
+              className="px-6 py-2 font-bold text-white bg-blue-400 rounded-lg hover:bg-blue-500 transition"
             >
               Login
             </Link>
@@ -136,7 +136,7 @@ const Header = () => {
               onClick={toggleMobileMenu}
               aria-expanded={isMobileMenuOpen}
               aria-label="Toggle menu"
-              className="p-2 focus:outline-none focus:ring-2 focus:ring-emerald-400 rounded-md"
+              className="p-2 focus:outline-none focus:ring-2 focus:ring-blue-400 rounded-md"
             >
               <div className="relative w-6 h-5">
                 <span
@@ -191,7 +191,7 @@ const Header = () => {
             <button
               onClick={() => setIsMobileMenuOpen(false)}
               aria-label="Close menu"
-              className="p-2 focus:outline-none focus:ring-2 focus:ring-emerald-400 rounded-md"
+              className="p-2 focus:outline-none focus:ring-2 focus:ring-blue-400 rounded-md"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -216,7 +216,7 @@ const Header = () => {
                 key={href}
                 href={href}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="text-gray-700 hover:text-emerald-400 transition-colors py-2 border-b border-gray-100"
+                className="text-gray-700 hover:text-blue-400 transition-colors py-2 border-b border-gray-100"
               >
                 {label}
               </Link>
@@ -224,7 +224,7 @@ const Header = () => {
           </nav>
 
           <div className="w-full">
-            <Link href="/login" className="w-full h-full py-3 px-8 font-bold text-white bg-emerald-400 rounded-lg hover:bg-emerald-500 transition-colors">
+            <Link href="/login" className="w-full h-full py-3 px-8 font-bold text-white bg-blue-400 rounded-lg hover:bg-blue-500 transition-colors">
               Login
             </Link>
           </div>

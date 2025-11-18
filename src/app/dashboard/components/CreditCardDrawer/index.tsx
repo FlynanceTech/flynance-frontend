@@ -150,7 +150,7 @@ export default function CreditCardDrawer({ open, onClose }: Props) {
                   <button type="button" onClick={onClose} className="rounded-md border px-4 py-2 text-sm">
                     Cancelar
                   </button>
-                  <button type="submit" disabled={submitting} className="rounded-md bg-emerald-600 px-4 py-2 text-sm text-white hover:bg-emerald-700 disabled:opacity-60">
+                  <button type="submit" disabled={submitting} className="rounded-md bg-primary px-4 py-2 text-sm text-white hover:bg-emerald-700 disabled:opacity-60">
                     {submitting ? 'Salvando…' : 'Adicionar'}
                   </button>
                 </div>

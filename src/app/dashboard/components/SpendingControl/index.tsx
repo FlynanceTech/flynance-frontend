@@ -34,7 +34,7 @@ const toBRL = (v: number): string =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
 
 const STATUS = {
-  ok: { cls: 'text-emerald-600', Icon: CheckCircle2, label: 'OK' },
+  ok: { cls: 'text-primary', Icon: CheckCircle2, label: 'OK' },
   warning: { cls: 'text-yellow-500', Icon: AlertTriangle, label: 'Atenção' },
   danger: { cls: 'text-red-600', Icon: XCircle, label: 'Estourou' },
 } as const
@@ -135,7 +135,7 @@ export function SpendingControl() {
 
               const barColor =
                 c.usagePctOfGoal <= 60
-                  ? 'bg-emerald-500'
+                  ? 'bg-blue-500'
                   : c.usagePctOfGoal <= 80
                   ? 'bg-yellow-400'
                   : 'bg-red-500'
@@ -147,7 +147,7 @@ export function SpendingControl() {
                       className={`absolute top-7 right-1 z-30 text-[10px] font-semibold px-1.5 py-0.5 rounded-full
                       ${status === 'danger' ? 'bg-red-600 text-white'
                         : status === 'warning' ? 'bg-yellow-400 text-black'
-                        : 'bg-emerald-500 text-white'}`}
+                        : 'bg-blue-500 text-white'}`}
                     >
                       {Math.round(c.usagePctOfGoal)}%
                     </span>

@@ -93,7 +93,7 @@ export default function InstallPrompt() {
 
                 <button
                   onClick={handleInstall}
-                  className="bg-gradient-to-r from-[#3ECC89] to-[#1F6645] text-white font-medium py-2 px-8 rounded-lg hover:scale-105 transition cursor-pointer"
+                  className="bg-gradient-to-r from-secondary to-primary text-white font-medium py-2 px-8 rounded-lg hover:scale-105 transition cursor-pointer"
                 >
                   Vamos lá!
                 </button>

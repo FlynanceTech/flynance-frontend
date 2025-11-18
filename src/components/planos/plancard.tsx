@@ -1,15 +1,30 @@
 "use client";
 
 import { Check } from "lucide-react";
-import type { Plan } from "../../app/planos/plans";
 import Link from "next/link";
 
+type BadgeType = "primary" | "discount" | undefined;
+
+export type UiPlan = {
+  id: string;
+  slug: string;
+  title: string;
+  price: string;
+  priceSuffix: string;
+  previousPrice?: string;
+  badge?: string;
+  badgeType?: BadgeType;
+  ctaLabel: string;
+  benefits: string[];
+};
+
 type Props = {
-  plan: Plan;
+  plan: UiPlan;
 };
 
 export function PlanCard({ plan }: Props) {
   const {
+    slug,
     title,
     price,
     priceSuffix,
@@ -46,32 +61,36 @@ export function PlanCard({ plan }: Props) {
           De {previousPrice} por
         </p>
       )}
+
       <div className="flex items-end justify-center mb-6">
         <div className="text-[42px] font-bold text-primary leading-tight">
-            R$ {price}
+          R$ {price}
         </div>
-        <p className="text-gray-500">{priceSuffix}</p>
+        <p className="text-gray-500 ml-2">{priceSuffix}</p>
       </div>
 
-    <div  className={`min-w-52! rounded-full font-medium py-3  text-lg transition text-center ${
-            isDiscount
-                ? "border border-primary text-primary hover:bg-blue-50 cursor-pointer"
-                : "bg-blue-500 text-white hover:bg-blue-400 cursor-pointer"
-            }`}>
+      <div
+        className={`min-w-[13rem] rounded-full font-medium py-3 text-lg transition text-center ${
+          isDiscount
+            ? "border border-primary text-primary hover:bg-blue-50 cursor-pointer"
+            : "bg-blue-500 text-white hover:bg-blue-400 cursor-pointer"
+        }`}
+      >
         <Link
-            href={`/planos/checkout?${plan.id}`}
-           
+          // você escolhe se quer passar id ou slug
+          // href={`/planos/checkout?planId=${id}`}
+          href={`/planos/checkout?plan=${slug}`}
         >
-        {ctaLabel}
+          {ctaLabel}
         </Link>
-    </div>
+      </div>
 
       <div className="mt-8">
         <h3 className="font-semibold mb-3">Benefícios</h3>
         <ul className="space-y-3 text-gray-700">
           {benefits.map((item) => (
             <li key={item} className="flex items-center gap-2">
-              <Check className="text-green-600 w-5 h-5" />
+              <Check className="text-primary w-5 h-5" />
               {item}
             </li>
           ))}

@@ -134,7 +134,7 @@ export default function SignupStepper() {
           {[0, 1, 2].map((_, i) => (
             <div
               key={i}
-              className={`flex-1 h-1 rounded-full ${i <= step ? 'bg-green-500' : 'bg-gray-300'}`}
+              className={`flex-1 h-1 rounded-full ${i <= step ? 'bg-secondary' : 'bg-gray-300'}`}
             />
           ))}
         </div>
@@ -152,7 +152,7 @@ export default function SignupStepper() {
             <input
               {...register('name')}
               placeholder='Nome'
-              className='w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500'
+              className='w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-secondary'
             />
           )}
 
@@ -161,7 +161,7 @@ export default function SignupStepper() {
               {...register('phone')}
               onChange={(e) => setValue('phone', formatPhone(e.target.value))}
               placeholder='WhatsApp'
-              className='w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500'
+              className='w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-secondary'
             />
           )}
 
@@ -170,12 +170,12 @@ export default function SignupStepper() {
               <input
                 {...register('email')}
                 placeholder='E-mail'
-                className='w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500'
+                className='w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-secondary'
               />
               <input
                 {...register('confirmEmail')}
                 placeholder='Confirme seu e-mail'
-                className='w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500'
+                className='w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-secondary'
               />
               <div className='flex items-start gap-2 mt-4'>
                 <input
@@ -187,8 +187,8 @@ export default function SignupStepper() {
                 />
                 <label htmlFor='acceptTerms' className='text-sm text-gray-700'>
                   Aceito os{' '}
-                  <a href='/termos' className='text-green-600 underline' target='_blank'>termos de uso</a>{' '}e{' '}
-                  <a href='/privacidade' className='text-green-600 underline' target='_blank'>política de privacidade</a>.
+                  <a href='/termos' className='text-primary underline' target='_blank'>termos de uso</a>{' '}e{' '}
+                  <a href='/privacidade' className='text-primary underline' target='_blank'>política de privacidade</a>.
                 </label>
               </div>
             </>
@@ -199,7 +199,7 @@ export default function SignupStepper() {
           <button
             onClick={handleNext}
             disabled={loading}
-            className={`w-full ${step !== 0 ? 'col-span-1' : 'col-span-2'} flex justify-center items-center gap-2 bg-gradient-to-r from-green-400 to-green-700 text-white font-semibold py-3 rounded-md hover:opacity-90 transition ${
+            className={`w-full ${step !== 0 ? 'col-span-1' : 'col-span-2'} flex justify-center items-center gap-2 bg-gradient-to-r from-secondary to-primary text-white font-semibold py-3 rounded-md hover:opacity-90 transition ${
               loading ? 'opacity-60 cursor-not-allowed' : ''
             }`}
           >
@@ -217,7 +217,7 @@ export default function SignupStepper() {
         </div>
 
         {successMessage && (
-          <p className="text-sm text-green-600 text-center mt-2">{successMessage}</p>
+          <p className="text-sm text-primary text-center mt-2">{successMessage}</p>
         )}
 
       </div>

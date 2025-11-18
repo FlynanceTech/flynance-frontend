@@ -59,12 +59,15 @@ const handleBack = () => {
       </header>
       <section className="mt-12 px-4 pb-16 flex justify-center">
         <PlanPayment
-          selectedPlan={selectedPlan}
+          planId="ID_DO_PLANO_NO_BACKEND"
+          planCode={selectedPlan === "anual" ? "anual" : "mensal"}
+          planDescription="Flynance Essencial"
           user={{
             id: user.userData.user.id,
             name: user.userData.user.name,
             email: user.userData.user.email,
             phone: user.userData.user.phone,
+            cpfCnpj: user.userData.user.cpfCnpj
           }}
           onSuccess={() => {
             // ex: atualizar sessão / redirecionar

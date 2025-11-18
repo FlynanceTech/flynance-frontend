@@ -90,7 +90,7 @@ export default function SpendingControlPage() {
             setEditingControl(null)
             setDrawerOpen(true)
           }}
-          className="w-44 inline-flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-4 py-2 rounded-full"
+          className="w-44 inline-flex items-center justify-center gap-2 bg-blue-500 hover:bg-primary text-white font-semibold px-4 py-2 rounded-full"
         >
           <Plus className="h-4 w-4" />
           Novo controle

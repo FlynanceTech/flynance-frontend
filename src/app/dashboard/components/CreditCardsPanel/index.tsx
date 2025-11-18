@@ -44,7 +44,7 @@ export default function CreditCardsPanel() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setOpen(true)}
-            className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-3 py-2 text-sm text-white hover:bg-emerald-700"
+            className="inline-flex items-center gap-2 rounded-full bg-primary px-3 py-2 text-sm text-white hover:bg-emerald-700"
           >
             <Plus className="h-4 w-4" /> 
           </button>
@@ -95,7 +95,7 @@ export default function CreditCardsPanel() {
                   <button
                     key={c.id}
                     onClick={() => setIndex(i)}
-                    className={`h-2 w-2 rounded-full ${i === index ? 'bg-emerald-600' : 'bg-gray-300'}`}
+                    className={`h-2 w-2 rounded-full ${i === index ? 'bg-primary' : 'bg-gray-300'}`}
                     aria-label={`Selecionar cartão ${i + 1}`}
                   />
                 ))}
