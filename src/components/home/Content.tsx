@@ -22,7 +22,7 @@ function Content() {
   return (
     <main className="flex overflow-hidden flex-col items-center pb-8 bg-[#FAFAFA]">
       <StickyBar />
-      <header className="w-full h-full bg-linear-to-br from-[#EBF7F5] from-20% to-[#15B8A6]">
+      <header className="w-full h-full bg-linear-to-br from-[#EBF7F5] from-20% to-secondary">
         <Header />
         <HeroSection />
       </header>

@@ -82,7 +82,7 @@ export default function DateRangeSelect({
               onClick={() => onChange({ mode: 'days', days: day })}
               className={`px-2 py-1 text-center rounded data-[focus]:bg-green-100 ${
                 value.mode === 'days' && value.days === day
-                  ? 'bg-green-50 text-green-700'
+                  ? 'bg-green-50 text-primary'
                   : ''
               }`}
             >
@@ -107,7 +107,7 @@ export default function DateRangeSelect({
               <MenuItem key={`${year}-${month}`} as="button"
                 onClick={() => onChange({ mode: 'month', month, year })}
                 className={`px-1 flex items-center justify-center rounded data-[focus]:bg-green-100 ${
-                  isActive ? 'bg-green-50 text-green-700' : ''
+                  isActive ? 'bg-green-50 text-primary' : ''
                 }`}
               >
                 {label}

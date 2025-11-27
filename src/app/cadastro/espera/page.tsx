@@ -34,7 +34,7 @@ export default function Espera() {
   };
 
   return (
-    <main className="relative flex flex-col justify-center items-center max-h-screen w-screen bg-gradient-to-r from-[#3ECC89] to-[#1F6645]">
+    <main className="relative flex flex-col justify-center items-center max-h-screen w-screen bg-gradient-to-r from-secondary to-primary">
       {/* Header visível só no desktop */}
       <header className="hidden lg:block fixed top-8 left-32 w-full py-4 px-8 z-30">
         <Link href="/" className="flex gap-2 text-white cursor-pointer">
@@ -85,7 +85,7 @@ export default function Espera() {
                 </p>
                 <Link href="/" className=" py-3 px-8 flex items-center justify-center
               text-base text-white bg-gradient-to-r 
-        from-[#3ECC89] to-[#3B82F5] cursor-pointer w-full md:w-auto  rounded-full">Conhecer melhor a Flynance</Link>
+        from-secondary to-[#3B82F5] cursor-pointer w-full md:w-auto  rounded-full">Conhecer melhor a Flynance</Link>
               </div>
               ): 
                 <div className="flex flex-col lg:justify-center items-center h-full p-8 bg-white rounded-t-[32px] lg:rounded-[32px]">
@@ -118,7 +118,7 @@ export default function Espera() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="bg-gradient-to-r from-[#3ECC89] to-[#3B82F5] text-white py-3 rounded-full font-semibold hover:bg-[#2c6cd3] transition"
+                    className="bg-gradient-to-r from-secondary to-[#3B82F5] text-white py-3 rounded-full font-semibold hover:bg-[#2c6cd3] transition"
                   >
                     {loading ? 'Inscrevendo...' : 'Quero entrar na lista'}
                   </button>
@@ -131,7 +131,7 @@ export default function Espera() {
 
       {/* Footer visível só no mobile */}
       <footer className="fixed bottom-4 right-4 block lg:hidden z-50">
-        <Link href="/" className="bg-[#3ECC89] p-4 rounded-full text-white flex items-center justify-center shadow-md">
+        <Link href="/" className="bg-secondary p-4 rounded-full text-white flex items-center justify-center shadow-md">
           <Undo2 />
         </Link>
       </footer>

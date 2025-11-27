@@ -7,7 +7,7 @@ import { CheckCircle2 } from "lucide-react"
 interface AlternatePlanModalProps {
   isOpen: boolean
   onClose: () => void
-  onSelectPlan: (plan: "mensal" | "anual") => void
+  onSelectPlan: (plan: string) => void
 }
 
 export default function AlternatePlanModal({
@@ -15,6 +15,13 @@ export default function AlternatePlanModal({
   onClose,
   onSelectPlan,
 }: AlternatePlanModalProps) {
+
+  const plans = [
+    { label: "Essencial Mensal", slug: "essencial-mensal" },
+    { label: "Essencial Anual", slug: "essencial-anual" },
+  ];
+
+
   return (
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
@@ -49,25 +56,25 @@ export default function AlternatePlanModal({
                 <div className="flex flex-col gap-4">
                   <button
                     onClick={() => {
-                      onSelectPlan("mensal")
+                      onSelectPlan(plans[0].slug)
                       onClose()
                     }}
-                    className="border border-gray-300 hover:border-green-600 hover:bg-green-50 rounded-lg p-4 text-left transition-colors"
+                    className="border border-gray-300 hover:border-primary hover:bg-green-50 rounded-lg p-4 text-left transition-colors"
                   >
-                    <div className="font-medium text-gray-800">Plano Mensal</div>
+                    <div className="font-medium text-gray-800">Flynance {[plans[0].label]}</div>
                     <div className="text-sm text-gray-600">R$ 19,90 por mês</div>
                   </button>
 
                   <button
                     onClick={() => {
-                      onSelectPlan("anual")
+                      onSelectPlan(plans[1].slug)
                       onClose()
                     }}
-                    className="border border-gray-300 hover:border-green-600 hover:bg-green-50 rounded-lg p-4 text-left transition-colors"
+                    className="border border-gray-300 hover:border-primary hover:bg-green-50 rounded-lg p-4 text-left transition-colors"
                   >
-                    <div className="font-medium text-gray-800">Plano Anual</div>
+                    <div className="font-medium text-gray-800">Flynance {[plans[1].label]}</div>
                     <div className="text-sm text-gray-600">12x de R$ 17,91 (R$ 214,92/ano)</div>
-                    <div className="mt-1 text-green-700 text-sm flex items-center gap-1">
+                    <div className="mt-1 text-primary text-sm flex items-center gap-1">
                       <CheckCircle2 size={14} /> 10% de desconto aplicado
                     </div>
                   </button>

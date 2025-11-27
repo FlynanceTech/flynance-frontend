@@ -61,7 +61,7 @@ const FaqItem: React.FC<FaqItemProps> = ({ question, answer, index = 0 }) => {
       <button
         onClick={toggleExpand}
         onKeyDown={handleKeyDown}
-        className="flex gap-4 md:gap-8 px-4 md:px-6 py-5 md:py-7 w-full text-xl md:text-2xl font-bold text-neutral-500 items-center text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 cursor-pointer"
+        className="flex gap-4 md:gap-8 px-4 md:px-6 py-5 md:py-7 w-full text-xl md:text-2xl font-bold text-neutral-500 items-center text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 cursor-pointer"
         aria-expanded={isExpanded}
         aria-controls={contentId}
         id={headingId}

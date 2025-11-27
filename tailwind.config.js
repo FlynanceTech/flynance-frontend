@@ -8,8 +8,19 @@ module.exports = {
     "./pages/**/*.{ts,tsx,js,jsx,mdx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+        },
+      },
+    },
   },
   darkMode: false,
   plugins: [],
-}
+};

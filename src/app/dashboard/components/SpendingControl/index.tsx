@@ -34,7 +34,7 @@ const toBRL = (v: number): string =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
 
 const STATUS = {
-  ok: { cls: 'text-emerald-600', Icon: CheckCircle2, label: 'OK' },
+  ok: { cls: 'text-primary', Icon: CheckCircle2, label: 'OK' },
   warning: { cls: 'text-yellow-500', Icon: AlertTriangle, label: 'Atenção' },
   danger: { cls: 'text-red-600', Icon: XCircle, label: 'Estourou' },
 } as const
@@ -97,10 +97,10 @@ export function SpendingControl() {
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-lg font-bold text-gray-800">Controle de Metas</h2>
         <div className='flex items-center gap-4'>
-          <Link href="/dashboard/controles" className='text-xs bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-4 py-2 rounded-full cursor-pointer hidden lg:block'> Meus Controles</Link>
+          <Link href="/dashboard/controles" className='text-xs bg-secondary/30 hover:bg-secondary/35 text-primary px-4 py-2 rounded-full cursor-pointer hidden lg:block'> Meus Controles</Link>
           <button
             onClick={() => setDrawerOpen(true)}
-            className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-800 font-semibold px-2 py-2 rounded-full text-sm hover:bg-emerald-200 cursor-pointer"
+            className="inline-flex items-center gap-2 bg-secondary/30 text-primary font-semibold px-2 py-2 rounded-full text-sm hover:bg-secondary/35 cursor-pointer"
             aria-label="Adicionar controle"
             title="Novo controle"
           >
@@ -135,7 +135,7 @@ export function SpendingControl() {
 
               const barColor =
                 c.usagePctOfGoal <= 60
-                  ? 'bg-emerald-500'
+                  ? 'bg-blue-500'
                   : c.usagePctOfGoal <= 80
                   ? 'bg-yellow-400'
                   : 'bg-red-500'
@@ -147,7 +147,7 @@ export function SpendingControl() {
                       className={`absolute top-7 right-1 z-30 text-[10px] font-semibold px-1.5 py-0.5 rounded-full
                       ${status === 'danger' ? 'bg-red-600 text-white'
                         : status === 'warning' ? 'bg-yellow-400 text-black'
-                        : 'bg-emerald-500 text-white'}`}
+                        : 'bg-blue-500 text-white'}`}
                     >
                       {Math.round(c.usagePctOfGoal)}%
                     </span>
@@ -202,7 +202,7 @@ export function SpendingControl() {
               )
             })}
 
-            <Link href="/dashboard/controles" className='text-xs bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-4 py-2 rounded-full cursor-pointer lg:hidden max-w-40 flex justify-center'> Meus Controles</Link>
+            <Link href="/dashboard/controles" className='text-xs bg-secondary/30 hover:bg-secondary/35 text-primary px-4 py-2 rounded-full cursor-pointer lg:hidden max-w-40 flex justify-center'> Meus Controles</Link>
           </div>
         )}
       </div>

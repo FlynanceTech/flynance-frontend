@@ -36,7 +36,7 @@ export default function BottomMenu() {
           <button
             key={label}
             onClick={() => router.push(path)}
-            className={`flex flex-col items-center text-xs ${isActive ? 'text-green-600' : 'text-gray-500'}`}
+            className={`flex flex-col items-center text-xs ${isActive ? 'text-primary' : 'text-gray-500'}`}
           >
             <Icon size={22} />
             <span>{label}</span>

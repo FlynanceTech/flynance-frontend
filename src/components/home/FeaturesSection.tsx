@@ -56,7 +56,7 @@ const FeaturesSection = () => {
           />
           <Link href="#pricing"  onClick={(e) => scrollToSection(e, "pricing")} 
         className="w-3xs flex items-center justify-center py-3 px-8 text-white bg-gradient-to-r 
-        from-[#3ECC89] via-[#3B82F5] to-[#3ECC89] 
+        from-secondary via-[#3B82F5] to-secondary 
         bg-[length:200%_200%] animate-gradient rounded-full">
             Falar com a Fly
         </Link>

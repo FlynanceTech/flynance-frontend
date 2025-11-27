@@ -58,7 +58,7 @@ export function CategoriesSelectWithCheck() {
               onChange={() => toggleCategory(cat)} 
               className={({ checked }) =>
                 `flex items-center gap-2 px-4 py-1 text-sm cursor-pointer hover:bg-[#F0FDF4] ${
-                  checked ? 'text-green-700 font-medium' : 'text-gray-700'
+                  checked ? 'text-primary font-medium' : 'text-gray-700'
                 }`
               }
             >
@@ -67,7 +67,7 @@ export function CategoriesSelectWithCheck() {
                   <span
                     className={`h-4 w-4 flex items-center justify-center border rounded ${
                       checked
-                        ? 'bg-green-500 border-green-500 text-white'
+                        ? 'bg-secondary border-secondary text-white'
                         : 'border-gray-300'
                     }`}
                   >

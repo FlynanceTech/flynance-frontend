@@ -50,12 +50,12 @@ const PricingCard: React.FC<PricingCardProps> = ({
   return (
     <article className="relative w-full bg-white rounded-lg  basis-0  max-w-[500px]">
       {discount && (
-        <span className="absolute bg-[#3ECC89] right-0 gap-2.5 self-stretch px-8 py-2 my-auto text-lg font-medium text-white  rounded-tl-0 rounded-tr-lg rounded-bl-2xl">
+        <span className="absolute bg-secondary right-0 gap-2.5 self-stretch px-8 py-2 my-auto text-lg font-medium text-white  rounded-tl-0 rounded-tr-lg rounded-bl-2xl">
           {discount}
         </span>
       )}
        {popular && (
-            <span className="absolute bg-[#3ECC89] right-0 z-10 gap-2.5 self-stretch px-8 py-2 my-auto text-lg font-medium text-white rounded-tl-0 rounded-tr-lg rounded-bl-2xl">
+            <span className="absolute bg-secondary right-0 z-10 gap-2.5 self-stretch px-8 py-2 my-auto text-lg font-medium text-white rounded-tl-0 rounded-tr-lg rounded-bl-2xl">
               Popular
             </span>
           )}
@@ -71,7 +71,7 @@ const PricingCard: React.FC<PricingCardProps> = ({
           className={`flex items-center justify-center gap-2.5 self-stretch px-16 py-3 mt-8 w-full text-xl font-semibold rounded-[99px] max-md:px-5 cursor-pointer relative overflow-hidden transition-all duration-500
             ${
               buttonStyle === "primary"
-                ? "text-white bg-gradient-to-r from-[#3ECC89] via-[#3B82F5] to-[#3ECC89] bg-[length:200%_200%] animate-gradient"
+                ? "text-white bg-gradient-to-r from-secondary via-[#3B82F5] to-secondary bg-[length:200%_200%] animate-gradient"
                 : "text-neutral-500 border border-solid border-neutral-500"
             }`}
         >

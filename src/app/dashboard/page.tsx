@@ -12,10 +12,9 @@ import InstallPrompt from '@/components/cadastro/InstallPrompt/InstallPrompt'
 
 export default function Dashboard() {
   const { user } = useUserSession()
-  const userId = user?.user.id ?? ''
+  const userId = user?.userData.user.id ?? ''
 
   const [hydrated, setHydrated] = useState(false)
-
 
   useEffect(() => {
     setHydrated(true)

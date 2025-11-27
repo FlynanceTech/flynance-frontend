@@ -49,7 +49,7 @@ const NotificationsCard = () => {
   };
 
   return (
-    <div className="bg-card rounded-2xl p-6 shadow-sm border border-border animate-slide-up">
+    <div className="bg-card rounded-2xl p-6 shadow-sm border border-border/15 animate-slide-up">
       <div className="flex items-center gap-3 mb-6">
         <div className="p-2 bg-primary/10 rounded-full">
           <Bell className="h-5 w-5 text-primary" />
@@ -61,7 +61,7 @@ const NotificationsCard = () => {
         {channels.map((channel) => (
           <div
             key={channel.id}
-            className="flex items-center justify-between p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors"
+            className="flex items-center justify-between p-4 rounded-xl border border-border/15 hover:bg-muted/50 transition-colors"
           >
             <div className="flex-1">
               <Label

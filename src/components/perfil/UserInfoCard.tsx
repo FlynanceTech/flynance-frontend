@@ -9,12 +9,12 @@ import { useUsers } from "@/hooks/query/useUsers";
 
 const UserInfoCard = () => {
   const { user, setUser } = useUserSession()
-  console.log('user', user?.user)
+  console.log('user', user?.userData)
   const {updateMutation} = useUsers()
   const [formData, setFormData] = useState({
-    name: user?.user.name || '',
-    email: user?.user.email || '',
-    whatsapp: user?.user.phone || '',
+    name: user?.userData.user.name || '',
+    email: user?.userData.user.email || '',
+    whatsapp: user?.userData.user.phone || '',
   });
   
   const [loading, setLoading] = useState(false);
@@ -39,7 +39,7 @@ const UserInfoCard = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!user?.user.id) {
+    if (! user?.userData.user.id) {
       toast.error("Usuário não identificado.");
       return;
     }
@@ -47,7 +47,7 @@ const UserInfoCard = () => {
     try {
       setLoading(true);
       await updateMutation.mutateAsync({
-        id: user.user.id,
+        id: user.userData.user.id,
         data: {
           name: formData.name,
           email: formData.email,
@@ -58,11 +58,17 @@ const UserInfoCard = () => {
       // atualiza store local
       setUser({
         ...user,
-        user: {
-          ...user.user,
-          name: formData.name,
-          email: formData.email,
-          phone: formData.whatsapp,
+        userData: {
+            user: {
+            ...user.userData.user,
+            name: formData.name,
+            email: formData.email,
+            phone: formData.whatsapp,
+          },
+          signature: {
+            id: user.userData.signature.id,
+            status: user.userData.signature.status,
+          }
         },
       });
 
@@ -81,7 +87,7 @@ const UserInfoCard = () => {
 
 
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-sm border border-border animate-slide-up">
+    <div className="bg-white rounded-2xl p-6 shadow-sm border border-border/15 animate-slide-up">
       <div className="flex items-center gap-3 mb-6">
         <div className="p-2 bg-primary/10 rounded-full">
           <User className="h-5 w-5 text-primary" />
@@ -91,7 +97,7 @@ const UserInfoCard = () => {
         </h2>
       </div>
 
-      <div className="flex items-center gap-4 mb-6 pb-6 border-b border-border">
+      <div className="flex items-center gap-4 mb-6 pb-6 border-b border-border/15">
         <div className="relative">
           <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center text-2xl font-semibold text-primary">
             JS

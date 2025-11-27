@@ -47,8 +47,8 @@ export default function FinanceCard({
 
   const getTextColor = () => {
     if (isBalance) return 'text-gray-500' // 🔹 saldo sempre neutro
-    if (percentage && percentage > 0) return isExpense ? 'text-red-500' : 'text-green-600'
-    if (percentage && percentage < 0) return isExpense ? 'text-green-600' : 'text-red-500'
+    if (percentage && percentage > 0) return isExpense ? 'text-red-500' : 'text-primary'
+    if (percentage && percentage < 0) return isExpense ? 'text-primary' : 'text-red-500'
     return 'text-gray-500'
   }
 

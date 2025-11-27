@@ -24,5 +24,10 @@ export function useSession() {
     })
   }, [fetchAccount, clearUser, router])
 
+  useEffect(()=> {
+    console.log('use Session check user', user)
+    
+  },[user])
+
   return { loading, user }
 }

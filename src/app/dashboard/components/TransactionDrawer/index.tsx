@@ -189,7 +189,7 @@ export default function TransactionDrawer({ open, onClose, initialData}: Transac
 
               <button
                 type="submit"
-                className="w-full mt-4 bg-[#22C55E] hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-full cursor-pointer"
+                className="w-full mt-4 bg-[#22C55E] hover:bg-primary text-white font-semibold py-2 px-4 rounded-full cursor-pointer"
               >
                 {initialData ? 'Salvar Alterações' : 'Adicionar Transação'}
               </button>

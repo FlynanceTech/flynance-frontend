@@ -8,7 +8,7 @@ import { Suspense } from "react";
 export default function Cadastro() {
   return (
     <div className='min-h-screen bg-white flex flex-col '>
-      <header className='bg-gradient-to-r from-green-400 to-green-700 text-white px-6 py-4 flex justify-center'>
+      <header className='bg-gradient-to-r from-secondary to-primary text-white px-6 py-4 flex justify-center'>
         <div className="w-full max-w-[1080px] flex justify-between items-center">
           <div className='flex items-center gap-2'>
             <Link href="/" className="flex gap-4 items-center">

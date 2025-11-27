@@ -78,11 +78,11 @@ export default function Login() {
   return (
     <main className="
       w-screen h-screen flex flex-col 
-      bg-gradient-to-r from-[#3ECC89] to-[#1F6645]
-      lg:bg-none lg:bg-[#1F6645] 
+      bg-gradient-to-r from-secondary to-primary
+      lg:bg-none lg:bg-primary 
       lg:grid lg:grid-cols-2 lg:pr-8
     ">
-      <section className='relative w-full h-full bg-gradient-to-r from-[#3ECC89] to-[#1F6645] flex items-center justify-center px-8'>
+      <section className='relative w-full h-full bg-gradient-to-r from-secondary to-primary flex items-center justify-center px-8'>
         <Image src={texture} alt="texture" className='absolute z-10 max-h-screen min-h-screen' />
         <div className="flex flex-col items-center z-20 text-center">
           <div className="flex flex-col gap-4 lg:gap-8 items-center max-w-[500px] lg:pt-4">
@@ -93,7 +93,7 @@ export default function Login() {
             </p>
             <div className="flex-col gap-4 lg:gap-8 items-center hidden lg:flex">
               <span className="text-sm font-light text-white">Ainda não tem uma conta?</span>
-              <Link href="/cadastro/checkout?plano=mensal" className="border border-white text-white py-2 px-8 lg:py-4 lg:px-16 rounded-full text-base lg:text-xl hover:bg-white hover:text-green-700 transition-all">
+              <Link href="/cadastro/checkout?plano=essencial-mensal" className="border border-white text-white py-2 px-8 lg:py-4 lg:px-16 rounded-full text-base lg:text-xl hover:bg-white hover:text-primary transition-all">
                 Crie agora mesmo
               </Link>
             </div>
@@ -119,7 +119,7 @@ export default function Login() {
                     name="email"
                     placeholder="exemplo@email.com"
                     className={`w-full pl-10 pr-4 py-3 border rounded-md focus:outline-none focus:ring-2 ${
-                      error.includes("e-mail") ? "border-red-400 focus:ring-red-300" : "border-gray-300 focus:ring-green-500"
+                      error.includes("e-mail") ? "border-red-400 focus:ring-red-300" : "border-gray-300 focus:ring-secondary"
                     }`}
                     onChange={(e) => setEmail(e.target.value)}
                     value={email}
@@ -134,7 +134,7 @@ export default function Login() {
                 <button
                   type='submit'
                   disabled={loading}
-                  className="w-full bg-gradient-to-r from-green-400 to-green-700 text-white font-semibold py-3 rounded-md hover:opacity-90 transition"
+                  className="w-full bg-gradient-to-r from-secondary to-primary text-white font-semibold py-3 rounded-md hover:opacity-90 transition"
                 >
                    {loading ? (
                       <div className="flex justify-center items-center gap-2">
@@ -159,29 +159,29 @@ export default function Login() {
                 <h2 className="font-semibold text-xl text-[#333C4D] mt-4">Digite o código enviado por e-mail</h2>
                 <OtpInput length={4} onComplete={handleComplete} />
                 {error && <p className="text-sm text-red-500">{error}</p>}
-                <button type="button" onClick={handleResend} className="text-sm text-green-600 hover:underline">
+                <button type="button" onClick={handleResend} className="text-sm text-primary hover:underline">
                   Reenviar código
                 </button>
                 <button
                   disabled={loading}
                   type="submit"
-                  className="w-full bg-gradient-to-r from-green-400 to-green-700 text-white py-3 rounded-md"
+                  className="w-full bg-gradient-to-r from-secondary to-primary text-white py-3 rounded-md"
                 >
                   {loading ? 'Verificando...' : isPending ? 'Redirecionando...' : 'Entrar'}
                 </button>
               </>
             )}
-            {message && <p className="text-sm text-green-600">{message}</p>}
+            {message && <p className="text-sm text-primary">{message}</p>}
 
             <div className="flex-col gap-4 lg:gap-8 items-center lg:hidden flex">
               <span className="text-sm font-light">Ainda não tem uma conta?</span>
-              <Link href="/cadastro/checkout?plano=mensal" className=" rounded-full text-xs hover:bg-white hover:text-green-700 transition-all">
+              <Link href="/cadastro/checkout?plano=essencial-mensal" className=" rounded-full text-xs hover:bg-white hover:text-primary transition-all">
                 Crie agora mesmo
               </Link>
             </div>
 
             <div className="flex flex-col gap-4 items-center pb-4">
-              <h3 className="text-lg lg:text-xl text-green-700">Nos siga nas redes sociais</h3>
+              <h3 className="text-lg lg:text-xl text-primary">Nos siga nas redes sociais</h3>
               <div className="flex gap-6">
                 <Link href="https://www.instagram.com/flynance.app/" target="_blank">
                   <Image src={instagram} alt="Instagram" width={24} height={24} />

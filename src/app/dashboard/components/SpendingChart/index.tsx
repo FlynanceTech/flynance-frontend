@@ -30,7 +30,7 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   if (active && payload && payload.length > 0) {
 
     return (
-      <div className="rounded-lg border border-[#3ECC89] bg-[#3ECC8980] text-white px-4 py-2 shadow text-sm">
+      <div className="rounded-lg border border-secondary bg-[#3ECC8980] text-white px-4 py-2 shadow text-sm">
         <p>📅 <strong>Data:</strong> {label && format(new Date(label), 'dd/MM')}</p>
         {payload[0].payload.valor && (
           <p>💸 <strong>Gasto Diário:</strong> {payload[0].payload.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>

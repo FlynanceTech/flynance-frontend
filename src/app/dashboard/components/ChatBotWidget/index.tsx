@@ -12,7 +12,7 @@ export default function ChatbotWidget() {
         !open &&
         <button
             onClick={() => setOpen(!open)}
-            className="bg-[#3ECC89] w-12 h-12  hover:bg-green-700 text-white p-3 rounded-full shadow-lg flex items-center justify-center cursor-pointer"
+            className="bg-secondary w-12 h-12  hover:bg-primary text-white p-3 rounded-full shadow-lg flex items-center justify-center cursor-pointer"
         >
             <Bot size={22} />
         </button>
@@ -20,7 +20,7 @@ export default function ChatbotWidget() {
 
       {open && (
         <div className="w-80 h-96 bg-white border border-gray-200 shadow-xl rounded-lg mt-2 flex flex-col overflow-hidden">
-            <header className='flex items-center justify-between bg-gradient-to-r from-[#3ECC89] to-[#1F6645] px-4 py-2 text-white'>
+            <header className='flex items-center justify-between bg-gradient-to-r from-secondary to-primary px-4 py-2 text-white'>
                 <div className=" text-white text-sm font-semibold">
                     Fly sua assistente virtual
                 </div>
@@ -43,7 +43,7 @@ export default function ChatbotWidget() {
             />
             <button
               type="submit"
-              className="bg-green-600 hover:bg-green-700 text-white h-10 px-3 py-2 rounded-md text-sm"
+              className="bg-primary hover:bg-primary text-white h-10 px-3 py-2 rounded-md text-sm"
             >
               <Send  size={18}/>
             </button>

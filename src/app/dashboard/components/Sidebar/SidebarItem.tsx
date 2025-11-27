@@ -16,8 +16,8 @@ export default function SidebarItem({ label, icon, active = false, collapsed = f
       className={clsx(
         'flex items-center gap-2 px-4 py-2 text-sm cursor-pointer transition-colors duration-200 rounded-lg',
         {
-          'bg-[#CEF2E1] text-[#3ECC89] font-semibold': active,
-          'text-[#333C4D] hover:text-[#3ECC89]': !active,
+          'bg-secondary/30 text-secondary font-semibold': active,
+          'text-[#333C4D] hover:text-secondary': !active,
           'justify-center': collapsed,
         }
       )}

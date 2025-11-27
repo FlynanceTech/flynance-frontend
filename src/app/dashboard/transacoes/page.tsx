@@ -26,7 +26,7 @@ function SkeletonSection() {
 
 export default function TransactionsPage() {
   const { user } = useUserSession()
-  const userId = user?.user.id ?? ''
+  const userId =  user?.userData.user.id ?? ''
 
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
@@ -169,7 +169,7 @@ export default function TransactionsPage() {
           {selectedCategories.map((item) => (
             <div
               key={item.id}
-              className="px-4 py-1 text-sm font-light flex items-center justify-center rounded-full bg-[#CEF2E1]"
+              className="px-4 py-1 text-sm font-light flex items-center justify-center rounded-full bg-secondary/30"
             >
               {item.name}
             </div>
