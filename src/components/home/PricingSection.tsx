@@ -7,7 +7,8 @@ import background from "../../../assets/background-plan.svg";
 
 import { usePlans } from "@/hooks/query/usePlan";
 import { PlanCard, UiPlan } from "../planos/plancard";
-import { mapPlanToUi } from "@/app/planos/page";
+import { mapPlanToUi } from "../planos/utils";
+
 
 export default function PricingSection() {
   const { data, isLoading, error } = usePlans();
