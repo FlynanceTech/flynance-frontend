@@ -97,10 +97,10 @@ export function SpendingControl() {
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-lg font-bold text-gray-800">Controle de Metas</h2>
         <div className='flex items-center gap-4'>
-          <Link href="/dashboard/controles" className='text-xs bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-4 py-2 rounded-full cursor-pointer hidden lg:block'> Meus Controles</Link>
+          <Link href="/dashboard/controles" className='text-xs bg-secondary/30 hover:bg-secondary/35 text-primary px-4 py-2 rounded-full cursor-pointer hidden lg:block'> Meus Controles</Link>
           <button
             onClick={() => setDrawerOpen(true)}
-            className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-800 font-semibold px-2 py-2 rounded-full text-sm hover:bg-emerald-200 cursor-pointer"
+            className="inline-flex items-center gap-2 bg-secondary/30 text-primary font-semibold px-2 py-2 rounded-full text-sm hover:bg-secondary/35 cursor-pointer"
             aria-label="Adicionar controle"
             title="Novo controle"
           >
@@ -202,7 +202,7 @@ export function SpendingControl() {
               )
             })}
 
-            <Link href="/dashboard/controles" className='text-xs bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-4 py-2 rounded-full cursor-pointer lg:hidden max-w-40 flex justify-center'> Meus Controles</Link>
+            <Link href="/dashboard/controles" className='text-xs bg-secondary/30 hover:bg-secondary/35 text-primary px-4 py-2 rounded-full cursor-pointer lg:hidden max-w-40 flex justify-center'> Meus Controles</Link>
           </div>
         )}
       </div>

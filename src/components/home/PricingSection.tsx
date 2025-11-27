@@ -5,12 +5,15 @@ import React from "react";
 import Image from "next/image";
 import background from "../../../assets/background-plan.svg";
 
-import PricingCard from "./PricingCard";
 import { usePlans } from "@/hooks/query/usePlan";
+import { PlanCard, UiPlan } from "../planos/plancard";
+import { mapPlanToUi } from "@/app/planos/page";
 
 export default function PricingSection() {
   const { data, isLoading, error } = usePlans();
-  console.log('data', data)
+  
+  const uiPlans: UiPlan[] = data ? data.map(mapPlanToUi) : [];
+
   return (
     <section
       id="pricing"
@@ -45,40 +48,9 @@ export default function PricingSection() {
         {/* LISTA DE PLANOS */}
         {!isLoading && data && (
           <div className="w-full flex flex-col md:flex-row gap-8 items-center justify-center">
-            {data.map((plan: any) => {
-              const price = (plan.priceCents / 100).toFixed(2); // R$ xx,xx
-              const [intPart, decimalPart] = price.split(".");
-
-              return (
-                <PricingCard
-                  key={plan.id}
-                  popular={plan.slug === "mensal"} // deixa o mensal como "popular"
-                  discount={plan.slug === "anual" ? "10% Off" : undefined}
-                  planType={plan.slug}
-                  title={plan.name}
-                  price={
-                    <div className="flex justify-center items-center self-center text-blue-400">
-                      <div className="text-4xl font-bold flex">
-                        <span className="text-xl mr-1">R$</span>
-                        <span className="text-8xl">{intPart}</span>
-                      </div>
-                      <div className="ml-1 text-xl">
-                        <div className="font-bold">,{decimalPart}</div>
-                        <div className="mt-2 font-light">/ Mês</div>
-                      </div>
-                    </div>
-                  }
-                  buttonStyle={plan.slug === "mensal" ? "primary" : "secondary"}
-                  buttonTitle={
-                    plan.slug === "anual" ? "Garanta já 10% OFF" : undefined
-                  }
-                  benefits={plan.features.map((f: any) => ({
-                    text: f.label,
-                    active: true,
-                  }))}
-                />
-              );
-            })}
+            {uiPlans.map((plan) => (
+              <PlanCard key={plan.id} plan={plan} />
+            ))}
           </div>
         )}
       </div>

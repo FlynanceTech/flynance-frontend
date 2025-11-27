@@ -93,7 +93,7 @@ export default function Login() {
             </p>
             <div className="flex-col gap-4 lg:gap-8 items-center hidden lg:flex">
               <span className="text-sm font-light text-white">Ainda não tem uma conta?</span>
-              <Link href="/cadastro/checkout?plano=mensal" className="border border-white text-white py-2 px-8 lg:py-4 lg:px-16 rounded-full text-base lg:text-xl hover:bg-white hover:text-primary transition-all">
+              <Link href="/cadastro/checkout?plano=essencial-mensal" className="border border-white text-white py-2 px-8 lg:py-4 lg:px-16 rounded-full text-base lg:text-xl hover:bg-white hover:text-primary transition-all">
                 Crie agora mesmo
               </Link>
             </div>
@@ -175,7 +175,7 @@ export default function Login() {
 
             <div className="flex-col gap-4 lg:gap-8 items-center lg:hidden flex">
               <span className="text-sm font-light">Ainda não tem uma conta?</span>
-              <Link href="/cadastro/checkout?plano=mensal" className=" rounded-full text-xs hover:bg-white hover:text-primary transition-all">
+              <Link href="/cadastro/checkout?plano=essencial-mensal" className=" rounded-full text-xs hover:bg-white hover:text-primary transition-all">
                 Crie agora mesmo
               </Link>
             </div>

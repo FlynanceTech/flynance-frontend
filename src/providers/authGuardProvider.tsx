@@ -23,7 +23,7 @@ export function AuthGuardProvider({ children }: Props) {
       router.push("/login");
       return;
     }
-    console.log('check user')
+    console.log('check user', user)
     if (!user.userData?.signature || user.userData.signature.status !== "ACTIVE") {
       router.push("/WinbackPage");
       return;

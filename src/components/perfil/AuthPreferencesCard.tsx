@@ -21,14 +21,14 @@ const AuthPreferencesCard = () => {
     {
       id: "email",
       name: "E-mail",
-      description: `Código enviado para ${user?.user.email}`,
+      description: `Código enviado para ${user?.userData.user.email }`,
       icon: Mail,
       value: "email",
     },
     {
       id: "whatsapp",
       name: "WhatsApp",
-      description: `Código enviado via WhatsApp ${user?.user.phone}`,
+      description: `Código enviado via WhatsApp ${user?.userData.user.phone}`,
       icon: MessageCircle,
       value: "whatsapp",
     },
@@ -43,7 +43,7 @@ const AuthPreferencesCard = () => {
   };
 
   return (
-    <div className="bg-card rounded-2xl p-6 shadow-sm border border-border animate-slide-up">
+    <div className="bg-card rounded-2xl p-6 shadow-sm border border-border/15 animate-slide-up">
       <div className="flex items-center gap-3 mb-6">
         <div className="p-2 bg-primary/10 rounded-full">
           <Shield className="h-5 w-5 text-primary" />
@@ -70,7 +70,7 @@ const AuthPreferencesCard = () => {
               className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
                 isSelected
                   ? "border-primary bg-primary/5"
-                  : "border-border hover:bg-muted/50"
+                  : "border-border/15 hover:bg-muted/50"
               }`}
             >
               <div

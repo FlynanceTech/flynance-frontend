@@ -1,46 +1,13 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import Image from "next/image";
 import Link from "next/link";
 
 export default function WinbackPage() {
-  const router = useRouter();
-
-  const [isLoading, setIsLoading] = useState(false);
-  const [isReactivated, setIsReactivated] = useState(false);
 
   const previousPlan = {
     name: "Essencial – Mensal",
     price: "R$ 19,90/mês",
     cancelledAt: "12/11/2025",
-  };
-
-  // ação simulada de reativação
-  const handleReactivate = async () => {
-    if (isLoading) return;
-
-    setIsLoading(true);
-
-    try {
-      // aqui você chamaria sua API real:
-      // await fetch("/api/subscription/reactivate", { method: "POST" });
-      // por enquanto vamos só simular um delay:
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      setIsReactivated(true);
-
-      // redirecionamento simulado pro dashboard
-      setTimeout(() => {
-        router.push("/dashboard");
-      }, 1200);
-    } catch (error) {
-      // aqui daria para exibir um toast de erro
-      console.error("Erro ao reativar assinatura (simulado):", error);
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   return (
@@ -101,14 +68,14 @@ export default function WinbackPage() {
           </div>
 
           {/* Mensagem de sucesso simulada */}
-          {isReactivated && (
+        {/*   {isReactivated && (
             <div className="w-full max-w-md bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-md px-4 py-3">
               Assinatura reativada com sucesso! Redirecionando para o painel
               em instantes… 🚀
             </div>
           )}
-
-          <Button
+ */}
+          {/* <Button
             className="max-w-80 w-full h-12 text-lg mb-1"
             onClick={handleReactivate}
             disabled={isLoading || isReactivated}
@@ -118,13 +85,18 @@ export default function WinbackPage() {
               : isReactivated
               ? "Reativado"
               : "Reativar assinatura"}
-          </Button>
+          </Button> */}
 
           <Link
             href="/planos"
             className="text-primary text-center mt-1 hover:underline mb-4"
           >
+             <Button
+            className="max-w-80 w-full h-12 text-lg mb-1"
+          >
+
             Ver planos novamente
+          </Button>
           </Link>
         </div>
       </section>

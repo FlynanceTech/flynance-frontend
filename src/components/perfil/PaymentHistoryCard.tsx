@@ -83,7 +83,7 @@ const PaymentHistoryCard = () => {
   };
 
   return (
-    <div className="bg-card rounded-2xl p-6 shadow-sm border border-border animate-slide-up">
+    <div className="bg-card rounded-2xl p-6 shadow-sm border border-border/15 animate-slide-up">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-primary/10 rounded-full">
@@ -103,7 +103,7 @@ const PaymentHistoryCard = () => {
         {payments.map((payment) => (
           <div
             key={payment.id}
-            className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors gap-3"
+            className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-border/15 hover:bg-muted/50 transition-colors gap-3"
           >
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
@@ -130,7 +130,7 @@ const PaymentHistoryCard = () => {
         ))}
       </div>
 
-      <div className="mt-4 pt-4 border-t border-border">
+      <div className="mt-4 pt-4 border-t border-border/15">
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Total pago em 2025</span>
           <span className="font-semibold text-foreground">R$ 199,60</span>

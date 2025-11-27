@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import {  Undo2 } from "lucide-react";
 import Image from "next/image";
+import logo from "../../../assets/fly-logo.png";
 
 type PageHeaderProps = {
   title?: string;
@@ -18,14 +19,12 @@ export function PageHeader({ title, showBack = true }: PageHeaderProps) {
 
   return (
     <header className="w-full flex items-center justify-between px-6 py-4 max-w-[980px]">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 text-white">
         {showBack && (
           <button
-            onClick={handleBack}
-            className="flex items-center justify-center w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow-sm transition cursor-pointer"
-            aria-label="Voltar"
-          >
-            <ArrowLeft className="w-5 h-5 text-primary" />
+            onClick={handleBack} className="flex gap-4 items-center cursor-pointer">
+            <Undo2 size={32} />
+            <span className="font-semibold">Voltar</span>
           </button>
         )}
 
@@ -39,9 +38,13 @@ export function PageHeader({ title, showBack = true }: PageHeaderProps) {
       </div>
 
       {title && (
-        <span className="hidden md:inline text-white/90 text-sm">
-          {title}
-        </span>
+        <Image
+          src={logo}
+          className="object-contain aspect-[1.86] w-[130px]"
+          alt="Flynance Logo"
+          width={120}
+          height={30}
+        />
       )}
     </header>
   );

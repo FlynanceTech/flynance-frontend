@@ -13,7 +13,7 @@ const SubscriptionCard = () => {
   const isNearRenewal = subscription.daysUntilRenewal <= 15;
 
   return (
-    <div className="bg-card rounded-2xl p-6 shadow-sm border border-border animate-slide-up">
+    <div className="bg-card rounded-2xl p-6 shadow-sm border border-border/15 animate-slide-up">
       <div className="flex items-center gap-3 mb-6">
         <div className="p-2 bg-primary/10 rounded-full">
           <CreditCard className="h-5 w-5 text-primary" />
@@ -24,7 +24,7 @@ const SubscriptionCard = () => {
       </div>
 
       <div className="space-y-4">
-        <div className="flex items-start justify-between pb-4 border-b border-border">
+        <div className="flex items-start justify-between pb-4 border-b border-border/15">
           <div>
             <div className="flex items-center gap-2 mb-2">
               <h3 className="text-lg font-semibold text-foreground">

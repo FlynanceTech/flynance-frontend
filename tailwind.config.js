@@ -18,12 +18,9 @@ module.exports = {
           DEFAULT: "hsl(var(--secondary))",
           foreground: "hsl(var(--secondary-foreground))",
         },
-        'yellow-fly':{
-           DEFAULT: "hsl(var(--yellow-fly))",
-        }
-      }
+      },
     },
   },
   darkMode: false,
   plugins: [],
-}
+};

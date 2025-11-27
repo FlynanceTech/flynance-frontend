@@ -18,6 +18,6 @@
     --color-border: hsl(var(--border));
     --color-input: hsl(var(--input));
     --color-ring: hsl(var(--ring));
+    --color-yellow-fly: #FFD414;
     --radius: var(--radius);
-    
 }

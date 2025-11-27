@@ -261,7 +261,7 @@ export default function ComparisonChart({ userId }: ComparisonChartProps) {
             <div className="flex gap-4 items-center md:justify-end justify-between w-full mb-4">
               <button
                 onClick={handleShowLegend}
-                className="text-sm bg-[#CEF2E1] text-[#333C4D] px-4 py-2 rounded-full cursor-pointer flex gap-2 items-center"
+                className="text-sm bg-secondary/30 text-[#333C4D] px-4 py-2 rounded-full cursor-pointer flex gap-2 items-center"
               >
                 <strong>Legenda</strong>
                 <ChevronDown

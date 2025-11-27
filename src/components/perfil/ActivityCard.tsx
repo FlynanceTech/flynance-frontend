@@ -44,7 +44,7 @@ const ActivityCard = () => {
   };
 
   return (
-    <div className="bg-card rounded-2xl p-6 shadow-sm border border-border animate-slide-up">
+    <div className="bg-card rounded-2xl p-6 shadow-sm border border-border/15 animate-slide-up">
       <div className="flex items-center gap-3 mb-6">
         <div className="p-2 bg-primary/10 rounded-full">
           <Clock className="h-5 w-5 text-primary" />

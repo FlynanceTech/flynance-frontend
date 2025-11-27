@@ -4,8 +4,8 @@
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
-import logoFlynance from '../../../../../assets/logo-flynance.png'
-import logoFly from '../../../../../public/icons/logo-192x192.png'
+import logoFlynance from '../../../../../assets/Logo/PNG/Logo Fly principal colorida.png'
+import logoFly from '../../../../../assets/Logo/PNG/Logo Fly colorida 1.png'
 import {
   Landmark,
   LayoutDashboard,
