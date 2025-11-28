@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import logo from '../../assets/logo-flynance.png'
+import logo from '../../assets/Logo/PNG/Logo Fly principal branca.png'
 import React, { useState, useEffect, useRef } from "react";
 
 const Header = () => {

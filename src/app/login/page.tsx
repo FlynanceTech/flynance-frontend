@@ -8,7 +8,7 @@ import Lottie from 'lottie-react'
 import emailSendingAnimation from '../../../assets/animation/send-email.json'
 
 
-import logo from '../../../assets/flynance-logo-white.png'
+import logo from '../../../assets/Logo/PNG/Logo Fly branca 1.png'
 import texture from '../../../assets/teture.svg'
 import instagram from "../../../assets/icons/instagram-fill-icon.png"
 import tiktop from "../../../assets/icons/tiktok-icon.png"

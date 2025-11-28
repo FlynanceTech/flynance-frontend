@@ -8,8 +8,6 @@ import { usePlanBySlug } from "@/hooks/query/usePlan";
 import { useRouter, useSearchParams } from "next/navigation";
 
 
-
-// 👇 Client Component com a lógica atual
 export function CheckoutPageClient() {
   "use client";
 

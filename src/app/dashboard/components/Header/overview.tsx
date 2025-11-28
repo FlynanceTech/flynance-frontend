@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useMemo } from 'react'
-import NotificationBell from '../NotificationBell'
+/* import NotificationBell from '../NotificationBell' */
 import { NewTransactionButton } from '../Buttons'
 import { CategoriesSelectWithCheck } from '../CategorySelect'
 import SearchBar from '../SearchBar'
@@ -111,13 +111,13 @@ export default function Header({
               </div>
             )}
 
-            <NotificationBell asFilter={asFilter} />
+          {/*   <NotificationBell asFilter={asFilter} /> */}
             {newTransation && <NewTransactionButton onClick={() => setDrawerOpen(true)} />}
           </div>
 
           <div className="flex lg:hidden gap-4 items-center">
             <DateRangeSelect value={filter} onChange={setFilter}  />
-            <NotificationBell asFilter={asFilter} />
+           {/*  <NotificationBell asFilter={asFilter} /> */}
           </div>
         </div>
 

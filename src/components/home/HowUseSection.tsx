@@ -8,7 +8,7 @@ import check from "../../../assets/icons/check-icon.png"
 import { scrollToSection } from "@/utils/scroll-smooth";
 import Link from 'next/link'
 import Image from 'next/image'
-import logo from '../../../assets/flynance-logo-white.png'
+import logo from '../../../assets/Logo/PNG/Logo Fly branca 1.png'
 
 type props = {
     isHome?: boolean

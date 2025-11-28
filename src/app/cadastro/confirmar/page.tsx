@@ -1,7 +1,7 @@
 'use client'
 import { Undo2, Check } from "lucide-react";
 import Image from "next/image";
-import logo from "../../../../assets/flynance-logo-white.png"
+import logo from "../../../../assets/Logo/PNG/Logo Fly branca 1.png"
 import Link from "next/link";
 
 export default function Confirmar() {

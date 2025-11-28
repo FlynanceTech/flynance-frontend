@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { Menu, MenuButton, MenuItems, Transition } from '@headlessui/react'
-import NotificationBell from '../NotificationBell'
+/* import NotificationBell from '../NotificationBell' */
 import { NewTransactionButton } from '../Buttons'
 import { CategoriesSelectWithCheck } from '../CategorySelect'
 import SearchBar from '../SearchBar'
@@ -40,7 +40,7 @@ export default function Header({ title, subtitle, asFilter = false, dataToFilter
               </div>
             )}
 
-            <NotificationBell asFilter={asFilter} />
+           {/*  <NotificationBell asFilter={asFilter} /> */}
             {
               newTransation &&
               <NewTransactionButton onClick={() => setDrawerOpen(true)} />
@@ -49,7 +49,7 @@ export default function Header({ title, subtitle, asFilter = false, dataToFilter
 
           <div className="flex lg:hidden gap-4 items-center">
  
-            <NotificationBell  asFilter={asFilter} />
+          {/*   <NotificationBell  asFilter={asFilter} /> */}
             {asFilter && (
             <Menu as="div" className="relative lg:hidden">
             {({ open }) => (
