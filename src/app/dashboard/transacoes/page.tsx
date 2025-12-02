@@ -33,6 +33,16 @@ export default function TransactionsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [selectAll, setSelectAll] = useState(false)
+  const [sortState, setSortState] = useState<{
+    field: 'date' | 'value' | null
+    direction: 'asc' | 'desc'
+  }>({
+    field: null,
+    direction: 'asc',
+  })
+
+  const sortField = sortState.field
+  const sortDirection = sortState.direction
 
   const selectedCategories = useTransactionFilter((s) => s.selectedCategories)
   const searchTerm = useTransactionFilter((s) => s.searchTerm)
@@ -44,40 +54,67 @@ export default function TransactionsPage() {
     limit: PAGE_SIZE,
     filters: {
       category: selectedCategories.map(c => c.id).join(',') || undefined,
-      search: searchTerm || undefined,
       days: dateRange || undefined,
     },
-  }), [userId, currentPage, selectedCategories, searchTerm, dateRange]);
+  }), [userId, currentPage, selectedCategories, dateRange]);
 
   const { transactionsQuery, deleteMutation } = useTranscation(params);
-  // Referência estável do array base
+ 
   const allTransactions: Transaction[] = useMemo(
     () => (transactionsQuery.data ?? []) as Transaction[],
     [transactionsQuery.data]
   )
 
   const filteredTransactions = useMemo(() => {
-    const today = new Date()
-    const cutoffDate = new Date()
-    const daysNum = Number(dateRange) || 0
-    cutoffDate.setDate(today.getDate() - daysNum)
+  const today = new Date()
+  const cutoffDate = new Date()
+  const daysNum = Number(dateRange) || 0
+  cutoffDate.setDate(today.getDate() - daysNum)
 
-    return allTransactions.filter((item) => {
-      const matchCategory =
-        selectedCategories.length === 0 ||
-        selectedCategories.some((selected) => selected.id === item.categoryId)
+  // filtro base
+  let result = allTransactions.filter((item) => {
+    const matchCategory =
+      selectedCategories.length === 0 ||
+      selectedCategories.some((selected) => selected.id === item.categoryId)
 
-      const matchSearch =
-        !searchTerm || item.description.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchSearch =
+      !searchTerm ||
+      item.description.toLowerCase().includes(searchTerm.toLowerCase())
 
-     /*  const itemDate = new Date(item.date)
-      const matchDate = daysNum > 0 ? itemDate >= cutoffDate : true */
+    return matchCategory && matchSearch
+  })
 
-      return matchCategory && matchSearch /* && matchDate */
+  // ordenação
+  if (sortField) {
+    result = [...result].sort((a, b) => {
+      let compare = 0
+
+      if (sortField === 'date') {
+        const da = new Date(a.date).getTime()
+        const db = new Date(b.date).getTime()
+        compare = da - db
+      }
+
+      if (sortField === 'value') {
+        compare = a.value - b.value
+      }
+
+      return sortDirection === 'asc' ? compare : -compare
     })
-  }, [allTransactions, selectedCategories, searchTerm, dateRange])
+  }
 
-  console.log('Filtered Transactions:', filteredTransactions);
+  return result
+}, [
+  allTransactions,
+  selectedCategories,
+  searchTerm,
+  dateRange,
+  sortField,
+  sortDirection,
+])
+
+
+
 
   const paginatedTransactions = useMemo(
     () =>
@@ -95,6 +132,27 @@ export default function TransactionsPage() {
   const endIndex = Math.min(currentPage * PAGE_SIZE, totalFiltered)
   const isFiltered =
     selectedCategories.length > 0 || !!searchTerm || !!dateRange
+
+  const handleSortChange = (field: 'date' | 'value') => {
+  setSortState((prev) => {
+    // 1º clique numa coluna nova → asc
+    if (prev.field !== field) {
+      return { field, direction: 'asc' }
+    }
+
+    // 2º clique na mesma coluna → desc
+    if (prev.direction === 'asc') {
+      return { field, direction: 'desc' }
+    }
+
+    // 3º clique na mesma coluna → limpa ordenação
+    return { field: null, direction: 'asc' }
+  })
+
+  // sempre volta pra página 1 ao mudar ordenação
+  setCurrentPage(1)
+}
+
 
   const toggleSelectRow = (id: string) => {
     setSelectedIds((prev) => {
@@ -199,7 +257,12 @@ export default function TransactionsPage() {
               setDrawerOpen(true)
             }}
             onDelete={handleDeleteSingle}
+            sortField={sortField}
+            sortDirection={sortDirection}
+            onSortChange={handleSortChange}
           />
+
+
 
           <TransactionCardList
             transactions={paginatedTransactions}

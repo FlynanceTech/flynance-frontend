@@ -17,16 +17,18 @@ export default function BottomMenu() {
     { label: 'Educação', icon: BookOpenCheck, path: '/dashboard/educacao' },
     { label: 'Perfil', icon: User, path: '/dashboard/perfil' },
   ]
+  const normalize = (p: string) => p.replace(/\/+$/, '');
+  const current = normalize(pathname ?? '');
+   const isPathActive = (itemPath: string) => {
+    const base = normalize(itemPath);
 
-  const isPathActive = (itemPath: string) => {
-    if (itemPath === '/dashboard') {
-      return pathname === '/dashboard' || pathname.startsWith('/dashboard/controles')
+    if (base === '/dashboard') {
+      return current === '/dashboard' || current.startsWith('/dashboard/controles');
     }
-    if (itemPath.includes('/dashboard/educacao')){
-      return true
-    }
-    return pathname === itemPath
-  }
+
+    return current === base || current.startsWith(`${base}/`);
+  };
+
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center py-4 z-50">

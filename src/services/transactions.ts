@@ -36,15 +36,22 @@ export async function getTransaction({ userId, page = 1, limit = 10, filters = {
 
 export const createTransaction = async (data: TransactionDTO): Promise<Transaction> => {
   try {
-    const response = await api.post(`/transactions`, data)
+    // ⚠️ normaliza sempre para ISO completo
+    const payload: TransactionDTO = {
+      ...data,
+      date: new Date(data.date).toISOString(),
+    }
 
+    const response = await api.post(`/transactions`, payload)
     return response.data
   } catch (e: unknown) {
-    const msg = getErrorMessage(e, "Erro ao criar transações.");
-    console.error("Erro ao criar transações:", msg);
-    throw new Error(msg);
+    console.error("Erro bruto ao criar transações:", e) // ajuda a debugar
+    const msg = getErrorMessage(e, "Erro ao criar transações.")
+    console.error("Erro ao criar transações:", msg)
+    throw new Error(msg)
   }
 }
+
 
 export const updateTransaction = async (id: string, data: TransactionDTO): Promise<Transaction> => {
   try {

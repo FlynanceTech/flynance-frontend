@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import logo from '../../assets/Logo/PNG/Logo Fly principal branca.png'
+import logo from '../../assets/Logo/PNG/Logo Fly principal colorida.png'
 import React, { useState, useEffect, useRef } from "react";
 
 const Header = () => {
@@ -93,21 +93,21 @@ const Header = () => {
 
   return (
     <header
-      className={`flex flex-col items-center self-stretch pt-8 w-full max-md:px-5 max-md:max-w-full sticky top-0 z-50 transition-all duration-300 ${
-        isScrolled ? " shadow-md pt-4 pb-4" : "bg-transparent pt-8"
+      className={`flex flex-col items-center self-stretch w-full max-md:px-5 max-md:max-w-full sticky top-0 z-50 transition-all duration-300 ${
+        isScrolled ? " shadow-md " : "bg-white"
       }`}
     >
-     <nav role="navigation" aria-label="Navegação principal" className={`w-full ${isScrolled ? 'fixed top-0 left-0 z-50 bg-gradient-to-r from-[#EBF7F5] to-secondary shadow-md' : ''}`}>
+     <nav role="navigation" aria-label="Navegação principal" className={`w-full ${isScrolled ? 'fixed top-0 left-0 z-50 bg-white shadow-md' : ''}`}>
      <div className="max-w-[1280px] mx-auto px-4 py-4 flex justify-between items-center">
-          <a href="#hero" onClick={(e) => scrollToSection(e, "hero")}>
+          <Link href="#hero" onClick={(e) => scrollToSection(e, "hero")}>
             <Image
               src={logo}
               alt="Flynance Logo"
               width={88}
               height={50}
-              className="object-contain shrink-0 aspect-[1.76] w-[88px]"
+              className="object-contain shrink-0 aspect-[1.76] w-[120px]"
             />
-          </a>
+          </Link>
 
           <div className="hidden md:flex flex-wrap gap-8 items-center self-start">
             {links.map(({ href, label }) => (

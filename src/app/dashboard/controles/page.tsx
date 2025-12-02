@@ -90,7 +90,7 @@ export default function SpendingControlPage() {
             setEditingControl(null)
             setDrawerOpen(true)
           }}
-          className="w-44 inline-flex items-center justify-center gap-2 bg-blue-500 hover:bg-primary text-white font-semibold px-4 py-2 rounded-full"
+          className="w-44 inline-flex items-center justify-center gap-2 bg-primary hover:bg-secondary cursor-pointer text-white font-semibold px-4 py-2 rounded-full"
         >
           <Plus className="h-4 w-4" />
           Novo controle
@@ -131,14 +131,14 @@ export default function SpendingControlPage() {
                   </Link>
                   <button
                     onClick={() => handleEdit(c)}
-                    className="text-gray-500 hover:text-blue-400"
+                    className="text-gray-500 hover:text-blue-400 cursor-pointer"
                     title="Editar"
                   >
                     <Pencil size={16} />
                   </button>
                   <button
                     onClick={() => handleDelete(c.id)}
-                    className="text-gray-500 hover:text-red-500"
+                    className="text-gray-500 hover:text-red-500 cursor-pointer"
                     title="Excluir"
                   >
                     <Trash2 size={16} />

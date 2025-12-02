@@ -116,7 +116,7 @@ const chartData = control.transactions
 
   return (
     <div className="flex flex-col w-full h-full lg:pr-8 pb-16 lg:pb-0 overflow-auto">
-      <div className='bg-gradient-to-b from-secondary to-[#1F6645] lg:bg-gradient-to-r lg:from-[#fff] lg:to-[#fff]
+      <div className='bg-gradient-to-b from-secondary to-primary lg:bg-gradient-to-r lg:from-[#fff] lg:to-[#fff]
        p-8 rounded-b-3xl lg:rounded-b-2xl lg:rounded-t-2xl text-white lg:text-gray-600 flex flex-col gap-4'>
         <div className='flex justify-between'>
           <Link href="/dashboard/controles"><Undo2 /></Link>

@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   title: "Flynance",
   description:
     "Simplifique sua vida financeira com a Flynance. Controle seus gastos, acompanhe seu saldo e receba insights inteligentes para alcançar seus objetivos financeiros.",
-  icons: "/src/app/favicon.ico",
+  icons: "../favicon.ico",
   manifest: '/manifest.json',
 };
 

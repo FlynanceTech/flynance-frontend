@@ -17,8 +17,10 @@ interface Props {
   onToggleSelectRow: (index: string) => void
   onEdit: (transaction: Transaction) => void
   onDelete: (index: string) => void
+    sortField: 'date' | 'value' | null
+  sortDirection: 'asc' | 'desc'
+  onSortChange: (field: 'date' | 'value') => void
 }
-
 export function TransactionTable({
   transactions,
   selectedIds,
@@ -27,12 +29,24 @@ export function TransactionTable({
   onToggleSelectRow,
   onEdit,
   onDelete,
+  sortField,
+  sortDirection,
+  onSortChange,
 }: Props) {
   const [open, setOpen] = useState(false)
   const [targetId, setTargetId] = useState<string | null>(null)
 
   function handleConfirmDelete() {
     if (targetId) onDelete(targetId)
+  }
+
+  const renderSortIcon = (field: 'date' | 'value') => {
+    if (sortField !== field) return null
+    return (
+      <span className="ml-1 text-xs">
+        {sortDirection === 'asc' ? '▲' : '▼'}
+      </span>
+    )
   }
 
   return (
@@ -54,12 +68,34 @@ export function TransactionTable({
               </th>
               <th className="py-2">Descrição</th>
               <th className="py-2">Categoria</th>
-              <th className="py-2">Data</th>
-              <th className="py-2">Valor</th>
+
+              {/* Data com click para ordenar */}
+              <th
+                className="py-2 cursor-pointer select-none"
+                onClick={() => onSortChange('date')}
+              >
+                <div className="inline-flex items-center">
+                  Data
+                  {renderSortIcon('date')}
+                </div>
+              </th>
+
+              {/* Valor com click para ordenar */}
+              <th
+                className="py-2 cursor-pointer select-none"
+                onClick={() => onSortChange('value')}
+              >
+                <div className="inline-flex items-center">
+                  Valor
+                  {renderSortIcon('value')}
+                </div>
+              </th>
+
               <th className="py-2 text-right">Ações</th>
             </tr>
           </thead>
-          <tbody className='lg:max-h-[500px] overflow-auto'>
+
+          <tbody className="lg:max-h-[500px] overflow-auto">
             {transactions.map((item, i) => (
               <tr key={i} className="border-b border-gray-200 hover:bg-gray-50">
                 <td className="py-4 px-2">
@@ -71,15 +107,29 @@ export function TransactionTable({
                 </td>
                 <td className="py-4 max-w-52">
                   <div className="truncate max-w-72">
-                    <span className="text-gray-800 truncate max-w-72" title={item.description}>{item.description}</span>
+                    <span
+                      className="text-gray-800 truncate max-w-72"
+                      title={item.description}
+                    >
+                      {item.description}
+                    </span>
                   </div>
                 </td>
                 <td className="py-4 flex items-center gap-3">
-                  <div className={clsx('flex items-center gap-2 px-3 py-1 rounded-full text-white', item.category.type === 'INCOME' ? 'bg-[#22C55E]' : 'bg-[#EF4444]')}>  
-                    {IconMap[item.category.icon as IconName] && (
-                      React.createElement(IconMap[item.category.icon as IconName], { size: 16 })
+                  <div
+                    className={clsx(
+                      'flex items-center gap-2 px-3 py-1 rounded-full text-white',
+                      item.category.type === 'INCOME' ? 'bg-[#22C55E]' : 'bg-[#EF4444]'
                     )}
-                    <span className="text-xs font-semibold">{item.category.name}</span>
+                  >
+                    {IconMap[item.category.icon as IconName] &&
+                      React.createElement(
+                        IconMap[item.category.icon as IconName],
+                        { size: 16 }
+                      )}
+                    <span className="text-xs font-semibold">
+                      {item.category.name}
+                    </span>
                   </div>
                 </td>
                 <td className="text-gray-600">
@@ -89,7 +139,14 @@ export function TransactionTable({
                     timeZone: 'UTC',
                   }).format(new Date(item.date))}
                 </td>
-                <td className={clsx('font-medium', item.category.type === 'INCOME' ? 'text-[#22C55E]' : 'text-[#EF4444]')}>
+                <td
+                  className={clsx(
+                    'font-medium',
+                    item.category.type === 'INCOME'
+                      ? 'text-[#22C55E]'
+                      : 'text-[#EF4444]'
+                  )}
+                >
                   {item.category.type === 'INCOME'
                     ? `R$ ${item.value.toFixed(2)}`
                     : `- R$ ${item.value.toFixed(2)}`}

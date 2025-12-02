@@ -117,7 +117,6 @@ export default function CheckoutStepper({
     }
   }, [revalidate, fetchAccount]);
 
-  // pré-preenche dados se usuário já está logado
   useEffect(() => {
     if (!user) return;
 
@@ -395,13 +394,13 @@ export default function CheckoutStepper({
                   />
                   <label htmlFor="acceptTerms" className="text-sm">
                     Li e aceito os{" "}
-                    <a href="/termos" className="text-primary underline">
+                    <Link href="/termos" className="text-primary underline">
                       termos
-                    </a>{" "}
+                    </Link>{" "}
                     e{" "}
-                    <a href="/privacidade" className="text-primary underline">
+                    <Link href="/privacidade" className="text-primary underline">
                       privacidade
-                    </a>
+                    </Link>
                     .
                   </label>
                 </div>
@@ -418,7 +417,7 @@ export default function CheckoutStepper({
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="md:col-span-2">
                     <CheckoutCreditCard
-                      name={form.cardName || form.name}
+                      name={form.cardName}
                       number={form.cardNumber}
                       expiry={form.expiry}
                       className="mb-4"

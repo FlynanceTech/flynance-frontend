@@ -12,7 +12,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Flynance Cadastro",
   description: "Simplifique sua vida financeira com a Flynance. Controle seus gastos, acompanhe seu saldo e receba insights inteligentes para alcançar seus objetivos financeiros.",
-  icons: "/src/app/favicon.ico"
+  icons: "../favicon.ico"
 };
 
 export default function RootLayout({

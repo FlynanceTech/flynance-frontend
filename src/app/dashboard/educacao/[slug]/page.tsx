@@ -319,10 +319,10 @@ export default function Page() {
                       </span>
                     </div>
                     <Button asChild variant="outline" size="sm" className="flex items-center gap-2">
-                      <a href={f.link} download>
+                      <Link href={f.link} download>
                         <Clock className="h-4 w-4" />
                         Baixar
-                      </a>
+                      </Link>
                     </Button>
                   </div>
                 ))}
