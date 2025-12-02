@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import {  Ubuntu_Mono } from "next/font/google";
+import {  Ubuntu } from "next/font/google";
 import "../globals.css";
 import TrackingScripts from "@/components/TrackingScripts"; // <-- importa seu novo componente
 import { Providers } from "@/providers/Providers";
 
-const ubuntu = Ubuntu_Mono({
-  variable: "--font-ubuntu",
+const ubuntu = Ubuntu({
   subsets: ["latin"],
-  weight: "400"
+  weight: "400",
+  variable: "--font-ubuntu",
 });
 
 export const metadata: Metadata = {
@@ -22,8 +22,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR">
-      <body className={`${ubuntu.variable}`}>
+    <html lang="pt-BR" className={ubuntu.variable}>
+      <body >
         <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MR4HDQL9"
         height="0" width="0"  style={{ display: 'none', visibility: 'hidden' }}></iframe></noscript>
         <TrackingScripts />

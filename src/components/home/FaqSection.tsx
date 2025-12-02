@@ -1,6 +1,7 @@
 import React from "react";
 import FaqItem from "./FaqItem";
 import { scrollToSection } from "@/utils/scroll-smooth";
+import Link from "next/link";
 
 const faqData = [
   {
@@ -34,7 +35,7 @@ const FaqSection = () => {
   return (
     <section
       id="faq"
-      className="max-w-full w-full md:w-[1280px] z-10 mt-10 xl:-mt-44 px-8 xl:px-0 flex flex-col gap-8"
+      className="max-w-full w-full md:w-[1280px] mt-16 px-8 xl:px-0 flex flex-col gap-8"
     >
       <h2 className="text-3xl md:text-4xl font-bold text-gray-700 text-center md:text-left">
         Perguntas Frequentes
@@ -50,7 +51,7 @@ const FaqSection = () => {
         ))}
       </div>
       <div className="w-full flex justify-center items-center">
-        <a href="#pricing"  onClick={(e) => scrollToSection(e, "pricing")} className="w-3xs flex items-center justify-center py-3 px-8 text-white bg-gradient-to-r from-secondary via-[#3B82F5] to-secondary bg-[length:200%_200%] animate-gradient rounded-full">Começar agora</a>
+        <Link href="#pricing"  onClick={(e) => scrollToSection(e, "pricing")} className="w-3xs flex items-center justify-center py-3 px-8 text-white bg-primary hover:bg-secondary animate-gradient rounded-full">Começar agora</Link>
       </div>
     </section>
   );

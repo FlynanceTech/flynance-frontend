@@ -2,8 +2,6 @@
 "use client";
 
 import React from "react";
-import Image from "next/image";
-import background from "../../../assets/background-plan.svg";
 
 import { usePlans } from "@/hooks/query/usePlan";
 import { PlanCard, UiPlan } from "../planos/plancard";
@@ -18,19 +16,10 @@ export default function PricingSection() {
   return (
     <section
       id="pricing"
-      className="flex relative flex-col items-center self-stretch px-8 xl:px-0 pt-16 mt-16 w-full min-h-[1010px] max-md:mt-10 max-md:max-w-full"
+      className="bg-white w-full px-4 md:p-16"
     >
-      {/* BG */}
-      <Image
-        src={background}
-        alt="Background"
-        width={1920}
-        height={1010}
-        className="object-cover absolute inset-0 size-full"
-      />
-
-      <div className="flex relative z-10 flex-col w-full md:max-w-[1280px] gap-8 items-center justify-center">
-        <h2 className="text-2xl md:text-3xl font-bold text-white text-center px-4">
+      <div className="flex flex-col w-full gap-8 items-center justify-center">
+        <h2 className="text-2xl md:text-3xl font-bold text-primary  text-center px-4">
           Escolha seu plano e comece a economizar
         </h2>
 

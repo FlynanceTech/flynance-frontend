@@ -1,94 +1,75 @@
 import React from "react";
-import FeatureItem from "./FeatureItem";
-import ChartIcon from "../../../assets/icons/chart-icon.svg"
-import MoneyBag from "../../../assets/icons/money-bag-icon.svg"
-import Goals from "../../../assets/icons/goals-fill-icon.svg"
-import Books from "../../../assets/icons/books-icon.svg"
-import Idea from "../../../assets/icons/idea-icon.svg"
-import GameController from "../../../assets/icons/game-controller-icon.svg"
-import Image from "next/image";
-import Link from "next/link";
-import { scrollToSection } from "@/utils/scroll-smooth";
+import { Calculator, TrendingUp, Target, BookOpen, MessageCircle, BarChart3 } from "lucide-react";
+
+const features = [
+  {
+    icon: Calculator,
+    title: "Controle de Gastos",
+    description: "Acompanhe onde seu dinheiro está indo com gráficos detalhados de categorias de despesas.",
+  },
+  {
+    icon: TrendingUp,
+    title: "Monitoramento de Receitas",
+    description: "Veja todas as suas fontes de renda organizadas em um só lugar.",
+  },
+  {
+    icon: Target,
+    title: "Progresso das Metas",
+    description: "Crie metas financeiras e acompanhe seu avanço com gráficos intuitivos.",
+  },
+  {
+    icon: BookOpen,
+    title: "Trilhas Personalizadas",
+    description: "Aprenda sobre finanças com conteúdos adaptados ao seu perfil e objetivos.",
+  },
+  {
+    icon: MessageCircle,
+    title: "IA no WhatsApp",
+    description: "Envie mensagens de voz ou texto. A Fly entende e organiza tudo para você.",
+  },
+  {
+    icon: BarChart3,
+    title: "Relatórios Inteligentes",
+    description: "Receba insights automáticos sobre seus hábitos financeiros.",
+  },
+];
 
 const FeaturesSection = () => {
   return (
-    <section
+     <section 
       id="features"
-      className="flex flex-col md:flex-row flex-wrap gap-8 items-center justify-center max-w-full w-full md:w-[1280px] px-8"
-    >
-      {/* Título - Mobile: Primeiro (order-1) | Desktop: Natural */}
-      <h2 className="text-lg md:text-xl font-semibold leading-7 text-center text-gray-700 w-full md:w-[687px] px-4 order-1 md:order-none">
-        Tudo o que você precisa para organizar suas finanças, aprender e crescer
-        financeiramente, em um único lugar.
-      </h2>
-      <div className="flex md:flex-row flex-col gap-8 items-center justify-center order-2 md:order-none">
-        {/* Primeira coluna - Mobile: Primeiro (order-1) | Desktop: Natural */}
-        <div className="w-full md:self-stretch md:my-auto md:min-w-60 md:w-[359px] order-1 md:order-none">
-          <div className="flex flex-col gap-4">
-            <FeatureItem
-              icon={ChartIcon}
-              title="Controle de Gastos"
-              description="Acompanhe onde seu dinheiro está indo com gráficos detalhados de categorias de despesas. Identifique oportunidades de economia e melhore sua gestão financeira."
-              iconSize="large"
-            />
-            <FeatureItem
-              icon={MoneyBag}
-              title="Monitoramento de Receitas"
-              description="Veja todas as suas fontes de renda organizadas em um só lugar. Entenda seus ganhos ao longo do tempo e planeje melhor seus próximos passos financeiros."
-              iconSize="large"
-            />
-            <FeatureItem
-              icon={Goals}
-              title="Progresso das Metas"
-              description="Crie metas financeiras e acompanhe seu avanço com gráficos intuitivos. Saiba exatamente quanto falta para atingir seus objetivos e mantenha sua motivação."
-              iconSize="large"
-            />
-          </div>
+      className="py-4 md:py-16 bg-gradient-to-t from-secondary to-primary w-full text-white">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-12 md:mb-16">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            Tudo o que você precisa para organizar suas finanças
+          </h2>
+          <p className="text-lg max-w-2xl mx-auto">
+            Aprenda e cresça financeiramente, em um único lugar
+          </p>
         </div>
-        {/* Imagem - Mobile: Depois do conteúdo (order-2) | Desktop: Natural */}
-        <div className="w-full md:w-auto flex flex-col justify-center items-center gap-4 my-8 md:my-0 order-2 md:order-none">
-          <Image
-            src="https://cdn.builder.io/api/v1/image/assets/TEMP/e3f7306ee105cc810f3c1d63db433d637bedc9a8?apiKey=30d4c2b32552471b89a9a20881bec729"
-            alt="Dashboard preview"
-            width={488}
-            height={320}
-            className="object-contain rounded-none aspect-[1.34] w-full max-w-[488px] md:min-w-60 md:w-[488px]"
-          />
-          <Link href="#pricing"  onClick={(e) => scrollToSection(e, "pricing")} 
-        className="w-3xs flex items-center justify-center py-3 px-8 text-white bg-gradient-to-r 
-        from-secondary via-[#3B82F5] to-secondary 
-        bg-[length:200%_200%] animate-gradient rounded-full">
-            Falar com a Fly
-        </Link>
-        </div>   
-        {/* Terceira coluna - Mobile: Primeiro (order-1) | Desktop: Natural */}
-        <div className="w-full md:self-stretch md:my-auto md:min-w-60 md:w-[383px] order-3 md:order-none">
-          <div className="flex flex-col gap-8">
-            <FeatureItem
-              icon={Books}
-              title="Trilhas Personalizadas"
-              description="Aprenda no seu ritmo com conteúdos adaptados ao seu nível de conhecimento. Escolha entre temas como orçamento, planejamento financeiro e muito mais."
-              iconSize="small"
-            />
-            <FeatureItem
-              icon={GameController}
-              title="Gamificação e Recompensas"
-              description="Ganhe pontos e desbloqueie conquistas enquanto aprende. Transforme a educação financeira em um jogo motivador e envolvente."
-              iconSize="medium"
-            />
-            <FeatureItem
-              icon={Idea}
-              title="Dicas e Boas Práticas"
-              description="Receba dicas práticas e orientações personalizadas para aplicar no seu dia a dia."
-              iconSize="medium"
-            />
-          </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+          {features.map((feature, index) => {
+            const Icon = feature.icon;
+            return (
+              <div 
+                key={index} 
+                className="bg-card border border-primary rounded-2xl p-6 hover:shadow-lg transition-all duration-300 hover:border-primary/30 group"
+              >
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
+                  <Icon className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="text-xl font-bold text-foreground mb-2">{feature.title}</h3>
+                <p className="text-muted-foreground">{feature.description}</p>
+              </div>
+            );
+          })}
         </div>
       </div>
-
-      
     </section>
   );
+
 };
 
 export default FeaturesSection;

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import {  Ubuntu } from "next/font/google";
 import "./globals.css";
 import TrackingScripts from "@/components/TrackingScripts";
 import PWARegister from "@/components/PWARegister";
@@ -8,10 +8,13 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 import PWAInstallListener from "@/components/PWAInstallListener";
 import { Providers } from "@/providers/Providers";
 
-const inter = Inter({
-  variable: "--font-inter",
+
+const ubuntu = Ubuntu({
   subsets: ["latin"],
+  weight: "400",
+  variable: "--font-ubuntu",
 });
+
 
 export const metadata: Metadata = {
   title: "Flynance",
@@ -28,8 +31,8 @@ export default function RootLayout({
 }>) {
 
   return (
-    <html lang="pt-BR" suppressHydrationWarning>
-      <body className={inter.variable}>
+    <html lang="pt-BR" className={`${ubuntu.variable}`}>
+      <body >
         <noscript>
           <iframe
             src="https://www.googletagmanager.com/ns.html?id=GTM-MR4HDQL9"

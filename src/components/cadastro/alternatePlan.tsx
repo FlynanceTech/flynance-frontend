@@ -59,7 +59,7 @@ export default function AlternatePlanModal({
                       onSelectPlan(plans[0].slug)
                       onClose()
                     }}
-                    className="border border-gray-300 hover:border-primary hover:bg-green-50 rounded-lg p-4 text-left transition-colors"
+                    className="border border-gray-300 hover:border-primary hover:bg-secondary/20 rounded-lg p-4 text-left transition-colors"
                   >
                     <div className="font-medium text-gray-800">Flynance {[plans[0].label]}</div>
                     <div className="text-sm text-gray-600">R$ 19,90 por mês</div>
@@ -70,7 +70,7 @@ export default function AlternatePlanModal({
                       onSelectPlan(plans[1].slug)
                       onClose()
                     }}
-                    className="border border-gray-300 hover:border-primary hover:bg-green-50 rounded-lg p-4 text-left transition-colors"
+                    className="border border-gray-300 hover:border-primary hover:bg-secondary/20 rounded-lg p-4 text-left transition-colors"
                   >
                     <div className="font-medium text-gray-800">Flynance {[plans[1].label]}</div>
                     <div className="text-sm text-gray-600">12x de R$ 17,91 (R$ 214,92/ano)</div>

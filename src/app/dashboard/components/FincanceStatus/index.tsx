@@ -65,7 +65,7 @@ export default function FinanceStatus({
                 key={label}
                 className={({ selected }) =>
                   `px-4 py-2 text-sm font-medium rounded-full whitespace-nowrap outline-none ${
-                    selected ? 'bg-green-100 text-primary' : 'bg-gray-100 text-gray-600'
+                    selected ? 'bg-secondary/30 text-primary' : 'bg-gray-100 text-gray-600'
                   }`
                 }
               >

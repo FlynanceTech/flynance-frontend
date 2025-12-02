@@ -57,14 +57,14 @@ export function PlanCard({ plan, revalidateSubscription = false }: Props) {
 
   return (
       <div
-        className={clsx("flex flex-col relative hover:scale-105 transition-all", isDiscount ?  '' : '' )}
+        className={clsx("flex flex-col hover:scale-105 transition-all", isDiscount ?  '' : '' )}
       >
       <div className={clsx(
         "  flex flex-col rounded-xl overflow-hidden w-full  h-full  mx-auto shadow-2xl",
         isDiscount ? "bg-gradient-to-t from-white to-white shadow-2xl" : " bg-primary shadow-2xl",
       )}>
         <div className={clsx(" h-full p-8 flex flex-col gap-8", 
-          isDiscount ? "bg-black" : "bg-white"
+          isDiscount ? "bg-primary" : "bg-white"
         )}>
 
           {/* Badge flutuando no topo */}
@@ -163,7 +163,7 @@ export function PlanCard({ plan, revalidateSubscription = false }: Props) {
               className={clsx(
                 "block text-center py-3 text-sm md:text-xl font-semibold  rounded-full",
                 isDiscount ? 
-                  "bg-primary text-white shadow-2xl" : "bg-primary text-white shadow-2xl",
+                  "bg-white text-primary shadow-2xl" : "bg-primary text-white shadow-2xl",
               )
             }
           >

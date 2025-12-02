@@ -1,7 +1,6 @@
 "use client";
-import Image from "next/image";
+import { X } from "lucide-react";
 import React, { useState, useId, useEffect } from "react";
-import plusIcon from '../../../assets/icons/plus-icon.png'
 
 interface FaqItemProps {
   question: string;
@@ -66,18 +65,12 @@ const FaqItem: React.FC<FaqItemProps> = ({ question, answer, index = 0 }) => {
         aria-controls={contentId}
         id={headingId}
       >
-        <Image
-          src={
-            isExpanded
-              ? plusIcon
-              : plusIcon
-          }
-          alt=""
-          aria-hidden="true"
-          width={35}
-          height={35}
-          className={`object-contain shrink-0 aspect-[1.02] w-[35px] md:w-[49px] transition-transform duration-300 ${isExpanded ? "rotate-45" : ""}`}
-        />
+        <span
+          className={`object-contain shrink-0 aspect-[1.02] w-[35px] md:w-[49px] transition-transform duration-300 ${isExpanded ? "rotate-90" : "rotate-45"}`}
+        >
+          <X className="w-full h-full text-primary" />
+        </span>
+
         <h3 className="flex-auto my-auto w-full md:w-[1145px]">{question}</h3>
       </button>
 

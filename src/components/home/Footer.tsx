@@ -2,7 +2,7 @@ import Image from "next/image";
 import React from "react";
 import instagram from "../../../assets/icons/instagram-fill-icon.png"
 import tiktop from "../../../assets/icons/tiktok-icon.png"
-import youtube from "../../../assets/icons/youtube-fill-icon.png"
+import logo from "../../../assets/Logo/PNG/Logo Fly variação 02 colorida.png"
 
 const Footer = () => {
   return (
@@ -12,7 +12,7 @@ const Footer = () => {
     >
       <div className="flex flex-col items-center  w-full md:grow md:shrink text-base text-gray-700 md:min-w-60 md:w-[230px] mb-8 md:mb-0">
         <Image
-          src="https://cdn.builder.io/api/v1/image/assets/TEMP/a910078cae17c571538460f2c5bc9bc207aa2474?placeholderIfAbsent=true&apiKey=30d4c2b32552471b89a9a20881bec729"
+          src={logo}
           alt="Flynance Logo"
           width={216}
           height={124}
@@ -38,15 +38,7 @@ const Footer = () => {
                 height={24}
               />
             </a>
-            <a href="https://www.youtube.com/@Flynanceapp" aria-label="Instagram" target="_blank">
-              <Image
-                src={youtube}
-                alt="youtube"
-                className="object-contain shrink-0 self-stretch my-auto w-6 aspect-square"
-                width={24}
-                height={24}
-              />
-            </a>
+          
           </div>
       </div>
 

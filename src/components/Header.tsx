@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import logo from '../../assets/Logo/PNG/Logo Fly principal colorida.png'
 import React, { useState, useEffect, useRef } from "react";
+import { LogIn } from "lucide-react";
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -85,8 +86,8 @@ const Header = () => {
   };
 
   const links = [
-    { href: "#hero", label: "Início" },
-    { href: "#features", label: "Funcionalidade" },
+    { href: "#features", label: "Funcionalidades" },
+    { href: "#use", label: "Como Funciona" },
     { href: "#pricing", label: "Planos" },
     { href: "#faq", label: "FAQ" }
   ]
@@ -103,13 +104,13 @@ const Header = () => {
             <Image
               src={logo}
               alt="Flynance Logo"
-              width={88}
-              height={50}
-              className="object-contain shrink-0 aspect-[1.76] w-[120px]"
+              width={138}
+              height={30}
+              className="object-contain shrink-0 aspect-[1.76] w-[138px] h-[30px]"
             />
           </Link>
 
-          <div className="hidden md:flex flex-wrap gap-8 items-center self-start">
+          <div className="hidden md:flex flex-wrap gap-8 items-center">
             {links.map(({ href, label }) => (
               <Link
                 key={href}
@@ -122,11 +123,21 @@ const Header = () => {
                 {label}
               </Link>
             ))}
+          </div>
+          
+          <div className="lg:flex gap-4 hidden ">
             <Link
               href="/login"
-              className="px-6 py-2 font-bold text-white bg-blue-400 rounded-lg hover:bg-blue-500 transition"
+              className="px-6 py-2 font-bold flex items-center gap-2 text-white bg-primary rounded-lg hover:bg-secondary transition"
             >
+              <LogIn size={20} />
               Login
+            </Link>
+            <Link
+              href="#pricing"
+              className="px-6 py-2 font-bold flex items-center gap-2 text-primary border border-primary rounded-lg hover:bg-secondary hover:text-white transition-all hover:border-secondary"
+            >
+              Começar Agora
             </Link>
           </div>
 
@@ -136,7 +147,7 @@ const Header = () => {
               onClick={toggleMobileMenu}
               aria-expanded={isMobileMenuOpen}
               aria-label="Toggle menu"
-              className="p-2 focus:outline-none focus:ring-2 focus:ring-blue-400 rounded-md"
+              className="p-2 focus:outline-none focus:ring-2 focus:ring-primary rounded-md"
             >
               <div className="relative w-6 h-5">
                 <span
@@ -224,7 +235,11 @@ const Header = () => {
           </nav>
 
           <div className="w-full">
-            <Link href="/login" className="w-full h-full py-3 px-8 font-bold text-white bg-blue-400 rounded-lg hover:bg-blue-500 transition-colors">
+            <Link
+              href="/login"
+              className="px-6 py-2 font-bold flex items-center justify-center gap-2 text-white bg-primary rounded-lg hover:bg-secondary transition"
+            >
+              <LogIn size={20} />
               Login
             </Link>
           </div>

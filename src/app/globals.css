@@ -84,19 +84,11 @@
 
 
 @layer base {
-html {
-  scroll-behavior: smooth;
-  font-family: 'Ubuntu', sans-serif;
-  transition: background-color 0.3s, color 0.3s;
-}
-
-/* body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-inter), sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-} */
+  html {
+    scroll-behavior: smooth;
+    font-family: var(--font-ubuntu), system-ui, sans-serif;
+    transition: background-color 0.3s, color 0.3s;
+  }
 
   body {
     background-color: hsl(var(--background));
@@ -105,12 +97,12 @@ html {
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* apenas mapeia cores globais; sem @apply para não quebrar */
   * {
     border-color: hsl(var(--border));
     outline-color: hsl(var(--ring) / 0.5);
   }
 }
+
 
 /* @theme inline {
   --color-background: var(--background);

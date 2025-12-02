@@ -83,7 +83,7 @@ export default function Header({ title, subtitle, asFilter = false, dataToFilter
         </div>
         <button
           onClick={() => setDrawerOpen(true)}
-          className="fixed bottom-20 right-4 bg-green-100 text-black rounded-full w-12 h-12 flex items-center justify-center text-2xl shadow-lg z-40 sm:hidden"
+          className="fixed bottom-20 right-4 bg-secondary/30 text-black rounded-full w-12 h-12 flex items-center justify-center text-2xl shadow-lg z-40 sm:hidden"
         >
           <Plus />
         </button>
