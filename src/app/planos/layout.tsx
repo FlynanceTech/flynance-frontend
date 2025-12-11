@@ -1,14 +1,8 @@
 import type { Metadata } from "next";
-import {  Ubuntu } from "next/font/google";
 import "../globals.css";
 import TrackingScripts from "@/components/TrackingScripts"; // <-- importa seu novo componente
 import { Providers } from "@/providers/Providers";
 
-const ubuntu = Ubuntu({
-  subsets: ["latin"],
-  weight: "400",
-  variable: "--font-ubuntu",
-});
 
 export const metadata: Metadata = {
   title: "Flynance Cadastro",
@@ -22,15 +16,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={ubuntu.variable}>
-      <body >
-        <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MR4HDQL9"
-        height="0" width="0"  style={{ display: 'none', visibility: 'hidden' }}></iframe></noscript>
-        <TrackingScripts />
-        <Providers>
-            {children}
-        </Providers>
-      </body>
-    </html>
+    <div>
+      <TrackingScripts />
+      <Providers>
+          {children}
+      </Providers>
+    </div>
   );
 }

@@ -33,6 +33,15 @@ interface FormDTO {
   email: string;
   phone: string;
   cpf: string;
+
+  postalCode: string;
+  address: string;
+  addressNumber: string;
+  addressComplement: string;
+  district: string;
+  city: string;
+  state: string;
+
   cardNumber: string;
   cardName: string;
   expiry: string;
@@ -44,6 +53,13 @@ const initialForm: FormDTO = {
   email: "",
   phone: "",
   cpf: "",
+  postalCode: "",
+  address: "",
+  addressNumber: "",
+  addressComplement: "",
+  district: "",
+  city: "",
+  state: "",
   cardNumber: "",
   cardName: "",
   expiry: "",
@@ -117,21 +133,33 @@ export default function CheckoutStepper({
     }
   }, [revalidate, fetchAccount]);
 
-  useEffect(() => {
-    if (!user) return;
+ useEffect(() => {
+  if (!user) return;
 
-    const sessionUser = user.userData.user;
+  const sessionUser = user.userData.user;
 
-    setForm((prev) => ({
-      ...prev,
-      name: sessionUser.name ?? prev.name,
-      email: sessionUser.email ?? prev.email,
-      phone: sessionUser.phone ?? prev.phone,
-      cardName: prev.cardName || sessionUser.name || "",
-    }));
-    setUserFly(sessionUser);
-    setLeadCreated(true); // já temos um user real, não precisamos criar lead
-  }, [user]);
+  setForm((prev) => ({
+    ...prev,
+    name: sessionUser.name ?? prev.name,
+    email: sessionUser.email ?? prev.email,
+    phone: sessionUser.phone ?? prev.phone,
+    cardName: prev.cardName || "",
+
+    // 👇 novos campos de perfil
+    cpf: sessionUser.cpfCnpj ?? prev.cpf,
+    postalCode: sessionUser.postalCode ?? prev.postalCode,
+    address: sessionUser.address ?? prev.address,
+    addressNumber: sessionUser.addressNumber ?? prev.addressNumber,
+    addressComplement:
+      sessionUser.addressComplement ?? prev.addressComplement,
+    district: sessionUser.district ?? prev.district,
+    city: sessionUser.city ?? prev.city,
+    state: sessionUser.state ?? prev.state,
+  }));
+
+  setUserFly(sessionUser);
+  setLeadCreated(true); // já temos um user real, não precisamos criar lead
+}, [user]);
 
   const isAnnual = plan.slug?.toLowerCase().includes("anual");
   const price = (plan.priceCents / 100).toFixed(2);
@@ -382,6 +410,73 @@ export default function CheckoutStepper({
                     onChange={handleChange}
                     disabled={loading}
                   />
+                {/*   <CleaveInput
+                    name="postalCode"
+                    placeholder="CEP"
+                    options={{
+                      delimiters: ["-"],
+                      blocks: [5, 3],
+                      numericOnly: true,
+                    }}
+                    value={form.postalCode}
+                    className={inputClasses}
+                    onChange={handleChange}
+                    disabled={loading}
+                  />
+
+                  <input
+                    name="address"
+                    placeholder="Endereço"
+                    value={form.address}
+                    onChange={handleChange}
+                    className={inputClasses}
+                    disabled={loading}
+                  />
+
+                  <input
+                    name="addressNumber"
+                    placeholder="Número"
+                    value={form.addressNumber}
+                    onChange={handleChange}
+                    className={inputClasses}
+                    disabled={loading}
+                  />
+
+                  <input
+                    name="addressComplement"
+                    placeholder="Complemento (opcional)"
+                    value={form.addressComplement}
+                    onChange={handleChange}
+                    className={inputClasses}
+                    disabled={loading}
+                  />
+
+                  <input
+                    name="district"
+                    placeholder="Bairro"
+                    value={form.district}
+                    onChange={handleChange}
+                    className={inputClasses}
+                    disabled={loading}
+                  />
+
+                  <input
+                    name="city"
+                    placeholder="Cidade"
+                    value={form.city}
+                    onChange={handleChange}
+                    className={inputClasses}
+                    disabled={loading}
+                  />
+
+                  <input
+                    name="state"
+                    placeholder="Estado (UF)"
+                    value={form.state}
+                    onChange={handleChange}
+                    className={inputClasses}
+                    disabled={loading}
+                  /> */}
                 </div>
                 <div className="flex items-start gap-2 mt-2">
                   <input

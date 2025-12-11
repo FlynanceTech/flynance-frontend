@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import "../globals.css";
 import TrackingScripts from "@/components/TrackingScripts"; // <-- importa seu novo componente
 import { Providers } from "@/providers/Providers";
+import FeedbackWidget from "@/components/widgets/feedback";
+
 
 export const metadata: Metadata = {
-  title: "Flynance Cadastro",
+  title: "Flynance reativação de assinatura",
   description: "Simplifique sua vida financeira com a Flynance. Controle seus gastos, acompanhe seu saldo e receba insights inteligentes para alcançar seus objetivos financeiros.",
   icons: "../favicon.ico"
 };
@@ -16,10 +18,11 @@ export default function RootLayout({
 }>) {
   return (
     <div>
-        <TrackingScripts />
-        <Providers>
-            {children}
-        </Providers>
+      <TrackingScripts />
+      <Providers>
+          {children}
+      </Providers>
+      <FeedbackWidget />
     </div>
   );
 }

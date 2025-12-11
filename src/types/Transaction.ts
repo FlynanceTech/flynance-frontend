@@ -1,3 +1,4 @@
+import { Plan } from "@/app/planos/plans"
 import { PaymentType } from "@/services/transactions"
 import { IconName } from "@/utils/icon-map"
 
@@ -35,15 +36,59 @@ export interface User {
   role: string
   signatureId: string
   cpfCnpj: string
+  postalCode: string;
+  address: string;
+  addressNumber: string;
+  addressComplement: string;
+  district: string;
+  city: string;
+  state: string;
 }
+
+export type SignatureStatus =
+  | "PENDING"
+  | "ACTIVE"
+  | "OVERDUE"
+  | "CANCELLED"
+  | "EXPIRED"
+
+export type SignatureBillingType = "CREDIT_CARD" | "BOLETO" | "PIX"
+export type SignatureCycle = "MONTHLY" | "YEARLY"
 
 export interface Signature {
   id: string
-  status: string
+  userId: string
+  planId: string
+
+  asaasSubscriptionId: string
+  asaasCustomerId: string
+
+  startDate: string
+  endDate: string | null
+  nextDueDate: string | null
+
+  active: boolean
+  status: SignatureStatus
+
+  billingType: SignatureBillingType
+  cycle: SignatureCycle
+
+  value: number
+  description: string
+  externalReference: string
+
+  createdAt: string
+  updatedAt: string
+
+  plan: Plan
+
+  user: User
 }
+
 export interface SessionResponse {
   userData: {
     user: User,
-    signature: Signature
+    signature: Signature,
+    hasActiveSignature: boolean
   }
 }

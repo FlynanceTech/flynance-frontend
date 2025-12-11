@@ -83,7 +83,24 @@ export async function deleteCustomer(id: string): Promise<{ ok: true }> {
   }
 }
 
-// POST /payment/client
+export async function cancelSignature(id: string): Promise<{ ok: true }> {
+  try {
+    await api.delete(`/signature/${id}`);
+    return { ok: true };
+  } catch (err) {
+    throw asApiError(err, "Erro ao excluir cliente");
+  }
+}
+
+export async function reactivateSignature(id: string): Promise<{ ok: true }> {
+  try {
+    await api.post(`/signature/${id}/reactivate`);
+    return { ok: true };
+  } catch (err) {
+    throw asApiError(err, "Erro ao reativar assinatura");
+  }
+}
+
 export async function createCustomer(
   data: ClientData
 ): Promise<CreateCustomerResponse> {

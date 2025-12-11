@@ -68,7 +68,8 @@ const UserInfoCard = () => {
           signature: {
             id: user.userData.signature.id,
             status: user.userData.signature.status,
-          }
+          },
+          hasActiveSignature: user.userData.hasActiveSignature,
         },
       });
 

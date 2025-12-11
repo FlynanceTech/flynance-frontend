@@ -2,12 +2,12 @@ import axios from 'axios'
 
 const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5555/api'
 
-export async function sendLoginCode(data: { email: string }) {
+export async function sendLoginCode(data: { email?: string, whatsappPhone?: string }) {
   const res = await axios.post(`${baseURL}/auth/send-code`, data)
   return res.data
 }
 
-export async function verifyCode(data: { email: string; code: string }) {
+export async function verifyCode(data: { email?: string, whatsappPhone?: string; code: string }) {
   const res = await axios.post(`${baseURL}/auth/verify-code`, data) 
 
   const token = res.data.user.token
