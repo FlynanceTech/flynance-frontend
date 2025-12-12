@@ -53,7 +53,7 @@ export function PlanCard({ plan, revalidateSubscription = false }: Props) {
   }
   const { intPart, decPart } = splitPrice(price);
 
-  const pathRedirect = revalidateSubscription ?  `/cadastro/checkout?plano=${slug}&revalidate=${revalidateSubscription}` : `/cadastro/checkout?plano=${slug}`
+  const pathRedirect = revalidateSubscription ?  `/reativacao?plano=${slug}&revalidate=${revalidateSubscription}` : `/reativacao?plano=${slug}`
 
   return (
       <div
@@ -67,7 +67,6 @@ export function PlanCard({ plan, revalidateSubscription = false }: Props) {
           isDiscount ? "bg-primary" : "bg-white"
         )}>
 
-          {/* Badge flutuando no topo */}
           {badge && (
             <div
               className={clsx(
@@ -80,9 +79,8 @@ export function PlanCard({ plan, revalidateSubscription = false }: Props) {
             </div>
           )}
 
-          {/* Corpo do card */}
           <div className="flex flex-col gap-4 text-center">
-            {/* Título / tipo de plano */}
+ 
            <div className={clsx("flex  items-center", previousPrice ? " justify-between" : " justify-center")}>
 
               {previousPrice && (
@@ -96,8 +94,6 @@ export function PlanCard({ plan, revalidateSubscription = false }: Props) {
                 {title.toUpperCase()}
               </h2>
             </div> 
-
-            {/* Preço */}
             <div className="space-y-1">
 
               <div className="flex items-end justify-center gap-1">
@@ -138,9 +134,6 @@ export function PlanCard({ plan, revalidateSubscription = false }: Props) {
               </div>
             </div>
             
-      
-
-            {/* Benefícios */}
             <div className="text-left">
               <p 
                 className={ clsx("text-lg font-semibold tracking-wide mb-4", isDiscount ? "text-slate-50" : "text-slate-700")}>
