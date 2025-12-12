@@ -4,7 +4,7 @@ import Image from "next/image";
 import { Undo2, CreditCard, Check } from "lucide-react";
 import clsx from "clsx";
 import logo from "../../../assets/fly-logo.png";
-import { CHECKOUT_STEPS } from "./checkoutSteps";
+import { CHECKOUT_REVALIDATE_STEPS } from "./checkoutSteps";
 import { useRouter } from "next/navigation";
 
 
@@ -16,12 +16,12 @@ export default function ReactivationHeader({ step }: CheckoutHeaderProps) {
   const router = useRouter()
   const clampedStep = Math.min(
     Math.max(step, 0),
-    CHECKOUT_STEPS.length - 1
+    CHECKOUT_REVALIDATE_STEPS.length - 1
   );
 
   const switchIconSteps = (i: number) =>
 
-      i === 1
+      i === 0
         ? <CreditCard size={20} />
         : <Check size={20} />;
 
@@ -41,6 +41,11 @@ export default function ReactivationHeader({ step }: CheckoutHeaderProps) {
             <span className="font-semibold">Voltar</span>
           </button>
         </div>
+        <h1>
+          <span className="text-white text-2xl font-semibold">
+            Reativação de Conta
+          </span>
+        </h1>
         <Image
           src={logo}
           className="object-contain aspect-[1.86] w-[130px]"
@@ -52,7 +57,7 @@ export default function ReactivationHeader({ step }: CheckoutHeaderProps) {
 
       {/* Stepper visual */}
       <div className="max-w-6xl flex p-4 justify-between text-sm bg-secondary w-full rounded-md">
-        {CHECKOUT_STEPS.map((label, i) => (
+        {CHECKOUT_REVALIDATE_STEPS.map((label, i) => (
           <div
             key={i}
             className="flex flex-col items-center gap-1 text-center w-full"

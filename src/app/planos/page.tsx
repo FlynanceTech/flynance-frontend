@@ -27,13 +27,12 @@ type UiPlan = {
 
 export default function PlanosPage() {
   const { data, isLoading, isError } = usePlans();
-  const {user, fetchAccount} = useUserSession()
+  const {fetchAccount} = useUserSession()
   
   useEffect(() => {
     fetchAccount();
   }, [fetchAccount]);
   
-  console.log('user', user)
 
   const uiPlans: UiPlan[] = data ? data.map(mapPlanToUi) : [];
 

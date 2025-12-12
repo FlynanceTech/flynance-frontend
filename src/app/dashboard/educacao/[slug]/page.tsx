@@ -84,7 +84,7 @@ export default function Page() {
   const lessonIdFromUrl = search.get('lesson');
 
   const { data, isLoading, isError, error } = useCourse(courseId);
-  console.log('data', data)
+
   const course = data as Course | undefined;
 
   // rating / comentários (mock)

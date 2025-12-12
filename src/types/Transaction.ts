@@ -43,6 +43,7 @@ export interface User {
   district: string;
   city: string;
   state: string;
+  hasUsedTrial: boolean
 }
 
 export type SignatureStatus =
@@ -92,3 +93,22 @@ export interface SessionResponse {
     hasActiveSignature: boolean
   }
 }
+export interface userResponse {
+  user: User,
+  signature: Signature,
+  hasActiveSignature: boolean
+}
+
+
+
+export interface UserSessionData {
+  user: User
+  signature: Signature
+  hasActiveSignature: boolean
+}
+
+export interface SessionResponse {
+  userData: UserSessionData
+}
+
+export type UserResponse = UserSessionData

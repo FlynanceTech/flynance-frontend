@@ -106,8 +106,8 @@ export default function SignupStepper() {
           email: form.email,
           phone: form.phone,
         }
-        const user = await createMutation.mutateAsync(body)
-        console.log('user', user)
+        await createMutation.mutateAsync(body)
+
     /*     setUser(user) */
         setSuccessMessage('✅ Tudo certo! Agora vamos conferir os planos...')
         setData(body)

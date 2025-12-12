@@ -146,6 +146,8 @@ const SubscriptionCard = () => {
   }
 
   const today = new Date()
+  
+  const hasUsedTrial = !!user?.userData?.user.hasUsedTrial
   const nextDue = computeNextDueDate()
 
   const trialEndDate = (() => {
@@ -157,7 +159,7 @@ const SubscriptionCard = () => {
     return end
   })()
 
-  const isInTrial = !!trialEndDate && trialEndDate >= today
+  const isInTrial = !!trialEndDate && trialEndDate >= today && hasUsedTrial
   const trialEndLabel = trialEndDate?.toLocaleDateString("pt-BR")
 
   const daysUntilRenewal = (() => {
@@ -277,13 +279,13 @@ const SubscriptionCard = () => {
             {/* Linha de cobrança: só mostra para assinatura ativa */}
             {isActive && nextDue && renewalDateLabel && (
               <p className="text-xs text-muted-foreground mt-1">
-                {isInTrial ? "Primeira cobrança em " : "Próxima cobrança em "}
+                {isInTrial && !hasUsedTrial ? "Primeira cobrança em " : "Próxima cobrança em "}
                 {renewalDateLabel}
               </p>
             )}
 
             {/* Mensagem abaixo do título dependendo do estado */}
-            {isActive && isInTrial && trialEndLabel && (
+            {isActive && isInTrial && trialEndLabel && !hasUsedTrial && (
               <p className="text-xs font-medium text-primary mt-1">
                 Você está no período gratuito até {trialEndLabel}. Após essa
                 data, será realizada a primeira cobrança automaticamente.
@@ -305,7 +307,7 @@ const SubscriptionCard = () => {
         </div>
 
         {/* Banner período gratuito (apenas ativa + trial) */}
-        {isActive && isInTrial && nextDue && renewalDateLabel && (
+        {isActive && isInTrial && nextDue && renewalDateLabel && !hasUsedTrial && (
           <div className="flex items-start gap-3 p-4 bg-primary/5 border border-primary/30 rounded-xl">
             <AlertCircle className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
             <div>
@@ -321,7 +323,9 @@ const SubscriptionCard = () => {
         )}
 
         {/* Banner renovação próxima (fora do trial) */}
-        {isNearRenewal && daysUntilRenewal !== null && (
+        {
+        
+        isNearRenewal && daysUntilRenewal !== null && (
           <div className="flex items-start gap-3 p-4 bg-warning/10 border border-warning/20 rounded-xl">
             <AlertCircle className="h-5 w-5 text-warning mt-0.5 flex-shrink-0" />
             <div>

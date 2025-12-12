@@ -26,7 +26,8 @@ import {
 } from "@/app/dashboard/components/CreditCard";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUserSession } from "@/stores/useUserSession";
-import { User } from "@/types/Transaction";
+import { User, UserSessionData } from "@/types/Transaction";
+import { useUsers } from "@/hooks/query/useUsers";
 
 interface FormDTO {
   cardNumber: string;
@@ -73,12 +74,14 @@ const formatCurrency = (value: number) =>
 type CheckoutStepperProps = {
   plan: PlansResponse;
   step: number;
+  userId: string
   onStepChange: (nextStep: number) => void;
 };
 
 export default function CheckoutStepper({
   plan,
   step,
+  userId,
   onStepChange,
 }: CheckoutStepperProps) {
   const router = useRouter();
@@ -93,13 +96,23 @@ export default function CheckoutStepper({
   const { createPaymentMutation } = usePaymentMutations();
   const { user, status, fetchAccount } = useUserSession();
 
+  const { userQuery } = useUsers(userId, !user) // só busca se NÃO tiver sessão
+
+  const effectiveUser: UserSessionData | undefined =
+  user?.userData ?? userQuery.data ?? undefined
+
+  const sessionUser = effectiveUser?.user;
+  const signature =  effectiveUser?.signature ;
+
   useEffect(() => {
     if (status === "idle") {
       fetchAccount();
     }
   }, [status, fetchAccount]);
 
-    useEffect(() => {
+
+
+  useEffect(() => {
     if (revalidate) {
       fetchAccount();
     }
@@ -134,9 +147,8 @@ export default function CheckoutStepper({
         );
       }
 
-      const sessionUser = user?.userData?.user;
-      const signature = user?.userData?.signature;
-
+ 
+      console.log("check sessionUser e signature", sessionUser, signature)
       if (!sessionUser?.id) {
         throw new Error("Não foi possível identificar o usuário logado.");
       }
@@ -218,9 +230,7 @@ export default function CheckoutStepper({
   const talkToFly = `https://wa.me/${phoneFly}?text=${encodeURIComponent(
     msgToFly
   )}`;
-
-  const sessionUser = user?.userData?.user ?? null;
-
+  
   return (
     <div>
       <div className="flex flex-col gap-8">

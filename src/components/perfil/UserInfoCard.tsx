@@ -9,7 +9,6 @@ import { useUsers } from "@/hooks/query/useUsers";
 
 const UserInfoCard = () => {
   const { user, setUser } = useUserSession()
-  console.log('user', user?.userData)
   const {updateMutation} = useUsers()
   const [formData, setFormData] = useState({
     name: user?.userData.user.name || '',

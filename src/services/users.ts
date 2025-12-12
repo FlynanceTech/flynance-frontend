@@ -1,4 +1,5 @@
 // services/user.ts
+import { userResponse } from '@/types/Transaction'
 import { UserDTO, UserResponse } from '@/types/user'
 import axios from 'axios'
 
@@ -9,7 +10,7 @@ export async function getUsers(): Promise<UserDTO[]> {
   return response.data // espera-se que a API retorne um array
 }
 
-export async function getUserById(id: string): Promise<UserDTO> {
+export async function getUserById(id: string): Promise<userResponse> {
   const response = await axios.get(`${baseURL}/user/${id}`)
   return response.data
 }

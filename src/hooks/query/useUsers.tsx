@@ -1,25 +1,26 @@
 // hooks/useUsers.ts
 import { getUsers, getUserById, createUser, updateUser, deleteUser } from '@/services/users'
+import { userResponse } from '@/types/Transaction'
 import { UserDTO } from '@/types/user'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { usePathname } from 'next/navigation'
 
-export function useUsers(id?: string) {
+export function useUsers(userId?: string, fetchSingle = true) {
     const queryClient = useQueryClient()
     const pathname = usePathname()
-    const shouldFetch = pathname.includes('/dashboard')
+    const shouldFetchList = pathname.includes('/dashboard')
 
     const usersQuery = useQuery<UserDTO[], Error>({
         queryKey: ['users'],
         queryFn: getUsers,
-        enabled: shouldFetch
+        enabled: shouldFetchList
     })
 
-    const userQuery = useQuery<UserDTO, Error>({
-        queryKey: ['user', id],
-        queryFn: () => getUserById(id!),
-        enabled: !!id,
-      })
+    const userQuery = useQuery<userResponse, Error>({
+      queryKey: ['user', userId],
+      queryFn: () => getUserById(userId!),
+      enabled: fetchSingle && !!userId, // só busca se tiver id E se você quiser
+    })
 
     const createMutation =  useMutation({
         mutationFn: createUser,

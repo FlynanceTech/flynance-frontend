@@ -1,19 +1,75 @@
 'use client'
-  import React, { useEffect } from "react";
+
+import React, { useEffect } from "react";
 import { CHECKOUT_STEPS } from "@/components/cadastro/checkoutSteps";
 import { usePlanBySlug } from "@/hooks/query/usePlan";
 import { useRouter, useSearchParams } from "next/navigation";
 import CheckoutStepper from "@/components/planos/checkout";
 import ReactivationHeader from "@/components/cadastro/ReactivationHeader";
 
+// --- helpers de decode do token curto ---
+
+// mapa do código -> slug do plano
+const PLAN_SLUG_FROM_CODE: Record<string, string> = {
+  e: "essencial-mensal",
+  a: "essencial-anual",
+  // adicionar outros aqui se criar mais códigos
+}
+
+// converte base64url (sem padding) -> uuid
+function base64UrlToUuid(b64url: string): string {
+  const base64 = b64url.replace(/-/g, "+").replace(/_/g, "/")
+  const pad = base64.length % 4
+  const padded = base64 + (pad ? "=".repeat(4 - pad) : "")
+
+  const binary = atob(padded)
+  let hex = ""
+
+  for (let i = 0; i < binary.length; i++) {
+    hex += binary.charCodeAt(i).toString(16).padStart(2, "0")
+  }
+
+  return (
+    hex.slice(0, 8) + "-" +
+    hex.slice(8, 12) + "-" +
+    hex.slice(12, 16) + "-" +
+    hex.slice(16, 20) + "-" +
+    hex.slice(20)
+  )
+}
 
 export function CheckoutPageClient() {
-  "use client";
-
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const plano = searchParams.get("plano") ?? undefined;
+  // 1) lê token curto
+  const token = searchParams.get("t");
+
+  // 2) também lê formato antigo (fallback)
+  const fallbackPlan = searchParams.get("plano") ?? undefined;
+  const fallbackUserId = searchParams.get("userId") ?? undefined;
+
+  // 3) resolve plano + userId a partir do token ou dos params antigos
+  let plano: string | undefined = fallbackPlan;
+  let userId: string | undefined = fallbackUserId;
+
+  if (token && token.length > 1) {
+    try {
+      const code = token[0];
+      const compact = token.slice(1);
+
+      const slug = PLAN_SLUG_FROM_CODE[code];
+      if (slug) {
+        plano = slug;
+        userId = base64UrlToUuid(compact);
+      } else {
+        console.error("Código de plano inválido no token:", code);
+      }
+    } catch (err) {
+      console.error("Erro ao decodificar token de reativação:", err);
+    }
+  }
+
   const { data, isLoading, error } = usePlanBySlug(plano);
 
   useEffect(() => {
@@ -45,7 +101,8 @@ export function CheckoutPageClient() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-10">
+      <div className="flex items-center justify-center py-10 h-screen flex-1">
+        <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
         <p className="text-sm text-gray-500">Carregando plano...</p>
       </div>
     );
@@ -65,8 +122,7 @@ export function CheckoutPageClient() {
     return (
       <div className="flex items-center justify-center py-10">
         <p className="text-sm text-gray-500">
-          Plano não encontrado. Verifique o link ou volte para a página de
-          planos.
+          Plano não encontrado. Verifique o link ou volte para a página de planos.
         </p>
       </div>
     );
@@ -82,6 +138,7 @@ export function CheckoutPageClient() {
             <CheckoutStepper
               plan={data}
               step={step}
+              userId={userId || ""}
               onStepChange={handleStepChange}
             />
           </section>
