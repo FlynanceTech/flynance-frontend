@@ -25,41 +25,12 @@ type Props = {
   className?: string;
 };
 
-type SessionUser = {
-  id: string;
-  name?: string | null;
-  email?: string | null;
-};
-
-// aceita `user`, `{ user }`, ou `null/undefined` e retorna `SessionUser | null`
-function pickSessionUser(value: unknown): SessionUser | null {
-  const isObj = (v: unknown): v is Record<string, unknown> =>
-    typeof v === 'object' && v !== null;
-
-  // caso 1: value é o próprio usuário
-  if (isObj(value) && typeof value.id === 'string') {
-    return {
-      id: value.id,
-      name: typeof value.name === 'string' ? value.name : null,
-      email: typeof value.email === 'string' ? value.email : null,
-    };
-  }
-
-  // caso 2: value possui nested `.user`
-  if (isObj(value) && isObj(value.user) && typeof value.user.id === 'string') {
-    return {
-      id: value.user.id as string,
-      name: typeof value.user.name === 'string' ? (value.user.name as string) : null,
-      email: typeof value.user.email === 'string' ? (value.user.email as string) : null,
-    };
-  }
-
-  return null;
-}
-
-
 export default function FeedbackWidget({  onSuccess, className }: Props) {
-    const { user } = useUserSession()
+  const { user } = useUserSession()
+
+  // pega o usuário da sessão no formato certo
+  const sessionUser = user?.userData?.user ?? null
+  const hasUser = !!sessionUser
   const [submitting, setSubmitting] = React.useState(false);
   const [status, setStatus] = React.useState<'idle' | 'ok' | 'err'>('idle');
   const [isOpen, setIsOpen] = React.useState(false);
@@ -83,14 +54,18 @@ export default function FeedbackWidget({  onSuccess, className }: Props) {
       setSubmitting(true);
       setStatus('idle');
 
-      const sessionUser = pickSessionUser(user);
+      const sessionUser = user?.userData?.user;
       if (!sessionUser) {
         throw new Error('Sem usuário logado para enviar feedback.');
       }
 
       const payload = {
         ...data,
-        user: sessionUser, // { id, name?, email? }
+        user: {
+          id: sessionUser.id,
+          name: sessionUser.name ?? null,
+          email: sessionUser.email ?? null,
+        },
       };
 
       const res = await fetch('/api/feedback', {
@@ -116,7 +91,7 @@ export default function FeedbackWidget({  onSuccess, className }: Props) {
     }
   };
 
-  const hasUser = Boolean(pickSessionUser(user));
+
 
   const toggleWidget = () => {
     setIsOpen(!isOpen)
@@ -126,13 +101,15 @@ export default function FeedbackWidget({  onSuccess, className }: Props) {
     <div>
         <button 
             onClick={toggleWidget}
+            title='Nos de seu Feedback'
             className='
                 fixed lg:bottom-5 bottom-20
                 left-4 right-auto lg:left-auto lg:right-4
                 h-12 w-12 rounded-full shadow-lg z-50
-                flex items-center justify-center
+                flex items-center justify-center cursor-pointer
                 bg-primary text-primary-foreground
                 hover:bg-primary/90
+                hover:scale-115
                 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40
                 transition'
         >   

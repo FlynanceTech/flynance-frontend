@@ -1,40 +1,98 @@
 'use client'
 import { Mail } from 'lucide-react'
 import Link from 'next/link'
-import React, { useState, useTransition } from 'react'
+import React, { useEffect, useState, useTransition } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import Lottie from 'lottie-react'
 import emailSendingAnimation from '../../../assets/animation/send-email.json'
 
-
 import logo from '../../../assets/Logo/PNG/Logo Fly branca 1.png'
 import texture from '../../../assets/teture.svg'
 import instagram from "../../../assets/icons/instagram-fill-icon.png"
 import tiktop from "../../../assets/icons/tiktok-icon.png"
-import youtube from "../../../assets/icons/youtube-fill-icon.png"
 
 import { sendLoginCode, verifyCode } from '@/services/auth'
-import { OtpInput } from '@/components/ui/input'
+import { CleaveInput, Input, OtpInput } from '@/components/ui/input'
+import { WhatsappIcon } from '@/components/icon/whatsapp'
 import { getErrorMessage } from '@/lib/getErrorMessage'
+import clsx from 'clsx'
+import { useUserSession } from '@/stores/useUserSession'
 
 export default function Login() {
-  const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
-  const [step, setStep] = useState<'email' | 'code'>('email')
+  const [step, setStep] = useState<'identifier' | 'code'>('identifier')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [isPending, startTransition] = useTransition() 
+  const { fetchAccount } = useUserSession();
+
 
   const router = useRouter()
 
+  type LoginMethod = 'email' | 'whatsapp';
+
+const STORAGE_METHOD_KEY = 'flynance_login_method';
+const STORAGE_IDENTIFIER_KEY = 'flynance_login_identifier';
+
+const [method, setMethod] = useState<LoginMethod>('email');
+const [identifier, setIdentifier] = useState('');
+
+// carregar da sessionStorage quando a tela abrir
+useEffect(() => {
+  if (typeof window === 'undefined') return;
+
+  const savedMethod = window.sessionStorage.getItem(
+    STORAGE_METHOD_KEY,
+  ) as LoginMethod | null;
+
+  const savedIdentifier = window.sessionStorage.getItem(
+    STORAGE_IDENTIFIER_KEY,
+  );
+
+  if (savedMethod === 'email' || savedMethod === 'whatsapp') {
+    setMethod(savedMethod);
+  }
+
+  if (savedIdentifier) {
+    setIdentifier(savedIdentifier);
+  }
+}, []);
+
+function handleMethodChange(newMethod: LoginMethod) {
+  setMethod(newMethod);
+  if (typeof window !== 'undefined') {
+    window.sessionStorage.setItem(STORAGE_METHOD_KEY, newMethod);
+  }
+}
+
+function handleIdentifierChange(value: string) {
+  setIdentifier(value);
+  if (typeof window !== 'undefined') {
+    window.sessionStorage.setItem(STORAGE_IDENTIFIER_KEY, value);
+  }
+}
+
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!identifier.trim()) {
+      setError(
+        method === 'email'
+          ? 'Informe seu e-mail.'
+          : 'Informe seu número de WhatsApp.',
+      );
+      return;
+    }
     setLoading(true)
     setError('')
     try {
-      await sendLoginCode({ email })
+      const body = method === 'email'
+        ? { email: identifier.trim() }
+        : { whatsappPhone: identifier.trim() };
+
+      await sendLoginCode(body)
       setStep('code')
     } catch (err: unknown) {
       setError(getErrorMessage(err));
@@ -49,7 +107,13 @@ export default function Login() {
     setError('')
     try {
       setMessage('')
-      await verifyCode({ email, code })
+      const body = method === 'email'
+        ? { email: identifier.trim(),  code  }
+        : { whatsappPhone: identifier.trim(),  code  };
+      await verifyCode(body)
+
+      await fetchAccount();
+
       startTransition(() => {
         router.push('/dashboard')
       })
@@ -67,12 +131,23 @@ export default function Login() {
     setLoading(true)
     setError('')
     try {
-      await sendLoginCode({ email })
+      const body = method === 'email'
+        ? { email: identifier.trim()}
+        : { whatsappPhone: identifier.trim()};
+      await sendLoginCode(body)
     } catch (err: unknown) {
       setError(getErrorMessage(err));
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleChangeMethod = () => {
+    setStep('identifier')
+    setMethod(method === 'email' ? 'whatsapp' : 'email')
+    setCode('')
+    setIdentifier('')
+    setError('')
   }
 
   return (
@@ -104,68 +179,148 @@ export default function Login() {
       <section className="w-full h-full lg:py-8 flex flex-col gap-8 items-center justify-center z-30 lg:mt-0 ">
         <div className="flex flex-col gap-8 items-center justify-center w-full h-full bg-white rounded-t-[48px] lg:rounded-[64px]">
           <form
-            onSubmit={step === 'email' ? handleSendCode : handleVerifyCode}
-            className="flex flex-col gap-6 items-center justify-center w-full text-center max-w-md px-8 lg:px-0"
+            onSubmit={step === 'identifier' ? handleSendCode : handleVerifyCode}
+            className="flex flex-col gap-6 items-center justify-center w-full text-center max-w-md px-8 lg:px-0 "
           >
-            {step === 'email' ? (
-              <div className='pt-8 flex flex-col gap-4'>
-                <h2 className="font-semibold text-xl lg:text-2xl text-[#333C4D] mt-4 hidden lg:block">
-                  Entre com seu e-mail
-                </h2>
+            
+            {step === 'identifier' ? (
+              <div className='pt-8 flex flex-col gap-8 w-full h-full'>
+                <div className="flex flex-col gap-4 items-center justify-center">
+                  <h2 className="font-semibold text-xl lg:text-2xl text-primary mt-4 hidden lg:block">
+                    Entrar com
+                  </h2>
+                  <div className='flex gap-4 items-center  w-full'>
+                    <button
+                      type="button"
+                      onClick={() => handleMethodChange('email')}
+                      className={clsx(
+                        'px-4 py-2 cursor-pointer rounded-md text-sm flex items-center justify-center gap-2 w-full  hover:scale-105',
+                        method === 'email'
+                          ? 'bg-gradient-to-r from-secondary to-primary text-white'
+                          : 'border border-primary text-primary bg-slate-200',
+                      )}
+                    >
+                        <Mail size={20}/>
+                        E-mail
+                    </button>
 
-                <div className="relative w-full">
-                  <input
-                    type="email"
-                    name="email"
-                    placeholder="exemplo@email.com"
-                    className={`w-full pl-10 pr-4 py-3 border rounded-md focus:outline-none focus:ring-2 ${
-                      error.includes("e-mail") ? "border-red-400 focus:ring-red-300" : "border-gray-300 focus:ring-secondary"
-                    }`}
-                    onChange={(e) => setEmail(e.target.value)}
-                    value={email}
-                  />
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
-                    <Mail size={20} />
+                    <button
+                      type="button"
+                      onClick={() => handleMethodChange('whatsapp')}
+                      className={clsx(
+                        'px-4 py-2 cursor-pointer rounded-md text-sm  flex items-center justify-center gap-2 w-full',
+                        method === 'whatsapp'
+                          ? 'bg-gradient-to-r from-secondary to-primary text-white'
+                          : 'border border-primary text-primary bg-slate-200',
+                      )}
+                    >
+                      <WhatsappIcon
+                        className={clsx(
+                          'w-5 h-5',
+                          method === 'whatsapp' ? 'text-white' : 'text-primary'
+                        )}
+                        fill={ method === 'whatsapp' ? '#fff' : '#0065A4' }
+                      />
+                      WhatsApp
+                    </button>
                   </div>
                 </div>
-
-                {error && <p className="text-sm text-red-500 mt-2">{error}</p>}
-
-                <button
-                  type='submit'
-                  disabled={loading}
-                  className="w-full bg-gradient-to-r from-secondary to-primary text-white font-semibold py-3 rounded-md hover:opacity-90 transition"
-                >
-                   {loading ? (
-                      <div className="flex justify-center items-center gap-2">
-                        <Lottie
-                          animationData={emailSendingAnimation}
-                          loop
-                          style={{ width: 24, height: 24 }}
-                        />
-                        Enviando...
-                      </div>
+           
+                <div className='flex flex-col gap-4'>
+                  <div className="relative w-full">
+                  {
+                    method === 'email' ? (
+                      <Input
+                        type="email"
+                        placeholder="Seu e-mail"
+                        value={identifier}
+                        onChange={(e) => handleIdentifierChange(e.target.value)}
+                        className={`w-full pl-10 pr-4 py-3 border rounded-md focus:outline-none focus:ring-2 h-12 ${
+                        error.includes("e-mail") ? "border-red-400 focus:ring-red-300" : "border-gray-300 focus:ring-secondary"
+                      }`}
+                      />
                     ) : (
-                      'Enviar código de acesso'
-                    )}
-                </button>
+                      <CleaveInput
+                        type={'tel'}
+                        name={'tel'}
+                        options={{
+                          delimiters: ["(", ") ", "-"],
+                          blocks: [0, 2, 5, 4],
+                          numericOnly: true,
+                        }}
+                        value={identifier}
+                        onChange={(e) => handleIdentifierChange(e.target.value)}
+                        placeholder={
+                            '(ddd) 98765-4321'
+                        }
+                        className={`w-full pl-10 pr-4 py-3 border rounded-md focus:outline-none focus:ring-2 ${
+                        error.includes("e-mail") ? "border-red-400 focus:ring-red-300" : "border-gray-300 focus:ring-secondary"
+                      }`}
+                    />
+                    )
+                  }
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                      {
+                        method === 'email' ? (
+                          <Mail size={20} />
+                        ) : (
+                          <WhatsappIcon className="w-5 h-5 text-primary" fill="#6a7282" />
+                        )
+                      }
+                    </div>
+                  </div>
 
-                <p className="text-sm text-gray-500 max-w-sm">
-                  Enviaremos um código de acesso para o e-mail informado.
-                </p>
+                  {error && <p className="text-sm text-red-500 mt-2">{error}</p>}
+
+                  <button
+                    type='submit'
+                    disabled={loading}
+                    className="w-full bg-gradient-to-r from-secondary to-primary text-white font-semibold py-3 rounded-md cursor-pointer hover:opacity-90 transition"
+                  >
+                    {loading ? (
+                        <div className="flex justify-center items-center gap-2">
+                          <Lottie
+                            animationData={emailSendingAnimation}
+                            loop
+                            style={{ width: 24, height: 24 }}
+                          />
+                          Enviando...
+                        </div>
+                      ) : (
+                        'Enviar código de acesso'
+                      )}
+                  </button>
+
+                  <p className="text-sm text-gray-500  w-full mx-auto">
+                    Enviaremos um código de acesso para o {method === 'email' ? 'E-mail' : 'WhatsApp'} informado.
+                  </p>
+                </div>
               </div>
             ) : (
               <>
                 <h2 className="font-semibold text-xl text-[#333C4D] mt-4">Digite o código enviado por e-mail</h2>
                 <OtpInput length={4} onComplete={handleComplete} />
                 {error && <p className="text-sm text-red-500">{error}</p>}
-                <button type="button" onClick={handleResend} className="text-sm text-primary hover:underline">
-                  Reenviar código
-                </button>
+                <div className='flex gap-4 w-full'>
+                  <button type="button" onClick={handleChangeMethod} 
+                    className={clsx(
+                        'px-4 py-2 cursor-pointer rounded-md text-sm flex items-center justify-center gap-2 w-full border border-primary text-primary bg-slate-200',
+                      
+                      )} disabled={loading}>
+                    Trocar para {method === 'email' ? 'WhatsApp' : 'e-mail'}
+                  </button>
+                  <button type="button" onClick={handleResend}  className={clsx(
+                        'px-4 py-2 cursor-pointer rounded-md text-sm flex items-center justify-center gap-2 w-full bg-gradient-to-r from-secondary to-primary text-white',
+      
+                      )} disabled={loading}>
+                    Reenviar código
+                  </button>
+
+                </div>
                 <button
                   disabled={loading}
                   type="submit"
-                  className="w-full bg-gradient-to-r from-secondary to-primary text-white py-3 rounded-md"
+                  className="w-full bg-gradient-to-r from-secondary to-primary text-white py-3 rounded-md cursor-pointer font-semibold hover:opacity-90 transition"
                 >
                   {loading ? 'Verificando...' : isPending ? 'Redirecionando...' : 'Entrar'}
                 </button>
@@ -189,9 +344,9 @@ export default function Login() {
                 <Link href="https://www.tiktok.com/@flynanceapp" target="_blank">
                   <Image src={tiktop} alt="TikTok" width={24} height={24} />
                 </Link>
-                <Link href="https://www.youtube.com/@Flynanceapp" target="_blank">
+              {/*   <Link href="https://www.youtube.com/@Flynanceapp" target="_blank">
                   <Image src={youtube} alt="YouTube" width={24} height={24} />
-                </Link>
+                </Link> */}
               </div>
             </div>
           </form>

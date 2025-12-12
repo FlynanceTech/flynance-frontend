@@ -1,33 +1,20 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { useUserSession } from '@/stores/useUserSession'
 
 export function useSession() {
-  const { user, loading, fetchAccount, clearUser } = useUserSession()
-  const router = useRouter()
+  const { user, status } = useUserSession();
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
+    console.log("use Session check user", user);
+  }, [user]);
 
-    if (!token) {
-      clearUser()
-      router.push('/login')
-      return
-    }
-
-    fetchAccount().catch(() => {
-      clearUser()
-      localStorage.removeItem('token')
-      router.push('/login')
-    })
-  }, [fetchAccount, clearUser, router])
-
-  useEffect(()=> {
-    console.log('use Session check user', user)
-    
-  },[user])
-
-  return { loading, user }
+  return {
+    user,
+    status,
+    isLoading: status === "idle" || status === "loading",
+    isAuthenticated: status === "authenticated",
+  };
 }
+

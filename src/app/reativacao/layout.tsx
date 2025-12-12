@@ -3,8 +3,9 @@ import "../globals.css";
 import TrackingScripts from "@/components/TrackingScripts"; // <-- importa seu novo componente
 import { Providers } from "@/providers/Providers";
 
+
 export const metadata: Metadata = {
-  title: "Flynance Cadastro",
+  title: "Flynance Reativação de assinatura",
   description: "Simplifique sua vida financeira com a Flynance. Controle seus gastos, acompanhe seu saldo e receba insights inteligentes para alcançar seus objetivos financeiros.",
   icons: "../favicon.ico"
 };
@@ -15,7 +16,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div>
+    <div lang="pt-BR">
         <TrackingScripts />
         <Providers>
             {children}

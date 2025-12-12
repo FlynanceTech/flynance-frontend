@@ -4,7 +4,6 @@ import clsx from "clsx";
 import { Toaster } from "react-hot-toast";
 import BottomMenu from "./components/buttonMenu";
 import Sidebar from "./components/Sidebar";
-import { useSession } from "@/hooks/useSession";
 import { Providers } from "@/providers/Providers";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import { useTheme } from "next-themes";
@@ -13,9 +12,6 @@ import FeedbackWidget from "@/components/widgets/feedback";
 import { AuthGuardProvider } from "@/providers/authGuardProvider";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { loading: loadingSession } = useSession();
-  if (loadingSession) return null;
-
   return (
     <ThemeProvider /* attribute='class' defaultTheme='light' enableSystem={false} se quiser */>
       <AuthGuardProvider>

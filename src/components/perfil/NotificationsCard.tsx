@@ -14,12 +14,12 @@ interface NotificationChannel {
 
 const NotificationsCard = () => {
   const [channels, setChannels] = useState<NotificationChannel[]>([
-    {
+/*     {
       id: "dashboard",
       name: "Dashboard",
       description: "Notificações dentro da plataforma",
       enabled: true,
-    },
+    }, */
     {
       id: "email",
       name: "E-mail",
