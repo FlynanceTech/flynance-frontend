@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Undo2, User, UserCheck, CreditCard, Check } from "lucide-react";
+import { Undo2, CreditCard, Check } from "lucide-react";
 import clsx from "clsx";
 import logo from "../../../assets/fly-logo.png";
 import { CHECKOUT_STEPS } from "./checkoutSteps";
