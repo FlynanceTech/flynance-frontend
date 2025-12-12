@@ -55,7 +55,6 @@ const UserInfoCard = () => {
         },
       });
 
-      // atualiza store local
       setUser({
         ...user,
         userData: {
@@ -68,6 +67,23 @@ const UserInfoCard = () => {
           signature: {
             id: user.userData.signature.id,
             status: user.userData.signature.status,
+            endDate: user.userData.signature.endDate,
+            nextDueDate: user.userData.signature.nextDueDate,
+            plan: user.userData.signature.plan,
+            active: user.userData.signature.active,
+            asaasCustomerId: user.userData.signature.asaasCustomerId,
+            asaasSubscriptionId: user.userData.signature.asaasSubscriptionId,
+            billingType: user.userData.signature.billingType,
+            cycle: user.userData.signature.cycle,
+            value: user.userData.signature.value,
+            description: user.userData.signature.description,
+            externalReference: user.userData.signature.externalReference,
+            createdAt: user.userData.signature.createdAt,
+            updatedAt: user.userData.signature.updatedAt,
+            planId: user.userData.signature.planId,
+            startDate: user.userData.signature.startDate,
+            userId: user.userData.signature.userId,
+            user: user.userData.signature.user,
           },
           hasActiveSignature: user.userData.hasActiveSignature,
         },
