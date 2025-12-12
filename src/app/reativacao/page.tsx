@@ -1,5 +1,3 @@
-// src/app/cadastro/checkout/page.tsx
-
 import { Suspense } from "react";
 import { CheckoutPageClient } from "./client";
 

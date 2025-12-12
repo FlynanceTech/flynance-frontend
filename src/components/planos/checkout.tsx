@@ -42,17 +42,14 @@ const initialForm: FormDTO = {
   cvv: "",
 };
 
-// somente dígitos
 const digits = (s: string) => s.replace(/\D/g, "");
 
 function splitExpiry(expiry: string) {
-  // "MM/AA" -> { month: "MM", year: "20AA" }
   const [m = "", y = ""] = expiry.split("/");
   const year = y.length === 2 ? `20${y}` : y;
   return { month: m, year };
 }
 
-// tipa erro sem usar any
 function getErrorMessage(err: unknown): string {
   if (typeof err === "string") return err;
   if (
@@ -96,7 +93,6 @@ export default function CheckoutStepper({
   const { createPaymentMutation } = usePaymentMutations();
   const { user, status, fetchAccount } = useUserSession();
 
-  // 1) Se a página foi recarregada, reidrata a sessão
   useEffect(() => {
     if (status === "idle") {
       fetchAccount();

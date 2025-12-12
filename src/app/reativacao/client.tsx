@@ -1,4 +1,3 @@
-// src/app/cadastro/checkout/page.tsx
 'use client'
   import React, { useEffect } from "react";
 import { CHECKOUT_STEPS } from "@/components/cadastro/checkoutSteps";
