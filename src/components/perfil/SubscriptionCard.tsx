@@ -38,7 +38,7 @@ interface Signature {
 }
 
 const SubscriptionCard = () => {
-  const { user } = useUserSession()
+  const { user, fetchAccount  } = useUserSession()
   const [loadingCancel, setLoadingCancel] = useState(false)
   const [loadingReactivate, setLoadingReactivate] = useState(false)
   const [confirmingCancel, setConfirmingCancel] = useState(false)
@@ -200,6 +200,7 @@ const SubscriptionCard = () => {
     try {
       setLoadingCancel(true)
       await cancelSignature(signature.id)
+      await fetchAccount()
       alert("Assinatura cancelada com sucesso.")
       // ideal: disparar refetch do /auth/me aqui
     } catch (error) {
