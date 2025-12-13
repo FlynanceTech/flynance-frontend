@@ -1,45 +1,81 @@
-import { useState } from "react";
+"use client";
+
+import { useEffect, useState } from "react";
 import { Shield, Mail, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
+import { toast } from "react-hot-toast";
 import { useSession } from "@/hooks/useSession";
 
+type LoginMethod = "email" | "whatsapp";
+
 interface AuthMethod {
-  id: string;
+  id: LoginMethod;
   name: string;
   description: string;
   icon: typeof Mail;
-  value: string;
+  value: LoginMethod;
 }
 
+const STORAGE_METHOD_KEY = "flynance_login_method";
+
 const AuthPreferencesCard = () => {
-  const {user} = useSession()
-  const [selectedMethod, setSelectedMethod] = useState("email");
+  const { user } = useSession();
+  const [selectedMethod, setSelectedMethod] = useState<LoginMethod>("email");
+
+  // Carrega preferência salva (mesma chave usada no Login)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const savedMethod = window.sessionStorage.getItem(
+      STORAGE_METHOD_KEY
+    ) as LoginMethod | null;
+
+    if (savedMethod === "email" || savedMethod === "whatsapp") {
+      setSelectedMethod(savedMethod);
+    }
+  }, []);
+
+  function handleMethodChange(newMethod: LoginMethod) {
+    setSelectedMethod(newMethod);
+
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(STORAGE_METHOD_KEY, newMethod);
+    }
+  }
 
   const authMethods: AuthMethod[] = [
     {
       id: "email",
       name: "E-mail",
-      description: `Código enviado para ${user?.userData.user.email }`,
+      description: `Código enviado para ${
+        user?.userData?.user.email ?? "seu e-mail cadastrado"
+      }`,
       icon: Mail,
       value: "email",
     },
     {
       id: "whatsapp",
       name: "WhatsApp",
-      description: `Código enviado via WhatsApp ${user?.userData.user.phone}`,
+      description: `Código enviado via WhatsApp ${
+        user?.userData?.user.phone ?? ""
+      }`,
       icon: MessageCircle,
       value: "whatsapp",
     },
   ];
 
   const handleSave = () => {
-    toast.success("Preferência de autenticação atualizada!", {
-      description: `Agora você receberá códigos de verificação via ${
-        authMethods.find((m) => m.id === selectedMethod)?.name
-      }.`,
-    });
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(STORAGE_METHOD_KEY, selectedMethod);
+    }
+
+    const methodName =
+      authMethods.find((m) => m.id === selectedMethod)?.name ?? "E-mail";
+
+    toast.success(
+      `Preferência de autenticação salva! Nos próximos acessos enviaremos o código via ${methodName}.`
+    );
   };
 
   return (
@@ -66,7 +102,8 @@ const AuthPreferencesCard = () => {
           return (
             <button
               key={method.id}
-              onClick={() => setSelectedMethod(method.id)}
+              type="button"
+              onClick={() => handleMethodChange(method.id)}
               className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
                 isSelected
                   ? "border-primary bg-primary/5"

@@ -90,7 +90,7 @@ export default function Page() {
 
   return (
     <div className="w-full">
-      <div className="px-4 py-8 flex gap-4 flex-col">
+      <div className="px-4 lg:pb-0 pt-8 pb-24 flex gap-4 flex-col">
         <Header
           title="FlyAcademy — Seu espaço de aprendizado financeiro"
           subtitle="Cursos e treinamentos exclusivos para crescer com conhecimento."
