@@ -22,7 +22,7 @@ export const PLANS: Plan[] = [
     badgeType: "primary",
     ctaLabel: "Comece agora",
     benefits: [
-      "Teste gratuitamente por 7 dias",
+      "Teste gratuitamente por 3 dias",
       "Registro de gastos e receitas",
       "Categorias ilimitadas",
       "Acesso ao Dashboard financeiro",
@@ -39,7 +39,7 @@ export const PLANS: Plan[] = [
     badgeType: "discount",
     ctaLabel: "Garanta já 10% OFF",
     benefits: [
-      "Teste gratuitamente por 7 dias",
+      "Teste gratuitamente por 3 dias",
       "Registro de gastos e receitas",
       "Categorias ilimitadas",
       "Acesso ao Dashboard financeiro",

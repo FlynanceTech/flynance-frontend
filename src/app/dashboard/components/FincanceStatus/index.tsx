@@ -19,7 +19,7 @@ export interface FinanceStatusProps {
     totalBalance: number   // saldo exibido
   }
   isLoading: boolean
-  /** rótulo do período selecionado (ex.: "últimos 7 dias", "últimos 30 dias", "mês passado") */
+  /** rótulo do período selecionado (ex.: "últimos 3 dias", "últimos 30 dias", "mês passado") */
   periodLabel?: string
 }
 

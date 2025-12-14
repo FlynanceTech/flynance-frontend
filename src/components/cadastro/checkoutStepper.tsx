@@ -838,7 +838,7 @@ function PlanResume({
           <ul className="space-y-1 text-sm text-slate-600">
             <li className="flex items-center gap-2">
               <Check className="w-4 h-4 text-primary" />
-              Teste gratuitamente por 7 dias
+              Teste gratuitamente por 3 dias
             </li>
             <li className="flex items-center gap-2">
               <Check className="w-4 h-4 text-primary" />

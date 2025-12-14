@@ -1,32 +1,33 @@
 import { Star } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import Image from "next/image";
 
 const testimonials = [
   {
-    name: "Maria Silva",
+    name: "Marcio Heleno",
     role: "Empreendedora",
-    avatar: "",
+    avatar: "/feedbacks/Marcio Heleno.jpeg",
     rating: 5,
     text: "A Fly mudou completamente minha relação com dinheiro. Agora controlo tudo pelo WhatsApp de forma super prática!",
   },
   {
-    name: "João Santos",
+    name: "Eduardo Pena",
     role: "Autônomo",
-    avatar: "",
+    avatar: "/feedbacks/Eduardo Pena.jpeg",
     rating: 5,
     text: "Nunca imaginei que seria tão fácil organizar minhas finanças. Em 2 meses já economizei mais de R$ 800!",
   },
   {
-    name: "Ana Oliveira",
-    role: "Designer",
-    avatar: "",
+    name: "Taiane Nicolai",
+    role: "Quiropraxista",
+    avatar: "/feedbacks/Taiane Nicolai.jpeg",
     rating: 5,
     text: "A inteligência artificial da Fly é incrível! Ela me ajuda a tomar decisões financeiras muito mais inteligentes.",
   },
   {
-    name: "Carlos Mendes",
-    role: "Professor",
-    avatar: "",
+    name: "Vinicius Soeth",
+    role: "Programador",
+    avatar: "/feedbacks/Vinicius Soeth.jpeg",
     rating: 5,
     text: "Finalmente consegui sair das dívidas graças aos insights da Flynance. Recomendo para todos!",
   },
@@ -68,12 +69,13 @@ const Testimonials = () => {
               </p>
               
               <div className="flex items-center gap-3">
-                <Avatar className="w-10 h-10">
+                <Image src={testimonial.avatar} alt={testimonial.name} width={40} height={40} loading="lazy"  className="w-10 h-10 rounded-full"/>
+              {/*   <Avatar className="w-10 h-10">
                   <AvatarImage src={testimonial.avatar} />
                   <AvatarFallback className="bg-primary text-primary-foreground text-sm font-medium">
                     {testimonial.name.split(" ").map(n => n[0]).join("")}
                   </AvatarFallback>
-                </Avatar>
+                </Avatar> */}
                 <div>
                   <p className="font-semibold text-foreground text-sm">
                     {testimonial.name}
