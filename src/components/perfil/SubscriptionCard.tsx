@@ -46,6 +46,7 @@ const SubscriptionCard = () => {
 
   const signature = user?.userData?.signature as Signature | undefined
 
+  console.log('check signature', signature)
   if (!signature) {
     return (
       <div className="bg-card rounded-2xl p-6 shadow-sm border border-border/15 animate-slide-up">
@@ -201,8 +202,6 @@ const SubscriptionCard = () => {
       setLoadingCancel(true)
       await cancelSignature(signature.id)
       await fetchAccount()
-      alert("Assinatura cancelada com sucesso.")
-      // ideal: disparar refetch do /auth/me aqui
     } catch (error) {
       console.error("error canceling subscription", error)
       alert("Erro ao cancelar a assinatura. Tente novamente mais tarde.")
@@ -359,7 +358,7 @@ const SubscriptionCard = () => {
               ) : (
                 <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 space-y-3">
                   <p className="text-xs text-muted-foreground">
-                    {isInTrial && trialEndLabel ? (
+                    {isInTrial && trialEndLabel && !hasUsedTrial ? (
                       <>
                         Você ainda está no{" "}
                         <span className="font-semibold text-destructive">
