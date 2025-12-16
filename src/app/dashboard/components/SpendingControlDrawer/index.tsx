@@ -19,7 +19,12 @@ type Props = {
 
 const schema = z.object({
   categoryId: z.string().min(1, 'Selecione uma categoria'),
-  goal: z.number().min(1, 'Meta obrigatória').positive('Valor deve ser maior que zero'),
+    goal: z.coerce
+    .number({
+      invalid_type_error: 'Meta obrigatória',
+    })
+    .min(1, 'Meta obrigatória')
+    .positive('Valor deve ser maior que zero'),
   periodType: z.enum(['monthly']),
   notify: z.boolean(),
   notifyAtPct: z.array(z.number()),
@@ -130,7 +135,16 @@ export default function SpendingControlDrawer({ open, onClose, editing }: Props)
                   render={({ field }) => (
                     <input
                       type="number"
-                      {...field}
+                      value={field.value ?? ''} // evita "controlled/uncontrolled"
+                      onChange={(e) => {
+                        const raw = e.target.value
+                        // se estiver vazio, manda undefined (deixa o Zod reclamar se precisar)
+                        if (raw === '') {
+                          field.onChange(undefined)
+                        } else {
+                          field.onChange(Number(raw))
+                        }
+                      }}
                       className="outline-none w-full border border-gray-200 rounded-full px-4 py-2 shadow text-sm"
                       placeholder="R$ 0,00"
                     />
