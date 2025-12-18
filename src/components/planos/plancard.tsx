@@ -40,9 +40,8 @@ export function PlanCard({ plan, revalidateSubscription = false }: Props) {
   const isDiscount = badgeType === "discount"; // Anual (10% OFF)
 
   function splitPrice(price: string) {
-    // normaliza: tira "R$", espaços e troca vírgula por ponto
     const normalized = price
-      .replace(/[^\d,.-]/g, "")  // remove tudo que não é número, vírgula, ponto, sinal
+      .replace(/[^\d,.-]/g, "")  
       .replace(",", ".");
 
     const [intPartRaw, decPartRaw] = normalized.split(".");
@@ -53,7 +52,7 @@ export function PlanCard({ plan, revalidateSubscription = false }: Props) {
   }
   const { intPart, decPart } = splitPrice(price);
 
-  const pathRedirect = revalidateSubscription ?  `/reativacao?plano=${slug}&revalidate=${revalidateSubscription}` : `/reativacao?plano=${slug}`
+  const pathRedirect = revalidateSubscription ?  `/reativacao?plano=${slug}&revalidate=${revalidateSubscription}` : `/cadastro/checkout?plano=${slug}`
 
   return (
       <div

@@ -53,6 +53,10 @@ export function CheckoutPageClient() {
   let plano: string | undefined = fallbackPlan;
   let userId: string | undefined = fallbackUserId;
 
+  if(!userId){
+    router.push(`/cadastro/checkout?plano=${plano}`);
+  }
+
   if (token && token.length > 1) {
     try {
       const code = token[0];
