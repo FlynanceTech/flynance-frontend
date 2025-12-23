@@ -1,4 +1,5 @@
 // services/user.ts
+import api from '@/lib/axios'
 import { userResponse } from '@/types/Transaction'
 import { UserDTO, UserResponse } from '@/types/user'
 import axios from 'axios'
@@ -27,4 +28,15 @@ export async function updateUser(id: string, user: Partial<UserDTO>): Promise<Us
 
 export async function deleteUser(id: string): Promise<void> {
   await axios.delete(`${baseURL}/user/${id}`)
+}
+
+export async function getUserByPhone(phone: string): Promise<UserDTO | null> {
+  try {
+    const { data } = await api.get(`/automation/user/${phone}`);
+    // pode vir { user } ou direto o user ou array
+    if (Array.isArray(data)) return data[0] ?? null;
+    return (data?.user ?? data) as UserDTO;
+  } catch {
+    return null;
+  }
 }
