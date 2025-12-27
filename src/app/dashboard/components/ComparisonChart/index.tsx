@@ -58,24 +58,27 @@ export default function ComparisonChart({ userId }: ComparisonChartProps) {
   const isDetalhado = selectedCategories.length === 1
   const categoriaSelecionada = isDetalhado ? selectedCategories[0] : null
 
-  const filteredTransactions = useMemo(() => {
-    if (!transactions?.length) return []
+const filteredTransactions = useMemo(() => {
+  if (!transactions?.length) return []
 
-    if (filter.mode === 'days') {
-      const now = Date.now()
-      const maxAgeMs = (filter.days ?? 30) * 24 * 60 * 60 * 1000
-      return transactions.filter((t) => now - new Date(t.date).getTime() <= maxAgeMs)
-    }
+  if (filter.mode === 'days') {
+    const now = Date.now()
+    const maxAgeMs = (filter.days ?? 30) * 24 * 60 * 60 * 1000
+    return transactions.filter((t) => now - new Date(t.date).getTime() <= maxAgeMs)
+  }
 
-    const y = Number(filter.year)
-    const m = Number(filter.month) - 1
-    const start = new Date(Date.UTC(y, m, 1, 0, 0, 0, 0))
-    const end = new Date(Date.UTC(y, m + 1, 0, 23, 59, 59, 999))
-    return transactions.filter((t) => {
-      const d = new Date(t.date).getTime()
-      return d >= start.getTime() && d <= end.getTime()
-    })
-  }, [transactions, filter])
+  // ✅ range
+  const [sy, sm, sd] = filter.start.split('-').map(Number)
+  const [ey, em, ed] = filter.end.split('-').map(Number)
+  const start = Date.UTC(sy, sm - 1, sd, 0, 0, 0, 0)
+  const end = Date.UTC(ey, em - 1, ed, 23, 59, 59, 999)
+
+  return transactions.filter((t) => {
+    const d = new Date(t.date).getTime()
+    return d >= start && d <= end
+  })
+}, [transactions, filter])
+
 
   const receitas = useMemo(() => filteredTransactions.filter((t) => t.type === 'INCOME'), [filteredTransactions])
   const despesas = useMemo(() => filteredTransactions.filter((t) => t.type === 'EXPENSE'), [filteredTransactions])
@@ -198,12 +201,12 @@ export default function ComparisonChart({ userId }: ComparisonChartProps) {
         <span>
           {filter.mode === 'days'
             ? `nos últimos ${filter.days} dias`
-            : `de ${new Date(Number(filter.year), Number(filter.month) - 1).toLocaleDateString('pt-BR', {
-                month: 'long',
-                year: 'numeric',
-              })}`}
+            : `de ${new Date(filter.start + 'T00:00:00').toLocaleDateString('pt-BR')} até ${new Date(
+                filter.end + 'T00:00:00'
+              ).toLocaleDateString('pt-BR')}`}
         </span>
       </p>
+
 
       {showLegend && !categoriaSelecionada && (
         <div className="absolute z-10 w-full max-w-80 flex-wrap gap-2 rounded-md bg-white py-2 shadow-md md:max-w-[380px]">
@@ -228,7 +231,7 @@ export default function ComparisonChart({ userId }: ComparisonChartProps) {
         </div>
       )}
 
-      <div className="flex w-full flex-col justify-center gap-4">
+      <div className="flex w-full flex-col justify-center gap-4 p-4">
         {filteredTransactions.length === 0 ? (
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
             Nenhuma transação encontrada para o período selecionado.
@@ -243,7 +246,7 @@ export default function ComparisonChart({ userId }: ComparisonChartProps) {
         ) : (
           <BarCompareChart
             containerW={containerW}
-            height={isMobile ? 300 : 360}
+            height={isMobile ? 300 : 320}
             yAxisWidth={yWidth}
             income={incomeForChart}
             stackedLabel="Despesas"

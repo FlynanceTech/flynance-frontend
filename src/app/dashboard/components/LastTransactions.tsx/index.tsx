@@ -35,35 +35,32 @@ export const LastTransactions: React.FC = () => {
   const isLoading: boolean = transactionsQuery.isLoading
   const transactions: Transaction[] = transactionsQuery.data ?? []
 
-  // mantém o seletor de período, mas o resultado sempre mostra só 5
   const [filter, setFilter] = useState<DateFilter>({ mode: 'days', days: 30 })
 
-  const filteredSortedTop5: Transaction[] = useMemo(() => {
-    // ordena por data desc
-    const ordered = [...transactions].sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-    )
+  const filteredSortedTop7: Transaction[] = useMemo(() => {
+    const ordered = [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
-    // filtra por período (opcional, mantém comportamento atual)
     let filtered = ordered
+
     if (filter.mode === 'days') {
       const now = Date.now()
       const maxAgeMs = (filter.days ?? 30) * 24 * 60 * 60 * 1000
-      filtered = ordered.filter(t => now - new Date(t.date).getTime() <= maxAgeMs)
+      filtered = ordered.filter((t) => now - new Date(t.date).getTime() <= maxAgeMs)
     } else {
-      const y = Number(filter.year)
-      const m = Number(filter.month) - 1
-      const start = new Date(Date.UTC(y, m, 1, 0, 0, 0, 0)).getTime()
-      const end = new Date(Date.UTC(y, m + 1, 0, 23, 59, 59, 999)).getTime()
-      filtered = ordered.filter(t => {
+      const [sy, sm, sd] = filter.start.split('-').map(Number)
+      const [ey, em, ed] = filter.end.split('-').map(Number)
+      const start = Date.UTC(sy, sm - 1, sd, 0, 0, 0, 0)
+      const end = Date.UTC(ey, em - 1, ed, 23, 59, 59, 999)
+
+      filtered = ordered.filter((t) => {
         const d = new Date(t.date).getTime()
         return d >= start && d <= end
       })
     }
 
-    // só as 5 primeiras
     return filtered.slice(0, 7)
   }, [transactions, filter])
+
 
   return (
     <div className="bg-white p-6 rounded-xl shadow border border-gray-200 w-full h-full">
@@ -73,9 +70,9 @@ export const LastTransactions: React.FC = () => {
           <p className="text-sm text-gray-500">
             {filter.mode === 'days'
               ? <>Últimos <strong>{filter.days}</strong> dias</>
-              : <>Período de <strong>{new Date(Number(filter.year), Number(filter.month) - 1)
-                    .toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</strong></>}
+              : <>Período de <strong>{new Date(filter.start + 'T00:00:00').toLocaleDateString('pt-BR')}</strong> até <strong>{new Date(filter.end + 'T00:00:00').toLocaleDateString('pt-BR')}</strong></>}
           </p>
+
         </div>
 
         <DateRangeSelect value={filter} onChange={setFilter} />
@@ -84,13 +81,13 @@ export const LastTransactions: React.FC = () => {
       <div className="divide-y divide-gray-100">
         {isLoading ? (
           Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
-        ) : filteredSortedTop5.length === 0 ? (
+        ) : filteredSortedTop7.length === 0 ? (
           <div className="text-sm text-gray-500 py-6 flex items-center gap-2">
             <CalendarDays className="w-4 h-4 text-gray-400" />
             Nenhuma transação no período selecionado.
           </div>
         ) : (
-          filteredSortedTop5.map((t) => {
+          filteredSortedTop7.map((t) => {
             const isIncome = t.type === 'INCOME'
             const colorClass = isIncome ? 'text-primary' : 'text-red-500'
             const Icon = isIncome ? ArrowUp : ArrowDown

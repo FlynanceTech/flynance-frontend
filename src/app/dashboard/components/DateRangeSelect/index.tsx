@@ -1,94 +1,126 @@
 'use client'
 
+import { useMemo, useState, useEffect } from 'react'
 import { CalendarDays } from 'lucide-react'
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
 
 export type DateFilter =
   | { mode: 'days'; days: number }
-  | { mode: 'month'; month: string; year: string } // month: "01".."12", year: "2025"
+  | { mode: 'range'; start: string; end: string } // "YYYY-MM-DD"
 
 const dayOptions = [7, 15, 30, 60, 90, 180]
-
-const monthNames = [
-  { label: 'jan', value: '01' },
-  { label: 'fev', value: '02' },
-  { label: 'mar', value: '03' },
-  { label: 'abr', value: '04' },
-  { label: 'mai', value: '05' },
-  { label: 'jun', value: '06' },
-  { label: 'jul', value: '07' },
-  { label: 'ago', value: '08' },
-  { label: 'set', value: '09' },
-  { label: 'out', value: '10' },
-  { label: 'nov', value: '11' },
-  { label: 'dez', value: '12' },
-]
 
 interface Props {
   value: DateFilter
   onChange: (next: DateFilter) => void
-  /** Quantos anos para trás mostrar (ex.: 5 → ano atual e 4 anteriores) */
-  monthsCount?: number // reaproveitada como "quantidade de anos"
   className?: string
   withDisplay?: boolean
 }
 
-export default function DateRangeSelect({
-  value,
-  onChange,
-  monthsCount = 5,
-  className,
-  withDisplay = false,
-}: Props) {
-  const now = new Date()
+/** helpers */
+const pad2 = (n: number) => String(n).padStart(2, '0')
+const toISODate = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
 
-  const activeMonth =
-    value.mode === 'month'
-      ? value.month
-      : String(now.getMonth() + 1).padStart(2, '0')
+function formatRangeDisplay(startISO: string, endISO: string) {
+  const start = new Date(startISO + 'T00:00:00')
+  const end = new Date(endISO + 'T00:00:00')
+  const fmt = (d: Date) => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+  return `${fmt(start)} – ${fmt(end)}`
+}
 
-  const activeYear =
-    value.mode === 'month' ? value.year : String(now.getFullYear())
+export default function DateRangeSelect({ value, onChange, className, withDisplay = false }: Props) {
+  const displayText = useMemo(() => {
+    if (value.mode === 'days') return `Últimos ${value.days} dias`
+    return `Período: ${formatRangeDisplay(value.start, value.end)}`
+  }, [value])
 
-  const currentYear = now.getFullYear()
-  const yearOptions = Array.from({ length: monthsCount }, (_, i) => currentYear - i)
+  const defaultRange = useMemo(() => {
+    const end = new Date()
+    const start = new Date()
+    start.setDate(end.getDate() - 29)
+    return { start: toISODate(start), end: toISODate(end) }
+  }, [])
 
-  const displayText =
-    value.mode === 'days'
-      ? `Últimos ${value.days} dias`
-      : new Date(Number(value.year), Number(value.month) - 1, 1).toLocaleDateString(
-          'pt-BR',
-          { month: 'long', year: 'numeric' }
-        )
+  const [rangeDraft, setRangeDraft] = useState<{ start: string; end: string }>(() => {
+    if (value.mode === 'range') return { start: value.start, end: value.end }
+    return defaultRange
+  })
+
+  useEffect(() => {
+    if (value.mode === 'range') setRangeDraft({ start: value.start, end: value.end })
+  }, [value])
+
+  const rangeIsValid = rangeDraft.start && rangeDraft.end && rangeDraft.start <= rangeDraft.end
+
+  const setStart = (start: string) => {
+    setRangeDraft((prev) => ({ start, end: prev.end && start > prev.end ? start : prev.end }))
+  }
+
+  const setEnd = (end: string) => {
+    setRangeDraft((prev) => ({ start: prev.start && end < prev.start ? end : prev.start, end }))
+  }
 
   return (
     <Menu>
       <MenuButton
         className={
           className ??
-          `h-9 ${
-            withDisplay ? ' px-4 py-2' : 'w-9 p-0'
-          } flex items-center justify-center gap-2 rounded-full border border-[#E2E8F0] bg-white text-gray-500 text-sm font-medium hover:bg-gray-50 cursor-pointer`
+          `h-9 ${withDisplay ? 'px-4 py-2' : 'w-9 p-0'} flex items-center justify-center gap-2 rounded-full border border-[#E2E8F0] bg-white text-gray-500 text-sm font-medium hover:bg-gray-50 cursor-pointer`
         }
         aria-label="Selecionar período"
         title="Selecionar período"
       >
-        {withDisplay && (
-          <h3 className="hidden md:block">
-            {displayText}
-          </h3>
-        )}
+        {withDisplay && <h3 className="hidden md:block">{displayText}</h3>}
         <CalendarDays size={18} />
       </MenuButton>
 
       <MenuItems
         anchor="bottom"
-        className="bg-white origin-top-right rounded-xl border border-[#E2E8F0] p-2 text-sm text-[#1A202C] shadow-lg focus:outline-none z-50 lg:mt-0 mt-2"
+        className="bg-white origin-top-right rounded-xl border border-[#E2E8F0] p-2 text-sm text-[#1A202C] shadow-lg focus:outline-none z-50 lg:mt-0 mt-2 w-[320px]"
       >
-        {/* ---- Filtro por dias ---- */}
-        <div className="mb-2 font-semibold text-xs text-gray-500 px-2">
-          Filtrar por período
+        <div className="mb-2 font-semibold text-xs text-gray-500 px-2">Selecionar intervalo</div>
+
+        <div className="px-2 pb-2">
+          <div className="grid grid-cols-2 gap-2">
+            <label className="flex flex-col gap-1">
+              <span className="text-[11px] text-gray-500">Início</span>
+              <input
+                type="date"
+                value={rangeDraft.start}
+                onChange={(e) => setStart(e.target.value)}
+                className="h-9 rounded-lg border border-[#E2E8F0] px-2 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <span className="text-[11px] text-gray-500">Fim</span>
+              <input
+                type="date"
+                value={rangeDraft.end}
+                onChange={(e) => setEnd(e.target.value)}
+                className="h-9 rounded-lg border border-[#E2E8F0] px-2 text-sm outline-none focus:ring-2 focus:ring-secondary/30"
+              />
+            </label>
+          </div>
+
+          {!rangeIsValid && <div className="mt-2 text-[11px] text-red-600">O início não pode ser depois do fim.</div>}
+
+          <div className="mt-3 flex items-center justify-end gap-2">
+            <MenuItem
+              as="button"
+              type="button"
+              disabled={!rangeIsValid}
+              onClick={() => onChange({ mode: 'range', start: rangeDraft.start, end: rangeDraft.end })}
+              className="text-xs px-4 py-2 rounded-full bg-primary hover:bg-secondary text-white font-semibold disabled:opacity-50"
+            >
+              Aplicar
+            </MenuItem>
+          </div>
         </div>
+
+        <div className="my-2 h-px w-full bg-gray-200" />
+
+        <div className="mb-2 font-semibold text-xs text-gray-500 px-2">Filtrar por período</div>
 
         <div className="grid grid-cols-3 gap-2 px-2">
           {dayOptions.map((day) => (
@@ -97,78 +129,12 @@ export default function DateRangeSelect({
               as="button"
               onClick={() => onChange({ mode: 'days', days: day })}
               className={`px-2 py-1 text-center rounded data-[focus]:bg-secondary/30 ${
-                value.mode === 'days' && 'days' in value && value.days === day
-                  ? 'bg-secondary/30 text-primary'
-                  : ''
+                value.mode === 'days' && value.days === day ? 'bg-secondary/30 text-primary' : ''
               }`}
             >
               {day} dias
             </MenuItem>
           ))}
-        </div>
-
-        <div className="my-2 h-px w-full bg-gray-200" />
-
-        {/* ---- Mês (somente meses, sem ano no label) ---- */}
-        <div className="mb-2 font-semibold text-xs text-gray-500 px-2">
-          Selecione um mês
-        </div>
-
-        <div className="grid grid-cols-3 gap-2 px-2">
-          {monthNames.map(({ label, value: mValue }) => {
-            const isActive = value.mode === 'month' && value.month === mValue
-            return (
-              <MenuItem
-                key={mValue}
-                as="button"
-                onClick={() =>
-                  onChange({
-                    mode: 'month',
-                    month: mValue,
-                    year: activeYear, // mantém o ano atualmente selecionado
-                  })
-                }
-                className={`px-1 py-1 flex items-center justify-center rounded text-xs data-[focus]:bg-secondary/30 ${
-                  isActive ? 'bg-secondary/30 text-primary' : ''
-                }`}
-              >
-                {label}.
-              </MenuItem>
-            )
-          })}
-        </div>
-
-        <div className="my-2 h-px w-full bg-gray-200" />
-
-        {/* ---- Ano (separado) ---- */}
-        <div className="mb-2 font-semibold text-xs text-gray-500 px-2">
-          Selecione um ano
-        </div>
-
-        <div className="flex flex-wrap gap-2 px-2 pb-2">
-          {yearOptions.map((year) => {
-            const yearStr = String(year)
-            const isActive = value.mode === 'month' && value.year === yearStr
-
-            return (
-              <MenuItem
-                key={yearStr}
-                as="button"
-                onClick={() =>
-                  onChange({
-                    mode: 'month',
-                    month: activeMonth, // mantém o mês atual
-                    year: yearStr,
-                  })
-                }
-                className={`px-2 py-1 rounded text-xs data-[focus]:bg-secondary/30 ${
-                  isActive ? 'bg-secondary/30 text-primary' : ''
-                }`}
-              >
-                {yearStr}
-              </MenuItem>
-            )
-          })}
         </div>
       </MenuItems>
     </Menu>

@@ -28,6 +28,17 @@ interface ControlWithProgress {
   usagePctOfGoal: number
   usagePctOfLimit: number
   overLimit: boolean
+
+  // favoritos
+  isFavorite?: boolean
+  favoriteAt?: string | null
+}
+
+type FavoriteFromApi = {
+  id: string
+  categoryId: string | null
+  isFavorite?: boolean
+  favoriteAt?: string | null
 }
 
 const toBRL = (v: number): string =>
@@ -47,24 +58,31 @@ function getStatus(c: ControlWithProgress): StatusKey {
   return 'ok'
 }
 
-function priorityScore(c: ControlWithProgress): number {
-  const base = getStatus(c) === 'danger' ? 3 : getStatus(c) === 'warning' ? 2 : 1
-  return base * 1000 + c.usagePctOfGoal
+/**
+ * Ordena pelo "mais perto de bater a meta" primeiro.
+ * - Se já bateu/ultrapassou (>=100%), distância = 0 (vai pro topo)
+ * - Depois desempata por maior % (ex: 120% vem antes de 105%)
+ */
+function compareClosestToGoal(a: ControlWithProgress, b: ControlWithProgress) {
+  const ap = a.usagePctOfGoal ?? 0
+  const bp = b.usagePctOfGoal ?? 0
+
+  const aDist = ap >= 100 ? 0 : 100 - ap
+  const bDist = bp >= 100 ? 0 : 100 - bp
+
+  if (aDist !== bDist) return aDist - bDist
+
+  // desempate: maior % primeiro
+  return bp - ap
 }
 
 export function SpendingControl() {
-  const { controlsQuery } = useControls()
+  const { controlsQuery, favoritesQuery } = useControls()
   const {
     categoriesQuery: { data: categories = [] },
   } = useCategories()
 
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false)
-
-  const items = useMemo(() => {
-    return (controlsQuery.data ?? [])
-      .sort((a, b) => priorityScore(b) - priorityScore(a))
-      .slice(0, 3)
-  }, [controlsQuery.data])
 
   const categoryNameById = useMemo<Record<string, string>>(() => {
     const map: Record<string, string> = {}
@@ -75,7 +93,8 @@ export function SpendingControl() {
   function formatPeriod(startISO: string, endISO: string): string {
     const start = new Date(startISO)
     const end = new Date(endISO)
-    const sameMonthAndYear = start.getFullYear() === end.getFullYear() && start.getMonth() === end.getMonth()
+    const sameMonthAndYear =
+      start.getFullYear() === end.getFullYear() && start.getMonth() === end.getMonth()
 
     if (sameMonthAndYear) {
       const dayStart = start.toLocaleDateString('pt-BR', { day: '2-digit' })
@@ -92,12 +111,53 @@ export function SpendingControl() {
     return d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short' })
   }
 
+  /**
+   * ✅ Fonte oficial: GET /controls/favorites
+   * ✅ Merge com controlsQuery (withProgress=true) para garantir spent/periodStart/etc.
+   * ✅ Ordena por "mais perto de bater a meta" e pega top 3
+   */
+  const items = useMemo<ControlWithProgress[]>(() => {
+    const all = (controlsQuery.data ?? []) as ControlWithProgress[]
+    const favApi = (favoritesQuery?.data ?? []) as FavoriteFromApi[]
+
+    // 1) preferir o endpoint de favoritos
+    const favoriteIdsFromApi = favApi.map((f) => f.id).filter(Boolean)
+
+    if (favoriteIdsFromApi.length > 0) {
+      const merged = favoriteIdsFromApi
+        .map((id) => all.find((c) => c.id === id))
+        .filter(Boolean) as ControlWithProgress[]
+
+      return [...merged].sort(compareClosestToGoal).slice(0, 3)
+    }
+
+    // 2) fallback: se por algum motivo ainda não veio o endpoint, usa flag local
+    const favoritesFromAll = all
+      .filter((c) => c.isFavorite)
+      .sort(compareClosestToGoal)
+      .slice(0, 3)
+
+    if (favoritesFromAll.length > 0) return favoritesFromAll
+
+    // 3) fallback final: top 3 por "mais perto da meta"
+    return [...all].sort(compareClosestToGoal).slice(0, 3)
+  }, [controlsQuery.data, favoritesQuery?.data])
+
+  const isLoading = controlsQuery.isLoading || favoritesQuery?.isLoading
+  const hasNoData = !isLoading && items.length === 0
+
   return (
     <div className="bg-white p-6 rounded-xl shadow border border-gray-200 w-full flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-lg font-bold text-gray-800">Controle de Metas</h2>
-        <div className='flex items-center gap-4'>
-          <Link href="/dashboard/controles" className='text-xs bg-secondary/30 hover:bg-secondary/35 text-primary px-4 py-2 rounded-full cursor-pointer hidden lg:block'> Meus Controles</Link>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/dashboard/controles"
+            className="text-xs bg-secondary/30 hover:bg-secondary/35 text-primary px-4 py-2 rounded-full cursor-pointer hidden lg:block"
+          >
+            Meus Controles
+          </Link>
+
           <button
             onClick={() => setDrawerOpen(true)}
             className="inline-flex items-center gap-2 bg-secondary/30 text-primary font-semibold px-2 py-2 rounded-full text-sm hover:bg-secondary/35 cursor-pointer"
@@ -110,7 +170,7 @@ export function SpendingControl() {
       </div>
 
       <div className="flex flex-col gap-4">
-        {controlsQuery.isLoading ? (
+        {isLoading ? (
           <div className="flex flex-col gap-4 animate-pulse">
             {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="space-y-2">
@@ -119,11 +179,11 @@ export function SpendingControl() {
               </div>
             ))}
           </div>
-        ) : items.length === 0 ? (
+        ) : hasNoData ? (
           <div className="flex flex-col items-center justify-center text-sm text-gray-500 text-center py-8">
             <ClipboardList className="w-6 h-6 mb-2 text-gray-400" />
-            Nenhum controle de gasto cadastrado ainda. <br />
-            Clique em <strong>Novo controle</strong> para criar o primeiro!
+            Nenhum favorito ainda. <br />
+            Vá em <strong>Meus Controles</strong> e marque até <strong>3 favoritos</strong>.
           </div>
         ) : (
           <div className="flex flex-col gap-4 items-center lg:items-start w-full">
@@ -131,23 +191,31 @@ export function SpendingControl() {
               const catLabel = c.categoryId ? categoryNameById[c.categoryId] ?? 'Categoria' : 'Geral'
               const status = getStatus(c)
               const { Icon, cls, label } = STATUS[status]
-              const pct = Math.min(c.usagePctOfGoal, 100)
+              const pct = Math.min(c.usagePctOfGoal ?? 0, 100)
 
               const barColor =
                 c.usagePctOfGoal <= 60
                   ? 'bg-blue-500'
                   : c.usagePctOfGoal <= 80
-                  ? 'bg-yellow-400'
-                  : 'bg-red-500'
+                    ? 'bg-yellow-400'
+                    : 'bg-red-500'
 
               return (
-                <Link href={`/dashboard/controles/${c.id}`} key={c.id} className="w-full relative space-y-1 border border-gray-100 rounded-lg p-2 hover:shadow-sm transition-all">
+                <Link
+                  href={`/dashboard/controles/${c.id}`}
+                  key={c.id}
+                  className="w-full relative space-y-1 border border-gray-100 rounded-lg p-2 hover:shadow-sm transition-all"
+                >
                   {c.usagePctOfGoal >= 80 && (
                     <span
                       className={`absolute top-7 right-1 z-30 text-[10px] font-semibold px-1.5 py-0.5 rounded-full
-                      ${status === 'danger' ? 'bg-red-600 text-white'
-                        : status === 'warning' ? 'bg-yellow-400 text-black'
-                        : 'bg-blue-500 text-white'}`}
+                      ${
+                        status === 'danger'
+                          ? 'bg-red-600 text-white'
+                          : status === 'warning'
+                            ? 'bg-yellow-400 text-black'
+                            : 'bg-blue-500 text-white'
+                      }`}
                     >
                       {Math.round(c.usagePctOfGoal)}%
                     </span>
@@ -158,23 +226,20 @@ export function SpendingControl() {
                     <span className="text-sm font-medium text-gray-700 flex-1 truncate">
                       {catLabel} <span className="text-xs text-gray-500">({label})</span>
                     </span>
-                    <span className="text-xs text-gray-500">
-                      Meta {toBRL(c.goal)}
-                    </span>
+                    <span className="text-xs text-gray-500">Meta {toBRL(c.goal)}</span>
                   </div>
 
                   <div
                     className="w-full h-4 overflow-hidden relative"
                     title={`Gasto: ${toBRL(c.spent)} (${Math.round(pct)}%)`}
                   >
-                    {/* Fundo cinza */}
                     <div className="h-2 absolute top-[3px] bg-gray-200 w-full rounded-full" />
-                    {/* Barra colorida dinâmica */}
+
                     <div
                       className={`h-2 absolute top-[3px] z-10 ${barColor} rounded-full`}
                       style={{ width: `${pct}%` }}
                     />
-                    {/* Marcador visual (notifyAtPct[0]) */}
+
                     <div
                       className="absolute top-0 z-20 h-[16px] w-[4px] bg-gray-700 rounded-full"
                       style={{
@@ -202,7 +267,12 @@ export function SpendingControl() {
               )
             })}
 
-            <Link href="/dashboard/controles" className='text-xs bg-secondary/30 hover:bg-secondary/35 text-primary px-4 py-2 rounded-full cursor-pointer lg:hidden max-w-40 flex justify-center'> Meus Controles</Link>
+            <Link
+              href="/dashboard/controles"
+              className="text-xs bg-secondary/30 hover:bg-secondary/35 text-primary px-4 py-2 rounded-full cursor-pointer lg:hidden max-w-40 flex justify-center"
+            >
+              Meus Controles
+            </Link>
           </div>
         )}
       </div>

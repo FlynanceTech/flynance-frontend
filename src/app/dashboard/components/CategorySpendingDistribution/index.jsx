@@ -74,14 +74,15 @@ export default function CategorySpendingDistribution() {
     if (filter.mode === 'days') {
       const now = Date.now()
       const maxAgeMs = (filter.days ?? 30) * 24 * 60 * 60 * 1000
-      return transactions.filter(t => now - new Date(t.date).getTime() <= maxAgeMs)
+      return transactions.filter((t) => now - new Date(t.date).getTime() <= maxAgeMs)
     }
 
-    const y = Number(filter.year)
-    const m = Number(filter.month) - 1
-    const start = new Date(Date.UTC(y, m, 1)).getTime()
-    const end = new Date(Date.UTC(y, m + 1, 0, 23, 59, 59, 999)).getTime()
-    return transactions.filter(t => {
+    const [sy, sm, sd] = filter.start.split('-').map(Number)
+    const [ey, em, ed] = filter.end.split('-').map(Number)
+    const start = Date.UTC(sy, sm - 1, sd, 0, 0, 0, 0)
+    const end = Date.UTC(ey, em - 1, ed, 23, 59, 59, 999)
+
+    return transactions.filter((t) => {
       const d = new Date(t.date).getTime()
       return d >= start && d <= end
     })
@@ -189,12 +190,12 @@ export default function CategorySpendingDistribution() {
         </ResponsiveContainer>
       </div>
       <div className='flex flex-col gap-2 w-full lg:w-1/2 '>
-        <p className="text-sm text-gray-500">
+       <p className="text-sm text-gray-500">
           {filter.mode === 'days'
             ? <>Distribuição dos últimos <strong>{filter.days}</strong> dias</>
-            : <>Distribuição de <strong>{new Date(Number(filter.year), Number(filter.month) - 1)
-              .toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</strong></>}
+            : <>Distribuição de <strong>{new Date(filter.start + 'T00:00:00').toLocaleDateString('pt-BR')}</strong> até <strong>{new Date(filter.end + 'T00:00:00').toLocaleDateString('pt-BR')}</strong></>}
         </p>
+
         
         <div className="w-full space-y-4 overflow-auto pr-4 max-h-[420px]">
           {data[0]?.children?.sort((a, b) => sortDesc ? b.size - a.size : a.size - b.size)

@@ -7,6 +7,8 @@ import {
   CreateControlDTO,
   ControlResponse,
   getControlsById,
+  setControlFavorite,
+  getFavoriteControls,
 } from '@/services/controls'
 
 export interface ControlWithProgress extends ControlResponse {
@@ -18,6 +20,16 @@ export interface ControlWithProgress extends ControlResponse {
   periodStart: string
   periodEnd: string
   nextResetAt: string
+}
+
+export type FavoriteConflictPayload = {
+  message: string
+  favorites: Array<{
+    id: string
+    categoryId: string | null
+    categoryName: string | null
+    favoriteAt: string | null
+  }>
 }
 
 export function useControls(id?: string, date?: Date) {
@@ -32,6 +44,11 @@ export function useControls(id?: string, date?: Date) {
     queryKey: ['controls', id, date?.toISOString()],
     queryFn: () => getControlsById(id as string, date),
     enabled: !!id,
+  })
+
+  const favoritesQuery = useQuery({
+    queryKey: ['controls', 'favorites'],
+    queryFn: () => getFavoriteControls(),
   })
 
   const createMutation = useMutation({
@@ -56,5 +73,21 @@ export function useControls(id?: string, date?: Date) {
     },
   })
 
-  return { controlsQuery, controlsByIdQuery, createMutation, updateMutation, deleteMutation }
+  const favoriteMutation = useMutation({
+    mutationFn: (params: { id: string; isFavorite: boolean; replaceId?: string }) =>
+      setControlFavorite(params),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['controls'] })
+    },
+  })
+
+  return {
+    controlsQuery,
+    controlsByIdQuery,
+    favoritesQuery,
+    createMutation,
+    updateMutation,
+    deleteMutation,
+    favoriteMutation,
+  }
 }
