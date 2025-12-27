@@ -10,7 +10,9 @@ import { Category } from '@/types/Transaction'
 import { Plus } from 'lucide-react'
 import { useUserSession } from '@/stores/useUserSession'
 
-import DateRangeSelect, { DateFilter } from '../DateRangeSelect'
+import DateRangeSelect from '../DateRangeSelect'
+import type { DateFilter } from '../DateRangeSelect'
+
 import FinanceStatus, { FinanceStatusProps } from '../FincanceStatus'
 import { useFinanceStatus } from '@/hooks/query/useFinanceStatus'
 
@@ -38,23 +40,18 @@ const ACC_ZERO: FinanceStatusProps['accumulated'] = {
   totalBalance: 0,
 }
 
-function formatMonthShort(year: number, month: number) {
-  // month: 1-12
-  const d = new Date(Date.UTC(year, month - 1, 1))
-  const fmt = new Intl.DateTimeFormat('pt-BR', { month: 'short', year: 'numeric' })
-  // ex.: "ago. de 2025" -> padroniza para "ago/2025"
-  const raw = fmt.format(d) // "ago. de 2025"
-  const [m, , y] = raw.split(' ') // ["ago.", "de", "2025"]
-  return `${m.replace('.', '')}/${y}`
+function formatRangeLabel(start: string, end: string) {
+  const s = new Date(start + 'T00:00:00')
+  const e = new Date(end + 'T00:00:00')
+  const fmt = (d: Date) => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+  return `${fmt(s)} – ${fmt(e)}`
 }
 
-function getPrevMonthLabel(monthStr: string) {
-  // monthStr: "YYYY-MM"
-  const [y, m] = monthStr.split('-').map(Number)
-  const base = new Date(Date.UTC(y, m - 1, 1))
-  const prev = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() - 1, 1))
-  const label = formatMonthShort(prev.getUTCFullYear(), prev.getUTCMonth() + 1)
-  return `mês anterior (${label})`
+function diffDaysInclusive(start: string, end: string) {
+  const s = new Date(start + 'T00:00:00').getTime()
+  const e = new Date(end + 'T00:00:00').getTime()
+  const ms = 24 * 60 * 60 * 1000
+  return Math.max(1, Math.floor((e - s) / ms) + 1)
 }
 
 export default function Header({
@@ -71,32 +68,38 @@ export default function Header({
   const firstName =
     user?.userData.user.name?.split(' ')[0]?.toLowerCase()?.replace(/^\w/, (c) => c.toUpperCase()) ?? ''
 
-  // Monta params de query a partir do filtro local
-  const { monthParam, daysParam, monthStr } = useMemo(() => {
-    if (filter.mode === 'month') {
-      const ms = `${filter.year}-${filter.month}` // YYYY-MM
-      return { monthParam: ms, daysParam: undefined as number | undefined, monthStr: ms }
+  // ✅ Agora só existe days e range
+  const { daysParam, rangeLabel } = useMemo(() => {
+    if (filter.mode === 'range') {
+      return {
+        daysParam: diffDaysInclusive(filter.start, filter.end),
+        rangeLabel: formatRangeLabel(filter.start, filter.end),
+      }
     }
-    return { monthParam: undefined as string | undefined, daysParam: filter.days, monthStr: undefined as string | undefined }
+
+    return {
+      daysParam: filter.days ?? 30,
+      rangeLabel: undefined as string | undefined,
+    }
   }, [filter])
 
   const financeStatusQuery = useFinanceStatus({
     userId,
-    month: monthParam,
     days: daysParam,
+    // month removido (não existe mais no filtro)
   })
 
-  // Label amigável do período (fora do datepicker)
   const periodLabel = useMemo(() => {
-    return monthStr ? getPrevMonthLabel(monthStr) : `últimos ${daysParam ?? 0} dias`
-  }, [monthStr, daysParam])
+    if (rangeLabel) return `período (${rangeLabel})`
+    return `últimos ${daysParam ?? 0} dias`
+  }, [rangeLabel, daysParam])
 
   return (
     <header className="flex flex-col">
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <h3 className="text-2xl font-bold text-[#333C4D]">Olá, {firstName}!</h3>
-.
+
           <div className="hidden lg:flex gap-4 items-center">
             {asFilter && (
               <div className="flex gap-4 items-center">
@@ -107,17 +110,17 @@ export default function Header({
                   </div>
                 )}
 
-                <DateRangeSelect value={filter} onChange={setFilter} withDisplay/>
+                <DateRangeSelect value={filter} onChange={setFilter} withDisplay />
               </div>
             )}
 
-          {/*   <NotificationBell asFilter={asFilter} /> */}
+            {/* <NotificationBell asFilter={asFilter} /> */}
             {newTransation && <NewTransactionButton onClick={() => setDrawerOpen(true)} />}
           </div>
 
           <div className="flex lg:hidden gap-4 items-center">
-            <DateRangeSelect value={filter} onChange={setFilter}  />
-           {/*  <NotificationBell asFilter={asFilter} /> */}
+            <DateRangeSelect value={filter} onChange={setFilter} />
+            {/* <NotificationBell asFilter={asFilter} /> */}
           </div>
         </div>
 
