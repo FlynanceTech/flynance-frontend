@@ -27,7 +27,7 @@ export interface CategoryResponse {
   type: string
   period: string
   keywords: Keyword[]
-  accountId?: string | null
+  userId?: string | null
   createdAt?: string
   updatedAt?: string
 }

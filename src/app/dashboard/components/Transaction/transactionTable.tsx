@@ -133,11 +133,12 @@ export function TransactionTable({
                   </div>
                 </td>
                 <td className="text-gray-600">
-                  {new Intl.DateTimeFormat('pt-BR', {
+                 {new Intl.DateTimeFormat('pt-BR', {
                     dateStyle: 'short',
                     timeStyle: 'short',
-                    timeZone: 'UTC',
+                    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
                   }).format(new Date(item.date))}
+
                 </td>
                 <td
                   className={clsx(
@@ -148,8 +149,14 @@ export function TransactionTable({
                   )}
                 >
                   {item.category.type === 'INCOME'
-                    ? `R$ ${item.value.toFixed(2)}`
-                    : `- R$ ${item.value.toFixed(2)}`}
+                    ? `R$ ${new Intl.NumberFormat("pt-BR", {
+                      style: "currency",
+                      currency: "BRL",
+                    }).format(item.value)}`
+                    : `- R$ ${new Intl.NumberFormat("pt-BR", {
+                      style: "currency",
+                      currency: "BRL",
+                    }).format(item.value)}`}
                 </td>
                 <td className="flex justify-end gap-4 py-4 pr-2">
                   <button

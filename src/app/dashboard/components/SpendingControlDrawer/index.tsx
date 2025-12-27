@@ -10,6 +10,7 @@ import { ControlWithProgress, useControls } from '@/hooks/query/useSpendingContr
 import { useCategories } from '@/hooks/query/useCategory'
 import type {  Channel, CreateControlDTO } from '@/services/controls'
 import type { ControlWithTransactions } from '../../controles/[id]/page'
+import { NumericFormat } from 'react-number-format'
 
 type Props = {
   open: boolean
@@ -133,20 +134,15 @@ export default function SpendingControlDrawer({ open, onClose, editing }: Props)
                   name="goal"
                   control={control}
                   render={({ field }) => (
-                    <input
-                      type="number"
-                      value={field.value ?? ''} // evita "controlled/uncontrolled"
-                      onChange={(e) => {
-                        const raw = e.target.value
-                        // se estiver vazio, manda undefined (deixa o Zod reclamar se precisar)
-                        if (raw === '') {
-                          field.onChange(undefined)
-                        } else {
-                          field.onChange(Number(raw))
-                        }
-                      }}
-                      className="outline-none w-full border border-gray-200 rounded-full px-4 py-2 shadow text-sm"
+                    <NumericFormat
+                      value={field.value ?? ''}
+                      thousandSeparator="."
+                      decimalSeparator=","
+                      prefix="R$ "
+                      allowNegative={false}
                       placeholder="R$ 0,00"
+                      className="outline-none w-full border border-gray-200 rounded-full px-4 py-2 shadow text-sm"
+                      onValueChange={(values) => field.onChange(values.floatValue ?? undefined)}
                     />
                   )}
                 />

@@ -50,7 +50,7 @@ export function CategoryList({ categories, onEdit, onDelete, typeFilter, tab }: 
                         <span className="text-sm font-medium text-gray-800">{cat.name}</span>
                     </div>
                     {
-                        cat.accountId &&
+                        cat.userId &&
                         <div className="flex gap-2">
                             <button onClick={() => onEdit(cat)} className="text-gray-500 hover:text-blue-600"><Pencil size={16} /></button>
                             <button onClick={() => handleConfirm(cat.id)} className="text-gray-500 hover:text-red-600"><Trash2 size={16} /></button>
