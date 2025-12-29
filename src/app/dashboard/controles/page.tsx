@@ -70,8 +70,8 @@ function toneConfig(tone: Tone, usagePct: number) {
   if (tone === 'danger') {
     return {
       statusLabel: 'Estourou a meta',
-      headerStops: 'from-red-500 via-red-500 to-white',
-      headerTitle: pct > 40 ? 'text-white' : 'text-gray-700',
+      headerStops: 'from-red-400 via-red-400 to-white',
+      headerTitle: 'text-gray-700',
       headerStyle: {
         ['--tw-gradient-via-position' as any]: `${viaPos}%`,
         ['--tw-gradient-to-position' as any]: `${toPos}%`,
@@ -83,8 +83,8 @@ function toneConfig(tone: Tone, usagePct: number) {
     return {
       statusLabel: 'Próximo da meta',
       headerStops: 'from-yellow-400 via-yellow-400 to-white',
-      headerTitle: pct > 40 ? 'text-white' : 'text-gray-700',
-      headerMeta: pct > 90 ? 'text-white' : 'text-gray-700',
+      headerTitle: 'text-gray-700',
+      headerMeta: 'text-gray-700',
       headerStyle: {
         ['--tw-gradient-via-position' as any]: `${viaPos}%`,
         ['--tw-gradient-to-position' as any]: `${toPos}%`,
@@ -94,8 +94,8 @@ function toneConfig(tone: Tone, usagePct: number) {
 
   return {
     statusLabel: 'Dentro da meta',
-    headerStops: 'from-emerald-500 via-emerald-500 to-white',
-    headerTitle: pct > 40 ? 'text-white' : 'text-gray-700',
+    headerStops: 'from-emerald-400 via-emerald-400 to-white',
+    headerTitle: 'text-gray-700',
     headerStyle: {
       ['--tw-gradient-via-position' as any]: `${viaPos}%`,
       ['--tw-gradient-to-position' as any]: `${toPos}%`,

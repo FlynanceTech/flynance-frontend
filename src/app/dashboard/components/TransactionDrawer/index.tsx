@@ -20,8 +20,14 @@ const schema = z.object({
     .number({ invalid_type_error: 'Informe um valor válido' })
     .positive('Valor deve ser maior que zero')
     .optional(),
-  // datetime-local: "YYYY-MM-DDTHH:mm"
-  date: z.string().min(1, 'Data obrigatória'),
+  // datetime-local: "YYYY-MM-DDTHH:mm" (ou às vezes com segundos dependendo do browser)
+  date: z
+    .string()
+    .min(1, 'Data obrigatória')
+    .refine(
+      (v) => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(v),
+      'Formato de data inválido'
+    ),
   type: z.enum(['EXPENSE', 'INCOME'], { required_error: 'Tipo é obrigatório' }),
 })
 
@@ -32,6 +38,8 @@ interface TransactionDrawerProps {
   onClose: () => void
   initialData?: Transaction
 }
+
+const digits = (s: string) => s.replace(/\D/g, '')
 
 /** ISO do backend -> value do datetime-local (YYYY-MM-DDTHH:mm) */
 function isoToDateTimeLocalValue(iso: string) {
@@ -49,23 +57,25 @@ function nowDateTimeLocalValue() {
 }
 
 /**
- * datetime-local (YYYY-MM-DDTHH:mm) -> ISO com offset local:
- * "YYYY-MM-DDTHH:mm:00.000-03:00"
+ * datetime-local ("YYYY-MM-DDTHH:mm" ou "YYYY-MM-DDTHH:mm:ss")
+ * -> ISO em UTC com Z ("YYYY-MM-DDTHH:mm:ss.sssZ")
  *
- * Isso preserva a hora escolhida pelo usuário e ainda é ISO válido.
+ * ✅ Esse formato passa no seu backend (ex: 2025-12-26T19:17:00.000Z)
  */
-function dateTimeLocalToISOWithOffset(localValue: string) {
-  const d = new Date(localValue) // interpreta como horário local
-  const tz = -d.getTimezoneOffset() // minutos em relação ao UTC (ex: -03:00 => -180 offset, aqui vira -(-180)=180? atenção abaixo)
-  const sign = tz >= 0 ? '+' : '-'
-  const abs = Math.abs(tz)
-  const hh = String(Math.floor(abs / 60)).padStart(2, '0')
-  const mm = String(abs % 60).padStart(2, '0')
+function dateTimeLocalToISOZ(localValue: string) {
+  // garante segundos no string (alguns browsers mandam só HH:mm)
+  const normalized =
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(localValue) ? `${localValue}:00` : localValue
 
-  const [datePart, timePartRaw] = localValue.split('T')
-  const timePart = timePartRaw?.length === 5 ? `${timePartRaw}:00` : timePartRaw // garante segundos
+  // new Date("YYYY-MM-DDTHH:mm:ss") => interpreta como LOCAL, e toISOString() => UTC com Z
+  const d = new Date(normalized)
 
-  return `${datePart}T${timePart}.000${sign}${hh}:${mm}`
+  // fallback se por algum motivo ficar inválido
+  if (Number.isNaN(d.getTime())) {
+    throw new Error('Data inválida. Verifique o campo de data e tente novamente.')
+  }
+
+  return d.toISOString()
 }
 
 export default function TransactionDrawer({ open, onClose, initialData }: TransactionDrawerProps) {
@@ -115,8 +125,8 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
       description: data.description,
       categoryId: data.categoryId,
       value: data.value ?? 0,
-      // ✅ envia ISO válido sem mudar o "relógio" do usuário
-      date: dateTimeLocalToISOWithOffset(data.date),
+      // ✅ agora manda ISO Z (backend-friendly)
+      date: dateTimeLocalToISOZ(data.date),
       type: data.type,
       paymentType: 'DEBIT_CARD',
       origin: 'DASHBOARD',
