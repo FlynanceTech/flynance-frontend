@@ -157,7 +157,34 @@ export async function createPayment({
   userId,
   billingType,
 }: CreatePaymentPayload): Promise<PaymentResult> {
-  return createCreditCardPayment({ ...paymentDetails, customer: customerId, planId,userId, billingType});
+  console.log('[Frontend] ========== CRIANDO PAGAMENTO ==========')
+  console.log('[Frontend] customerId:', customerId)
+  console.log('[Frontend] userId:', userId)
+  console.log('[Frontend] planId:', planId)
+  console.log('[Frontend] billingType:', billingType)
+  console.log('[Frontend] paymentDetails:', paymentDetails)
+
+  // Monta o payload correto que o backend espera
+  const payload = {
+    customer: customerId,
+    userId,
+    planId,
+    billingType,
+    amount: paymentDetails.amount,
+    description: paymentDetails.description,
+    creditCard: paymentDetails.creditCard,
+  }
+
+  console.log('[Frontend] Payload final:', JSON.stringify(payload, null, 2))
+
+  try {
+    const { data } = await api.post<PaymentResult>("/payment/credit-card", payload)
+    console.log('[Frontend] Pagamento criado com sucesso:', data)
+    return data
+  } catch (err) {
+    console.error('[Frontend] Erro ao criar pagamento:', err)
+    throw asApiError(err, "Erro ao criar pagamento (cartão)")
+  }
 }
 
 export async function updatePayment(
