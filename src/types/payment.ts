@@ -84,6 +84,7 @@ export type CreditCardPayment = {
   amount: number;
   userId: string,
   planId: string,
+  cycle: string;
   billingType: string,
   description: string;
   creditCard: CreditCard;

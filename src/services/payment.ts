@@ -170,6 +170,7 @@ export async function createPayment({
     userId,
     planId,
     billingType,
+    cycle: paymentDetails.cycle,
     amount: paymentDetails.amount,
     description: paymentDetails.description,
     creditCard: paymentDetails.creditCard,
@@ -178,7 +179,7 @@ export async function createPayment({
   console.log('[Frontend] Payload final:', JSON.stringify(payload, null, 2))
 
   try {
-    const { data } = await api.post<PaymentResult>("/payment/credit-card", payload)
+    const { data } = await api.post<PaymentResult>("/payment/recurring", payload)
     console.log('[Frontend] Pagamento criado com sucesso:', data)
     return data
   } catch (err) {

@@ -169,6 +169,7 @@ export default function CheckoutStepper({
         paymentDetails: {
           userId: sessionUser.id,
           planId: plan.id,
+          cycle: plan.period,
           billingType: "CREDIT_CARD",
           amount: priceNumber,
           description: `Assinatura Flynance - ${planLabel}`,
