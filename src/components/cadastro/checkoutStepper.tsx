@@ -339,12 +339,7 @@ export default function CheckoutStepper({
     if (!emailNorm) return null;
 
     const candidates: Array<() => Promise<UserDTO | null>> = [
-      async () => (await safeGet<UserDTO>("/user/by-email", { email: emailNorm })) as any,
-      async () => (await safeGet<UserDTO>("/user/byEmail", { email: emailNorm })) as any,
-      async () => (await safeGet<UserDTO>("/user", { email: emailNorm })) as any,
-      async () => (await safeGet<UserDTO>("/user/search", { email: emailNorm })) as any,
-      async () => (await safeGet<UserDTO>(`/user/email/${encodeURIComponent(emailNorm)}`)) as any,
-      async () => (await safeGet<UserDTO>(`/user/by-email/${encodeURIComponent(emailNorm)}`)) as any,
+      async () => (await safeGet<UserDTO>(`/user/by-email/${emailNorm}`)) as any,
     ];
 
     for (const fn of candidates) {
@@ -715,6 +710,7 @@ export default function CheckoutStepper({
         paymentDetails: {
           userId: ensuredUser.id,
           planId: plan.id,
+          cycle: plan.period,
           billingType: "CREDIT_CARD",
           amount: priceNumber,
           description: `Assinatura Flynance - ${planLabel}`,

@@ -139,7 +139,7 @@ export default function CheckoutStepper({
 
     setLoading(true);
     setError(null);
-
+    
     try {
       if (!form.cardNumber || !form.cardName || !form.expiry || !form.cvv) {
         throw new Error(
