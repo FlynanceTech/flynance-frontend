@@ -273,6 +273,9 @@ export function SpendingControl() {
             >
               Meus Controles
             </Link>
+            <p className='text-center text-xs text-gray-500'>
+              Para ver demais metas cadastradas, clique em "Meus Controles".
+            </p>
           </div>
         )}
       </div>

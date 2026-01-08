@@ -298,7 +298,7 @@ function handleIdentifierChange(value: string) {
               </div>
             ) : (
               <>
-                <h2 className="font-semibold text-xl text-[#333C4D] mt-4">Digite o código enviado por e-mail</h2>
+                <h2 className="font-semibold text-xl text-[#333C4D] mt-4">Digite o código enviado no seu {method === 'email' ? 'E-mail' : 'WhatsApp'}</h2>
                 <OtpInput length={4} onComplete={handleComplete} />
                 {error && <p className="text-sm text-red-500">{error}</p>}
                 <div className='flex gap-4 w-full'>

@@ -16,7 +16,7 @@ export default function PricingSection() {
   return (
     <section
       id="pricing"
-      className="bg-white w-full px-4 md:p-16"
+      className="bg-white w-full px-4  py-4 md:py-16 flex flex-col items-center justify-center"
     >
       <div className="flex flex-col w-full gap-8 items-center justify-center">
         <h2 className="text-2xl md:text-3xl font-bold text-primary  text-center px-4">

@@ -114,14 +114,14 @@ const UserInfoCard = () => {
       </div>
 
       <div className="flex items-center gap-4 mb-6 pb-6 border-b border-border/15">
-        <div className="relative">
+     {/*    <div className="relative">
           <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center text-2xl font-semibold text-primary">
             JS
           </div>
           <button className="absolute bottom-0 right-0 p-1.5 bg-primary rounded-full hover:bg-primary/90 transition-colors">
             <Camera className="h-3.5 w-3.5 text-primary-foreground" />
           </button>
-        </div>
+        </div> */}
         <div>
           <p className="font-medium text-foreground">{formData.name}</p>
           <p className="text-sm text-muted-foreground">{formData.email}</p>

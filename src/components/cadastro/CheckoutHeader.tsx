@@ -30,11 +30,11 @@ export default function CheckoutHeader({ step }: CheckoutHeaderProps) {
 
         
   const handleBack = () => {
-    router.back(); 
+    router.push('/'); 
   };
 
   return (
-    <header className="bg-primary text-white lg:p-8 p-4 flex flex-col justify-start items-center gap-4 h-[300px]">
+    <header className="bg-primary text-white lg:p-8 p-4 flex flex-col justify-start items-center gap-4 h-[200px]">
       {/* Linha superior: voltar + logo */}
       <div className="w-full max-w-6xl mx-auto px-4 flex justify-between items-center">
         <div className="flex items-center gap-2">
@@ -54,7 +54,7 @@ export default function CheckoutHeader({ step }: CheckoutHeaderProps) {
       </div>
 
       {/* Stepper visual */}
-      <div className="max-w-6xl flex p-4 justify-between text-sm bg-secondary w-full rounded-md">
+{/*       <div className="max-w-6xl flex p-4 justify-between text-sm bg-secondary w-full rounded-md">
         {CHECKOUT_STEPS.map((label, i) => (
           <div
             key={i}
@@ -75,7 +75,7 @@ export default function CheckoutHeader({ step }: CheckoutHeaderProps) {
             </span>
           </div>
         ))}
-      </div>
+      </div> */}
     </header>
   );
 }
