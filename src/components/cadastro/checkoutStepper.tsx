@@ -341,7 +341,7 @@ useEffect(() => {
     if (!emailNorm) return null;
 
     const candidates: Array<() => Promise<UserDTO | null>> = [
-      async () => (await safeGet<UserDTO>("/user/by-email", { email: emailNorm })) as any, // query param
+      async () => (await safeGet<UserDTO>(`/user/by-email/${emailNorm}`)) as any, // query param
     ];
 
     for (const fn of candidates) {
