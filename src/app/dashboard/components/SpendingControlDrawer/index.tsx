@@ -31,7 +31,7 @@ const schema = z.object({
   notifyAtPct: z.array(z.number()),
   includeSubcategories: z.boolean(),
   carryOver: z.boolean(),
-  channels: z.array(z.enum(['IN_APP', 'EMAIL', 'WHATSZAPP'])),
+  channels: z.array(z.enum(['IN_APP', 'EMAIL', 'WHATSAPP'])),
 })
 
 type FormData = z.infer<typeof schema>
@@ -176,7 +176,7 @@ export default function SpendingControlDrawer({ open, onClose, editing }: Props)
                 </label>
 
                 <div className="flex gap-4">
-                  {['IN_APP', 'EMAIL', 'WHATSZAPP'].map((channel) => (
+                  {['IN_APP', 'EMAIL', 'WHATSAPP'].map((channel) => (
                     <label key={channel} className="flex items-center gap-2 text-sm">
                       <input
                         type="checkbox"

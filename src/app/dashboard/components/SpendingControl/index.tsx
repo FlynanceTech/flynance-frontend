@@ -7,7 +7,7 @@ import SpendingControlDrawer from '../SpendingControlDrawer'
 import { useCategories } from '@/hooks/query/useCategory'
 import Link from 'next/link'
 
-type Channel = 'IN_APP' | 'EMAIL' | 'WHATSZAPP'
+type Channel = 'IN_APP' | 'EMAIL' | 'WHATSAPP'
 
 interface ControlWithProgress {
   id: string

@@ -37,7 +37,7 @@ export interface ControlWithTransactions {
   carryOver: boolean
   notify: boolean
   notifyAtPct: number[]
-  channels: ('IN_APP' | 'EMAIL' | 'WHATSZAPP')[]
+  channels: ('IN_APP' | 'EMAIL' | 'WHATSAPP')[]
   lastNotifiedAt: string | null
   nextCheckAt: string | null
   includeSubcategories: boolean

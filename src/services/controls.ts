@@ -1,7 +1,7 @@
 import api from '@/lib/axios'
 
 export type PeriodType = 'monthly'
-export type Channel = 'IN_APP' | 'EMAIL' | 'WHATSZAPP'
+export type Channel = 'IN_APP' | 'EMAIL' | 'WHATSAPP'
 
 export interface CreateControlDTO {
   categoryId: string | null
