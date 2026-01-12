@@ -8,16 +8,14 @@ function isDocKey(value: string): value is DocKey {
   return value in LEGAL_DOCS;
 }
 
-// Opcional, mas ajuda a evitar cache estranho em prod
 export const dynamic = "force-dynamic";
-// export const runtime = "nodejs"; // se quiser forçar node runtime
 
 export async function GET(
   _req: Request,
-  context: { params: { doc: string } | Promise<{ doc: string }> }
+  { params }: { params: Promise<{ doc: string }> }
 ) {
-  // ✅ funciona nos dois cenários: params objeto ou params Promise
-  const { doc: rawDoc } = await Promise.resolve(context.params);
+  // ✅ em runtime, mesmo se params não for Promise, `await` ainda funciona.
+  const { doc: rawDoc } = await (params as any);
 
   const doc = String(rawDoc || "").toLowerCase();
 

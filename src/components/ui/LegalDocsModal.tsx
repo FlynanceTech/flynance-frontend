@@ -169,7 +169,8 @@ function LegalDocViewer({ doc }: { doc: LegalDocKey }) {
       setData(null);
 
       try {
-        const res = await fetch(`/api/legal/${doc}`, { cache: "no-store" });
+        const res = await fetch(`/api/legal/${encodeURIComponent(doc)}`, { cache: "no-store" });
+
 
         if (!res.ok) {
           // tenta pegar body pra debug (ajuda MUITO em prod)
