@@ -1,0 +1,701 @@
+{
+  "termos": {
+    "key": "termos",
+    "title": "Termos de uso",
+    "version": "1.0.0",
+    "effectiveAt": "2026-01-12",
+    "content": [
+      {
+        "type": "p",
+        "text": "Bem-vindo à Flynance Tecnologia (“Flynance”, “nós”)."
+      },
+      {
+        "type": "p",
+        "text": "Ao utilizar nossos serviços, plataformas, assistentes virtuais e soluções tecnológicas (em conjunto, os “Serviços”), você (“Usuário”) declara que leu, compreendeu e concorda integralmente com estes Termos de Uso (“Termos”)."
+      },
+      {
+        "type": "p",
+        "text": "Caso não concorde com qualquer condição aqui prevista, não utilize os Serviços."
+      },
+      {
+        "type": "h2",
+        "text": "1. OBJETO DOS SERVIÇOS"
+      },
+      {
+        "type": "p",
+        "text": "1.1. A Flynance oferece soluções tecnológicas de apoio à organização financeira, incluindo, mas não se limitando a:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Assistente financeiro via WhatsApp e/ou outros canais digitais;",
+          "Registro, categorização e visualização de informações financeiras fornecidas pelo Usuário;",
+          "Geração de alertas, lembretes, relatórios e insights automatizados."
+        ]
+      },
+      {
+        "type": "p",
+        "text": "1.2. A Flynance NÃO presta serviços de:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Consultoria financeira, contábil, jurídica ou tributária;",
+          "Planejamento financeiro personalizado;",
+          "Gestão ativa de contas, pagamentos, investimentos ou obrigações do Usuário."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "2. NATUREZA INFORMATIVA – NÃO CONSULTIVA"
+      },
+      {
+        "type": "p",
+        "text": "2.1. Todas as informações, alertas, lembretes, sugestões, análises ou insights fornecidos pelos Serviços:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Têm caráter meramente informativo e organizacional;",
+          "São gerados de forma automatizada, com base exclusiva nos dados inseridos pelo próprio Usuário."
+        ]
+      },
+      {
+        "type": "p",
+        "text": "2.2. Nenhuma informação fornecida pela Flynance deve ser interpretada como recomendação, orientação ou garantia de resultado financeiro."
+      },
+      {
+        "type": "p",
+        "text": "2.3. O Usuário reconhece que toda e qualquer decisão financeira é de sua exclusiva responsabilidade."
+      },
+      {
+        "type": "h2",
+        "text": "3. RESPONSABILIDADE DO USUÁRIO"
+      },
+      {
+        "type": "p",
+        "text": "3.1. O Usuário é integralmente responsável por:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Inserir informações corretas, completas e atualizadas;",
+          "Conferir seus compromissos financeiros;",
+          "Realizar pagamentos, transferências, quitações e obrigações dentro dos prazos."
+        ]
+      },
+      {
+        "type": "p",
+        "text": "3.2. A Flynance não se responsabiliza, em hipótese alguma, por:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Esquecimento de pagamento de contas, boletos, tributos, empréstimos ou quaisquer obrigações;",
+          "Multas, juros, encargos, negativação de crédito ou prejuízos financeiros;",
+          "Informações incorretas, incompletas ou desatualizadas fornecidas pelo Usuário;",
+          "Falhas de interpretação por parte do Usuário."
+        ]
+      },
+      {
+        "type": "p",
+        "text": "3.3. Alertas e lembretes são recursos auxiliares, não substituem:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Controle pessoal do Usuário;",
+          "Verificação direta junto a bancos, credores, concessionárias ou órgãos públicos."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "4. LIMITAÇÃO DE RESPONSABILIDADE"
+      },
+      {
+        "type": "p",
+        "text": "4.1. A Flynance não garante:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Que os alertas serão enviados em tempo real;",
+          "Que não ocorrerão falhas técnicas, indisponibilidades ou interrupções;",
+          "Que integrações com terceiros estarão sempre ativas ou corretas."
+        ]
+      },
+      {
+        "type": "p",
+        "text": "4.2. A Flynance não será responsável por danos diretos, indiretos, lucros cessantes, perdas financeiras, danos morais ou materiais decorrentes de:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Uso ou incapacidade de uso dos Serviços;",
+          "Falhas de conexão, servidores, APIs, WhatsApp ou serviços de terceiros;",
+          "Decisões tomadas pelo Usuário com base nas informações fornecidas."
+        ]
+      },
+      {
+        "type": "p",
+        "text": "4.3. Em qualquer hipótese, eventual responsabilidade da Flynance fica limitada ao valor efetivamente pago pelo Usuário pelos Serviços, nos últimos 12 (doze) meses, se houver."
+      },
+      {
+        "type": "h2",
+        "text": "5. SERVIÇOS DE TERCEIROS"
+      },
+      {
+        "type": "p",
+        "text": "5.1. Os Serviços podem depender ou se integrar a plataformas de terceiros (ex.: WhatsApp, APIs bancárias, gateways)."
+      },
+      {
+        "type": "p",
+        "text": "5.2. A Flynance não se responsabiliza por falhas, indisponibilidades, alterações ou interrupções desses serviços externos."
+      },
+      {
+        "type": "h2",
+        "text": "6. DISPONIBILIDADE E CONTINUIDADE"
+      },
+      {
+        "type": "p",
+        "text": "6.1. A Flynance poderá:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Atualizar, modificar, suspender ou encerrar funcionalidades;",
+          "Realizar manutenções programadas ou emergenciais."
+        ]
+      },
+      {
+        "type": "p",
+        "text": "6.2. Não há garantia de disponibilidade contínua ou ininterrupta dos Serviços."
+      },
+      {
+        "type": "h2",
+        "text": "7. PROPRIEDADE INTELECTUAL"
+      },
+      {
+        "type": "p",
+        "text": "7.1. Todos os direitos sobre:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Software, marcas, logotipos, interfaces, fluxos e tecnologias pertencem exclusivamente à Flynance."
+        ]
+      },
+      {
+        "type": "p",
+        "text": "7.2. É proibida a cópia, reprodução, engenharia reversa ou uso indevido sem autorização expressa."
+      },
+      {
+        "type": "h2",
+        "text": "8. PRIVACIDADE E DADOS"
+      },
+      {
+        "type": "p",
+        "text": "8.1. O tratamento de dados pessoais segue a Lei Geral de Proteção de Dados (LGPD – Lei nº 13.709/18)."
+      },
+      {
+        "type": "p",
+        "text": "8.2. As regras completas constam na Política de Privacidade, que é parte integrante destes Termos."
+      },
+      {
+        "type": "h2",
+        "text": "9. SUSPENSÃO E ENCERRAMENTO"
+      },
+      {
+        "type": "p",
+        "text": "9.1. A Flynance pode suspender ou encerrar o acesso do Usuário em caso de:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Uso indevido;",
+          "Violação destes Termos;",
+          "Atividades ilegais ou fraudulentas."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "10. ALTERAÇÕES DOS TERMOS"
+      },
+      {
+        "type": "p",
+        "text": "10.1. Estes Termos podem ser alterados a qualquer momento."
+      },
+      {
+        "type": "p",
+        "text": "10.2. O uso contínuo dos Serviços após alterações implica aceitação automática da versão vigente."
+      },
+      {
+        "type": "h2",
+        "text": "11. LEGISLAÇÃO E FORO"
+      },
+      {
+        "type": "p",
+        "text": "11.1. Estes Termos são regidos pelas leis da República Federativa do Brasil."
+      },
+      {
+        "type": "p",
+        "text": "11.2. Fica eleito o foro da comarca de Caxias do Sul/RS, com renúncia a qualquer outro, por mais privilegiado que seja."
+      },
+      {
+        "type": "h2",
+        "text": "12. ACEITE"
+      },
+      {
+        "type": "p",
+        "text": "Ao utilizar os Serviços da Flynance, o Usuário declara que:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Leu;",
+          "Compreendeu;",
+          "Concorda integralmente com estes Termos de Uso."
+        ]
+      }
+    ]
+  },
+  "privacidade": {
+    "key": "privacidade",
+    "title": "Política de privacidade (LGPD)",
+    "version": "1.0.0",
+    "effectiveAt": "2026-01-12",
+    "content": [
+      {
+        "type": "p",
+        "text": "A Flynance Tecnologia (“Flynance”, “nós”) valoriza a privacidade e a proteção dos dados pessoais de seus usuários (“Usuário”)."
+      },
+      {
+        "type": "p",
+        "text": "Esta Política de Privacidade descreve como coletamos, usamos, armazenamos e protegemos dados pessoais, em conformidade com a Lei nº 13.709/2018 – LGPD."
+      },
+      {
+        "type": "p",
+        "text": "Ao utilizar nossos serviços, o Usuário declara que leu, compreendeu e concorda com esta Política."
+      },
+      {
+        "type": "h2",
+        "text": "1. QUEM SOMOS"
+      },
+      {
+        "type": "p",
+        "text": "A Flynance é uma empresa de tecnologia que oferece soluções digitais de apoio à organização financeira, incluindo assistentes virtuais, automações e visualizações de dados financeiros."
+      },
+      {
+        "type": "p",
+        "text": "A Flynance não é instituição financeira, não presta consultoria e não executa operações financeiras em nome do Usuário."
+      },
+      {
+        "type": "h2",
+        "text": "2. DADOS COLETADOS"
+      },
+      {
+        "type": "p",
+        "text": "Podemos coletar os seguintes dados, conforme o uso do serviço:"
+      },
+      {
+        "type": "h3",
+        "text": "2.1. Dados fornecidos pelo Usuário"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Nome",
+          "Número de telefone (WhatsApp)",
+          "E-mail",
+          "Informações financeiras inseridas voluntariamente (ex.: valores, categorias, datas, descrições)",
+          "Mensagens trocadas com o assistente"
+        ]
+      },
+      {
+        "type": "h3",
+        "text": "2.2. Dados coletados automaticamente"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Data e hora de interações",
+          "Logs de acesso",
+          "Informações técnicas básicas do dispositivo e conexão"
+        ]
+      },
+      {
+        "type": "p",
+        "text": "⚠️ A Flynance não coleta dados bancários sensíveis automaticamente, como senhas, tokens bancários ou credenciais sigilosas, salvo quando expressamente informado e autorizado."
+      },
+      {
+        "type": "h2",
+        "text": "3. FINALIDADE DO TRATAMENTO"
+      },
+      {
+        "type": "p",
+        "text": "Os dados são tratados para as seguintes finalidades:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Operar e melhorar os Serviços;",
+          "Registrar, organizar e apresentar informações financeiras fornecidas pelo Usuário;",
+          "Enviar alertas, lembretes e comunicações relacionadas ao serviço;",
+          "Cumprir obrigações legais e regulatórias;",
+          "Prevenir fraudes e garantir segurança operacional."
+        ]
+      },
+      {
+        "type": "p",
+        "text": "Não utilizamos dados para tomada de decisão financeira em nome do Usuário."
+      },
+      {
+        "type": "h2",
+        "text": "4. BASE LEGAL DO TRATAMENTO"
+      },
+      {
+        "type": "p",
+        "text": "O tratamento dos dados ocorre com base nas seguintes hipóteses legais (art. 7º da LGPD):"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Consentimento do titular;",
+          "Execução de contrato ou de procedimentos preliminares;",
+          "Cumprimento de obrigação legal;",
+          "Legítimo interesse, respeitando direitos e liberdades do Usuário."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "5. COMPARTILHAMENTO DE DADOS"
+      },
+      {
+        "type": "p",
+        "text": "5.1. A Flynance não vende dados pessoais."
+      },
+      {
+        "type": "p",
+        "text": "5.2. Os dados podem ser compartilhados apenas quando necessário com:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Provedores de tecnologia, hospedagem, APIs e automação;",
+          "Plataformas de comunicação (ex.: WhatsApp);",
+          "Autoridades públicas, mediante obrigação legal."
+        ]
+      },
+      {
+        "type": "p",
+        "text": "5.3. Todos os parceiros seguem padrões razoáveis de segurança e confidencialidade."
+      },
+      {
+        "type": "h2",
+        "text": "6. ARMAZENAMENTO E SEGURANÇA"
+      },
+      {
+        "type": "p",
+        "text": "6.1. Os dados são armazenados em ambientes seguros, com medidas técnicas e administrativas adequadas, incluindo:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Controle de acesso;",
+          "Criptografia quando aplicável;",
+          "Monitoramento de sistemas."
+        ]
+      },
+      {
+        "type": "p",
+        "text": "6.2. Apesar dos esforços, nenhum sistema é totalmente seguro, e a Flynance não pode garantir segurança absoluta contra incidentes externos."
+      },
+      {
+        "type": "h2",
+        "text": "7. PRAZO DE RETENÇÃO DOS DADOS"
+      },
+      {
+        "type": "p",
+        "text": "Os dados serão mantidos:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Enquanto o Usuário utilizar os Serviços;",
+          "Pelo prazo necessário para cumprimento de obrigações legais;",
+          "Ou até solicitação de exclusão, quando legalmente possível."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "8. DIREITOS DO TITULAR DOS DADOS"
+      },
+      {
+        "type": "p",
+        "text": "Nos termos da LGPD, o Usuário pode solicitar:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Confirmação da existência de tratamento;",
+          "Acesso aos dados;",
+          "Correção de dados incompletos ou desatualizados;",
+          "Anonimização, bloqueio ou exclusão;",
+          "Revogação do consentimento."
+        ]
+      },
+      {
+        "type": "p",
+        "text": "As solicitações devem ser feitas pelos canais oficiais da Flynance."
+      },
+      {
+        "type": "h2",
+        "text": "9. RESPONSABILIDADE DO USUÁRIO"
+      },
+      {
+        "type": "p",
+        "text": "O Usuário reconhece que:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Os dados financeiros inseridos são de sua exclusiva responsabilidade;",
+          "Deve evitar compartilhar dados sensíveis de terceiros sem autorização;",
+          "A Flynance não valida a veracidade das informações inseridas."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "10. USO DE COOKIES E TECNOLOGIAS SEMELHANTES"
+      },
+      {
+        "type": "p",
+        "text": "A Flynance pode utilizar cookies e tecnologias similares em seus sites e plataformas para:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Melhorar a experiência do usuário;",
+          "Análise de uso e desempenho."
+        ]
+      },
+      {
+        "type": "p",
+        "text": "As regras específicas constam na Política de Cookies, quando aplicável."
+      },
+      {
+        "type": "h2",
+        "text": "11. ALTERAÇÕES DESTA POLÍTICA"
+      },
+      {
+        "type": "p",
+        "text": "Esta Política pode ser alterada a qualquer momento."
+      },
+      {
+        "type": "p",
+        "text": "O uso contínuo dos Serviços após alterações implica aceitação da versão atualizada."
+      },
+      {
+        "type": "h2",
+        "text": "12. CONTATO E ENCARREGADO DE DADOS (DPO)"
+      },
+      {
+        "type": "p",
+        "text": "Para exercer seus direitos ou esclarecer dúvidas sobre esta Política, o Usuário pode entrar em contato por:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "📧 E-mail: institucional@flynance.com.br",
+          "📍 Endereço: Edifício Pharos Corp - R. Santos Dumont, 1285 - sala 601 - Exposição, Caxias do Sul - RS, 95084-390",
+          "(O encarregado de dados poderá ser formalmente designado conforme exigência legal.)"
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "13. LEGISLAÇÃO APLICÁVEL"
+      },
+      {
+        "type": "p",
+        "text": "Esta Política é regida pelas leis da República Federativa do Brasil, especialmente a LGPD."
+      }
+    ]
+  },
+  "cookies": {
+    "key": "cookies",
+    "title": "Política de cookies",
+    "version": "1.0.0",
+    "effectiveAt": "2026-01-12",
+    "content": [
+      {
+        "type": "p",
+        "text": "A Flynance Tecnologia (“Flynance”, “nós”) utiliza cookies e tecnologias semelhantes para melhorar a experiência do usuário (“Usuário”) em seus sites, plataformas e aplicações digitais."
+      },
+      {
+        "type": "p",
+        "text": "Esta Política explica o que são cookies, como os utilizamos e como o Usuário pode gerenciá-los, em conformidade com a Lei Geral de Proteção de Dados (LGPD – Lei nº 13.709/2018)."
+      },
+      {
+        "type": "h2",
+        "text": "1. O QUE SÃO COOKIES"
+      },
+      {
+        "type": "p",
+        "text": "Cookies são pequenos arquivos de texto armazenados no dispositivo do Usuário quando ele acessa um site ou sistema."
+      },
+      {
+        "type": "p",
+        "text": "Eles servem para reconhecer preferências, melhorar funcionalidades e analisar o uso da plataforma."
+      },
+      {
+        "type": "h2",
+        "text": "2. QUAIS COOKIES UTILIZAMOS"
+      },
+      {
+        "type": "p",
+        "text": "A Flynance pode utilizar os seguintes tipos de cookies:"
+      },
+      {
+        "type": "h3",
+        "text": "2.1. Cookies Necessários"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Essenciais para o funcionamento da plataforma;",
+          "Permitem navegação segura e uso de funcionalidades básicas;",
+          "Não podem ser desativados, pois inviabilizam o funcionamento do serviço."
+        ]
+      },
+      {
+        "type": "h3",
+        "text": "2.2. Cookies de Desempenho e Análise"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Coletam informações de forma agregada e anonimizada;",
+          "Permitem entender como os usuários interagem com a plataforma;",
+          "Ajudam a melhorar performance, estabilidade e usabilidade."
+        ]
+      },
+      {
+        "type": "h3",
+        "text": "2.3. Cookies de Funcionalidade"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Armazenam preferências do Usuário;",
+          "Tornam a experiência mais personalizada (ex.: idioma, sessões)."
+        ]
+      },
+      {
+        "type": "p",
+        "text": "⚠️ A Flynance não utiliza cookies para tomada de decisão financeira, nem para executar operações em nome do Usuário."
+      },
+      {
+        "type": "h2",
+        "text": "3. COOKIES DE TERCEIROS"
+      },
+      {
+        "type": "p",
+        "text": "Podemos utilizar cookies de terceiros, como:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Ferramentas de análise (ex.: métricas de acesso);",
+          "Serviços de hospedagem e segurança;",
+          "Plataformas de automação e monitoramento."
+        ]
+      },
+      {
+        "type": "p",
+        "text": "Esses terceiros são responsáveis por suas próprias políticas de cookies e privacidade."
+      },
+      {
+        "type": "h2",
+        "text": "4. CONSENTIMENTO"
+      },
+      {
+        "type": "p",
+        "text": "Ao acessar nossos sites ou plataformas pela primeira vez, o Usuário será informado sobre o uso de cookies e poderá:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Aceitar o uso conforme esta Política;",
+          "Gerenciar preferências, quando aplicável."
+        ]
+      },
+      {
+        "type": "p",
+        "text": "O consentimento pode ser revogado a qualquer momento."
+      },
+      {
+        "type": "h2",
+        "text": "5. COMO GERENCIAR OU DESATIVAR COOKIES"
+      },
+      {
+        "type": "p",
+        "text": "O Usuário pode, a qualquer momento:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Configurar seu navegador para bloquear ou alertar sobre cookies;",
+          "Excluir cookies já armazenados."
+        ]
+      },
+      {
+        "type": "p",
+        "text": "⚠️ A desativação de cookies essenciais pode impactar negativamente a experiência ou impedir o funcionamento correto da plataforma."
+      },
+      {
+        "type": "h2",
+        "text": "6. RELAÇÃO COM A LGPD"
+      },
+      {
+        "type": "p",
+        "text": "Os dados coletados por meio de cookies são tratados conforme a Política de Privacidade da Flynance, respeitando os princípios da:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Finalidade;",
+          "Necessidade;",
+          "Transparência;",
+          "Segurança."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "7. ALTERAÇÕES DESTA POLÍTICA"
+      },
+      {
+        "type": "p",
+        "text": "Esta Política pode ser atualizada a qualquer momento."
+      },
+      {
+        "type": "p",
+        "text": "O uso contínuo das plataformas após alterações implica aceitação da versão vigente."
+      },
+      {
+        "type": "h2",
+        "text": "8. CONTATO"
+      },
+      {
+        "type": "p",
+        "text": "Em caso de dúvidas sobre esta Política ou sobre o uso de cookies, o Usuário pode entrar em contato por:"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "📧 E-mail: institucional@flynance.com.br",
+          "📍 Endereço: Edifício Pharos Corp - R. Santos Dumont, 1285 - sala 601 - Exposição, Caxias do Sul - RS, 95084-390"
+        ]
+      }
+    ]
+  }
+}

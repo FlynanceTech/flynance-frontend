@@ -14,8 +14,14 @@ export function CheckoutPageClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const plano = searchParams.get("plano") ?? undefined;
-  const { data, isLoading, error } = usePlanBySlug(plano);
+  const plano = searchParams.get("plano");
+
+  const defaultPlano = "essencial-mensal";
+  console.log('plano:',typeof plano, plano);
+  const planoSlug = plano === 'undefined' || null ? defaultPlano : plano;
+
+  console.log('planoSlug:', planoSlug);
+  const { data, isLoading, error } = usePlanBySlug(planoSlug as string);
 
   useEffect(() => {
     if (!plano) router.push("/");
@@ -27,27 +33,13 @@ export function CheckoutPageClient() {
     ? 0
     : Math.min(Math.max(rawStep, 0), CHECKOUT_STEPS.length - 1);
 
-  const handleStepChange = (nextStep: number) => {
-    const clamped = Math.min(
-      Math.max(nextStep, 0),
-      CHECKOUT_STEPS.length - 1
-    );
-
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("step", String(clamped));
-    router.replace(`?${params.toString()}`);
-
-    if (plano) {
-      localStorage.setItem(`checkoutStep:${plano}`, String(clamped));
-    }
-  };
 
   if (!plano) return null;
 
   if (isLoading) {
     return (
       <>
-        <CheckoutHeader step={step} />
+        <CheckoutHeader />
         <main>
           <div className="max-w-6xl mx-auto px-4 lg:px-0 -mt-16 pb-16">
             <section className="relative z-20">
@@ -82,15 +74,13 @@ export function CheckoutPageClient() {
 
   return (
     <>
-      <CheckoutHeader step={step} />
+      <CheckoutHeader />
 
       <main>
         <div className="max-w-6xl mx-auto px-4 lg:px-0 -mt-16 pb-16">
           <section className="relative z-20">
             <CheckoutStepper
               plan={data}
-              step={step}
-              onStepChange={handleStepChange}
             />
           </section>
         </div>

@@ -27,9 +27,11 @@ export function usePlan(id?: string) {
 }
 
 export function usePlanBySlug(slug?: string) {
+  const slugParam = slug ?? "essencial-mensal";
+
   return useQuery({
-    queryKey: plansKeys.bySlug(slug ?? "unknown"),
-    queryFn: ({ signal }) => getPlanBySlug(slug as string, signal),
+    queryKey: plansKeys.bySlug(slugParam),
+    queryFn: ({ signal }) => getPlanBySlug(slugParam, signal),
     enabled: !!slug,
     staleTime: 60_000,
   });

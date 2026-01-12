@@ -1,49 +1,47 @@
 import { NextResponse } from "next/server";
-import path from "node:path";
-import fs from "node:fs/promises";
+import LEGAL_DOCS from "./docs.json"; // ajuste o alias/caminho
 
-const DOCS = {
-  termos: { title: "Termos de uso", file: "legal/Termo de uso.docx" },
-  privacidade: { title: "Política de privacidade (LGPD)", file: "legal/Lei geral de proteção de dados.docx" },
-  cookies: { title: "Política de cookies", file: "legal/Politica de cookies.docx" },
-} as const;
+type LegalDocs = typeof LEGAL_DOCS;
+type DocKey = keyof LegalDocs;
 
-type DocKey = keyof typeof DOCS;
+function isDocKey(value: string): value is DocKey {
+  return value in LEGAL_DOCS;
+}
 
 export async function GET(
   _req: Request,
   context: { params: Promise<{ doc: string }> }
 ) {
   const { doc } = await context.params;
-  const key = doc as DocKey;
 
-  const meta = DOCS[key];
-  if (!meta) {
-    return NextResponse.json({ message: "Documento não encontrado." }, { status: 404 });
-  }
-
-  const abs = path.join(process.cwd(), meta.file);
-
-  let buffer: Buffer;
-  try {
-    buffer = await fs.readFile(abs);
-  } catch {
+  if (doc === "all") {
     return NextResponse.json(
-      { message: "Arquivo não encontrado no servidor.", file: meta.file },
-      { status: 404 }
+      {
+        docs: Object.values(LEGAL_DOCS).map((d) => ({
+          key: d.key,
+          title: d.title,
+          version: d.version,
+          effectiveAt: d.effectiveAt
+        }))
+      },
+      { headers: { "Cache-Control": "no-store" } }
     );
   }
 
-  // ✅ Buffer (Node) -> Uint8Array (Web BodyInit compatível)
-  const body = new Uint8Array(buffer);
+  if (!isDocKey(doc)) {
+    return NextResponse.json(
+      { message: "Documento não encontrado.", doc },
+      { status: 404, headers: { "Cache-Control": "no-store" } }
+    );
+  }
 
-  return new NextResponse(body, {
+  const payload = LEGAL_DOCS[doc];
+
+  return NextResponse.json(payload, {
     headers: {
-      "Content-Type":
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "Content-Disposition": `inline; filename="${encodeURIComponent(meta.title)}.docx"`,
       "Cache-Control": "no-store",
-      "X-Doc-Title": meta.title,
-    },
+      "X-Doc-Title": payload.title,
+      "X-Doc-Version": payload.version
+    }
   });
 }

@@ -8,25 +8,9 @@ import { CHECKOUT_STEPS } from "./checkoutSteps";
 import { useRouter } from "next/navigation";
 
 
-type CheckoutHeaderProps = {
-  step: number; // índice atual (0, 1, 2)
-};
 
-export default function CheckoutHeader({ step }: CheckoutHeaderProps) {
+export default function CheckoutHeader() {
   const router = useRouter()
-  const clampedStep = Math.min(
-    Math.max(step, 0),
-    CHECKOUT_STEPS.length - 1
-  );
-
-  const switchIconSteps = (i: number) =>
-    i === 0
-      ? clampedStep > 0
-        ? <UserCheck size={20} />
-        : <User size={20} />
-      : i === 1
-        ? <CreditCard size={20} />
-        : <Check size={20} />;
 
         
   const handleBack = () => {

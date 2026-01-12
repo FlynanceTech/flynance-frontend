@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
 import { X } from "lucide-react";
 
@@ -8,7 +8,7 @@ export type LegalDocKey = "termos" | "privacidade" | "cookies";
 
 type Props = {
   open: boolean;
-  initialDoc?: LegalDocKey; // qual aba começa ao abrir
+  initialDoc?: LegalDocKey;
   onClose: () => void;
 };
 
@@ -16,6 +16,21 @@ const DOCS: Record<LegalDocKey, { title: string; tabLabel: string }> = {
   termos: { title: "Termos de uso", tabLabel: "Termos" },
   privacidade: { title: "Política de privacidade (LGPD)", tabLabel: "Privacidade (LGPD)" },
   cookies: { title: "Política de cookies", tabLabel: "Cookies" },
+};
+
+/** ===== Types do JSON ===== */
+type LegalDocBlock =
+  | { type: "p"; text: string }
+  | { type: "h2"; text: string }
+  | { type: "h3"; text: string }
+  | { type: "ul"; items: string[] };
+
+type LegalDocPayload = {
+  key: LegalDocKey;
+  title: string;
+  version?: string;
+  effectiveAt?: string;
+  content: string | LegalDocBlock[];
 };
 
 export default function LegalDocsModal({ open, initialDoc = "termos", onClose }: Props) {
@@ -31,7 +46,7 @@ export default function LegalDocsModal({ open, initialDoc = "termos", onClose }:
   );
 
   // reseta aba quando abrir
-  useEffect(() => {
+   useEffect(() => {
     if (!open) return;
     setActiveDoc(initialDoc);
   }, [open, initialDoc]);
@@ -101,7 +116,7 @@ export default function LegalDocsModal({ open, initialDoc = "termos", onClose }:
           {/* content */}
           <div className="px-5 pb-5 pt-4">
             <div className="h-[65vh] overflow-hidden rounded-xl border border-slate-200 bg-white">
-              <DocxViewer doc={activeDoc} />
+              <LegalDocViewer doc={activeDoc} />
             </div>
           </div>
         </div>
@@ -133,10 +148,10 @@ function TabButton({
   );
 }
 
-function DocxViewer({ doc }: { doc: LegalDocKey }) {
-  const ref = useRef<HTMLDivElement>(null);
+function LegalDocViewer({ doc }: { doc: LegalDocKey }) {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  const [data, setData] = useState<LegalDocPayload | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -144,31 +159,21 @@ function DocxViewer({ doc }: { doc: LegalDocKey }) {
     async function run() {
       setLoading(true);
       setErr(null);
+      setData(null);
 
       try {
         const res = await fetch(`/api/legal/${doc}`, { cache: "no-store" });
         if (!res.ok) throw new Error(`Falha ao carregar documento (${res.status}).`);
 
-        const arrayBuffer = await res.arrayBuffer();
+        const json = (await res.json()) as LegalDocPayload;
 
-        const mod = await import("docx-preview");
-        const { renderAsync } = mod;
-
-        if (!ref.current) return;
-
-        ref.current.innerHTML = "";
-
-        await renderAsync(arrayBuffer, ref.current, undefined, {
-          inWrapper: true,
-          ignoreWidth: false,
-          ignoreHeight: false,
-          // useMathML: false, // se precisar
-        });
-
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setData(json);
+          setLoading(false);
+        }
       } catch (e: any) {
         if (!cancelled) {
-          setErr(e?.message ?? "Erro ao renderizar documento.");
+          setErr(e?.message ?? "Erro ao carregar documento.");
           setLoading(false);
         }
       }
@@ -184,8 +189,8 @@ function DocxViewer({ doc }: { doc: LegalDocKey }) {
     <div className="relative h-full">
       {loading && (
         <div className="absolute inset-0 z-10 bg-white/85 backdrop-blur-sm p-4">
-          <p className="text-sm font-semibold text-slate-700">Preparando documento…</p>
-          <p className="text-xs text-slate-500 mt-1">Isso pode levar alguns segundos.</p>
+          <p className="text-sm font-semibold text-slate-700">Carregando documento…</p>
+          <p className="text-xs text-slate-500 mt-1">Isso deve ser rápido.</p>
 
           <div className="mt-4 space-y-3">
             <div className="h-4 w-2/3 bg-slate-100 rounded" />
@@ -201,10 +206,80 @@ function DocxViewer({ doc }: { doc: LegalDocKey }) {
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
             {err}
           </div>
+        ) : data ? (
+          <div className="mx-auto max-w-[760px]">
+            {/* meta */}
+            <div className="mb-4">
+              <h3 className="text-xl font-semibold text-slate-900">{data.title}</h3>
+
+              {(data.version || data.effectiveAt) && (
+                <p className="mt-1 text-xs text-slate-500">
+                  {data.version ? `Versão ${data.version}` : ""}
+                  {data.version && data.effectiveAt ? " • " : ""}
+                  {data.effectiveAt ? `Vigente desde ${data.effectiveAt}` : ""}
+                </p>
+              )}
+            </div>
+
+            {/* content */}
+            <LegalDocContent content={data.content} />
+          </div>
         ) : (
-          <div ref={ref} className="docx" />
+          <div className="text-sm text-slate-500">Nenhum conteúdo.</div>
         )}
       </div>
+    </div>
+  );
+}
+
+function LegalDocContent({ content }: { content: LegalDocPayload["content"] }) {
+  // Fallback: caso seu JSON ainda venha como string gigante
+  if (typeof content === "string") {
+    return (
+      <pre className="whitespace-pre-wrap text-sm leading-6 text-slate-700 font-sans">
+        {content}
+      </pre>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {content.map((block, idx) => {
+        switch (block.type) {
+          case "h2":
+            return (
+              <h4 key={idx} className="pt-3 text-base font-semibold text-slate-900">
+                {block.text}
+              </h4>
+            );
+
+          case "h3":
+            return (
+              <h5 key={idx} className="pt-2 text-sm font-semibold text-slate-800">
+                {block.text}
+              </h5>
+            );
+
+          case "p":
+            return (
+              <p key={idx} className="text-sm leading-6 text-slate-700">
+                {block.text}
+              </p>
+            );
+
+          case "ul":
+            return (
+              <ul key={idx} className="list-disc pl-5 text-sm leading-6 text-slate-700 space-y-1">
+                {block.items.map((it, j) => (
+                  <li key={j}>{it}</li>
+                ))}
+              </ul>
+            );
+
+          default:
+            return null;
+        }
+      })}
     </div>
   );
 }

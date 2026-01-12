@@ -30,7 +30,6 @@ import {
   CardExpiryElement,
   CardCvcElement,
 } from "@stripe/react-stripe-js";
-import { CheckoutCreditCard } from "@/app/dashboard/components/CreditCard";
 
 interface FormDTO {
   name: string;
@@ -66,10 +65,8 @@ const initialForm: FormDTO = {
   promoCode: "",
 };
 
-
 type LegalDocKey = "termos" | "privacidade" | "cookies";
 
-const digits = (s: string) => s.replace(/\D/g, "");
 const normalizeDigits = (v?: string) => (v ?? "").replace(/\D/g, "");
 const normalizeEmail = (email?: string) => (email ?? "").trim().toLowerCase();
 
@@ -120,23 +117,22 @@ const formatCurrency = (value: number) =>
     minimumFractionDigits: 2,
   }).format(value);
 
-type CheckoutStepperProps = {
+type CheckoutProps = {
   plan: PlansResponse;
-  step: number;
-  onStepChange: (nextStep: number) => void;
 };
 
 // Stripe promise (não recriar por render)
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "");
 
 type AnnualBilling = "UPFRONT" | "INSTALLMENTS";
+type ViewState = "CHECKOUT" | "SUCCESS";
 
 const ANNUAL_COUPON_CODE = "FLY10" as const;
 const ANNUAL_DISCOUNT_PCT = 0.10;
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-export default function CheckoutStepper(props: CheckoutStepperProps) {
+export default function CheckoutStepper(props: CheckoutProps) {
   return (
     <Elements
       stripe={stripePromise}
@@ -149,13 +145,15 @@ export default function CheckoutStepper(props: CheckoutStepperProps) {
   );
 }
 
-function CheckoutStepperInner({ plan, step, onStepChange }: CheckoutStepperProps) {
+function CheckoutStepperInner({ plan }: CheckoutProps) {
   const stripe = useStripe();
   const elements = useElements();
 
   const router = useRouter();
   const searchParams = useSearchParams();
   const revalidate = searchParams.get("revalidate");
+
+  const [view, setView] = useState<ViewState>("CHECKOUT");
 
   const [legalOpen, setLegalOpen] = useState(false);
   const [legalDoc, setLegalDoc] = useState<LegalDocKey>("termos");
@@ -165,7 +163,7 @@ function CheckoutStepperInner({ plan, step, onStepChange }: CheckoutStepperProps
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // novo: escolha do anual
+  // escolha do anual
   const [annualBilling, setAnnualBilling] = useState<AnnualBilling>("UPFRONT");
 
   // Stripe element states
@@ -186,6 +184,22 @@ function CheckoutStepperInner({ plan, step, onStepChange }: CheckoutStepperProps
   // debounce de sync
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSyncedKeyRef = useRef<string | null>(null);
+
+  // 🔒 Bloqueia acesso via URL (?step=2)
+  useEffect(() => {
+    const stepParam = searchParams.get("step");
+    if (stepParam === "2") {
+      const plano = searchParams.get("plano") ?? plan.slug ?? "";
+      const reval = searchParams.get("revalidate");
+
+      const qs = new URLSearchParams();
+      if (plano) qs.set("plano", plano);
+      if (reval) qs.set("revalidate", reval);
+
+      router.replace(`/cadastro/checkout?${qs.toString()}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (revalidate) fetchAccount();
@@ -227,22 +241,23 @@ function CheckoutStepperInner({ plan, step, onStepChange }: CheckoutStepperProps
     if (!isAnnual) setAnnualBilling("UPFRONT");
   }, [isAnnual]);
 
-useEffect(() => {
-  setForm((prev) => {
-    const current = (prev.promoCode ?? "").trim();
+  // Cupom default no anual
+  useEffect(() => {
+    setForm((prev) => {
+      const current = (prev.promoCode ?? "").trim();
 
-    // Mensal: limpa
-    if (!isAnnual) {
-      if (!current) return prev;
-      return { ...prev, promoCode: "" };
-    }
+      // Mensal: limpa
+      if (!isAnnual) {
+        if (!current) return prev;
+        return { ...prev, promoCode: "" };
+      }
 
-    // Anual: default FLY10 se vazio
-    if (!current) return { ...prev, promoCode: ANNUAL_COUPON_CODE };
+      // Anual: default FLY10 se vazio
+      if (!current) return { ...prev, promoCode: ANNUAL_COUPON_CODE };
 
-    return prev;
-  });
-}, [isAnnual]);
+      return prev;
+    });
+  }, [isAnnual]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -251,8 +266,6 @@ useEffect(() => {
 
   const inputClasses =
     "p-3 border border-gray-300 rounded-md w-full focus:outline focus:outline-2 focus:outline-secondary focus:outline-offset-2";
-
-  const handleBack = () => onStepChange(Math.max(step - 1, 0));
 
   // ---------------------------
   // helpers de erro / conflitos
@@ -341,7 +354,7 @@ useEffect(() => {
     if (!emailNorm) return null;
 
     const candidates: Array<() => Promise<UserDTO | null>> = [
-      async () => (await safeGet<UserDTO>(`/user/by-email/${emailNorm}`)) as any, // query param
+      async () => (await safeGet<UserDTO>(`/user/by-email/${emailNorm}`)) as any,
     ];
 
     for (const fn of candidates) {
@@ -351,7 +364,10 @@ useEffect(() => {
     return null;
   }
 
-  async function findExistingUserByPhoneOrEmail(phoneE164: string, emailNorm: string): Promise<UserDTO | null> {
+  async function findExistingUserByPhoneOrEmail(
+    phoneE164: string,
+    emailNorm: string
+  ): Promise<UserDTO | null> {
     const byEmail = await findUserByEmailAny(emailNorm);
     if (byEmail?.id) return byEmail;
 
@@ -377,7 +393,13 @@ useEffect(() => {
   // ---------------------------
   async function syncUserWithFormIfNeeded(
     base: UserDTO,
-    snap: { name: string; email: string; emailNorm: string; phoneE164: string; cpfDigits: string }
+    snap: {
+      name: string;
+      email: string;
+      emailNorm: string;
+      phoneE164: string;
+      cpfDigits: string;
+    }
   ): Promise<UserDTO> {
     if (!base?.id) return base;
 
@@ -536,7 +558,14 @@ useEffect(() => {
 
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leadCreated, user?.userData?.user, isMinDataValid, formSnapshot.name, formSnapshot.emailNorm, formSnapshot.phoneE164]);
+  }, [
+    leadCreated,
+    user?.userData?.user,
+    isMinDataValid,
+    formSnapshot.name,
+    formSnapshot.emailNorm,
+    formSnapshot.phoneE164,
+  ]);
 
   // ---------------------------
   // 7) Auto-sync (debounced)
@@ -547,7 +576,9 @@ useEffect(() => {
     const ok = !!formSnapshot.name && isValidEmail(formSnapshot.email) && isValidWhatsAppBR(formSnapshot.phoneE164);
     if (!ok) return;
 
-    const syncKey = `${userFly.id}|${formSnapshot.name}|${formSnapshot.emailNorm}|${normalizeDigits(formSnapshot.phoneE164)}|${formSnapshot.cpfDigits}`;
+    const syncKey = `${userFly.id}|${formSnapshot.name}|${formSnapshot.emailNorm}|${normalizeDigits(
+      formSnapshot.phoneE164
+    )}|${formSnapshot.cpfDigits}`;
     if (lastSyncedKeyRef.current === syncKey) return;
 
     if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
@@ -588,7 +619,7 @@ useEffect(() => {
     }
 
     if (targetSlug === currentSlug) return;
-    router.push(`/cadastro/checkout?plano=${targetSlug}&step=0`);
+    router.push(`/cadastro/checkout?plano=${targetSlug}`);
   };
 
   // ---------------------------
@@ -643,11 +674,22 @@ useEffect(() => {
   }
 
   // ---------------------------
+  // Totais do resumo (UI)
+  // ---------------------------
+  const effectivePromo = (form.promoCode ?? "").trim().toUpperCase();
+  const hasDiscount = isAnnual && effectivePromo === ANNUAL_COUPON_CODE;
+
+  const subtotal = priceNumber;
+
+  const total = hasDiscount ? round2(subtotal * (1 - ANNUAL_DISCOUNT_PCT)) : subtotal;
+
+  const installments = isAnnual && annualBilling === "INSTALLMENTS" ? 12 : 1;
+  const installmentValue = round2(total / installments);
+
+  // ---------------------------
   // Submit: SetupIntent -> confirm -> create subscription
   // ---------------------------
   const handleSubmit = async () => {
-    if (step === 2) return;
-
     setLoading(true);
     setError(null);
     setCardError(null);
@@ -682,9 +724,7 @@ useEffect(() => {
       const paymentMethodId = await confirmCardSetup(clientSecret);
 
       // 3) Criar assinatura
-      const promoCode = isAnnual
-        ? (form.promoCode?.trim() || ANNUAL_COUPON_CODE)
-        : undefined;
+      const promoCode = isAnnual ? (form.promoCode?.trim() || ANNUAL_COUPON_CODE) : undefined;
 
       const payload: any = {
         userId: ensuredUser.id,
@@ -696,16 +736,25 @@ useEffect(() => {
       if (isAnnual) {
         payload.annualBilling = annualBilling; // "UPFRONT" | "INSTALLMENTS"
       }
+
       await api.post("/billing/subscription", payload);
 
       setLoading(false);
-      onStepChange(2);
+      setView("SUCCESS");
+
+      // remove step se houver (e garante URL limpa)
+      const plano = searchParams.get("plano") ?? plan.slug ?? "";
+      const reval = searchParams.get("revalidate");
+      const qs = new URLSearchParams();
+      if (plano) qs.set("plano", plano);
+      if (reval) qs.set("revalidate", reval);
+      router.replace(`/cadastro/checkout?${qs.toString()}`);
     } catch (err: unknown) {
       const msg = axios.isAxiosError(err)
         ? getErrorMessage(err.response?.data?.message ?? err.message)
         : err instanceof Error
-          ? err.message
-          : "Ocorreu um erro inesperado.";
+        ? err.message
+        : "Ocorreu um erro inesperado.";
 
       setError(msg);
       setLoading(false);
@@ -732,6 +781,19 @@ useEffect(() => {
   const msgToFly = "Olá fly, vamos organizar minha vida financeira";
   const talkToFly = `https://wa.me/${phoneFly}?text=${encodeURIComponent(msgToFly)}`;
 
+  // label da forma de pagamento (sucesso)
+  const paymentLabel = useMemo(() => {
+    if (!isAnnual) return "Cartão de crédito";
+    return annualBilling === "INSTALLMENTS" ? "Cartão de crédito (12x)" : "Cartão de crédito (à vista)";
+  }, [isAnnual, annualBilling]);
+
+  // label do valor no sucesso
+  const successValueLabel = useMemo(() => {
+    if (!isAnnual) return formatCurrency(priceNumber);
+    if (annualBilling === "INSTALLMENTS") return `${installments}x de ${formatCurrency(installmentValue)} (Total: ${formatCurrency(total)})`;
+    return formatCurrency(total);
+  }, [isAnnual, annualBilling, installments, installmentValue, total, priceNumber]);
+
   return (
     <div>
       <div className="flex flex-col gap-8">
@@ -741,14 +803,12 @@ useEffect(() => {
           </div>
         )}
 
-        {step !== 2 && (
+        {view === "CHECKOUT" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="col-span-1 lg:col-span-2 flex flex-col gap-4 bg-white rounded-md shadow-[0_20px_60px_rgba(15,23,42,0.20)] border border-slate-200 p-6 md:p-8">
               {/* Dados do usuário */}
               <div className="bg-white rounded-lg border border-gray-200 p-4 flex flex-col gap-4">
-                <h2 className="text-2xl font-bold text-[#333C4D]">
-                  Informações de usuário
-                </h2>
+                <h2 className="text-2xl font-bold text-[#333C4D]">Informações de usuário</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <input
@@ -801,29 +861,26 @@ useEffect(() => {
                   />
                   <label htmlFor="acceptTerms" className="text-sm">
                     Li e aceito os{" "}
-                   <button
+                    <button
                       type="button"
                       onClick={() => openLegal("termos")}
                       className="text-primary underline hover:font-bold cursor-pointer"
                     >
                       termos
                     </button>
-
                     {" e "}
-
                     <button
                       type="button"
                       onClick={() => openLegal("privacidade")}
-                      className="text-primary underline  hover:font-bold cursor-pointer"
+                      className="text-primary underline hover:font-bold cursor-pointer"
                     >
                       privacidade
                     </button>
-
                     {" ("}
                     <button
                       type="button"
                       onClick={() => openLegal("cookies")}
-                      className="text-primary underline  hover:font-bold cursor-pointer"
+                      className="text-primary underline hover:font-bold cursor-pointer"
                     >
                       cookies
                     </button>
@@ -855,10 +912,7 @@ useEffect(() => {
                     placeholder={!isAnnual ? "Cupom indisponível no mensal" : "Cupom (padrão: FLY10)"}
                     value={form.promoCode}
                     onChange={handleChange}
-                    className={clsx(
-                      inputClasses,
-                      !isAnnual && "bg-gray-50 text-gray-400 cursor-not-allowed"
-                    )}
+                    className={clsx(inputClasses, !isAnnual && "bg-gray-50 text-gray-400 cursor-not-allowed")}
                     disabled={loading || !isAnnual}
                   />
                 </div>
@@ -868,15 +922,10 @@ useEffect(() => {
                     <div className={inputClasses}>
                       <CardNumberElement
                         onChange={(e) => {
-                          console.log(e.elementType, e.complete, e);
                           setCardNumberComplete(e.complete);
                           setCardError(e.error?.message ?? null);
                         }}
-                        options={{
-                          style: {
-                            base: { fontSize: "16px" },
-                          },
-                        }}
+                        options={{ style: { base: { fontSize: "16px" } } }}
                       />
                     </div>
                     <p className="mt-1 text-xs text-gray-500">Número do cartão</p>
@@ -886,15 +935,10 @@ useEffect(() => {
                     <div className={inputClasses}>
                       <CardExpiryElement
                         onChange={(e) => {
-                          console.log(e.elementType, e.complete, e);
                           setCardExpiryComplete(e.complete);
                           setCardError(e.error?.message ?? null);
                         }}
-                        options={{
-                          style: {
-                            base: { fontSize: "16px" },
-                          },
-                        }}
+                        options={{ style: { base: { fontSize: "16px" } } }}
                       />
                     </div>
                     <p className="mt-1 text-xs text-gray-500">Validade</p>
@@ -907,11 +951,7 @@ useEffect(() => {
                           setCardCvcComplete(e.complete);
                           setCardError(e.error?.message ?? null);
                         }}
-                        options={{
-                          style: {
-                            base: { fontSize: "16px" },
-                          },
-                        }}
+                        options={{ style: { base: { fontSize: "16px" } } }}
                       />
                     </div>
                     <p className="mt-1 text-xs text-gray-500">CVV</p>
@@ -926,17 +966,7 @@ useEffect(() => {
               </div>
 
               {/* Botões */}
-              <div className={clsx("flex", step > 0 ? "justify-between" : "justify-end")}>
-                {step > 0 && (
-                  <button
-                    onClick={handleBack}
-                    className="px-4 py-2 border rounded-md flex gap-2"
-                    disabled={loading}
-                  >
-                    <MoveLeft /> Voltar
-                  </button>
-                )}
-
+              <div className="flex justify-end">
                 <button
                   disabled={loading || !stripe || !elements}
                   onClick={handleSubmit}
@@ -972,7 +1002,6 @@ useEffect(() => {
                 price={priceNumber}
                 trialDays={trialDays}
                 onChangePeriod={handleChangePeriod}
-                step={step}
                 form={form}
               />
             </div>
@@ -980,7 +1009,7 @@ useEffect(() => {
         )}
 
         {/* Sucesso */}
-        {step === 2 && (
+        {view === "SUCCESS" && (
           <div className="space-y-6">
             <div className="flex justify-center">
               <div className="w-full ">
@@ -995,8 +1024,7 @@ useEffect(() => {
                         Assinatura ativada com sucesso!
                       </h2>
                       <p className="mt-2 text-sm md:text-base text-gray-500 max-w-md">
-                        Sua assinatura <strong>{planLabel}</strong> foi confirmada.
-                        Veja abaixo o resumo do seu pedido.
+                        Sua assinatura <strong>{planLabel}</strong> foi confirmada. Veja abaixo o resumo do seu pedido.
                       </p>
 
                       <span className="mt-3 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
@@ -1007,34 +1035,35 @@ useEffect(() => {
 
                     <div className="mt-6 grid gap-6 md:grid-cols-2 text-sm">
                       <div className="space-y-3 border-b border-gray-200 pb-4 md:border-b-0 md:pb-0">
-                        <h3 className="text-base font-semibold text-[#333C4D]">
-                          Plano assinado
-                        </h3>
+                        <h3 className="text-base font-semibold text-[#333C4D]">Plano assinado</h3>
+
                         <p>
                           <span className="text-xs uppercase text-gray-400">Plano</span>
                           <br />
                           <span className="font-medium">{planLabel}</span>
                         </p>
+
                         <p>
                           <span className="text-xs uppercase text-gray-400">Valor</span>
                           <br />
-                          <span className="font-semibold">
-                            {formatCurrency(priceNumber)}
-                          </span>
+                          <span className="font-semibold">{successValueLabel}</span>
                         </p>
+
                         <p>
-                          <span className="text-xs uppercase text-gray-400">
-                            Forma de pagamento
-                          </span>
+                          <span className="text-xs uppercase text-gray-400">Forma de pagamento</span>
                           <br />
-                          <span>Cartão de crédito</span>
+                          <span>{paymentLabel}</span>
                         </p>
+
+                        {isAnnual && hasDiscount && (
+                          <p className="text-xs text-emerald-700">
+                            Cupom aplicado: <strong>{ANNUAL_COUPON_CODE}</strong> (10% off)
+                          </p>
+                        )}
                       </div>
 
                       <div className="space-y-3">
-                        <h3 className="text-base font-semibold text-[#333C4D]">
-                          Informações do usuário
-                        </h3>
+                        <h3 className="text-base font-semibold text-[#333C4D]">Informações do usuário</h3>
                         <p>
                           <span className="text-xs uppercase text-gray-400">Cliente</span>
                           <br />
@@ -1059,9 +1088,7 @@ useEffect(() => {
                     </div>
 
                     <div className="mt-6 border-t border-gray-200 pt-4">
-                      <h3 className="text-base font-semibold text-[#333C4D]">
-                        Próximos passos
-                      </h3>
+                      <h3 className="text-base font-semibold text-[#333C4D]">Próximos passos</h3>
                       <ul className="mt-2 space-y-1.5 text-sm text-slate-600">
                         <li>• Acesse o dashboard para configurar suas metas.</li>
                         <li>• Conecte suas contas e cartões para importar lançamentos.</li>
@@ -1098,10 +1125,8 @@ useEffect(() => {
           </div>
         )}
       </div>
-      <LegalDocsModal
-        open={legalOpen}
-        onClose={() => setLegalOpen(false)}
-      />
+
+      <LegalDocsModal open={legalOpen} initialDoc={legalDoc} onClose={() => setLegalOpen(false)} />
     </div>
   );
 }
@@ -1111,7 +1136,6 @@ interface PlanResumeProps {
   isAnnual: boolean;
   price: number;
   trialDays: number;
-  step: number;
   form: FormDTO;
   annualBilling: AnnualBilling;
   onAnnualBillingChange: (v: AnnualBilling) => void;
@@ -1123,31 +1147,24 @@ function PlanResume({
   isAnnual,
   price,
   trialDays,
-  step,
   form,
   onChangePeriod,
   annualBilling,
   onAnnualBillingChange,
 }: PlanResumeProps) {
-  // Exibição: no anual "à vista" você pode mostrar desconto / comparação,
-  // mas o valor real vem do Stripe (cupom etc). Aqui é só UI.
   const effectivePromo = (form.promoCode ?? "").trim().toUpperCase();
   const hasDiscount = isAnnual && effectivePromo === ANNUAL_COUPON_CODE;
 
   const subtotal = price;
 
-  const total = hasDiscount
-    ? round2(subtotal * (1 - ANNUAL_DISCOUNT_PCT))
-    : subtotal;
+  const total = hasDiscount ? round2(subtotal * (1 - ANNUAL_DISCOUNT_PCT)) : subtotal;
 
   const installments = isAnnual && annualBilling === "INSTALLMENTS" ? 12 : 1;
   const installmentValue = round2(total / installments);
 
   const discount = hasDiscount ? round2(subtotal - total) : 0;
 
-  const monthlyEquivalent =
-    isAnnual ? round2(total / 12) : null;
-
+  const monthlyEquivalent = isAnnual ? round2(total / 12) : null;
 
   return (
     <div className="bg-white rounded-md shadow-md flex flex-col h-full overflow-hidden">
@@ -1155,20 +1172,14 @@ function PlanResume({
         <button
           type="button"
           onClick={() => onChangePeriod("MONTHLY")}
-          className={clsx(
-            "flex-1 py-2 text-sm md:text-sm font-semibold",
-            !isAnnual ? "bg-primary text-white " : "bg-white text-primary"
-          )}
+          className={clsx("flex-1 py-2 text-sm md:text-sm font-semibold", !isAnnual ? "bg-primary text-white " : "bg-white text-primary")}
         >
           Mensal
         </button>
         <button
           type="button"
           onClick={() => onChangePeriod("ANNUAL")}
-          className={clsx(
-            "flex-1 py-2 text-sm md:text-sm font-semibold",
-            isAnnual ? "bg-primary text-white " : "bg-white text-primary"
-          )}
+          className={clsx("flex-1 py-2 text-sm md:text-sm font-semibold", isAnnual ? "bg-primary text-white " : "bg-white text-primary")}
         >
           Anual
         </button>
@@ -1251,9 +1262,7 @@ function PlanResume({
         </dl>
 
         <div className="pt-3 border-t border-slate-200">
-          <h4 className="text-xs md:text-base font-semibold text-slate-700 mb-2">
-            Benefícios
-          </h4>
+          <h4 className="text-xs md:text-base font-semibold text-slate-700 mb-2">Benefícios</h4>
           <ul className="space-y-1 text-sm text-slate-600">
             <li className="flex items-center gap-2">
               <Check className="w-4 h-4 text-primary" />
@@ -1282,30 +1291,26 @@ function PlanResume({
           </ul>
         </div>
 
-        {step !== 2 && (
-          <div className="pt-3 border-t border-slate-200 text-sm md:text-sm text-slate-700">
-            <h4 className="font-semibold mb-2">Informações do usuário</h4>
-            <p>
-              <strong>Cliente:</strong> {form.name || "-"}
-            </p>
-            <p>
-              <strong>E-mail:</strong> {form.email || "-"}
-            </p>
-            <p>
-              <strong>WhatsApp:</strong> {form.phone || "-"}
-            </p>
-            <p>
-              <strong>CPF:</strong> {form.cpf || "-"}
-            </p>
-          </div>
-        )}
+        <div className="pt-3 border-t border-slate-200 text-sm md:text-sm text-slate-700">
+          <h4 className="font-semibold mb-2">Informações do usuário</h4>
+          <p>
+            <strong>Cliente:</strong> {form.name || "-"}
+          </p>
+          <p>
+            <strong>E-mail:</strong> {form.email || "-"}
+          </p>
+          <p>
+            <strong>WhatsApp:</strong> {form.phone || "-"}
+          </p>
+          <p>
+            <strong>CPF:</strong> {form.cpf || "-"}
+          </p>
+        </div>
       </div>
 
       <div className="px-4 py-3 bg-primary h-20 text-white flex items-center justify-between">
         <span className="text-sm md:text-2xl font-semibold">Total</span>
-        <span className="text-lg md:text-4xl font-extrabold">
-          {formatCurrency(total)}
-        </span>
+        <span className="text-lg md:text-4xl font-extrabold">{formatCurrency(total)}</span>
       </div>
     </div>
   );
