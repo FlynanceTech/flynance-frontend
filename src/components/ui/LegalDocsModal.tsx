@@ -46,7 +46,7 @@ export default function LegalDocsModal({ open, initialDoc = "termos", onClose }:
   );
 
   // reseta aba quando abrir
-   useEffect(() => {
+  useEffect(() => {
     if (!open) return;
     setActiveDoc(initialDoc);
   }, [open, initialDoc]);
@@ -68,7 +68,12 @@ export default function LegalDocsModal({ open, initialDoc = "termos", onClose }:
   const title = DOCS[activeDoc]?.title ?? "Documentos legais";
 
   return (
-    <div className="fixed inset-0 z-[9999]" role="dialog" aria-modal="true" aria-label="Documentos legais">
+    <div
+      className="fixed inset-0 z-[9999]"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Documentos legais"
+    >
       {/* overlay */}
       <button
         aria-label="Fechar"
@@ -110,7 +115,9 @@ export default function LegalDocsModal({ open, initialDoc = "termos", onClose }:
               ))}
             </div>
 
-            <p className="mt-2 text-xs text-slate-500">Role para ler. Você pode fechar com ESC.</p>
+            <p className="mt-2 text-xs text-slate-500">
+              Role para ler. Você pode fechar com ESC.
+            </p>
           </div>
 
           {/* content */}
@@ -163,7 +170,23 @@ function LegalDocViewer({ doc }: { doc: LegalDocKey }) {
 
       try {
         const res = await fetch(`/api/legal/${doc}`, { cache: "no-store" });
-        if (!res.ok) throw new Error(`Falha ao carregar documento (${res.status}).`);
+
+        if (!res.ok) {
+          // tenta pegar body pra debug (ajuda MUITO em prod)
+          let details = "";
+          try {
+            const ct = res.headers.get("content-type") || "";
+            if (ct.includes("application/json")) {
+              const j = await res.json();
+              details = j?.message ? ` — ${j.message}` : "";
+            } else {
+              const t = await res.text();
+              details = t ? ` — ${t.slice(0, 200)}` : "";
+            }
+          } catch {}
+
+          throw new Error(`Falha ao carregar documento (${res.status})${details}.`);
+        }
 
         const json = (await res.json()) as LegalDocPayload;
 
@@ -233,7 +256,6 @@ function LegalDocViewer({ doc }: { doc: LegalDocKey }) {
 }
 
 function LegalDocContent({ content }: { content: LegalDocPayload["content"] }) {
-  // Fallback: caso seu JSON ainda venha como string gigante
   if (typeof content === "string") {
     return (
       <pre className="whitespace-pre-wrap text-sm leading-6 text-slate-700 font-sans">
@@ -252,30 +274,29 @@ function LegalDocContent({ content }: { content: LegalDocPayload["content"] }) {
                 {block.text}
               </h4>
             );
-
           case "h3":
             return (
               <h5 key={idx} className="pt-2 text-sm font-semibold text-slate-800">
                 {block.text}
               </h5>
             );
-
           case "p":
             return (
               <p key={idx} className="text-sm leading-6 text-slate-700">
                 {block.text}
               </p>
             );
-
           case "ul":
             return (
-              <ul key={idx} className="list-disc pl-5 text-sm leading-6 text-slate-700 space-y-1">
+              <ul
+                key={idx}
+                className="list-disc pl-5 text-sm leading-6 text-slate-700 space-y-1"
+              >
                 {block.items.map((it, j) => (
                   <li key={j}>{it}</li>
                 ))}
               </ul>
             );
-
           default:
             return null;
         }
