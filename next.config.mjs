@@ -5,28 +5,17 @@ const isDev = process.env.NODE_ENV !== "production"
 const nextConfig = {
   images: {
     remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "cdn.builder.io",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "www.facebook.com",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "images.unsplash.com",
-        pathname: "/**",
-      },
+      { protocol: "https", hostname: "cdn.builder.io", pathname: "/**" },
+      { protocol: "https", hostname: "www.facebook.com", pathname: "/**" },
+      { protocol: "https", hostname: "images.unsplash.com", pathname: "/**" },
     ],
   },
+
   turbopack: {
     resolveAlias: {
-      underscore: 'lodash',
+      underscore: "lodash",
     },
-    resolveExtensions: ['.mdx', '.tsx', '.ts', '.jsx', '.js', '.json'],
+    resolveExtensions: [".mdx", ".tsx", ".ts", ".jsx", ".js", ".json"],
   },
 }
 
@@ -35,4 +24,14 @@ export default withPWA({
   register: true,
   skipWaiting: true,
   disable: isDev,
+
+  runtimeCaching: [
+    {
+      urlPattern: ({ url }) => url.pathname.startsWith("/api/"),
+      handler: "NetworkOnly",
+      options: {
+        cacheName: "api-network-only",
+      },
+    },
+  ],
 })(nextConfig)
