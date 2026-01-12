@@ -10,7 +10,16 @@ import { useRouter } from "next/navigation"
 
 type Cycle = "MONTHLY" | "YEARLY" | string
 type BillingType = "CREDIT_CARD" | "PIX" | "BOLETO" | string
-type SignatureStatus = "ACTIVE" | "CANCELLED" | "PENDING" | string
+type SignatureStatus = 
+  "ACTIVE" |
+  "TRIALING" |
+  "PAST_DUE" |
+  "SUSPENDED" |
+  "CANCELED" |
+  "INCOMPLETE" |
+  "EXPIRED" |
+  "INACTIVE" | 
+  string
 
 interface SignaturePlan {
   id: string
@@ -46,7 +55,6 @@ const SubscriptionCard = () => {
 
   const signature = user?.userData?.signature as Signature | undefined
 
-  console.log('check signature', signature)
   if (!signature) {
     return (
       <div className="bg-card rounded-2xl p-6 shadow-sm border border-border/15 animate-slide-up">
@@ -83,16 +91,26 @@ const SubscriptionCard = () => {
   const price = value ?? (plan?.priceCents ? plan.priceCents / 100 : undefined)
 
   const isActive = !!active && status === "ACTIVE"
-  const isCancelled = status === "CANCELLED"
+  const isCancelled = status === "CANCELED"
 
   const statusLabel = (() => {
     switch (status) {
       case "ACTIVE":
         return "Ativo"
-      case "CANCELLED":
+      case "CANCELED":
         return "Cancelado"
-      case "PENDING":
-        return "Pendente"
+      case "TRIALING":
+        return "Em teste"
+      case "SUSPENDED":
+        return "Suspensa"
+      case "PAST_DUE":
+        return "Vencida"
+      case "INCOMPLETE":
+        return "Incompleta"
+      case "EXPIRED":
+        return "Expirada"
+      case "INACTIVE":
+        return "Inativa"
       default:
         return status
     }
