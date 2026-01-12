@@ -11,15 +11,12 @@ function isDocKey(value: string): value is DocKey {
   return Object.prototype.hasOwnProperty.call(LEGAL_DOCS, value);
 }
 
-export async function GET(
-  _req: Request,
-  context: { params: { doc: string } }
-) {
+export async function GET(_req: Request, context: any) {
   try {
-    const doc = context?.params?.doc;
+    // ✅ NEXT 16: params é Promise
+    const { doc } = await context.params;
 
-    // ✅ debug seguro (aparece em logs da Vercel)
-    console.log("[legal] doc:", doc, "keys:", Object.keys(LEGAL_DOCS));
+    console.log("[legal] doc:", doc);
 
     if (!doc) {
       return NextResponse.json(
@@ -27,22 +24,19 @@ export async function GET(
           message: "Documento inválido (param doc ausente).",
           availableKeys: Object.keys(LEGAL_DOCS),
         },
-        { status: 400, headers: { "Cache-Control": "no-store" } }
+        { status: 400 }
       );
     }
 
     if (doc === "all") {
-      return NextResponse.json(
-        {
-          docs: Object.values(LEGAL_DOCS).map((d) => ({
-            key: d.key,
-            title: d.title,
-            version: d.version,
-            effectiveAt: d.effectiveAt,
-          })),
-        },
-        { headers: { "Cache-Control": "no-store" } }
-      );
+      return NextResponse.json({
+        docs: Object.values(LEGAL_DOCS).map((d) => ({
+          key: d.key,
+          title: d.title,
+          version: d.version,
+          effectiveAt: d.effectiveAt,
+        })),
+      });
     }
 
     if (!isDocKey(doc)) {
@@ -52,30 +46,24 @@ export async function GET(
           doc,
           availableKeys: Object.keys(LEGAL_DOCS),
         },
-        { status: 404, headers: { "Cache-Control": "no-store" } }
+        { status: 404 }
       );
     }
 
-    const payload = LEGAL_DOCS[doc];
-
-    return NextResponse.json(payload, {
+    return NextResponse.json(LEGAL_DOCS[doc], {
       headers: {
         "Cache-Control": "no-store",
-        "X-Doc-Title": String(payload.title ?? ""),
-        "X-Doc-Version": String(payload.version ?? ""),
       },
     });
   } catch (err: any) {
     console.error("[legal] ERROR:", err);
 
-    // ✅ em produção você consegue ver o motivo do 500 no response
     return NextResponse.json(
       {
-        message: "Erro ao carregar documento legal.",
+        message: "Erro interno ao carregar documento legal.",
         error: err?.message ?? String(err),
-        availableKeys: Object.keys(LEGAL_DOCS),
       },
-      { status: 500, headers: { "Cache-Control": "no-store" } }
+      { status: 500 }
     );
   }
 }
