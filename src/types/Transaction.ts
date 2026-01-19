@@ -1,4 +1,4 @@
-import { Plan } from "@/app/planos/plans"
+import { Plan } from "@/app/WinbackPage/planos/plans"
 import { PaymentType } from "@/services/transactions"
 import { IconName } from "@/utils/icon-map"
 

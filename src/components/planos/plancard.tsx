@@ -3,6 +3,7 @@
 import clsx from "clsx";
 import { Check } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 type BadgeType = "primary" | "discount" | undefined;
 
@@ -10,8 +11,8 @@ export type UiPlan = {
   id: string;
   slug: string;
   title: string;
-  price: string;        // ex: "19,90" (preço cheio) ou já promocional
-  priceSuffix: string;  // ex: "/Mês" ou "/x12"
+  price: string;
+  priceSuffix: string;
   previousPrice?: string;
   badge?: string;
   badgeType?: BadgeType;
@@ -21,26 +22,23 @@ export type UiPlan = {
 
 type Props = {
   plan: UiPlan;
-  revalidateSubscription?: boolean
+  revalidateSubscription?: boolean;
 };
 
 function parseBRLToNumber(value: string) {
-  // aceita "19,90", "R$ 19,90", "1.234,56"
   const cleaned = (value ?? "").toString().trim().replace(/[^\d.,-]/g, "");
-
-  // se tem vírgula e ponto, assume "." milhar e "," decimal
-  const normalized = cleaned.includes(",") && cleaned.includes(".")
-    ? cleaned.replace(/\./g, "").replace(",", ".")
-    : cleaned.includes(",")
-      ? cleaned.replace(",", ".")
-      : cleaned;
+  const normalized =
+    cleaned.includes(",") && cleaned.includes(".")
+      ? cleaned.replace(/\./g, "").replace(",", ".")
+      : cleaned.includes(",")
+        ? cleaned.replace(",", ".")
+        : cleaned;
 
   const n = Number(normalized);
   return Number.isFinite(n) ? n : 0;
 }
 
 function formatNumberToBRLString(n: number) {
-  // retorna "19,90"
   const fixed = (Math.round((n + Number.EPSILON) * 100) / 100).toFixed(2);
   return fixed.replace(".", ",");
 }
@@ -54,6 +52,8 @@ function splitPrice(priceBR: string) {
 }
 
 export function PlanCard({ plan, revalidateSubscription = false }: Props) {
+  const pathname = usePathname();
+
   const {
     slug,
     title,
@@ -66,22 +66,22 @@ export function PlanCard({ plan, revalidateSubscription = false }: Props) {
     benefits,
   } = plan;
 
-  const isDiscount = badgeType === "discount"; // Anual (10% OFF)
+  const isDiscount = badgeType === "discount";
 
-  // ✅ regra: se é desconto, aplica 10% em cima do `price` (preço cheio)
   const basePriceNum = parseBRLToNumber(price);
   const basePriceStr = formatNumberToBRLString(basePriceNum);
 
   const promoPriceNum = basePriceNum * 0.9;
   const promoPriceStr = formatNumberToBRLString(promoPriceNum);
 
-  // se veio previousPrice, normaliza; senão, no desconto usamos o preço cheio como "De"
   const previousStrFromProps = previousPrice
     ? formatNumberToBRLString(parseBRLToNumber(previousPrice))
     : undefined;
 
   const displayPrice = isDiscount ? promoPriceStr : basePriceStr;
-  const displayPreviousPrice = isDiscount ? (previousStrFromProps ?? basePriceStr) : previousStrFromProps;
+  const displayPreviousPrice = isDiscount
+    ? (previousStrFromProps ?? basePriceStr)
+    : previousStrFromProps;
 
   const { intPart, decPart } = splitPrice(displayPrice);
 
@@ -89,23 +89,33 @@ export function PlanCard({ plan, revalidateSubscription = false }: Props) {
     ? `/reativacao?plano=${slug}&revalidate=${revalidateSubscription}`
     : `/cadastro/checkout?plano=${slug}`;
 
-  return (
-    <div  className={clsx("flex flex-col cursor-default hover:scale-105 transition-all", isDiscount ?  '' : '' )}>
-     <div className={clsx(
-        "  flex flex-col rounded-xl overflow-hidden w-full  h-full  mx-auto shadow-2xl",
-        isDiscount ? "bg-gradient-to-t from-white to-white shadow-2xl" : " bg-primary shadow-2xl",
-      )}>
-        <div className={clsx(" h-full p-8 flex flex-col gap-8", 
-          isDiscount ? "bg-primary" : "bg-white"
-        )}>
+  // ✅ Winback: CTA condizente com "recuperar assinatura"
+  const isWinbackPlansRoute = pathname === "/WinbackPage/planos";
 
+  const winbackCtaLabel =
+    slug === "mensal"
+      ? "Reativar mensal"
+      : slug === "anual"
+        ? "Reativar anual"
+        : "Reativar assinatura";
+
+  const finalCtaLabel = isWinbackPlansRoute ? winbackCtaLabel : ctaLabel;
+
+  return (
+    <div className={clsx("flex flex-col cursor-default hover:scale-105 transition-all", isDiscount ? "" : "")}>
+      <div
+        className={clsx(
+          "flex flex-col rounded-xl overflow-hidden w-full h-full mx-auto shadow-2xl",
+          isDiscount ? "bg-gradient-to-t from-white to-white shadow-2xl" : "bg-primary shadow-2xl",
+        )}
+      >
+        <div className={clsx("h-full p-8 flex flex-col gap-8", isDiscount ? "bg-primary" : "bg-white")}>
           {badge && (
             <div
               className={clsx(
-                "absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-sm font-semibold text-white ",
-                isDiscount ? "bg-red-400" : "bg-primary"
+                "absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-sm font-semibold text-white",
+                isDiscount ? "bg-red-400" : "bg-primary",
               )}
-                
             >
               {badge}
             </div>
@@ -126,26 +136,14 @@ export function PlanCard({ plan, revalidateSubscription = false }: Props) {
 
             <div className="space-y-1">
               <div className="flex items-end justify-center gap-1">
-                <span className={clsx("text-xl font-medium", isDiscount ? "text-slate-50" : "text-slate-500")}>
-                  R$
-                </span>
+                <span className={clsx("text-xl font-medium", isDiscount ? "text-slate-50" : "text-slate-500")}>R$</span>
 
-                <span
-                  className={clsx(
-                    "text-8xl font-extrabold leading-none",
-                    isDiscount ? "text-white" : "text-primary"
-                  )}
-                >
+                <span className={clsx("text-8xl font-extrabold leading-none", isDiscount ? "text-white" : "text-primary")}>
                   {intPart}
                 </span>
 
                 <div className="flex flex-col">
-                  <span
-                    className={clsx(
-                      "text-4xl font-bold leading-none self-start mb-4",
-                      isDiscount ? "text-white" : "text-primary"
-                    )}
-                  >
+                  <span className={clsx("text-4xl font-bold leading-none self-start mb-4", isDiscount ? "text-white" : "text-primary")}>
                     ,{decPart}
                   </span>
 
@@ -176,10 +174,10 @@ export function PlanCard({ plan, revalidateSubscription = false }: Props) {
             href={pathRedirect}
             className={clsx(
               "block text-center py-3 text-sm md:text-xl font-semibold rounded-full",
-              isDiscount ? "bg-white text-primary shadow-2xl" : "bg-primary text-white shadow-2xl"
+              isDiscount ? "bg-white text-primary shadow-2xl" : "bg-primary text-white shadow-2xl",
             )}
           >
-            {ctaLabel}
+            {finalCtaLabel}
           </Link>
         </div>
       </div>

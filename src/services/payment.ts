@@ -11,15 +11,12 @@ import {
   RecurringPaymentResult,
   CreatePaymentPayload,
 } from "@/types/payment";
+import api from "@/lib/axios";
 
 // BaseURL saneada
 const BASE_URL =
   (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5555/api").replace(/\/+$/, "");
 
-const api = axios.create({
-  baseURL: BASE_URL,
-  timeout: 15000,
-});
 
 // Helpers
 const digits = (s?: string | null) => (s ? s.replace(/\D/g, "") : s);
@@ -89,6 +86,15 @@ export async function cancelSignature(id: string): Promise<{ ok: true }> {
     return { ok: true };
   } catch (err) {
     throw asApiError(err, "Erro ao excluir cliente");
+  }
+}
+
+export async function undoCancelSignature(signatureId: string) {
+  try {
+    await api.patch(`/signature/${signatureId}/undo-cancel`)
+    return { ok: true };
+  } catch (error) {
+    throw asApiError(error, "Erro ao reativar assinatura");
   }
 }
 
