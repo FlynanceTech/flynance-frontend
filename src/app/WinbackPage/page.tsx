@@ -46,15 +46,19 @@ export default function WinbackPage() {
 
   const userId = user?.userData?.user?.id;
 
-  // ✅ query só dispara quando userId existir
+  // ✅ query só dispara quando userId existir (assumindo que seu hook usa enabled: !!userId)
   const { useSignatureByUserId } = useSignature(userId);
   const { data, isLoading, isError, isFetching } = useSignatureByUserId;
 
-  const signature = data.lastSubscription.signature;
-  const stripeSubscription = data.lastSubscription.stripeSubscription;
+  // ✅ FIX: protege data/lastSubscription pra não quebrar em build/primeiro render
+  const signature = data?.lastSubscription?.signature ?? null;
+  const stripeSubscription = data?.lastSubscription?.stripeSubscription ?? null;
 
-  console.log('check signature', signature)
-  console.log('check stripeSubscription', stripeSubscription)
+  // (opcional) evita poluir log em produção
+  // if (process.env.NODE_ENV !== "production") {
+  //   console.log("check signature", signature);
+  //   console.log("check stripeSubscription", stripeSubscription);
+  // }
 
   const previousPlan = useMemo(() => {
     if (!signature) return null;
@@ -63,7 +67,7 @@ export default function WinbackPage() {
     const price = `${formatBRL(signature?.value)}${cycleLabel(signature?.cycle)}`;
     const cancelledAt = formatDateBR(signature?.endDate ?? signature?.updatedAt);
 
-    // helper
+    // helper default
     let helper = "Ao reativar, você continuará neste mesmo plano.";
 
     if (stripeSubscription?.status === "trialing" && stripeSubscription?.trial_end) {
@@ -72,7 +76,7 @@ export default function WinbackPage() {
       )}.`;
     }
 
-    if (signature?.cancelAtPeriodEnd) {
+    if ((signature as any)?.cancelAtPeriodEnd) {
       helper = "Ao reativar, você mantém o acesso até o fim do ciclo atual.";
     }
 
@@ -93,8 +97,8 @@ export default function WinbackPage() {
         <div className="flex flex-col items-center z-20 text-center text-white">
           <h1 className="text-4xl font-bold mb-4">Continue sua jornada financeira.</h1>
           <p className="text-lg opacity-90 mb-8 text-center">
-            Sua assinatura foi encerrada, mas seus dados continuam <br /> seguros
-            e prontos para você retomar de onde parou.
+            Sua assinatura foi encerrada, mas seus dados continuam <br /> seguros e prontos
+            para você retomar de onde parou.
           </p>
 
           <ul className="space-y-3 text-lg opacity-95 text-start">
@@ -112,7 +116,8 @@ export default function WinbackPage() {
           <h2 className="text-2xl font-semibold mt-4">Sentimos sua falta!</h2>
 
           <p className="text-gray-600 text-center">
-            Reative sua assinatura e continue transformando sua vida <br /> financeira com os recursos premium da Flynance.
+            Reative sua assinatura e continue transformando sua vida <br /> financeira com os
+            recursos premium da Flynance.
           </p>
 
           {/* ✅ Loading (inclui isFetching para refetch) */}
@@ -144,8 +149,12 @@ export default function WinbackPage() {
           {!isLoading && !isFetching && !isError && !previousPlan && (
             <div className="mb-2 border border-gray-200 rounded-lg p-4 text-left w-full max-w-md">
               <p className="text-sm font-medium text-gray-700">Seu plano anterior</p>
-              <p className="mt-1 text-gray-900 font-semibold">Não encontramos uma assinatura anterior.</p>
-              <p className="text-sm text-gray-600">Escolha um plano para voltar a usar a Flynance.</p>
+              <p className="mt-1 text-gray-900 font-semibold">
+                Não encontramos uma assinatura anterior.
+              </p>
+              <p className="text-sm text-gray-600">
+                Escolha um plano para voltar a usar a Flynance.
+              </p>
             </div>
           )}
 
@@ -153,9 +162,7 @@ export default function WinbackPage() {
             href="/WinbackPage/planos"
             className="text-primary text-center mt-1 hover:underline mb-4"
           >
-            <Button className="max-w-80 w-full h-12 text-lg mb-1">
-              Ver planos novamente
-            </Button>
+            <Button className="max-w-80 w-full h-12 text-lg mb-1">Ver planos novamente</Button>
           </Link>
         </div>
       </section>
