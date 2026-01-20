@@ -113,7 +113,7 @@ export async function createCustomer(
   try {
     const payload = normalizeClientData(data);
     console.log('check payload', payload)
-    const { data: res } = await api.post<CreateCustomerResponse>("/payment/client", payload);
+    const { data: res } = await axios.post<CreateCustomerResponse>("/payment/client", payload);
     console.log('data res', res)
     return res;
   } catch (err) {
@@ -136,7 +136,7 @@ export async function createCreditCardPayment(
   payment: CreditCardPayment
 ): Promise<PaymentResult> {
   try {
-    const { data } = await api.post<PaymentResult>("/payment/credit-card", payment);
+    const { data } = await axios.post<PaymentResult>("/payment/credit-card", payment);
     return data;
   } catch (err) {
     throw asApiError(err, "Erro ao criar pagamento (cartão)");
@@ -185,7 +185,7 @@ export async function createPayment({
   console.log('[Frontend] Payload final:', JSON.stringify(payload, null, 2))
 
   try {
-    const { data } = await api.post<PaymentResult>("/payment/recurring", payload)
+    const { data } = await axios.post<PaymentResult>("/payment/recurring", payload)
     console.log('[Frontend] Pagamento criado com sucesso:', data)
     return data
   } catch (err) {
@@ -199,7 +199,7 @@ export async function updatePayment(
   partial: Partial<PaymentResult>
 ): Promise<PaymentResult> {
   try {
-    const { data } = await api.put<PaymentResult>(`/payment/${id}`, partial);
+    const { data } = await axios.put<PaymentResult>(`/payment/${id}`, partial);
     return data;
   } catch (err) {
     throw asApiError(err, "Erro ao atualizar pagamento");
