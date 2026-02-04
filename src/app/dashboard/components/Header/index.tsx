@@ -119,9 +119,19 @@ export default function Header({ title, subtitle, asFilter = false, dataToFilter
             }
           </div>
 
-          <div className="flex lg:hidden gap-4 items-center">
+          <div className="flex lg:hidden gap-2 items-center">
         
           {/*   <NotificationBell  asFilter={asFilter} /> */}
+            {importTransations && (
+              <ImportTransactionsButton
+                onClick={() => {
+                  if (onImportClick) onImportClick()
+                  else setDrawerOpen(true)
+                }}
+                disabled={importLoading}
+                label={importLoading ? 'Importando...' : 'Importar'}
+              />
+            )}
             {asFilter && (
             <Menu as="div" className="relative lg:hidden">
             {({ open }) => (

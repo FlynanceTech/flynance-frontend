@@ -281,40 +281,9 @@ const meta = useMemo(() => {
     <section className="w-full h-full px-4 lg:pl-0 lg:pr-8 flex flex-col gap-4 pt-4 md:pt-0">
       <Dialog open={previewOpen} onClose={handleClosePreview} className="relative z-50">
         <div className="fixed inset-0 bg-black/40" aria-hidden="true" />
-        <div className="fixed inset-0 flex items-center justify-center p-4">
-          <DialogPanel className="w-full max-w-5xl rounded-2xl bg-white shadow-xl border border-gray-200">
-            <div className="flex items-center justify-between gap-4 border-b border-gray-200 px-6 py-4">
-              <div>
-                <DialogTitle className="text-lg font-semibold text-[#333C4D]">
-                  Preview de transacoes importadas
-                </DialogTitle>
-                <p className="text-sm text-slate-500">
-                  Revise, categorize ou renomeie antes de finalizar.
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="rounded-full bg-secondary/30 px-3 py-1 text-xs font-semibold text-[#333C4D]">
-                  {importedTransactions.length} novas
-                </span>
-                <button
-                  type="button"
-                  onClick={handleConfirmImport}
-                  disabled={isImporting}
-                  className="rounded-full bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isImporting ? 'Importando...' : 'Confirmar importacao'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleClosePreview}
-                  className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                >
-                  Fechar
-                </button>
-              </div>
-            </div>
-
-            <div className="max-h-[70vh] overflow-auto p-4">
+        <div className="fixed inset-0 flex items-center justify-center p-3 md:p-6">
+          <DialogPanel className="flex h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl md:h-[85vh]">
+            <div className="flex-1 overflow-auto p-3 md:p-4">
               <div className="rounded-xl border border-gray-200 bg-secondary/10 p-3">
                 <div className="hidden md:block">
                   <div className="grid grid-cols-[110px_minmax(240px,1fr)_220px_110px_140px] items-center gap-0 rounded-lg border border-gray-200 bg-secondary/30 px-4 py-3 text-sm font-semibold text-primary">
@@ -511,8 +480,38 @@ const meta = useMemo(() => {
                 </div>
               </div>
             </div>
-
-            <div className="border-t border-gray-200 px-6 py-3 text-xs text-slate-500">
+            
+            <div className="flex flex-col gap-3 border-b border-gray-200 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-6">
+              <div>
+                <DialogTitle className="text-base font-semibold text-[#333C4D] md:text-lg">
+                  Preview de transacoes importadas
+                </DialogTitle>
+                <p className="text-xs text-slate-500 md:text-sm">
+                  Revise, categorize ou renomeie antes de finalizar.
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <span className="rounded-full bg-secondary/30 px-3 py-1 text-xs font-semibold text-[#333C4D]">
+                  {importedTransactions.length} novas
+                </span>
+                <button
+                  type="button"
+                  onClick={handleConfirmImport}
+                  disabled={isImporting}
+                  className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isImporting ? 'Importando...' : 'Confirmar importacao'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClosePreview}
+                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+            <div className="border-t border-gray-200 px-4 py-3 text-xs text-slate-500 md:px-6">
               Dica: duplo clique na descricao para editar. Use o select de categoria para ajustar.
             </div>
           </DialogPanel>
