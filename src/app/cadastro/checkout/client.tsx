@@ -17,10 +17,8 @@ export function CheckoutPageClient() {
   const plano = searchParams.get("plano");
 
   const defaultPlano = "essencial-mensal";
-  console.log('plano:',typeof plano, plano);
   const planoSlug = plano === 'undefined' || null ? defaultPlano : plano;
 
-  console.log('planoSlug:', planoSlug);
   const { data, isLoading, error } = usePlanBySlug(planoSlug as string);
 
   useEffect(() => {

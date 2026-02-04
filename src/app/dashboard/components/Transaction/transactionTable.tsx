@@ -1,26 +1,59 @@
-// Atualizado para usar DeleteConfirmModal nos dois componentes
-
 'use client'
 
-import clsx from 'clsx'
-import { Pencil, Trash2 } from 'lucide-react'
-import React, { useState } from 'react'
-import { Transaction } from '@/types/Transaction'
-import { IconMap, IconName } from '@/utils/icon-map'
-import DeleteConfirmModal from '../DeleteConfirmModal'
+import React, { useMemo } from 'react'
+import { Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import type { Transaction } from '@/types/Transaction'
 
-interface Props {
+type SortField = 'date' | 'value' | null
+type SortDirection = 'asc' | 'desc'
+
+type Props = {
   transactions: Transaction[]
   selectedIds: Set<string>
   selectAll: boolean
   onToggleSelectAll: () => void
-  onToggleSelectRow: (index: string) => void
-  onEdit: (transaction: Transaction) => void
-  onDelete: (index: string) => void
-    sortField: 'date' | 'value' | null
-  sortDirection: 'asc' | 'desc'
+  onToggleSelectRow: (id: string) => void
+  onEdit: (t: Transaction) => void
+  onDelete: (id: string) => void
+
+  sortField: SortField
+  sortDirection: SortDirection
   onSortChange: (field: 'date' | 'value') => void
 }
+
+function toBRL(v: number) {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0)
+}
+
+function fmtDate(d: any) {
+  // suporta Date | string
+  const dt = d instanceof Date ? d : new Date(d)
+  if (Number.isNaN(dt.getTime())) return '-'
+  return dt.toLocaleDateString('pt-BR')
+}
+
+function SortIcon({ active, direction }: { active: boolean; direction: SortDirection }) {
+  if (!active) return <ArrowUpDown className="h-4 w-4 opacity-60" />
+  return direction === 'asc' ? (
+    <ArrowUp className="h-4 w-4" />
+  ) : (
+    <ArrowDown className="h-4 w-4" />
+  )
+}
+
+/**
+ * Grid columns:
+ *  - checkbox
+ *  - data
+ *  - descrição (flexível)
+ *  - categoria (desktop)
+ *  - tipo (desktop)
+ *  - valor
+ *  - ações
+ */
+const GRID_COLS =
+  'grid-cols-[40px_110px_minmax(220px,1fr)_220px_110px_140px_92px]'
+
 export function TransactionTable({
   transactions,
   selectedIds,
@@ -33,152 +66,201 @@ export function TransactionTable({
   sortDirection,
   onSortChange,
 }: Props) {
-  const [open, setOpen] = useState(false)
-  const [targetId, setTargetId] = useState<string | null>(null)
+  const hasData = transactions?.length > 0
 
-  function handleConfirmDelete() {
-    if (targetId) onDelete(targetId)
-  }
-
-  const renderSortIcon = (field: 'date' | 'value') => {
-    if (sortField !== field) return null
-    return (
-      <span className="ml-1 text-xs">
-        {sortDirection === 'asc' ? '▲' : '▼'}
-      </span>
-    )
-  }
+  // pra não “piscar” o header quando não tiver dado
+  const rows = useMemo(() => transactions ?? [], [transactions])
 
   return (
-    <div className="w-full h-full bg-white rounded-md border border-gray-200 p-8 hidden lg:block lg:max-h-[720px]">
-      <DeleteConfirmModal
-        isOpen={open}
-        onClose={() => setOpen(false)}
-        onConfirm={handleConfirmDelete}
-        title="Excluir transação"
-        description="Tem certeza que deseja excluir esta transação?"
-      />
+    <div className="w-full hidden md:block">
+      {/* Container */}
+      <div className="rounded-xl border border-gray-200 bg-white shadow overflow-hidden">
+        {/* Header Sticky */}
+        <div
+          role="row"
+          className={[
+            'sticky top-0 z-10',
+            'grid',
+            GRID_COLS,
+            'items-center gap-0',
+            'border-b border-gray-200 ',
+            'bg-secondary/30 backdrop-blur',
+            'px-4 py-4',
+          ].join(' ')}
+        >
+          {/* Select all */}
+          <div role="columnheader" className="flex items-center justify-center">
+            <input
+              type="checkbox"
+              checked={selectAll}
+              onChange={onToggleSelectAll}
+              className="h-4 w-4 accent-black"
+              aria-label="Selecionar todas as transações desta página"
+            />
+          </div>
 
-      <div className="h-full">
-        <table className="w-full lg:max-h-[720px] text-left text-sm">
-          <thead className="text-gray-500 border-b border-gray-200">
-            <tr>
-              <th className="py-2 px-2">
-                <input type="checkbox" checked={selectAll} onChange={onToggleSelectAll} />
-              </th>
-              <th className="py-2">Descrição</th>
-              <th className="py-2">Categoria</th>
+          {/* Date */}
+          <button
+            type="button"
+            role="columnheader"
+            onClick={() => onSortChange('date')}
+            className="flex items-center gap-2 text-left text-sm font-semibold text-primary hover:text-gray-900"
+            title="Ordenar por data"
+          >
+            Data
+            <SortIcon active={sortField === 'date'} direction={sortDirection} />
+          </button>
 
-              {/* Data com click para ordenar */}
-              <th
-                className="py-2 cursor-pointer select-none"
-                onClick={() => onSortChange('date')}
-              >
-                <div className="inline-flex items-center">
-                  Data
-                  {renderSortIcon('date')}
-                </div>
-              </th>
+          {/* Description */}
+          <div role="columnheader" className="text-sm font-semibold text-primary">
+            Descrição
+          </div>
 
-              {/* Valor com click para ordenar */}
-              <th
-                className="py-2 cursor-pointer select-none"
-                onClick={() => onSortChange('value')}
-              >
-                <div className="inline-flex items-center">
-                  Valor
-                  {renderSortIcon('value')}
-                </div>
-              </th>
+          {/* Category (desktop) */}
+          <div role="columnheader" className="hidden lg:block text-sm font-semibold text-primary">
+            Categoria
+          </div>
 
-              <th className="py-2 text-right">Ações</th>
-            </tr>
-          </thead>
+          {/* Type (desktop) */}
+          <div role="columnheader" className="hidden lg:block text-sm font-semibold text-primary">
+            Tipo
+          </div>
 
-          <tbody className="lg:max-h-[500px] overflow-auto">
-            {transactions.map((item, i) => (
-              <tr key={i} className="border-b border-gray-200 hover:bg-gray-50">
-                <td className="py-4 px-2">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(item.id)}
-                    onChange={() => onToggleSelectRow(item.id)}
-                  />
-                </td>
-                <td className="py-4 max-w-52">
-                  <div className="truncate max-w-72">
-                    <span
-                      className="text-gray-800 truncate max-w-72"
-                      title={item.description}
-                    >
-                      {item.description}
-                    </span>
-                  </div>
-                </td>
-                <td className="py-4 flex items-center gap-3">
-                  <div
-                    className={clsx(
-                      'flex items-center gap-2 px-3 py-1 rounded-full text-white',
-                      item.category.type === 'INCOME' ? 'bg-[#22C55E]' : 'bg-[#EF4444]'
-                    )}
-                  >
-                    {IconMap[item.category.icon as IconName] &&
-                      React.createElement(
-                        IconMap[item.category.icon as IconName],
-                        { size: 16 }
-                      )}
-                    <span className="text-xs font-semibold">
-                      {item.category.name}
-                    </span>
-                  </div>
-                </td>
-                <td className="text-gray-600">
-                 {new Intl.DateTimeFormat('pt-BR', {
-                    dateStyle: 'short',
-                    timeStyle: 'short',
-                    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                  }).format(new Date(item.date))}
+          {/* Value */}
+          <button
+            type="button"
+            role="columnheader"
+            onClick={() => onSortChange('value')}
+            className="flex items-center justify-end gap-2 text-right text-sm font-semibold text-primary hover:text-gray-900 pr-8"
+            title="Ordenar por valor"
+          >
+            Valor
+            <SortIcon active={sortField === 'value'} direction={sortDirection} />
+          </button>
 
-                </td>
-                <td
-                  className={clsx(
-                    'font-medium',
-                    item.category.type === 'INCOME'
-                      ? 'text-[#22C55E]'
-                      : 'text-[#EF4444]'
-                  )}
+          {/* Actions */}
+          <div role="columnheader" className="text-right text-sm font-semibold text-primary pr-2">
+            Ações
+          </div>
+        </div>
+
+        {/* Body */}
+        <div role="rowgroup" className="max-h-[580px] overflow-auto">
+          {!hasData ? (
+            <div className="p-6 text-sm text-gray-500">Nenhuma transação encontrada.</div>
+          ) : (
+            rows.map((t) => {
+              const checked = selectedIds.has(t.id)
+
+              const categoryName = t.category?.name ?? '—'
+              const categoryColor = t.category?.color ?? '#CBD5E1'
+              const isExpense = t.type === 'EXPENSE'
+              const value = Number(t.value ?? 0)
+
+              return (
+                <div
+                  key={t.id}
+                  role="row"
+                  className={[
+                    'grid',
+                    GRID_COLS,
+                    'items-center',
+                    'px-4 py-2',
+                    'border-b border-gray-100',
+                    'hover:bg-gray-50',
+                  ].join(' ')}
                 >
-                  {item.category.type === 'INCOME'
-                    ? `R$ ${new Intl.NumberFormat("pt-BR", {
-                      style: "currency",
-                      currency: "BRL",
-                    }).format(item.value)}`
-                    : `- R$ ${new Intl.NumberFormat("pt-BR", {
-                      style: "currency",
-                      currency: "BRL",
-                    }).format(item.value)}`}
-                </td>
-                <td className="flex justify-end gap-4 py-4 pr-2">
-                  <button
-                    className="text-gray-500 hover:text-blue-300 cursor-pointer"
-                    onClick={() => onEdit(item)}
-                  >
-                    <Pencil size={16} />
-                  </button>
-                  <button
-                    className="text-gray-500 hover:text-red-400 cursor-pointer"
-                    onClick={() => {
-                      setTargetId(item.id)
-                      setOpen(true)
-                    }}
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  {/* Checkbox */}
+                  <div role="cell" className="flex items-center justify-center">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => onToggleSelectRow(t.id)}
+                      className="h-4 w-4 accent-black"
+                      aria-label={`Selecionar transação ${t.description ?? ''}`}
+                    />
+                  </div>
+
+                  {/* Date */}
+                  <div role="cell" className="text-sm text-gray-700">
+                    {fmtDate(t.date)}
+                  </div>
+
+                  {/* Description */}
+                  <div role="cell" className="min-w-0 pr-4">
+                    <div className="truncate text-sm font-medium text-gray-900">
+                      {t.description || 'Sem descrição'}
+                    </div>
+
+                    {/* Sub-info no mobile (categoria + tipo) */}
+                    <div className="lg:hidden mt-0.5 flex items-center gap-2 text-xs text-gray-500 ">
+                      <span className="inline-flex items-center gap-1">
+                        <span
+                          className="h-2.5 w-2.5 rounded-full"
+                          style={{ backgroundColor: categoryColor }}
+                        />
+                        <span className="truncate max-w-[200px]">{categoryName}</span>
+                      </span>
+                      <span className="opacity-60">•</span>
+                      <span>{isExpense ? 'Despesa' : 'Receita'}</span>
+                    </div>
+                  </div>
+
+                  {/* Category (desktop) */}
+                  <div role="cell" className="hidden lg:flex items-center gap-2 text-sm text-gray-700 pr-4">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: categoryColor }} />
+                    <span className="truncate">{categoryName}</span>
+                  </div>
+
+                  {/* Type (desktop) */}
+                  <div role="cell" className="hidden lg:block">
+                    <span
+                      className={[
+                        'inline-flex rounded-full px-2 py-1 text-xs font-medium',
+                        isExpense ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700',
+                      ].join(' ')}
+                    >
+                      {isExpense ? 'Despesa' : 'Receita'}
+                    </span>
+                  </div>
+
+                  {/* Value */}
+                  <div role="cell" className="text-right pr-8">
+                    <span className={['text-sm font-semibold', isExpense ? 'text-red-600' : 'text-green-600'].join(' ')}>
+                      {toBRL(value)}
+                    </span>
+                  </div>
+
+                  {/* Actions */}
+                  <div role="cell" className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => onEdit(t)}
+                      className="h-9 w-9 rounded-full border border-gray-200 hover:bg-gray-50 flex items-center justify-center"
+                      title="Editar"
+                      aria-label="Editar transação"
+                    >
+                      <Pencil className="h-4 w-4 text-gray-600" />
+                    </button>
+
+                    <button
+                      onClick={() => onDelete(t.id)}
+                      className="h-9 w-9 rounded-full border border-gray-200 hover:bg-red-50 flex items-center justify-center"
+                      title="Excluir"
+                      aria-label="Excluir transação"
+                    >
+                      <Trash2 className="h-4 w-4 text-red-600" />
+                    </button>
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+      </div>
+
+      {/* Hint (opcional) */}
+      <div className="mt-2 text-xs text-gray-500">
+        Dica: clique em <span className="font-medium">Data</span> ou <span className="font-medium">Valor</span> para ordenar.
       </div>
     </div>
   )

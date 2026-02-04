@@ -127,21 +127,6 @@ export default function FinanceStatus({
       {/* Desktop */}
       <div className="hidden lg:grid lg:grid-flow-col gap-4 lg:gap-4">
         <FinanceCard
-          percentage={incomeChange}
-          periodLabel={periodLabel}
-          title={<h2 className="text-[#41B46B] font-medium flex gap-2"><ArrowUp /> Receita</h2>}
-          value={fmt(income)}
-          isLabel
-        />
-        <FinanceCard
-          percentage={expenseChange}
-          periodLabel={periodLabel}
-          title={<h2 className="text-[#F15959] font-medium flex gap-2"><ArrowDown /> Despesas</h2>}
-          value={fmt(expense)}
-          isExpense
-          isLabel
-        />
-        <FinanceCard
           title={
             <h2
               className={`font-medium flex gap-2 ${
@@ -156,6 +141,22 @@ export default function FinanceStatus({
           isLabel
           isBalance   
         />
+        <FinanceCard
+          percentage={incomeChange}
+          periodLabel={periodLabel}
+          title={<h2 className="text-[#41B46B] font-medium flex gap-2"><ArrowUp /> Receita</h2>}
+          value={fmt(income)}
+          isLabel
+        />
+        <FinanceCard
+          percentage={expenseChange}
+          periodLabel={periodLabel}
+          title={<h2 className="text-[#F15959] font-medium flex gap-2"><ArrowDown /> Despesas</h2>}
+          value={fmt(expense)}
+          isExpense
+          isLabel
+        />
+        
       </div>
     </div>
   )

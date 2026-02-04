@@ -20,13 +20,11 @@ export function trackEvent(event: string, params?: Record<string, unknown>) {
         event,
         ...params,
       });
-      console.log(`[GTM] Evento enviado: ${event}`, params);
     }
 
     // Dispara evento para Facebook Pixel
     if (typeof window.fbq === 'function') {
       window.fbq('track', event, params || {});
-      console.log(`[FBQ] Evento enviado: ${event}`, params);
     }
   }
 }

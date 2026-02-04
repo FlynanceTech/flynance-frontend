@@ -56,7 +56,7 @@ export default function FinanceCard({
     <div className="flex flex-col justify-center gap-4 bg-white p-4 rounded-md border border-[#E2E8F0] w-full">
       {title}
       <h1 className="font-bold text-2xl text-[#333C4D]">{value}</h1>
-      {
+     {/*  {
         isLabel && (
           <div className={`text-sm font-light flex items-center gap-1 ${getTextColor()}`}>
             {isBalance 
@@ -64,7 +64,7 @@ export default function FinanceCard({
               : <>{getTrendIcon()} {getTrendText()}</>}
           </div>
         )
-      }
+      } */}
     </div>
   )
 }

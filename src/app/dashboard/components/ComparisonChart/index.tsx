@@ -9,16 +9,14 @@ import { useIsMobile } from '@/hooks/useIsMobile'
 import { useTransactionFilter } from '@/stores/useFilter'
 import { useCategories } from '@/hooks/query/useCategory'
 import type { CategoryResponse } from '@/services/category'
-import DateRangeSelect, { DateFilter } from '../DateRangeSelect'
-import { useTranscation } from '@/hooks/query/useTransaction'
 
 import { BarCompareChart, BarDetailChart } from './barChart'
 
 interface ComparisonChartProps {
-  userId: string
+  transactions?: Transaction[]
+  isLoading?: boolean
 }
 
-/** Mede a largura do container para responsividade fina */
 function useContainerWidth(): [number, RefObject<HTMLDivElement | null>] {
   const ref = useRef<HTMLDivElement | null>(null)
   const [w, setW] = useState<number>(0)
@@ -38,56 +36,35 @@ function useContainerWidth(): [number, RefObject<HTMLDivElement | null>] {
   return [w, ref]
 }
 
-export default function ComparisonChart({ userId }: ComparisonChartProps) {
+export default function ComparisonChart({ transactions = [], isLoading = false }: ComparisonChartProps) {
   const isMobile = useIsMobile()
   const [showLegend, setShowLegend] = useState(false)
-  const [filter, setFilter] = useState<DateFilter>({ mode: 'days', days: 30 })
   const [containerW, containerRef] = useContainerWidth()
-
-  const { transactionsQuery } = useTranscation({ userId })
-  const transactions: Transaction[] = transactionsQuery.data || []
-  const isLoading = transactionsQuery.isLoading
 
   const selectedCategories = useTransactionFilter((s) => s.selectedCategories)
   const setSelectedCategories = useTransactionFilter((s) => s.setSelectedCategories)
 
-  const {
-    categoriesQuery: { data: allCategories = [] },
-  } = useCategories()
+  const { categoriesQuery } = useCategories()
+  const allCategories: CategoryResponse[] = categoriesQuery.data ?? []
 
   const isDetalhado = selectedCategories.length === 1
   const categoriaSelecionada = isDetalhado ? selectedCategories[0] : null
 
-const filteredTransactions = useMemo(() => {
-  if (!transactions?.length) return []
+  const baseTransactions: Transaction[] = transactions ?? []
 
-  if (filter.mode === 'days') {
-    const now = Date.now()
-    const maxAgeMs = (filter.days ?? 30) * 24 * 60 * 60 * 1000
-    return transactions.filter((t) => now - new Date(t.date).getTime() <= maxAgeMs)
-  }
+  const receitas = useMemo(() => baseTransactions.filter((t: Transaction) => t.type === 'INCOME'), [baseTransactions])
 
-  // ✅ range
-  const [sy, sm, sd] = filter.start.split('-').map(Number)
-  const [ey, em, ed] = filter.end.split('-').map(Number)
-  const start = Date.UTC(sy, sm - 1, sd, 0, 0, 0, 0)
-  const end = Date.UTC(ey, em - 1, ed, 23, 59, 59, 999)
+  const despesas = useMemo(() => baseTransactions.filter((t: Transaction) => t.type === 'EXPENSE'), [baseTransactions])
 
-  return transactions.filter((t) => {
-    const d = new Date(t.date).getTime()
-    return d >= start && d <= end
-  })
-}, [transactions, filter])
-
-
-  const receitas = useMemo(() => filteredTransactions.filter((t) => t.type === 'INCOME'), [filteredTransactions])
-  const despesas = useMemo(() => filteredTransactions.filter((t) => t.type === 'EXPENSE'), [filteredTransactions])
-
-  const totalReceita = useMemo(() => receitas.reduce((acc, item) => acc + item.value, 0), [receitas])
+  const totalReceita = useMemo(
+    () => receitas.reduce((acc, item) => acc + item.value, 0),
+    [receitas]
+  )
 
   const despesasPorCategoria = useMemo(() => {
-    return despesas.reduce((acc: Record<string, number>, item) => {
-      acc[item.category.name] = (acc[item.category.name] || 0) + item.value
+    return despesas.reduce((acc: Record<string, number>, item: Transaction) => {
+      const name = item?.category?.name ?? 'Sem categoria'
+      acc[name] = (acc[name] || 0) + item.value
       return acc
     }, {})
   }, [despesas])
@@ -100,7 +77,7 @@ const filteredTransactions = useMemo(() => {
         const categoriaObj = allCategories.find((c) => c.name.trim() === categoriaName.trim())
         const color =
           categoriaObj?.color ??
-          categoriaCores[categoriaName as keyof typeof categoriaCores] ??
+          categoriaCores[categoriaName] ??
           '#CBD5E1'
 
         return {
@@ -115,23 +92,19 @@ const filteredTransactions = useMemo(() => {
   }, [despesasPorCategoria, allCategories])
 
   const incomeForChart = useMemo(() => {
-    return {
-      label: 'Renda',
-      value: totalReceita,
-      color: '#22C55E',
-    }
+    return { label: 'Renda', value: totalReceita, color: '#22C55E' }
   }, [totalReceita])
 
   const dataDetalhada = useMemo(() => {
     if (!categoriaSelecionada) return []
-    return filteredTransactions
-      .filter((t) => t.category.id === categoriaSelecionada.id)
+    return baseTransactions
+      .filter((t) => t?.category?.id === categoriaSelecionada.id)
       .map((t) => ({
         dateLabel: new Date(t.date).toLocaleDateString('pt-BR'),
         value: t.value,
         description: t.description,
       }))
-  }, [filteredTransactions, categoriaSelecionada])
+  }, [baseTransactions, categoriaSelecionada])
 
   const findColorCategory = (category: CategoryResponse | null) => {
     if (!category) return undefined
@@ -183,48 +156,29 @@ const filteredTransactions = useMemo(() => {
                 className="flex cursor-pointer items-center gap-2 rounded-full bg-secondary/30 px-4 py-2 text-sm text-[#333C4D]"
               >
                 <strong>Legenda</strong>
-                <ChevronDown
-                  className={`h-5 w-5 transition-transform duration-200 ${showLegend ? 'rotate-180' : ''}`}
-                />
+                <ChevronDown className={`h-5 w-5 transition-transform duration-200 ${showLegend ? 'rotate-180' : ''}`} />
               </button>
-
-              <div className="flex items-center gap-3">
-                <DateRangeSelect value={filter} onChange={setFilter} />
-              </div>
             </div>
           )}
         </div>
       </div>
 
-      <p className="mb-4 ml-4 text-sm text-gray-500">
-        Resumo das suas finanças{' '}
-        <span>
-          {filter.mode === 'days'
-            ? `nos últimos ${filter.days} dias`
-            : `de ${new Date(filter.start + 'T00:00:00').toLocaleDateString('pt-BR')} até ${new Date(
-                filter.end + 'T00:00:00'
-              ).toLocaleDateString('pt-BR')}`}
-        </span>
-      </p>
-
-
       {showLegend && !categoriaSelecionada && (
-        <div className="absolute z-10 w-full max-w-80 flex-wrap gap-2 rounded-md bg-white py-2 shadow-md md:max-w-[380px]">
+        <div className="absolute z-10 right-0 w-full gap-3 rounded-md bg-white p-2 shadow-md max-w-[380px] lg:max-w-full grid grid-cols-2 lg:grid-cols-3">
           {categoriasDespesas.map((catName) => {
             const categoriaObj = allCategories.find((c) => c.name.trim() === catName.trim())
             if (!categoriaObj) return null
 
-            const legendColor =
-              categoriaObj.color ?? categoriaCores[catName as keyof typeof categoriaCores] ?? '#CBD5E1'
+            const legendColor = categoriaObj.color ?? categoriaCores[catName] ?? '#CBD5E1'
 
             return (
               <button
                 key={catName}
-                className="flex cursor-pointer items-center gap-2 rounded-full px-3 py-1 text-sm"
+                className="flex min-w-0 cursor-pointer items-center gap-2 rounded-full px-2 py-1 text-sm hover:bg-gray-200 max-w-40 lg:max-w-full"
                 onClick={() => setSelectedCategories([categoriaObj])}
               >
-                <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: legendColor }} />
-                <span className="text-gray-700">{catName}</span>
+                <span className="h-3 w-3 shrink-0 rounded-sm" style={{ backgroundColor: legendColor }} />
+                <span className="truncate text-gray-700">{catName}</span>
               </button>
             )
           })}
@@ -232,9 +186,9 @@ const filteredTransactions = useMemo(() => {
       )}
 
       <div className="flex w-full flex-col justify-center gap-4 p-4">
-        {filteredTransactions.length === 0 ? (
+        {baseTransactions.length === 0 ? (
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-            Nenhuma transação encontrada para o período selecionado.
+            Nenhuma transação encontrada.
           </div>
         ) : categoriaSelecionada ? (
           <BarDetailChart

@@ -1,20 +1,18 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
-/* import NotificationBell from '../NotificationBell' */
+import React, { useMemo, useState } from 'react'
+import { Plus } from 'lucide-react'
+
 import { NewTransactionButton } from '../Buttons'
 import { CategoriesSelectWithCheck } from '../CategorySelect'
 import SearchBar from '../SearchBar'
 import TransactionDrawer from '../TransactionDrawer'
-import { Category } from '@/types/Transaction'
-import { Plus } from 'lucide-react'
-import { useUserSession } from '@/stores/useUserSession'
 
 import DateRangeSelect from '../DateRangeSelect'
-import type { DateFilter } from '../DateRangeSelect'
+import { useUserSession } from '@/stores/useUserSession'
+import { useTransactionFilter } from '@/stores/useFilter'
 
-import FinanceStatus, { FinanceStatusProps } from '../FincanceStatus'
-import { useFinanceStatus } from '@/hooks/query/useFinanceStatus'
+import type { Category } from '@/types/Transaction'
 
 interface HeaderProps {
   title?: string
@@ -25,27 +23,16 @@ interface HeaderProps {
   userId: string
 }
 
-const PERIOD_ZERO: FinanceStatusProps['period'] = {
-  income: 0,
-  expense: 0,
-  balance: 0,
-  incomeChange: 0,
-  expenseChange: 0,
-  balanceChange: 0,
-}
-
-const ACC_ZERO: FinanceStatusProps['accumulated'] = {
-  totalIncome: 0,
-  totalExpense: 0,
-  totalBalance: 0,
-}
-
-function formatRangeLabel(start: string, end: string) {
-  const s = new Date(start + 'T00:00:00')
-  const e = new Date(end + 'T00:00:00')
-  const fmt = (d: Date) => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-  return `${fmt(s)} – ${fmt(e)}`
-}
+/**
+ * ✅ Aceita formatos diferentes do DateRangeSelect (pra não quebrar se você estiver usando days/month ou days/range)
+ * - days: { mode: 'days', days: number }
+ * - month: { mode: 'month', month: '05', year: '2025' }
+ * - range: { mode: 'range', start: '2026-01-01', end: '2026-01-31' }
+ */
+type AnyDateFilter =
+  | { mode: 'days'; days: number }
+  | { mode: 'month'; month: string; year: string }
+  | { mode: 'range'; start: string; end: string }
 
 function diffDaysInclusive(start: string, end: string) {
   const s = new Date(start + 'T00:00:00').getTime()
@@ -59,47 +46,92 @@ export default function Header({
   asFilter = false,
   dataToFilter,
   newTransation = true,
-  userId,
 }: HeaderProps) {
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [filter, setFilter] = useState<DateFilter>({ mode: 'days', days: 30 })
 
   const { user } = useUserSession()
   const firstName =
-    user?.userData.user.name?.split(' ')[0]?.toLowerCase()?.replace(/^\w/, (c) => c.toUpperCase()) ?? ''
+    user?.userData?.user?.name?.split(' ')[0]?.toLowerCase()?.replace(/^\w/, (c) => c.toUpperCase()) ?? ''
 
-  // ✅ Agora só existe days e range
-  const { daysParam, rangeLabel } = useMemo(() => {
-    if (filter.mode === 'range') {
+  // ✅ zustand global filter
+  const mode = useTransactionFilter((s) => s.mode)
+  const dateRange = useTransactionFilter((s) => s.dateRange)
+  const selectedMonth = useTransactionFilter((s) => s.selectedMonth)
+  const selectedYear = useTransactionFilter((s) => s.selectedYear)
+
+  const appliedMode = useTransactionFilter((s) => s.appliedMode)
+  const appliedDateRange = useTransactionFilter((s) => s.appliedDateRange)
+  const appliedMonth = useTransactionFilter((s) => s.appliedSelectedMonth)
+  const appliedYear = useTransactionFilter((s) => s.appliedSelectedYear)
+
+  const setMode = useTransactionFilter((s) => s.setMode)
+  const setDateRange = useTransactionFilter((s) => s.setDateRange)
+  const setSelectedMonth = useTransactionFilter((s) => s.setSelectedMonth)
+  const setSelectedYear = useTransactionFilter((s) => s.setSelectedYear)
+  const applyFilters = useTransactionFilter((s) => s.applyFilters)
+
+  // ✅ valor do DateRangeSelect derivado do store (sem state local)
+  const datePickerValue: AnyDateFilter = useMemo(() => {
+    if (mode === 'month') {
       return {
-        daysParam: diffDaysInclusive(filter.start, filter.end),
-        rangeLabel: formatRangeLabel(filter.start, filter.end),
+        mode: 'month',
+        month: selectedMonth || '',
+        year: selectedYear || '',
       }
     }
 
     return {
-      daysParam: filter.days ?? 30,
-      rangeLabel: undefined as string | undefined,
+      mode: 'days',
+      days: Number(dateRange || 30),
     }
-  }, [filter])
+  }, [mode, dateRange, selectedMonth, selectedYear])
 
-  const financeStatusQuery = useFinanceStatus({
-    userId,
-    days: daysParam,
-    // month removido (não existe mais no filtro)
-  })
+  function handleDateChange(next: AnyDateFilter) {
+    // - Se for "days": grava no store
+    if (next?.mode === 'days') {
+      setMode('days')
+      setDateRange(Number(next.days || 30))
+      setSelectedMonth('')
+      setSelectedYear('')
+      return
+    }
 
-  const periodLabel = useMemo(() => {
-    if (rangeLabel) return `período (${rangeLabel})`
-    return `últimos ${daysParam ?? 0} dias`
-  }, [rangeLabel, daysParam])
+    // - Se for "month": grava no store
+    if (next?.mode === 'month') {
+      setMode('month')
+      setSelectedMonth(next.month || '')
+      setSelectedYear(next.year || '')
+      return
+    }
+
+    // - Se for "range": converte para "days" (store atual não tem start/end)
+    if (next?.mode === 'range') {
+      const days = diffDaysInclusive(next.start, next.end)
+      setMode('days')
+      setDateRange(days)
+      setSelectedMonth('')
+      setSelectedYear('')
+    }
+  }
+
+  const hasPendingFilters =
+    mode !== appliedMode ||
+    Number(dateRange || 30) !== Number(appliedDateRange || 30) ||
+    (selectedMonth || '') !== (appliedMonth || '') ||
+    (selectedYear || '') !== (appliedYear || '')
+
+  const handleApplyFilters = () => {
+    if (!hasPendingFilters) return
+    applyFilters()
+  }
 
   return (
-    <header className="flex flex-col">
+    <header className="flex flex-col px-6 pt-6">
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <h3 className="text-2xl font-bold text-[#333C4D]">Olá, {firstName}!</h3>
 
+          {/* Desktop */}
           <div className="hidden lg:flex gap-4 items-center">
             {asFilter && (
               <div className="flex gap-4 items-center">
@@ -110,17 +142,33 @@ export default function Header({
                   </div>
                 )}
 
-                <DateRangeSelect value={filter} onChange={setFilter} withDisplay />
+                {/* ✅ DateRangeSelect agora alimenta o filtro global */}
+                <DateRangeSelect value={datePickerValue as any} onChange={handleDateChange as any} withDisplay />
+                <button
+                  type="button"
+                  onClick={handleApplyFilters}
+                  disabled={!hasPendingFilters}
+                  className="h-9 rounded-full bg-primary px-4 text-sm font-semibold text-white hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Filtrar
+                </button>
               </div>
             )}
 
-            {/* <NotificationBell asFilter={asFilter} /> */}
             {newTransation && <NewTransactionButton onClick={() => setDrawerOpen(true)} />}
           </div>
 
+          {/* Mobile */}
           <div className="flex lg:hidden gap-4 items-center">
-            <DateRangeSelect value={filter} onChange={setFilter} />
-            {/* <NotificationBell asFilter={asFilter} /> */}
+            <DateRangeSelect value={datePickerValue as any} onChange={handleDateChange as any} />
+            <button
+              type="button"
+              onClick={handleApplyFilters}
+              disabled={!hasPendingFilters}
+              className="h-9 rounded-full bg-primary px-4 text-xs font-semibold text-white hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Filtrar
+            </button>
           </div>
         </div>
 
@@ -135,13 +183,6 @@ export default function Header({
       </div>
 
       <p className="text-sm font-light pb-4 pt-2 md:pt-0">{subtitle}</p>
-
-      <FinanceStatus
-        period={financeStatusQuery.data?.period ?? PERIOD_ZERO}
-        accumulated={financeStatusQuery.data?.accumulated ?? ACC_ZERO}
-        isLoading={financeStatusQuery.isLoading}
-        periodLabel={periodLabel}
-      />
     </header>
   )
 }

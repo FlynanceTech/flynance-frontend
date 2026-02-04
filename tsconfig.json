@@ -40,7 +40,7 @@
     "src/components/InstallPrompt",
     "next.config.mts",
     ".next/dev/types/**/*.ts"
-  ],
+, "src/app/dashboard/components/CategorySpendingDistribution/index.jsx"  ],
   "exclude": [
     "node_modules"
   ]

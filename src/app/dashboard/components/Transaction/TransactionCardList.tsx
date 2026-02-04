@@ -33,67 +33,78 @@ export function TransactionCardList({
 
   return (
     <div className="lg:hidden flex flex-col gap-4">
-      {transactions.map((item, i) => (
-        <div key={i} className="bg-white rounded-lg p-4 shadow border border-gray-200">
-          <div className="flex justify-between items-center">
-            <div className="flex gap-2 items-center">
-              <input
-                type="checkbox"
-                checked={selectedIds.has(item.id)}
-                onChange={() => onToggleSelectRow(item.id)}
-                className="mr-2"
-              />
-              <IconResolver name={item.category.icon} size={16} />
+      {transactions.map((item, i) => {
+        const category = item.category
+        const categoryType = category?.type ?? item.type ?? 'EXPENSE'
+        const isIncome = categoryType === 'INCOME'
+        const iconName = category?.icon ?? 'circle'
+        const description = item.description ?? 'Sem descricao'
+        const value = Number(item.value ?? 0)
 
-              <h4 className="font-semibold text-gray-800 truncate">{item.description}</h4>
+        return (
+          <div key={i} className="bg-white rounded-lg p-4 shadow border border-gray-200">
+            <div className="flex justify-between items-center">
+              <div className="flex gap-2 items-center min-w-0">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(item.id)}
+                  onChange={() => onToggleSelectRow(item.id)}
+                  className="mr-2"
+                />
+                <IconResolver name={iconName} size={16} />
+
+                <h4 className="font-semibold text-gray-800 truncate flex-1 min-w-0">
+                  {description}
+                </h4>
+              </div>
+              <div className="flex gap-4">
+                <button
+                  className="text-gray-500 hover:text-blue-300 cursor-pointer"
+                  onClick={() => onEdit(item)}
+                >
+                  <Pencil size={16} />
+                </button>
+                <button
+                  className="text-gray-500 hover:text-red-400 cursor-pointer"
+                  onClick={() => {
+                    setTargetId(item.id)
+                    setOpen(true)
+                  }}
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
             </div>
-            <div className="flex gap-4">
-              <button
-                className="text-gray-500 hover:text-blue-300 cursor-pointer"
-                onClick={() => onEdit(item)}
+
+            <div className="text-sm text-gray-500 mt-1">
+              {new Intl.DateTimeFormat('pt-BR', {
+                dateStyle: 'short',
+                timeStyle: 'short',
+                timeZone: 'UTC',
+              }).format(new Date(item.date))}
+            </div>
+
+            <div className="flex justify-between items-center mt-2">
+              <span
+                className={clsx(
+                  'text-xs font-semibold px-3 py-1 rounded-full text-white',
+                  isIncome ? 'bg-[#22C55E]' : 'bg-[#EF4444]'
+                )}
               >
-                <Pencil size={16} />
-              </button>
-              <button
-                className="text-gray-500 hover:text-red-400 cursor-pointer"
-                onClick={() => {
-                  setTargetId(item.id)
-                  setOpen(true)
-                }}
+                {isIncome ? 'Receita' : 'Despesas'}
+              </span>
+              <span
+                className={clsx(
+                  'text-sm font-semibold',
+                  isIncome ? 'text-[#22C55E]' : 'text-[#EF4444]'
+                )}
               >
-                <Trash2 size={16} />
-              </button>
+                {isIncome ? `R$ ${value.toFixed(2)}` : `- R$ ${value.toFixed(2)}`}
+              </span>
             </div>
           </div>
-
-          <div className="text-sm text-gray-500 mt-1"> {new Intl.DateTimeFormat('pt-BR', {
-                    dateStyle: 'short',
-                    timeStyle: 'short',
-                    timeZone: 'UTC',
-                  }).format(new Date(item.date))}</div>
-
-          <div className="flex justify-between items-center mt-2">
-            <span
-              className={clsx(
-                'text-xs font-semibold px-3 py-1 rounded-full text-white',
-                item.category.type !== 'EXPENSE' ? 'bg-[#22C55E]' : 'bg-[#EF4444]'
-              )}
-            >
-              {item.category.type !== 'EXPENSE' ? 'Receita' : 'Despesas'}
-            </span>
-            <span
-              className={clsx(
-                'text-sm font-semibold',
-                item.category.type === 'INCOME' ? 'text-[#22C55E]' : 'text-[#EF4444]'
-              )}
-            >
-              {item.category.type === 'INCOME'
-                ? `R$ ${item.value.toFixed(2)}`
-                : `- R$ ${item.value.toFixed(2)}`}
-            </span>
-          </div>
-        </div>
-      ))}
+        )
+      })}
 
       <DeleteConfirmModal
         isOpen={open}
