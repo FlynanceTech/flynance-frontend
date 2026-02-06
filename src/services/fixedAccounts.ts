@@ -76,9 +76,9 @@ export async function createFixedAccount(data: FixedAccountDTO): Promise<FixedAc
       frequency: 'monthly',
       autoPay: false,
       status: 'active',
-      startDate: todayISODate(),
       endDate: null,
       ...data,
+      startDate: data.startDate ?? todayISODate(),
       name: trimmedName,
     }
     const response = await api.post('/fixed-accounts', payload)

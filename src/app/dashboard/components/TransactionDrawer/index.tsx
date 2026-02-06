@@ -111,6 +111,26 @@ const typeSelectStyles: StylesConfig<TypeOption, false> = {
   }),
 }
 
+const paymentTypeSelectStyles: StylesConfig<PaymentTypeOption, false> = {
+  control: (base, state) => ({
+    ...base,
+    minHeight: 40,
+    borderRadius: 9999,
+    borderColor: state.isFocused ? '#CBD5E1' : '#E2E8F0',
+    boxShadow: state.isFocused ? '0 0 0 2px rgba(59, 130, 246, 0.15)' : 'none',
+    ':hover': { borderColor: '#CBD5E1' },
+  }),
+  valueContainer: (base) => ({ ...base, paddingLeft: 12, paddingRight: 8 }),
+  placeholder: (base) => ({ ...base, color: '#64748B' }),
+  menu: (base) => ({ ...base, borderRadius: 12, overflow: 'hidden' }),
+  menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+  option: (base, state) => ({
+    ...base,
+    backgroundColor: state.isFocused ? '#F1F5F9' : 'white',
+    color: '#0F172A',
+  }),
+}
+
 export default function TransactionDrawer({ open, onClose, initialData }: TransactionDrawerProps) {
   const { createMutation, updateMutation } = useTranscation({})
   const [openCardDrawer, setOpenCardDrawer] = useState(false)
@@ -319,7 +339,7 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
                       onChange={(opt) => field.onChange(opt?.value ?? 'MONEY')}
                       isSearchable={false}
                       menuPortalTarget={typeof window !== 'undefined' ? document.body : null}
-                      styles={typeSelectStyles as StylesConfig<PaymentTypeOption, false>}
+                      styles={paymentTypeSelectStyles}
                     />
                   )}
                 />

@@ -9,7 +9,7 @@ import { Skeleton } from '../components/skeleton'
 import TransactionDrawer from '../components/TransactionDrawer'
 import { TransactionTable } from '../components/Transaction/transactionTable'
 import { TransactionCardList } from '../components/Transaction/TransactionCardList'
-import { Transaction } from '@/types/Transaction'
+import { CategoryType, Transaction } from '@/types/Transaction'
 import { useTranscation } from '@/hooks/query/useTransaction'
 import { useUserSession } from '@/stores/useUserSession'
 import { useCategories } from '@/hooks/query/useCategory'
@@ -126,9 +126,10 @@ export default function TransactionsPage() {
       setIsPreviewLoading(true)
       setImportError(null)
       const response = await importPreviewMutation.mutateAsync({ userId, file })
-      const list = Array.isArray(response) ? response : response?.transactions ?? []
-      const warnings = Array.isArray(response?.warnings) ? response.warnings : []
-      const meta = response?.meta ?? null
+      const isArrayResponse = Array.isArray(response)
+      const list = isArrayResponse ? response : response?.transactions ?? []
+      const warnings = !isArrayResponse && Array.isArray(response?.warnings) ? response.warnings : []
+      const meta = !isArrayResponse ? response?.meta ?? null : null
       const withIds = (list as Transaction[]).map((t, idx) => ({
         ...t,
         id: t.id ?? `import-preview-${idx}`,
@@ -739,10 +740,10 @@ const meta = useMemo(() => {
                               name: nextCategory.name,
                               color: nextCategory.color,
                               icon: nextCategory.icon,
-                              type: nextCategory.type,
+                              type: nextCategory.type as CategoryType,
                             } as any,
                             categoryId: nextCategory.id,
-                            type: nextCategory.type,
+                            type: nextCategory.type as CategoryType,
                           }
                         })
                       )
