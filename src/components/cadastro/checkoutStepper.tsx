@@ -127,8 +127,7 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY 
 type AnnualBilling = "UPFRONT" | "INSTALLMENTS";
 type ViewState = "CHECKOUT" | "SUCCESS";
 
-const ANNUAL_COUPON_CODE = "FLY10" as const;
-const ANNUAL_DISCOUNT_PCT = 0.10;
+const ANNUAL_COUPON_CODE = "FLY20" as const;
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -233,9 +232,11 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
   }, [user]);
 
   const isAnnual = plan.slug?.toLowerCase().includes("anual");
-  const priceNumber = Number((plan.priceCents / 100).toFixed(2));
+  const rawPriceNumber = Number((plan.priceCents / 100).toFixed(2));
+  const annualMinTotal = 191.04;
+  const priceNumber = isAnnual ? Math.max(rawPriceNumber, annualMinTotal) : rawPriceNumber;
   const planLabel = plan.name || plan.slug || "Plano Flynance";
-  const trialDays = (plan as any).trialDays ?? 3;
+  const trialDays = (plan as any).trialDays ?? 7;
 
   useEffect(() => {
     if (!isAnnual) setAnnualBilling("UPFRONT");
@@ -610,12 +611,17 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
     if (!plan.slug) return;
 
     const currentSlug = plan.slug.toLowerCase();
-    let targetSlug = currentSlug;
+
+    const isLancamento = currentSlug.includes("lancamento");
+    const baseSlug = currentSlug.replace("-lancamento", "");
+    let targetSlug = baseSlug;
 
     if (period === "ANNUAL") {
-      if (currentSlug.includes("mensal")) targetSlug = currentSlug.replace("mensal", "anual");
+      targetSlug = baseSlug.replace("mensal", "anual");
+      // sempre voltar para o anual de lançamento
+      targetSlug = `${targetSlug}-lancamento`;
     } else {
-      if (currentSlug.includes("anual")) targetSlug = currentSlug.replace("anual", "mensal");
+      targetSlug = baseSlug.replace("anual", "mensal");
     }
 
     if (targetSlug === currentSlug) return;
@@ -677,11 +683,10 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
   // Totais do resumo (UI)
   // ---------------------------
   const effectivePromo = (form.promoCode ?? "").trim().toUpperCase();
-  const hasDiscount = isAnnual && effectivePromo === ANNUAL_COUPON_CODE;
 
   const subtotal = priceNumber;
 
-  const total = hasDiscount ? round2(subtotal * (1 - ANNUAL_DISCOUNT_PCT)) : subtotal;
+  const total = subtotal;
 
   const installments = isAnnual && annualBilling === "INSTALLMENTS" ? 12 : 1;
   const installmentValue = round2(total / installments);
@@ -909,7 +914,7 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
 
                   <input
                     name="promoCode"
-                    placeholder={!isAnnual ? "Cupom indisponível no mensal" : "Cupom (padrão: FLY10)"}
+                    placeholder={!isAnnual ? "Cupom indisponível no mensal" : "Cupom (padrão: FLY20)"}
                     value={form.promoCode}
                     onChange={handleChange}
                     className={clsx(inputClasses, !isAnnual && "bg-gray-50 text-gray-400 cursor-not-allowed")}
@@ -1055,9 +1060,9 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
                           <span>{paymentLabel}</span>
                         </p>
 
-                        {isAnnual && hasDiscount && (
+                        {isAnnual && effectivePromo === ANNUAL_COUPON_CODE && (
                           <p className="text-xs text-emerald-700">
-                            Cupom aplicado: <strong>{ANNUAL_COUPON_CODE}</strong> (10% off)
+                            Cupom aplicado: <strong>{ANNUAL_COUPON_CODE}</strong> (30 dias grÃ¡tis)
                           </p>
                         )}
                       </div>
@@ -1153,16 +1158,15 @@ function PlanResume({
   onAnnualBillingChange,
 }: PlanResumeProps) {
   const effectivePromo = (form.promoCode ?? "").trim().toUpperCase();
-  const hasDiscount = isAnnual && effectivePromo === ANNUAL_COUPON_CODE;
+  const promoTrialDays = isAnnual && effectivePromo === ANNUAL_COUPON_CODE ? 30 : trialDays;
+  const couponLabel = "Cupom de 30 dias gratis para quem entrar até março";
 
   const subtotal = price;
 
-  const total = hasDiscount ? round2(subtotal * (1 - ANNUAL_DISCOUNT_PCT)) : subtotal;
+  const total = subtotal;
 
   const installments = isAnnual && annualBilling === "INSTALLMENTS" ? 12 : 1;
   const installmentValue = round2(total / installments);
-
-  const discount = hasDiscount ? round2(subtotal - total) : 0;
 
   const monthlyEquivalent = isAnnual ? round2(total / 12) : null;
 
@@ -1186,7 +1190,7 @@ function PlanResume({
       </div>
 
       <div className="p-4 md:p-5 flex-1 flex flex-col gap-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col">
           <h3 className="text-base font-semibold text-slate-700">Detalhes</h3>
           <h3 className="text-base font-semibold text-slate-700">{planLabel}</h3>
         </div>
@@ -1222,11 +1226,11 @@ function PlanResume({
               </button>
             </div>
 
-            {annualBilling === "INSTALLMENTS" && (
+           {/*  {annualBilling === "INSTALLMENTS" && (
               <p className="mt-2 text-xs text-slate-600">
                 Fidelidade de 12 meses (cobrança mensal). Cancelamento pelo app fica bloqueado.
               </p>
-            )}
+            )} */}
           </div>
         )}
 
@@ -1253,12 +1257,6 @@ function PlanResume({
             </div>
           )}
 
-          {hasDiscount && (
-            <div className="flex justify-between text-emerald-600">
-              <dt>Desconto ({ANNUAL_COUPON_CODE})</dt>
-              <dd>- {formatCurrency(discount)}</dd>
-            </div>
-          )}
         </dl>
 
         <div className="pt-3 border-t border-slate-200">
@@ -1266,7 +1264,11 @@ function PlanResume({
           <ul className="space-y-1 text-sm text-slate-600">
             <li className="flex items-center gap-2">
               <Check className="w-4 h-4 text-primary" />
-              Teste gratuitamente por {trialDays} dias
+              Teste gratuitamente por {promoTrialDays} dias
+            </li>
+            <li className="flex items-center gap-2">
+              <Check className="w-4 h-4 text-primary" />
+              {couponLabel}
             </li>
             <li className="flex items-center gap-2">
               <Check className="w-4 h-4 text-primary" />

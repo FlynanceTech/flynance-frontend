@@ -56,8 +56,6 @@ export default function WinbackPage() {
 
   // (opcional) evita poluir log em produção
   // if (process.env.NODE_ENV !== "production") {
-  //   console.log("check signature", signature);
-  //   console.log("check stripeSubscription", stripeSubscription);
   // }
 
   const previousPlan = useMemo(() => {

@@ -3,6 +3,7 @@
 
 import { usePaymentTypeSummary } from '@/hooks/query/usePaymentAnalytics'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import type { PaymentType } from '@/services/dashboard'
 import {
   ResponsiveContainer,
   BarChart,
@@ -17,11 +18,16 @@ import {
 } from 'recharts'
 import React from 'react'
 
-const LABEL: Record<string, string> = {
+const LABEL: Record<PaymentType, string> = {
   DEBIT_CARD: 'Débito',
   CREDIT_CARD: 'Crédito',
   PIX: 'Pix',
+  BOLETO: 'Boleto',
+  TED: 'TED',
+  DOC: 'DOC',
   MONEY: 'Dinheiro',
+  CASH: 'Espécie',
+  OTHER: 'Outro',
 }
 
 type Row = {
@@ -30,14 +36,19 @@ type Row = {
   share: number
   delta: number
   color: string
-  key: 'DEBIT_CARD' | 'CREDIT_CARD' | 'PIX' | 'MONEY'
+  key: PaymentType
 }
 
-const COLORS: Record<Row['key'], string> = {
+const COLORS: Record<PaymentType, string> = {
   DEBIT_CARD: '#16A34A',   // verde
   CREDIT_CARD: '#3B82F6',  // azul
   PIX: '#06B6D4',          // ciano
+  BOLETO: '#A855F7',       // roxo
+  TED: '#14B8A6',          // teal
+  DOC: '#F97316',          // laranja
   MONEY: '#F59E0B',        // amarelo
+  CASH: '#84CC16',         // lima
+  OTHER: '#94A3B8',        // cinza
 }
 
 const brl = (v: number) =>
@@ -55,12 +66,12 @@ export default function PaymentTypeCard() {
     .slice()
     .sort((a, b) => b.total - a.total)
     .map((b) => ({
-      key: b.type as Row['key'],
+      key: b.type,
       name: LABEL[b.type] ?? b.type,
       total: Number(b.total.toFixed(2)),
       share: Number(b.sharePct.toFixed(1)),
       delta: Number(b.deltaPct.toFixed(1)),
-      color: COLORS[b.type as Row['key']] ?? '#94a3b8',
+      color: COLORS[b.type] ?? '#94a3b8',
     }))
 
   const startStr = new Date(data.range.start).toLocaleDateString('pt-BR')

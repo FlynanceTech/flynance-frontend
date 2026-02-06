@@ -1,180 +1,329 @@
 'use client'
 
-import { Menu, MenuButton, MenuItem, MenuItems, Checkbox } from '@headlessui/react'
-import { ChevronDown, Check } from 'lucide-react'
-import { useTransactionFilter } from '@/stores/useFilter'
+import React, { useMemo, useState } from 'react'
+import Select, { components, GroupBase, StylesConfig } from 'react-select'
+import CreatableSelect from 'react-select/creatable'
 import clsx from 'clsx'
+
 import { useCategories } from '@/hooks/query/useCategory'
 import { CategoryResponse } from '@/services/category'
-import { CategoryType } from '@/types/Transaction'
-import { useMemo } from 'react'
+import { useTransactionFilter } from '@/stores/useFilter'
+import CreateCategoryModal, { CreateCategoryDraft } from '../Categories/createCategoryModal'
 
+type CategoryType = 'EXPENSE' | 'INCOME'
 
+type CategoryOption = {
+  value: string
+  label: string
+  color?: string | null
+  type: CategoryType
+  raw: CategoryResponse
+}
 
-export function CategoriesSelectWithCheck() {
-  const selectedCategories = useTransactionFilter((s) => s.selectedCategories)
-  const setSelectedCategories = useTransactionFilter((s) => s.setSelectedCategories)
-  const {
-    categoriesQuery: { data: category = [] },
-  } = useCategories()
+type CategoryGroup = GroupBase<CategoryOption> & { label: string }
 
-  if (!category) return null
+function normalizeStr(s: string) {
+  return String(s || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+}
 
-  const toggleCategory = (cat: CategoryResponse) => {
-    setSelectedCategories(
-      selectedCategories.includes(cat)
-        ? selectedCategories.filter((c) => c !== cat)
-        : [...selectedCategories, cat]
-    )
+function defaultGroupLabel(type: CategoryType) {
+  return type === 'INCOME' ? 'Receitas' : 'Despesas'
+}
+
+function toOption(cat: CategoryResponse): CategoryOption {
+  return {
+    value: cat.id,
+    label: cat.name,
+    color: cat.color ?? '#CBD5E1',
+    type: cat.type as CategoryType,
+    raw: cat,
   }
-  
+}
 
-  const selectedNames = category
-  .filter((c) => selectedCategories.includes(c))
-  .map((c) => c.name)
+function buildGroupedOptions(
+  categories: CategoryResponse[],
+  typeFilter?: CategoryType
+): CategoryGroup[] {
+  const filtered = typeFilter ? categories.filter((c) => c.type === typeFilter) : categories
 
-  const displayText =
-    selectedNames.length === 0
-      ? 'Todas categorias'
-      : selectedNames.length === 1
-      ? selectedNames[0]
-      : `${selectedNames.length} selecionadas`
+  const byType: Record<CategoryType, CategoryOption[]> = {
+    EXPENSE: [],
+    INCOME: [],
+  }
 
+  filtered.forEach((c) => {
+    const t = (c.type as CategoryType) || 'EXPENSE'
+    byType[t].push(toOption(c))
+  })
+
+  const groups: CategoryGroup[] = []
+  if (byType.EXPENSE.length) groups.push({ label: defaultGroupLabel('EXPENSE'), options: byType.EXPENSE })
+  if (byType.INCOME.length) groups.push({ label: defaultGroupLabel('INCOME'), options: byType.INCOME })
+
+  return groups
+}
+
+type CreateDraft = {
+  name: string
+  type: CategoryType
+  color?: string | null
+}
+
+type CategorySelectProps = {
+  /** single: CategoryResponse | null  |  multi: CategoryResponse[] */
+  value: CategoryResponse | CategoryResponse[] | null
+  onChange: (value: CategoryResponse | CategoryResponse[] | null) => void
+
+  multiple?: boolean
+  typeFilter?: CategoryType
+  closeMenuOnSelect?: boolean
+  menuPortalTarget?: HTMLElement | null
+
+  /** habilita “Criar categoria…” quando não encontrar */
+  allowCreate?: boolean
+
+  /**
+   * obrigatório se allowCreate=true (pra realmente criar no backend).
+   * deve retornar a categoria criada (com id, etc).
+   */
+  onCreateCategory?: (draft: CreateCategoryDraft) => Promise<CategoryResponse>
+
+  placeholder?: string
+  className?: string
+  menuPlacement?: 'auto' | 'top' | 'bottom'
+}
+
+/** --- UI: Option com bolinha de cor --- */
+const Option = (props: any) => {
+  const data = props.data as CategoryOption
   return (
-    <Menu as="div" className="relative inline-block text-left w-full">
-      <MenuButton className="flex items-center justify-between gap-2 px-4 py-2 w-full lg:w-48 rounded-full border border-[#E2E8F0] bg-white text-[#1A202C] text-sm font-medium shadow-sm hover:bg-gray-50 cursor-pointer">
-        {displayText}
-        <ChevronDown size={16} />
-      </MenuButton>
-
-      <MenuItems
-        anchor="bottom"
-        className="flex flex-col gap-1 bg-white outline-none py-4 shadow-lg w-48 rounded-md mt-2 z-50"
-      >
-        {category.map((cat) => (
-          <MenuItem key={cat.id} as="div">
-            <Checkbox
-              checked={selectedCategories.includes(cat)}
-              onChange={() => toggleCategory(cat)} 
-              className={({ checked }) =>
-                `flex items-center gap-2 px-4 py-1 text-sm cursor-pointer hover:bg-[#F0FDF4] ${
-                  checked ? 'text-primary font-medium' : 'text-gray-700'
-                }`
-              }
-            >
-              {({ checked }) => (
-                <>
-                  <span
-                    className={`h-4 w-4 flex items-center justify-center border rounded ${
-                      checked
-                        ? 'bg-secondary border-secondary text-white'
-                        : 'border-gray-300'
-                    }`}
-                  >
-                    {checked && <Check size={12} />}
-                  </span>
-                  {cat.name}
-                </>
-              )}
-            </Checkbox>
-          </MenuItem>
-        ))}
-      </MenuItems>
-    </Menu>
+    <components.Option {...props}>
+      <div className="flex min-w-0 items-center gap-2">
+        <span
+          className="h-2.5 w-2.5 shrink-0 rounded-full"
+          style={{ backgroundColor: data.color ?? '#CBD5E1' }}
+        />
+        <span className="truncate">{data.label}</span>
+      </div>
+    </components.Option>
   )
 }
 
-interface Props {
-  value: string
-  onChange: (value: CategoryResponse) => void
-  className?: string
-  typeFilter?: 'EXPENSE' | 'INCOME'   
+/** --- UI: Value com bolinha de cor --- */
+const SingleValue = (props: any) => {
+  const data = props.data as CategoryOption
+  return (
+    <components.SingleValue {...props}>
+      <div className="flex min-w-0 items-center gap-2">
+        <span
+          className="h-2.5 w-2.5 shrink-0 rounded-full"
+          style={{ backgroundColor: data.color ?? '#CBD5E1' }}
+        />
+        <span className="truncate">{data.label}</span>
+      </div>
+    </components.SingleValue>
+  )
 }
 
-export function CategoriesSelect({ value, onChange, className, typeFilter }: Props) {
+const MultiValueLabel = (props: any) => {
+  const data = props.data as CategoryOption
+  return (
+    <components.MultiValueLabel {...props}>
+      <div className="flex min-w-0 items-center gap-2">
+        <span
+          className="h-2 w-2 shrink-0 rounded-full"
+          style={{ backgroundColor: data.color ?? '#CBD5E1' }}
+        />
+        <span className="truncate">{data.label}</span>
+      </div>
+    </components.MultiValueLabel>
+  )
+}
+
+/** Tailwind-friendly styles */
+const selectStyles: StylesConfig<CategoryOption, boolean, CategoryGroup> = {
+  control: (base: any, state: { isFocused: any }) => ({
+    ...base,
+    minHeight: 40,
+    borderRadius: 9999,
+    borderColor: state.isFocused ? '#CBD5E1' : '#E2E8F0',
+    boxShadow: state.isFocused ? '0 0 0 2px rgba(59,130,246,0.15)' : 'none',
+    ':hover': { borderColor: '#CBD5E1' },
+  }),
+  valueContainer: (base: any) => ({ ...base, paddingLeft: 12, paddingRight: 8 }),
+  placeholder: (base: any) => ({ ...base, color: '#64748B' }),
+  menu: (base: any) => ({ ...base, borderRadius: 12, overflow: 'hidden' }),
+  menuPortal: (base: any) => ({ ...base, zIndex: 9999 }),
+  option: (base: any, state: { isFocused: any }) => ({
+    ...base,
+    backgroundColor: state.isFocused ? '#F1F5F9' : 'white',
+    color: '#0F172A',
+  }),
+  multiValue: (base: any) => ({ ...base, borderRadius: 9999 }),
+}
+
+export function CategorySelect({
+  value,
+  onChange,
+  multiple = false,
+  typeFilter,
+  closeMenuOnSelect,
+  menuPortalTarget,
+  allowCreate = true,
+  onCreateCategory,
+  placeholder = 'Categoria',
+  className,
+  menuPlacement = 'auto',
+}: CategorySelectProps) {
   const {
     categoriesQuery: { data: categories = [] },
   } = useCategories()
 
-  // Filtra por tipo (quando fornecido)
-  const filtered = useMemo<CategoryResponse[]>(
-    () => (typeFilter ? categories.filter((c) => c.type === typeFilter) : categories),
-    [categories, typeFilter]
-  )
+  const groupedOptions = useMemo(() => buildGroupedOptions(categories, typeFilter), [categories, typeFilter])
 
-  // Nome exibido do item selecionado
-  const selected = useMemo<CategoryResponse | undefined>(
-    () => categories.find((c) => c.id === value),
-    [categories, value]
-  )
+  const allOptionsFlat = useMemo(() => groupedOptions.flatMap((g) => g.options), [groupedOptions])
 
-  const displayText = selected ? selected.name : 'Categoria'
+  const selectedOption = useMemo(() => {
+    if (!value) return null
+    if (Array.isArray(value)) {
+      const ids = new Set(value.map((v) => v.id))
+      return allOptionsFlat.filter((o) => ids.has(o.value))
+    }
+    return allOptionsFlat.find((o) => o.value === value.id) ?? null
+  }, [value, allOptionsFlat])
+
+  // create flow
+  const [createOpen, setCreateOpen] = useState(false)
+  const [createName, setCreateName] = useState('')
+  const [createLoading, setCreateLoading] = useState(false)
+
+  const initialCreateType: CategoryType = typeFilter ?? 'EXPENSE'
+
+  const Component = allowCreate ? CreatableSelect : Select
+
+  const handleSelectChange = (opt: any) => {
+    if (!opt) {
+      onChange(multiple ? [] : null)
+      return
+    }
+
+    if (multiple) {
+      const arr = (opt as CategoryOption[]).map((o) => o.raw)
+      onChange(arr)
+    } else {
+      onChange((opt as CategoryOption).raw)
+    }
+  }
+
+  const handleCreateOption = (inputValue: string) => {
+    // evita abrir modal se já existe
+    const inputNorm = normalizeStr(inputValue)
+    const already = allOptionsFlat.some((o) => normalizeStr(o.label) === inputNorm)
+    if (already) return
+
+    setCreateName(inputValue)
+    setCreateOpen(true)
+  }
+
+const confirmCreate = async (draft: CreateCategoryDraft) => {
+  if (!onCreateCategory) {
+    setCreateOpen(false)
+    return
+  }
+
+  try {
+    setCreateLoading(true)
+    const created = await onCreateCategory(draft)
+
+    if (multiple) {
+      const current = Array.isArray(value) ? value : []
+      onChange([...current, created])
+    } else {
+      onChange(created)
+    }
+
+    setCreateOpen(false)
+  } finally {
+    setCreateLoading(false)
+  }
+}
 
   return (
-    <Menu as="div" className={clsx('relative', className)}>
-      <MenuButton className="flex items-center justify-between gap-2 px-4 py-2 w-full rounded-full border border-[#E2E8F0] bg-white text-[#1A202C] text-sm font-medium shadow-sm hover:bg-gray-50 cursor-pointer">
-      {displayText}
-        <ChevronDown size={16} />
-      </MenuButton>
+    <div className={className}>
+      <Component
+        instanceId="category-select"
+        isMulti={multiple}
+        options={groupedOptions}
+        value={selectedOption as any}
+        onChange={handleSelectChange as any}
+        placeholder={placeholder}
+        isClearable
+        isSearchable
+        menuPlacement={menuPlacement}
+        menuPortalTarget={
+          menuPortalTarget !== undefined
+            ? menuPortalTarget
+            : typeof window !== 'undefined'
+              ? document.body
+              : null
+        }
+        styles={selectStyles as any}
+        closeMenuOnSelect={closeMenuOnSelect}
+        components={{
+          Option,
+          SingleValue,
+          MultiValueLabel,
+        }}
+        formatCreateLabel={(inputValue: string) => `Criar categoria: “${inputValue}”`}
+        onCreateOption={allowCreate ? handleCreateOption : undefined}
+        noOptionsMessage={({ inputValue }: { inputValue: string }) =>
+          inputValue ? 'Nenhuma categoria encontrada' : 'Sem categorias'
+        }
+      />
 
-      <MenuItems
-        anchor="bottom"
-        className="flex flex-col gap-1 bg-white outline-none py-2 shadow-lg w-56 rounded-md mt-2 z-50"
-      >
-        {filtered.length === 0 ? (
-          <div className="px-4 py-2 text-xs text-gray-500">Nenhuma categoria</div>
-        ) : (
-          filtered.map((cat) => (
-            <MenuItem
-              key={cat.id}
-              as="button"
-              onClick={() => onChange(cat)}
-              className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-[#F0FDF4] text-left"
-            >
-              <span
-                className="inline-block h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: cat.color ?? '#CBD5E1' }}
-              />
-              <span className="truncate">{cat.name}</span>
-            </MenuItem>
-          ))
-        )}
-      </MenuItems>
-    </Menu>
+      <CreateCategoryModal
+        open={createOpen}
+        loading={createLoading}
+        initialName={createName}
+        initialType={initialCreateType}
+        typeLocked={!!typeFilter}
+        onClose={() => setCreateOpen(false)}
+        onConfirm={confirmCreate}
+      />
+    </div>
   )
 }
 
-interface TransactionTypeSelectProps {
-  value: CategoryType
-  onChange: (value: CategoryType) => void
-  className?: string
-}
-
-export function TransactionTypeSelect({ value, onChange, className }: TransactionTypeSelectProps) {
-  const options: CategoryType[] = ['EXPENSE', 'INCOME']
+export function CategoriesSelectWithCheck({
+  closeMenuOnSelect,
+  menuPortalTarget,
+}: {
+  closeMenuOnSelect?: boolean
+  menuPortalTarget?: HTMLElement | null
+}) {
+  const selectedCategories = useTransactionFilter((s) => s.selectedCategories)
+  const setSelectedCategories = useTransactionFilter((s) => s.setSelectedCategories)
 
   return (
-    <Menu as="div" className={clsx("relative", className)}>
-      <MenuButton className="flex items-center justify-between gap-2 px-4 py-2 w-full rounded-full border border-[#E2E8F0] bg-white text-[#1A202C] text-sm font-medium shadow-sm hover:bg-gray-50 cursor-pointer">
-        {value === 'INCOME' ? 'Receita' : 'Despesa'}
-        <ChevronDown size={16} />
-      </MenuButton>
-
-      <MenuItems
-        anchor="bottom"
-        className="flex flex-col gap-1 bg-white outline-none py-4 shadow-lg w-48 rounded-md mt-2 z-50"
-      >
-        {options.map((option) => (
-          <MenuItem
-            key={option}
-            as="div"
-            onClick={() => onChange(option)}
-            className="flex items-center gap-2 px-4 py-1 text-sm cursor-pointer hover:bg-[#F0FDF4]"
-          >
-            {option === 'INCOME' ? 'Receita' : 'Despesa'}
-          </MenuItem>
-        ))}
-      </MenuItems>
-    </Menu>
+    <CategorySelect
+      multiple
+      value={selectedCategories as CategoryResponse[]}
+      onChange={(v) => setSelectedCategories((v as CategoryResponse[]) ?? [])}
+      placeholder="Todas categorias"
+      closeMenuOnSelect={closeMenuOnSelect}
+      menuPortalTarget={menuPortalTarget}
+      allowCreate
+      // 👉 pluga sua mutation aqui quando tiver
+      onCreateCategory={async (_draft) => {
+        // const created = await createCategoryMutation.mutateAsync(_draft)
+        // return created
+        throw new Error('Implemente onCreateCategory (mutation para criar categoria)')
+      }}
+      className="w-full"
+    />
   )
 }

@@ -1,28 +1,12 @@
 "use client";
 
 import { PageHeader } from "@/components/planos/PageHeader";
-import { PlanCard } from "@/components/planos/plancard";
+import { PlanCard, UiPlan } from "@/components/planos/plancard";
 import PlansFaq from "@/components/planos/PlansFaq";
 import { mapPlanToUi } from "@/components/planos/utils";
 import { usePlans } from "@/hooks/query/usePlan";
 import { useUserSession } from "@/stores/useUserSession";
 import { useEffect } from "react";
-
-type UiPlan = {
-  id: string;
-  slug: string;
-  title: string;
-  price: string;
-  priceSuffix: string;
-  previousPrice?: string;
-  badge?: string;
-  badgeType?: "primary" | "discount";
-  ctaLabel: string;
-  benefits: string[];
-};
-
-
-
 
 
 export default function PlanosPage() {
@@ -34,7 +18,8 @@ export default function PlanosPage() {
   }, [fetchAccount]);
   
 
-  const uiPlans: UiPlan[] = data ? data.map(mapPlanToUi) : [];
+  const allowedSlugs = new Set(["essencial-mensal", "essencial-anual-lancamento"]);
+  const uiPlans: UiPlan[] = data ? data.filter((plan) => allowedSlugs.has(plan.slug)).map(mapPlanToUi) : [];
 
   return (
     <div className="min-h-screen flex flex-col items-center ">

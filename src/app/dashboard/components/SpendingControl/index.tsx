@@ -147,7 +147,7 @@ export function SpendingControl() {
   const hasNoData = !isLoading && items.length === 0
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow border border-gray-200 w-full flex flex-col gap-4">
+    <div className="bg-white p-6 rounded-xl shadow border border-gray-200 w-full h-full flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-lg font-bold text-gray-800">Controle de Metas</h2>
         <div className="flex items-center gap-4">

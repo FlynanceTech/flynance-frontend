@@ -17,15 +17,29 @@ export function CheckoutPageClient() {
   const plano = searchParams.get("plano");
 
   const defaultPlano = "essencial-mensal";
-  console.log('plano:',typeof plano, plano);
-  const planoSlug = plano === 'undefined' || null ? defaultPlano : plano;
+  const normalizedPlano = (plano ?? "").toLowerCase()
+    .replace("-promocional", "")
+    .replace("-promo", "")
+    .replace("-oferta", "");
+  const planoSlug =
+    !plano || plano === "undefined" || normalizedPlano.trim() === ""
+      ? defaultPlano
+      : normalizedPlano;
 
-  console.log('planoSlug:', planoSlug);
   const { data, isLoading, error } = usePlanBySlug(planoSlug as string);
 
   useEffect(() => {
-    if (!plano) router.push("/");
-  }, [plano, router]);
+    if (!plano) {
+      router.push("/");
+      return;
+    }
+
+    if (planoSlug !== plano) {
+      const qs = new URLSearchParams(searchParams.toString());
+      qs.set("plano", planoSlug);
+      router.replace(`/cadastro/checkout?${qs.toString()}`);
+    }
+  }, [plano, planoSlug, router, searchParams]);
 
   const stepParam = searchParams.get("step");
   const rawStep = stepParam ? Number(stepParam) : 0;

@@ -16,7 +16,6 @@ export async function GET(_req: Request, context: any) {
     // ✅ NEXT 16: params é Promise
     const { doc } = await context.params;
 
-    console.log("[legal] doc:", doc);
 
     if (!doc) {
       return NextResponse.json(

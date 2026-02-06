@@ -7,11 +7,20 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { NumericFormat } from 'react-number-format'
 import type { Transaction } from '@/types/Transaction'
-import { CategoriesSelect, TransactionTypeSelect } from '../CategorySelect'
-import { useTranscation } from '@/hooks/query/useTransaction'
-import type { TransactionDTO } from '@/services/transactions'
-import { useState, useEffect } from 'react'
+import type { PaymentType, TransactionDTO } from '@/services/transactions'
+import { useState, useEffect, useMemo } from 'react'
 import CreditCardDrawer from '../CreditCardDrawer'
+import { useTranscation } from '@/hooks/query/useTransaction'
+
+import Select from 'react-select'
+import type { StylesConfig } from 'react-select'
+import { CategorySelect } from '../CategorySelect'
+
+import type { CategoryDTO, CategoryResponse } from '@/services/category'
+import { useCategories } from '@/hooks/query/useCategory'
+import type { CreateCategoryDraft } from '../Categories/createCategoryModal' // ajuste path se necessário
+
+type CategoryType = 'EXPENSE' | 'INCOME'
 
 const schema = z.object({
   description: z.string().min(1, 'Descrição obrigatória'),
@@ -20,15 +29,15 @@ const schema = z.object({
     .number({ invalid_type_error: 'Informe um valor válido' })
     .positive('Valor deve ser maior que zero')
     .optional(),
-  // datetime-local: "YYYY-MM-DDTHH:mm" (ou às vezes com segundos dependendo do browser)
   date: z
     .string()
     .min(1, 'Data obrigatória')
-    .refine(
-      (v) => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(v),
-      'Formato de data inválido'
-    ),
+    .refine((v) => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(v), 'Formato de data inválido'),
   type: z.enum(['EXPENSE', 'INCOME'], { required_error: 'Tipo é obrigatório' }),
+  paymentType: z.enum(
+    ['DEBIT_CARD', 'CREDIT_CARD', 'PIX', 'BOLETO', 'TED', 'DOC', 'MONEY', 'CASH', 'OTHER'],
+    { required_error: 'Forma de pagamento é obrigatória' }
+  ),
 })
 
 type FormData = z.infer<typeof schema>
@@ -39,12 +48,9 @@ interface TransactionDrawerProps {
   initialData?: Transaction
 }
 
-const digits = (s: string) => s.replace(/\D/g, '')
-
 /** ISO do backend -> value do datetime-local (YYYY-MM-DDTHH:mm) */
 function isoToDateTimeLocalValue(iso: string) {
   const d = new Date(iso)
-  // converte pro "relógio local" sem timezone
   const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
   return local.toISOString().slice(0, 16)
 }
@@ -56,37 +62,71 @@ function nowDateTimeLocalValue() {
   return local.toISOString().slice(0, 16)
 }
 
-/**
- * datetime-local ("YYYY-MM-DDTHH:mm" ou "YYYY-MM-DDTHH:mm:ss")
- * -> ISO em UTC com Z ("YYYY-MM-DDTHH:mm:ss.sssZ")
- *
- * ✅ Esse formato passa no seu backend (ex: 2025-12-26T19:17:00.000Z)
- */
+/** datetime-local -> ISO Z */
 function dateTimeLocalToISOZ(localValue: string) {
-  // garante segundos no string (alguns browsers mandam só HH:mm)
-  const normalized =
-    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(localValue) ? `${localValue}:00` : localValue
-
-  // new Date("YYYY-MM-DDTHH:mm:ss") => interpreta como LOCAL, e toISOString() => UTC com Z
+  const normalized = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(localValue) ? `${localValue}:00` : localValue
   const d = new Date(normalized)
-
-  // fallback se por algum motivo ficar inválido
-  if (Number.isNaN(d.getTime())) {
-    throw new Error('Data inválida. Verifique o campo de data e tente novamente.')
-  }
-
+  if (Number.isNaN(d.getTime())) throw new Error('Data inválida. Verifique o campo de data e tente novamente.')
   return d.toISOString()
+}
+
+/** react-select type option */
+type TypeOption = { value: CategoryType; label: string }
+type PaymentTypeOption = { value: PaymentType; label: string }
+
+const typeOptions: TypeOption[] = [
+  { value: 'EXPENSE', label: 'Despesa' },
+  { value: 'INCOME', label: 'Receita' },
+]
+
+const paymentTypeOptions: PaymentTypeOption[] = [
+  { value: 'DEBIT_CARD', label: 'Cartão de débito' },
+  { value: 'CREDIT_CARD', label: 'Cartão de crédito' },
+  { value: 'PIX', label: 'Pix' },
+  { value: 'BOLETO', label: 'Boleto' },
+  { value: 'TED', label: 'TED' },
+  { value: 'DOC', label: 'DOC' },
+  { value: 'MONEY', label: 'Dinheiro' },
+  { value: 'CASH', label: 'Espécie' },
+  { value: 'OTHER', label: 'Outro' },
+]
+
+const typeSelectStyles: StylesConfig<TypeOption, false> = {
+  control: (base, state) => ({
+    ...base,
+    minHeight: 40,
+    borderRadius: 9999,
+    borderColor: state.isFocused ? '#CBD5E1' : '#E2E8F0',
+    boxShadow: state.isFocused ? '0 0 0 2px rgba(59, 130, 246, 0.15)' : 'none',
+    ':hover': { borderColor: '#CBD5E1' },
+  }),
+  valueContainer: (base) => ({ ...base, paddingLeft: 12, paddingRight: 8 }),
+  placeholder: (base) => ({ ...base, color: '#64748B' }),
+  menu: (base) => ({ ...base, borderRadius: 12, overflow: 'hidden' }),
+  menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+  option: (base, state) => ({
+    ...base,
+    backgroundColor: state.isFocused ? '#F1F5F9' : 'white',
+    color: '#0F172A',
+  }),
 }
 
 export default function TransactionDrawer({ open, onClose, initialData }: TransactionDrawerProps) {
   const { createMutation, updateMutation } = useTranscation({})
   const [openCardDrawer, setOpenCardDrawer] = useState(false)
 
+  // ✅ categories + createCategoryMutation vem do seu hook
+  const {
+    categoriesQuery: { data: categories = [] },
+    createMutation: createCategoryMutation,
+  } = useCategories()
+
   const defaultValues: FormData = {
     description: '',
     categoryId: '',
     value: undefined,
     type: 'EXPENSE',
+    paymentType: 'MONEY',
     date: nowDateTimeLocalValue(),
   }
 
@@ -109,7 +149,8 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
         description: initialData.description ?? '',
         categoryId: initialData.category?.id ?? '',
         value: initialData.value ?? undefined,
-        type: initialData.type ?? 'EXPENSE',
+        type: (initialData.type as CategoryType) ?? 'EXPENSE',
+        paymentType: (initialData.paymentType as PaymentType) ?? 'MONEY',
         date: initialData.date ? isoToDateTimeLocalValue(initialData.date) : nowDateTimeLocalValue(),
       })
     } else {
@@ -117,30 +158,56 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
     }
   }, [initialData, reset])
 
-  const categorySelecionada = watch('categoryId')
   const typeSelected = watch('type')
+  const paymentTypeSelected = watch('paymentType')
+  const categoryId = watch('categoryId')
+
+  const selectedTypeOption = useMemo<TypeOption>(() => {
+    return typeOptions.find((o) => o.value === typeSelected) ?? typeOptions[0]
+  }, [typeSelected])
+
+  const selectedPaymentTypeOption = useMemo<PaymentTypeOption>(() => {
+    return paymentTypeOptions.find((o) => o.value === paymentTypeSelected) ?? paymentTypeOptions[0]
+  }, [paymentTypeSelected])
+
+  // ✅ agora passamos o objeto completo pro CategorySelect (renderiza label/cor certo)
+  const selectedCategoryObj = useMemo<CategoryResponse | null>(() => {
+    if (!categoryId) return null
+    return categories.find((c) => c.id === categoryId) ?? null
+  }, [categories, categoryId])
 
   function buildPayload(data: FormData): TransactionDTO {
     return {
       description: data.description,
       categoryId: data.categoryId,
       value: data.value ?? 0,
-      // ✅ agora manda ISO Z (backend-friendly)
       date: dateTimeLocalToISOZ(data.date),
       type: data.type,
-      paymentType: 'DEBIT_CARD',
+      paymentType: data.paymentType,
       origin: 'DASHBOARD',
     }
+  }
+
+  // ✅ agora cria categoria de verdade e retorna a criada (CategorySelect seleciona automaticamente)
+  const handleCreateCategory = async (draft: CreateCategoryDraft): Promise<CategoryResponse> => {
+    const payload: CategoryDTO = {
+      name: draft.name,
+      type: draft.type,
+      color: draft.color,
+      icon: draft.icon,
+      keywords: draft.keywords,
+    }
+
+    // createMutation do seu hook já invalida ['categories'] no onSuccess
+    const created = await createCategoryMutation.mutateAsync(payload)
+    return created
   }
 
   const onSubmit = (data: FormData) => {
     const payload = buildPayload(data)
 
     if (initialData?.id) {
-      updateMutation.mutate(
-        { id: initialData.id, data: payload },
-        { onSuccess: () => onClose() }
-      )
+      updateMutation.mutate({ id: initialData.id, data: payload }, { onSuccess: () => onClose() })
     } else {
       createMutation.mutate(payload, {
         onSuccess: () => {
@@ -149,6 +216,7 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
             categoryId: '',
             value: undefined,
             type: 'EXPENSE',
+            paymentType: 'MONEY',
             date: nowDateTimeLocalValue(),
           })
           onClose()
@@ -167,20 +235,13 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
               <DialogTitle className="text-lg font-semibold text-gray-800">
                 {initialData ? 'Editar Transação' : 'Nova Transação'}
               </DialogTitle>
-              <button
-                onClick={onClose}
-                className="text-gray-500 hover:text-gray-700 cursor-pointer"
-                aria-label="Fechar"
-              >
+              <button onClick={onClose} className="text-gray-500 hover:text-gray-700 cursor-pointer" aria-label="Fechar">
                 <X size={20} />
               </button>
             </div>
 
-            <form
-              key={initialData?.id ?? 'new'}
-              onSubmit={handleSubmit(onSubmit)}
-              className="space-y-4"
-            >
+            <form key={initialData?.id ?? 'new'} onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              {/* Descrição */}
               <div className="flex flex-col gap-2">
                 <label className="block text-sm text-gray-700 mb-1">Descrição</label>
                 <input
@@ -188,29 +249,85 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
                   {...register('description')}
                   className="w-full border border-gray-300 rounded-full shadow px-4 py-2 text-sm"
                 />
-                {errors.description && (
-                  <span className="text-red-500 text-xs">{errors.description.message}</span>
-                )}
+                {errors.description && <span className="text-red-500 text-xs">{errors.description.message}</span>}
               </div>
 
+              {/* Tipo */}
               <div className="flex flex-col gap-2">
                 <label className="block text-sm text-gray-700 mb-1">Tipo de transação</label>
-                <TransactionTypeSelect value={typeSelected} onChange={(value) => setValue('type', value)} />
+
+                <Controller
+                  name="type"
+                  control={control}
+                  render={({ field }) => (
+                    <Select<TypeOption, false>
+                      instanceId="tx-type-select"
+                      value={typeOptions.find((o) => o.value === field.value) ?? selectedTypeOption}
+                      options={typeOptions}
+                      onChange={(opt) => {
+                        const next = opt?.value ?? 'EXPENSE'
+                        field.onChange(next)
+
+                        // ✅ limpa categoria quando trocar o tipo (evita categoria inválida)
+                        setValue('categoryId', '')
+                      }}
+                      isSearchable={false}
+                      menuPortalTarget={typeof window !== 'undefined' ? document.body : null}
+                      styles={typeSelectStyles}
+                    />
+                  )}
+                />
+
                 {errors.type && <span className="text-red-500 text-xs">{errors.type.message}</span>}
               </div>
 
+              {/* Categoria */}
               <div className="flex flex-col gap-2">
                 <label className="block text-sm text-gray-700 mb-1">Categoria</label>
-                <CategoriesSelect
-                  value={categorySelecionada}
-                  onChange={(value) => setValue('categoryId', value.id)}
-                  typeFilter={typeSelected}
+
+                <Controller
+                  name="categoryId"
+                  control={control}
+                  render={({ field }) => (
+                    <CategorySelect
+                      value={selectedCategoryObj}
+                      onChange={(cat) => field.onChange((cat as CategoryResponse | null)?.id ?? '')}
+                      typeFilter={typeSelected}
+                      placeholder="Selecione uma categoria"
+                      allowCreate
+                      onCreateCategory={handleCreateCategory}
+                      className="w-full"
+                    />
+                  )}
                 />
-                {errors.categoryId && (
-                  <span className="text-red-500 text-xs">{errors.categoryId.message}</span>
-                )}
+
+                {errors.categoryId && <span className="text-red-500 text-xs">{errors.categoryId.message}</span>}
               </div>
 
+              {/* Forma de pagamento */}
+              <div className="flex flex-col gap-2">
+                <label className="block text-sm text-gray-700 mb-1">Forma de pagamento</label>
+
+                <Controller
+                  name="paymentType"
+                  control={control}
+                  render={({ field }) => (
+                    <Select<PaymentTypeOption, false>
+                      instanceId="tx-payment-type-select"
+                      value={paymentTypeOptions.find((o) => o.value === field.value) ?? selectedPaymentTypeOption}
+                      options={paymentTypeOptions}
+                      onChange={(opt) => field.onChange(opt?.value ?? 'MONEY')}
+                      isSearchable={false}
+                      menuPortalTarget={typeof window !== 'undefined' ? document.body : null}
+                      styles={typeSelectStyles as StylesConfig<PaymentTypeOption, false>}
+                    />
+                  )}
+                />
+
+                {errors.paymentType && <span className="text-red-500 text-xs">{errors.paymentType.message}</span>}
+              </div>
+
+              {/* Valor */}
               <div className="flex flex-col gap-2">
                 <label className="block text-sm text-gray-700 mb-1">Valor</label>
                 <Controller
@@ -232,6 +349,7 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
                 {errors.value && <span className="text-red-500 text-xs">{errors.value.message}</span>}
               </div>
 
+              {/* Data */}
               <div className="flex flex-col gap-2">
                 <label className="block text-sm text-gray-700 mb-1">Data</label>
                 <input

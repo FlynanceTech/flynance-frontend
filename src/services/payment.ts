@@ -112,9 +112,9 @@ export async function createCustomer(
 ): Promise<CreateCustomerResponse> {
   try {
     const payload = normalizeClientData(data);
-    console.log('check payload', payload)
+
     const { data: res } = await axios.post<CreateCustomerResponse>("/payment/client", payload);
-    console.log('data res', res)
+
     return res;
   } catch (err) {
     throw asApiError(err, "Erro ao criar cliente");
@@ -163,13 +163,6 @@ export async function createPayment({
   userId,
   billingType,
 }: CreatePaymentPayload): Promise<PaymentResult> {
-  console.log('[Frontend] ========== CRIANDO PAGAMENTO ==========')
-  console.log('[Frontend] customerId:', customerId)
-  console.log('[Frontend] userId:', userId)
-  console.log('[Frontend] planId:', planId)
-  console.log('[Frontend] billingType:', billingType)
-  console.log('[Frontend] paymentDetails:', paymentDetails)
-
   // Monta o payload correto que o backend espera
   const payload = {
     customer: customerId,
@@ -182,11 +175,9 @@ export async function createPayment({
     creditCard: paymentDetails.creditCard,
   }
 
-  console.log('[Frontend] Payload final:', JSON.stringify(payload, null, 2))
-
   try {
     const { data } = await axios.post<PaymentResult>("/payment/recurring", payload)
-    console.log('[Frontend] Pagamento criado com sucesso:', data)
+
     return data
   } catch (err) {
     console.error('[Frontend] Erro ao criar pagamento:', err)

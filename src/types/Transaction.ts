@@ -3,7 +3,7 @@ import { PaymentType } from "@/services/transactions"
 import { IconName } from "@/utils/icon-map"
 
 export type CategoryType = 'EXPENSE' | 'INCOME'
-export type TransactionOrigin = 'DASHBOARD' | 'WHATSAPP'
+export type TransactionOrigin = 'DASHBOARD' | 'WHATSAPP' | 'TEXT' | 'IMAGE' | 'AUDIO' | 'CHATBOT' | 'MESSAGE' | 'IMPORT'
 
 export interface Category {
   id: string

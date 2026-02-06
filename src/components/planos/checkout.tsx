@@ -147,8 +147,6 @@ export default function CheckoutStepper({
         );
       }
 
- 
-      console.log("check sessionUser e signature", sessionUser, signature)
       if (!sessionUser?.id) {
         throw new Error("Não foi possível identificar o usuário logado.");
       }
