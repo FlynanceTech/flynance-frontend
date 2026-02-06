@@ -205,29 +205,29 @@ export default function CategoriesSelectWithChips() {
   const clearAll = () => setSelectedCategories([])
 
   return (
-    <div className="w-full">
+    <div className="w-full max-w-52">
       {/* Linha: select + limpar */}
       <div className="flex items-center gap-2">
         <div className="min-w-0 flex-1">
-         <Select
-  isMulti
-  closeMenuOnSelect={false}
-  hideSelectedOptions={false}
-  controlShouldRenderValue={false} // ✅ reforça: não renderiza chips dentro
-  options={groupedOptions}
-  value={selectedOptions}
-  onChange={onChange as any}
-  placeholder={placeholder}
-  isClearable={false}
-  isSearchable
-  menuPlacement="auto"
-  menuPortalTarget={typeof window !== 'undefined' ? document.body : null}
-  styles={selectStyles}
-  components={{
-    Option,
-    IndicatorSeparator: () => null, // opcional: remove o “|”
-  }}
-/>
+        <Select
+          isMulti
+          closeMenuOnSelect={false}
+          hideSelectedOptions={false}
+          controlShouldRenderValue={false} // ✅ reforça: não renderiza chips dentro
+          options={groupedOptions}
+          value={selectedOptions}
+          onChange={onChange as any}
+          placeholder={placeholder}
+          isClearable={false}
+          isSearchable
+          menuPlacement="auto"
+          menuPortalTarget={typeof window !== 'undefined' ? document.body : null}
+          styles={selectStyles}
+          components={{
+            Option,
+            IndicatorSeparator: () => null, // opcional: remove o “|”
+          }}
+        />
         </div>
 
        {/*  {selectedCategories.length > 0 && (

@@ -5,6 +5,7 @@ import {
   deleteTransaction,
   getTransaction,
   importTransactionsPreview,
+  importTransactionsConfirm,
   importTransactions,
   TransactionDTO,
   TransactionFilters,
@@ -27,6 +28,14 @@ type UseTransactionParams = {
 type ImportPayload = {
   userId: string
   file: File
+}
+
+type ImportConfirmPayload = {
+  userId: string
+  payload: {
+    mode: 'import'
+    transactions: any[]
+  }
 }
 
 export function useTranscation(params: UseTransactionParams) {
@@ -79,6 +88,7 @@ export function useTranscation(params: UseTransactionParams) {
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
       queryClient.invalidateQueries({ queryKey: ['financeStatus'] })
       queryClient.invalidateQueries({ queryKey: ['controls', { withProgress: true }] })
+      queryClient.invalidateQueries({ queryKey: ['fixed-accounts'] })
 
       if (variables?.paymentType === 'CREDIT_CARD' && variables?.cardId) {
         queryClient.invalidateQueries({
@@ -94,6 +104,7 @@ export function useTranscation(params: UseTransactionParams) {
       updateTransaction(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      queryClient.invalidateQueries({ queryKey: ['fixed-accounts'] })
       queryClient.invalidateQueries({
         predicate: (q) =>
           Array.isArray(q.queryKey) &&
@@ -107,6 +118,7 @@ export function useTranscation(params: UseTransactionParams) {
     mutationFn: (id: string) => deleteTransaction(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      queryClient.invalidateQueries({ queryKey: ['fixed-accounts'] })
     },
   })
 
@@ -121,6 +133,14 @@ export function useTranscation(params: UseTransactionParams) {
     mutationFn: ({ userId, file }: ImportPayload) => importTransactionsPreview(userId, file),
   })
 
+  const importConfirmMutation = useMutation({
+    mutationFn: ({ userId, payload }: ImportConfirmPayload) => importTransactionsConfirm(userId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      queryClient.invalidateQueries({ queryKey: ['fixed-accounts'] })
+    },
+  })
+
   return {
     transactionsQuery,
     createMutation,
@@ -128,5 +148,6 @@ export function useTranscation(params: UseTransactionParams) {
     deleteMutation,
     importMutation,
     importPreviewMutation,
+    importConfirmMutation,
   }
 }

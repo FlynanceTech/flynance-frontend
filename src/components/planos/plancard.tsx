@@ -14,8 +14,10 @@ export type UiPlan = {
   price: string;
   priceSuffix: string;
   previousPrice?: string;
+  priceNote?: string;
   badge?: string;
   badgeType?: BadgeType;
+  applyDiscount?: boolean;
   ctaLabel: string;
   benefits: string[];
 };
@@ -60,13 +62,16 @@ export function PlanCard({ plan, revalidateSubscription = false }: Props) {
     price,
     priceSuffix,
     previousPrice,
+    priceNote,
     badge,
     badgeType,
+    applyDiscount,
     ctaLabel,
     benefits,
   } = plan;
 
   const isDiscount = badgeType === "discount";
+  const shouldApplyDiscount = applyDiscount ?? isDiscount;
 
   const basePriceNum = parseBRLToNumber(price);
   const basePriceStr = formatNumberToBRLString(basePriceNum);
@@ -78,10 +83,11 @@ export function PlanCard({ plan, revalidateSubscription = false }: Props) {
     ? formatNumberToBRLString(parseBRLToNumber(previousPrice))
     : undefined;
 
-  const displayPrice = isDiscount ? promoPriceStr : basePriceStr;
-  const displayPreviousPrice = isDiscount
-    ? (previousStrFromProps ?? basePriceStr)
-    : previousStrFromProps;
+  const displayPrice = isDiscount && shouldApplyDiscount ? promoPriceStr : basePriceStr;
+  const displayPreviousPrice =
+    isDiscount && shouldApplyDiscount
+      ? (previousStrFromProps ?? basePriceStr)
+      : previousStrFromProps;
 
   const { intPart, decPart } = splitPrice(displayPrice);
 
@@ -152,6 +158,11 @@ export function PlanCard({ plan, revalidateSubscription = false }: Props) {
                   </span>
                 </div>
               </div>
+              {priceNote && (
+                <div className={clsx("text-sm font-medium text-center", isDiscount ? "text-slate-100" : "text-slate-600")}>
+                  {priceNote}
+                </div>
+              )}
             </div>
 
             <div className="text-left">

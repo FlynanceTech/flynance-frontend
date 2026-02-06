@@ -11,7 +11,13 @@ import {
 } from 'recharts'
 import { useUserSession } from '@/stores/useUserSession'
 import { useTranscation } from '@/hooks/query/useTransaction'
-import { ArrowDownUp, ArrowUpDown, ChartPie, ChartScatter } from 'lucide-react'
+import {
+  ArrowDownUp,
+  ArrowLeft,
+  ArrowUpDown,
+  ChartPie,
+  ChartScatter,
+} from 'lucide-react'
 
 function toBRL(v) {
   return new Intl.NumberFormat('pt-BR', {
@@ -60,29 +66,36 @@ export default function CategorySpendingDistribution({transactions, isLoading}) 
   
   const [sortDesc, setSortDesc] = useState(true)
   const [changeChart, setChangeChart] = useState(true)
+  const [selectedCategoryId, setSelectedCategoryId] = useState(null)
+  const [selectedCategoryName, setSelectedCategoryName] = useState('')
+  const [freezeAnimation, setFreezeAnimation] = useState(false)
 
   const despesas = transactions.filter(t => t.type === 'EXPENSE')
 
   const map = despesas.reduce((acc, t) => {
-    const categoria = t.category?.name || 'Outros'
+    const categoriaId = t.category?.id || 'outros'
+    const categoriaNome = t.category?.name || 'Outros'
     const color = t.category?.color || '#CBD5E1'
-    if (!acc[categoria]) acc[categoria] = { value: 0, color }
-    acc[categoria].value += t.value
+    if (!acc[categoriaId]) {
+      acc[categoriaId] = { id: categoriaId, name: categoriaNome, value: 0, color }
+    }
+    acc[categoriaId].value += t.value
     return acc
   }, {})
 
   const categoriasAgrupadas = despesas.reduce((acc, d) => {
-    const nome = d.category.name;
-    const cor = d.category.color;
-  
-    if (!acc[nome]) {
-      acc[nome] = { name: nome, size: 0, color: cor };
+    const id = d.category?.id || 'outros'
+    const nome = d.category?.name || 'Outros'
+    const cor = d.category?.color || '#CBD5E1'
+
+    if (!acc[id]) {
+      acc[id] = { id, name: nome, size: 0, color: cor }
     }
-  
-    acc[nome].size += d.value;
-  
-    return acc;
-  }, {});
+
+    acc[id].size += d.value
+
+    return acc
+  }, {})
   
   const data = [
     {
@@ -95,6 +108,14 @@ export default function CategorySpendingDistribution({transactions, isLoading}) 
   const dataPae = Object.entries(map).map(([name, { value, color }]) => ({ name, value, color }))
 
   const total = data[0]?.children?.reduce((sum, item) => sum + item.size, 0) ?? 0
+  const selectedTransactions = selectedCategoryId
+    ? despesas.filter((t) =>
+        selectedCategoryId === 'outros'
+          ? !t.category?.id
+          : t.category?.id === selectedCategoryId
+      )
+    : []
+  const disableAnimation = freezeAnimation
 
 
   if (isLoading) {
@@ -140,7 +161,7 @@ export default function CategorySpendingDistribution({transactions, isLoading}) 
               dataKey="size"
               nameKey="name"
               stroke="#fff"
-              animationDuration={500}
+              animationDuration={disableAnimation ? 0 : 500}
               content={(props) => <CustomRect {...props} />}
               />
             :
@@ -151,6 +172,7 @@ export default function CategorySpendingDistribution({transactions, isLoading}) 
                 cy="50%"
                 dataKey="value"
                 outerRadius={120}
+                isAnimationActive={!disableAnimation}
               >
                 {dataPae.map((entry, i) => (
                   <Cell key={i} fill={entry.color} />
@@ -163,30 +185,89 @@ export default function CategorySpendingDistribution({transactions, isLoading}) 
       </div>
       <div className='flex flex-col gap-2 w-full lg:w-1/2 '>
         <div className="w-full space-y-4 overflow-auto pr-4 max-h-[420px]">
-          {data[0]?.children?.sort((a, b) => sortDesc ? b.size - a.size : a.size - b.size)
-          .map((entry, i) => {
-            const percent = total > 0 ? (entry.size / total) * 100 : 0
-            return (
-              <div key={i} className="space-y-1">
-                <div className="flex justify-between text-sm text-gray-700 font-medium">
-                  <span className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
-                    {entry.name}
-                  </span>
-                  <span className="text-gray-900">{toBRL(entry.size)}</span>
+          {selectedCategoryId ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-800">
+                    {selectedCategoryName}
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    {selectedTransactions.length} transações
+                  </p>
                 </div>
-                <div className="text-xs text-gray-500">{percent.toFixed(0)}% do total de gastos</div>
-                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-2 rounded-full"
-                    style={{ width: `${percent.toFixed(0)}%`, backgroundColor: entry.color }}
-                  />
-                </div>
+                <button
+                  className="rounded-full border border-gray-200 p-1 text-gray-500 hover:bg-gray-50"
+                  onClick={() => {
+                    setSelectedCategoryId(null)
+                    setSelectedCategoryName('')
+                    setFreezeAnimation(true)
+                  }}
+                  title="Voltar para categorias"
+                >
+                  <ArrowLeft size={16} />
+                </button>
               </div>
-            )
-          })}
-          {data.length === 0 && (
-            <div className="text-sm text-gray-500">Não há despesas no período selecionado.</div>
+
+              <div className="space-y-3">
+                {selectedTransactions.map((t) => (
+                  <div key={t.id} className="flex items-center justify-between gap-3 text-sm">
+                    <div className="min-w-0">
+                      <p className="truncate text-gray-800 font-medium">
+                        {t.description || 'Transação'}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(t.date).toLocaleDateString('pt-BR')}
+                      </p>
+                    </div>
+                    <span className="text-gray-900 font-semibold">
+                      {toBRL(t.value)}
+                    </span>
+                  </div>
+                ))}
+                {selectedTransactions.length === 0 && (
+                  <div className="text-sm text-gray-500">
+                    Nenhuma transação nesta categoria.
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <>
+              {data[0]?.children?.sort((a, b) => sortDesc ? b.size - a.size : a.size - b.size)
+              .map((entry, i) => {
+                const percent = total > 0 ? (entry.size / total) * 100 : 0
+                return (
+                  <button
+                    key={i}
+                    className="w-full text-left space-y-1 rounded-lg p-2 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    onClick={() => {
+                      setSelectedCategoryId(entry.id)
+                      setSelectedCategoryName(entry.name)
+                      setFreezeAnimation(true)
+                    }}
+                  >
+                    <div className="flex justify-between text-sm text-gray-700 font-medium">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
+                        {entry.name}
+                      </span>
+                      <span className="text-gray-900">{toBRL(entry.size)}</span>
+                    </div>
+                    <div className="text-xs text-gray-500">{percent.toFixed(0)}% do total de gastos</div>
+                    <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-2 rounded-full"
+                        style={{ width: `${percent.toFixed(0)}%`, backgroundColor: entry.color }}
+                      />
+                    </div>
+                  </button>
+                )
+              })}
+              {data.length === 0 && (
+                <div className="text-sm text-gray-500">Não há despesas no período selecionado.</div>
+              )}
+            </>
           )}
         </div>
       </div>

@@ -2,7 +2,16 @@ import api from "@/lib/axios"
 import { Transaction } from "@/types/Transaction"
 import { getErrorMessage } from "@/utils/getErrorMessage"
 
-export type PaymentType = 'DEBIT_CARD' | 'CREDIT_CARD' | 'PIX' | 'MONEY'
+export type PaymentType =
+  | 'DEBIT_CARD'
+  | 'CREDIT_CARD'
+  | 'PIX'
+  | 'BOLETO'
+  | 'TED'
+  | 'DOC'
+  | 'MONEY'
+  | 'CASH'
+  | 'OTHER'
 
 export interface TransactionDTO {
   value: number,
@@ -148,6 +157,14 @@ export const importTransactions = async (
     const formData = new FormData()
     formData.append('file', file)
 
+    if (typeof window !== 'undefined') {
+      console.debug('[importTransactions] file', {
+        name: file?.name,
+        size: file?.size,
+        type: file?.type,
+      })
+    }
+
     const response = await api.post(`/transactions/import/${userId}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
@@ -174,6 +191,27 @@ export const importTransactionsPreview = async (
   } catch (e: unknown) {
     const msg = getErrorMessage(e, "Erro ao pré-visualizar transações.")
     console.error("Erro ao pré-visualizar transações:", msg)
+    throw new Error(msg)
+  }
+}
+
+export type ImportConfirmPayload<TTransaction = any> = {
+  mode: 'import'
+  transactions: TTransaction[]
+}
+
+export const importTransactionsConfirm = async (
+  userId: string,
+  payload: ImportConfirmPayload
+): Promise<ImportTransactionsResponse<Transaction>> => {
+  try {
+    const response = await api.post(`/transactions/import/confirm/${userId}`, payload, {
+      headers: { 'Content-Type': 'application/json' },
+    })
+    return response.data
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, 'Erro ao confirmar importacao.')
+    console.error('Erro ao confirmar importacao:', msg)
     throw new Error(msg)
   }
 }

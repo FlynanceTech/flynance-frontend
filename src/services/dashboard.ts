@@ -25,7 +25,16 @@ interface GetFinanceStatusParams {
   days?: number
   month?: string // 'YYYY-MM'
 }
-export type PaymentType = 'DEBIT_CARD' | 'CREDIT_CARD' | 'PIX' | 'MONEY'
+export type PaymentType =
+  | 'DEBIT_CARD'
+  | 'CREDIT_CARD'
+  | 'PIX'
+  | 'BOLETO'
+  | 'TED'
+  | 'DOC'
+  | 'MONEY'
+  | 'CASH'
+  | 'OTHER'
 
 export type PaymentBucket = {
   type: PaymentType

@@ -97,49 +97,51 @@ export default function Page() {
         />
 
         {/* Destaque do último curso */}
-        <Card className="overflow-hidden border-primary/20 bg-primary/5">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-4 flex-col lg:flex-row w-full">
-              <div className="flex-shrink-0 w-24 h-16 rounded-lg overflow-hidden hidden lg:block">
-                {ultimoCurso ? (
-                  <Image
-                    src={ultimoCurso.image}
-                    alt={ultimoCurso.title}
-                    className="w-full h-full object-cover"
-                    width={200}
-                    height={200}
-                  />
-                ) : (
-                  <div className="w-full h-full bg-muted" />
-                )}
-              </div>
+        {last && (
+          <Card className="overflow-hidden border-primary/20 bg-primary/5">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-4 flex-col lg:flex-row w-full">
+                <div className="flex-shrink-0 w-24 h-16 rounded-lg overflow-hidden hidden lg:block">
+                  {ultimoCurso ? (
+                    <Image
+                      src={ultimoCurso.image}
+                      alt={ultimoCurso.title}
+                      className="w-full h-full object-cover"
+                      width={200}
+                      height={200}
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-muted" />
+                  )}
+                </div>
 
-              <div className="w-full">
-                <h3 className="font-semibold text-lg text-foreground mb-1">
-                  {ultimoCurso ? ultimoCurso.title : 'Carregando...'}
-                </h3>
+                <div className="w-full">
+                  <h3 className="font-semibold text-lg text-foreground mb-1">
+                    {ultimoCurso ? ultimoCurso.title : 'Carregando...'}
+                  </h3>
+
+                  {ultimoCurso && (
+                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <BookOpen className="w-4 h-4" />
+                        <span>{ultimoCurso.lessons.length} aulas</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 {ultimoCurso && (
-                  <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <BookOpen className="w-4 h-4" />
-                      <span>{ultimoCurso.lessons.length} aulas</span>
-                    </div>
-                  </div>
+                  <Link href={continuarHref} className="w-full lg:max-w-52">
+                    <Button className="w-full">
+                      <Play className="w-4 h-4 mr-2" />
+                      Continuar Assistindo
+                    </Button>
+                  </Link>
                 )}
               </div>
-
-              {ultimoCurso && (
-                <Link href={continuarHref} className="w-full lg:max-w-52">
-                  <Button className="w-full">
-                    <Play className="w-4 h-4 mr-2" />
-                    Continuar Assistindo
-                  </Button>
-                </Link>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Área listagem + filtros */}
         <section className="flex flex-col gap-4 overflow-auto lg:max-h-[68vh] pr-4">
@@ -237,9 +239,19 @@ export default function Page() {
             <p className="text-sm text-muted-foreground">Carregando cursos…</p>
           )}
           {!isLoading && courses.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              Nenhum curso disponível ainda.
-            </p>
+            <div className="flex items-center justify-center">
+              <div className="w-full max-w-xl rounded-2xl border border-dashed bg-muted/30 px-6 py-10 text-center">
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                  <BookOpen className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground">
+                  Sua trilha ainda está vazia
+                </h3>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Assim que os cursos forem cadastrados, eles aparecem aqui.
+                </p>
+              </div>
+            </div>
           )}
 
           {/* Grid */}

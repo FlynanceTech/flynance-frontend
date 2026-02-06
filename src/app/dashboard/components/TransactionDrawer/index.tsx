@@ -7,7 +7,7 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { NumericFormat } from 'react-number-format'
 import type { Transaction } from '@/types/Transaction'
-import type { TransactionDTO } from '@/services/transactions'
+import type { PaymentType, TransactionDTO } from '@/services/transactions'
 import { useState, useEffect, useMemo } from 'react'
 import CreditCardDrawer from '../CreditCardDrawer'
 import { useTranscation } from '@/hooks/query/useTransaction'
@@ -34,6 +34,10 @@ const schema = z.object({
     .min(1, 'Data obrigatória')
     .refine((v) => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(v), 'Formato de data inválido'),
   type: z.enum(['EXPENSE', 'INCOME'], { required_error: 'Tipo é obrigatório' }),
+  paymentType: z.enum(
+    ['DEBIT_CARD', 'CREDIT_CARD', 'PIX', 'BOLETO', 'TED', 'DOC', 'MONEY', 'CASH', 'OTHER'],
+    { required_error: 'Forma de pagamento é obrigatória' }
+  ),
 })
 
 type FormData = z.infer<typeof schema>
@@ -68,10 +72,23 @@ function dateTimeLocalToISOZ(localValue: string) {
 
 /** react-select type option */
 type TypeOption = { value: CategoryType; label: string }
+type PaymentTypeOption = { value: PaymentType; label: string }
 
 const typeOptions: TypeOption[] = [
   { value: 'EXPENSE', label: 'Despesa' },
   { value: 'INCOME', label: 'Receita' },
+]
+
+const paymentTypeOptions: PaymentTypeOption[] = [
+  { value: 'DEBIT_CARD', label: 'Cartão de débito' },
+  { value: 'CREDIT_CARD', label: 'Cartão de crédito' },
+  { value: 'PIX', label: 'Pix' },
+  { value: 'BOLETO', label: 'Boleto' },
+  { value: 'TED', label: 'TED' },
+  { value: 'DOC', label: 'DOC' },
+  { value: 'MONEY', label: 'Dinheiro' },
+  { value: 'CASH', label: 'Espécie' },
+  { value: 'OTHER', label: 'Outro' },
 ]
 
 const typeSelectStyles: StylesConfig<TypeOption, false> = {
@@ -109,6 +126,7 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
     categoryId: '',
     value: undefined,
     type: 'EXPENSE',
+    paymentType: 'MONEY',
     date: nowDateTimeLocalValue(),
   }
 
@@ -132,6 +150,7 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
         categoryId: initialData.category?.id ?? '',
         value: initialData.value ?? undefined,
         type: (initialData.type as CategoryType) ?? 'EXPENSE',
+        paymentType: (initialData.paymentType as PaymentType) ?? 'MONEY',
         date: initialData.date ? isoToDateTimeLocalValue(initialData.date) : nowDateTimeLocalValue(),
       })
     } else {
@@ -140,11 +159,16 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
   }, [initialData, reset])
 
   const typeSelected = watch('type')
+  const paymentTypeSelected = watch('paymentType')
   const categoryId = watch('categoryId')
 
   const selectedTypeOption = useMemo<TypeOption>(() => {
     return typeOptions.find((o) => o.value === typeSelected) ?? typeOptions[0]
   }, [typeSelected])
+
+  const selectedPaymentTypeOption = useMemo<PaymentTypeOption>(() => {
+    return paymentTypeOptions.find((o) => o.value === paymentTypeSelected) ?? paymentTypeOptions[0]
+  }, [paymentTypeSelected])
 
   // ✅ agora passamos o objeto completo pro CategorySelect (renderiza label/cor certo)
   const selectedCategoryObj = useMemo<CategoryResponse | null>(() => {
@@ -159,7 +183,7 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
       value: data.value ?? 0,
       date: dateTimeLocalToISOZ(data.date),
       type: data.type,
-      paymentType: 'DEBIT_CARD',
+      paymentType: data.paymentType,
       origin: 'DASHBOARD',
     }
   }
@@ -192,6 +216,7 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
             categoryId: '',
             value: undefined,
             type: 'EXPENSE',
+            paymentType: 'MONEY',
             date: nowDateTimeLocalValue(),
           })
           onClose()
@@ -277,6 +302,29 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
                 />
 
                 {errors.categoryId && <span className="text-red-500 text-xs">{errors.categoryId.message}</span>}
+              </div>
+
+              {/* Forma de pagamento */}
+              <div className="flex flex-col gap-2">
+                <label className="block text-sm text-gray-700 mb-1">Forma de pagamento</label>
+
+                <Controller
+                  name="paymentType"
+                  control={control}
+                  render={({ field }) => (
+                    <Select<PaymentTypeOption, false>
+                      instanceId="tx-payment-type-select"
+                      value={paymentTypeOptions.find((o) => o.value === field.value) ?? selectedPaymentTypeOption}
+                      options={paymentTypeOptions}
+                      onChange={(opt) => field.onChange(opt?.value ?? 'MONEY')}
+                      isSearchable={false}
+                      menuPortalTarget={typeof window !== 'undefined' ? document.body : null}
+                      styles={typeSelectStyles as StylesConfig<PaymentTypeOption, false>}
+                    />
+                  )}
+                />
+
+                {errors.paymentType && <span className="text-red-500 text-xs">{errors.paymentType.message}</span>}
               </div>
 
               {/* Valor */}

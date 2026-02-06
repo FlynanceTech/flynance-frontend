@@ -10,8 +10,12 @@ import { mapPlanToUi } from "../planos/utils";
 
 export default function PricingSection() {
   const { data, isLoading, error } = usePlans();
-  
-  const uiPlans: UiPlan[] = data ? data.map(mapPlanToUi) : [];
+
+  const allowedSlugs = new Set(["essencial-mensal", "essencial-anual-lancamento"]);
+  const visiblePlans = data
+    ? data.filter((plan) => plan.isFeatured && allowedSlugs.has(plan.slug))
+    : [];
+  const uiPlans: UiPlan[] = visiblePlans.map(mapPlanToUi);
 
   return (
     <section
