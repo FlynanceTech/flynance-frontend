@@ -146,7 +146,16 @@ export type ImportTransactionsResponse<TTransaction = any> =
   | TTransaction[]
 
 export type ImportTransactionsPreviewResponse<TTransaction = any> =
-  | { transactions: TTransaction[] }
+  | {
+      transactions: TTransaction[]
+      warnings?: string[]
+      meta?: {
+        fileName?: string
+        fileMime?: string
+        count?: number
+        formatId?: string
+      }
+    }
   | TTransaction[]
 
 export const importTransactions = async (
