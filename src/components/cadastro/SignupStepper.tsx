@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useSignupStore } from '@/stores/useSignupStore'
 import { useForm } from 'react-hook-form'
 import { useUsers } from '@/hooks/query/useUsers'
+import { readOriginAttribution } from '@/utils/originAttribution'
 
 const initialForm = {
   name: '',
@@ -22,6 +23,7 @@ function formatPhone(value: string) {
   if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
 }
+
 
 type Step = {
   key: keyof typeof initialForm
@@ -72,6 +74,7 @@ export default function SignupStepper() {
       case 'email':
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
         if (!emailRegex.test(value)) return 'Informe um e-mail válido.'
+
         break
     }
 
@@ -101,10 +104,13 @@ export default function SignupStepper() {
       setLoading(true)
   
       try {
+        const { origin, originRef } = readOriginAttribution()
         const body = {
           name: form.name,
           email: form.email,
           phone: form.phone,
+          origin,
+          originRef: originRef || undefined,
         }
         await createMutation.mutateAsync(body)
 
@@ -224,3 +230,8 @@ export default function SignupStepper() {
     </div>
   )
 }
+
+
+
+
+

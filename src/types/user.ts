@@ -5,6 +5,8 @@ export interface UserDTO {
     phone: string
     createdAt?: string
     planId?: string | null
+    origin?: 'ORGANIC' | 'CAMPAIGN' | 'INFLUENCER'
+    originRef?: string | null
 }
 
 

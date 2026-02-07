@@ -1,11 +1,12 @@
 // src/app/cadastro/checkout/page.tsx
 'use client'
-  import React, { useEffect } from "react";
+import React, { useEffect } from "react";
 import CheckoutStepper from "@/components/cadastro/checkoutStepper";
 import CheckoutHeader from "@/components/cadastro/CheckoutHeader";
 import { CHECKOUT_STEPS } from "@/components/cadastro/checkoutSteps";
 import { usePlanBySlug } from "@/hooks/query/usePlan";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { parseOriginFromUrl, saveOriginAttribution } from "@/utils/originAttribution";
 
 
 export function CheckoutPageClient() {
@@ -13,6 +14,7 @@ export function CheckoutPageClient() {
 
   const searchParams = useSearchParams();
   const router = useRouter();
+  const pathname = usePathname();
 
   const plano = searchParams.get("plano");
 
@@ -27,6 +29,13 @@ export function CheckoutPageClient() {
       : normalizedPlano;
 
   const { data, isLoading, error } = usePlanBySlug(planoSlug as string);
+
+  useEffect(() => {
+    const parsed = parseOriginFromUrl(pathname ?? "", new URLSearchParams(searchParams.toString()));
+    if (parsed.hasUrlHint) {
+      saveOriginAttribution(parsed.origin, parsed.originRef);
+    }
+  }, [pathname, searchParams]);
 
   useEffect(() => {
     if (!plano) {

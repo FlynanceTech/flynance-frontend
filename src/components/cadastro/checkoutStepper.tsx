@@ -12,6 +12,7 @@ import LegalDocsModal from "@/components/ui/LegalDocsModal";
 import whatsappIcon from "../../../public/icons/whatsapp.svg";
 
 import { useUsers } from "@/hooks/query/useUsers";
+import { readOriginAttribution } from "@/utils/originAttribution";
 import { useUserSession } from "@/stores/useUserSession";
 
 import { UserDTO } from "@/types/user";
@@ -495,10 +496,13 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
     }
 
     try {
+      const { origin, originRef } = readOriginAttribution();
       const created = await createMutation.mutateAsync({
         name: snap.name,
         email: snap.email,
         phone: snap.phoneE164,
+        origin,
+        originRef: originRef || undefined,
       });
 
       const u = created?.user as UserDTO | undefined;

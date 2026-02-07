@@ -27,7 +27,7 @@ export default function FixedAccountHistoryPage() {
 
   return (
     <section className="w-full h-full pt-8 lg:px-8 px-4 pb-24 lg:pb-0 flex flex-col gap-6 overflow-auto">
-      <Header title="HistÃ³rico de pagamentos" subtitle="Acompanhe os pagamentos desta conta fixa." newTransation={false} />
+      <Header title="Histórico de pagamentos" subtitle="Acompanhe os pagamentos desta conta fixa." newTransation={false} />
 
       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm flex flex-col gap-4">
         <div className="flex items-center justify-between gap-3">
@@ -45,13 +45,13 @@ export default function FixedAccountHistoryPage() {
 
         {paymentsQuery.isLoading && (
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-            Carregando histÃ³rico...
+            Carregando Histórico...
           </div>
         )}
 
         {paymentsQuery.isError && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            Erro ao carregar histÃ³rico.
+            Erro ao carregar Histórico.
           </div>
         )}
 

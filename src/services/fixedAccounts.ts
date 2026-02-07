@@ -182,8 +182,8 @@ export async function getFixedAccountPayments(id: string): Promise<FixedAccountP
     const response = await api.get(`/fixed-accounts/${id}/payments`)
     return response.data
   } catch (e: unknown) {
-    const msg = getErrorMessage(e, 'Erro ao buscar histÃ³rico de pagamentos.')
-    console.error('Erro ao buscar histÃ³rico de pagamentos:', msg)
+    const msg = getErrorMessage(e, 'Erro ao buscar Histórico de pagamentos.')
+    console.error('Erro ao buscar Histórico de pagamentos:', msg)
     throw new Error(msg)
   }
 }
