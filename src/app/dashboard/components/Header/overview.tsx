@@ -128,8 +128,8 @@ export default function Header({
   return (
     <header className="flex flex-col px-6 pt-6">
       <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <h3 className="text-2xl font-bold text-[#333C4D]">Olá, {firstName}!</h3>
+        <div className="grid grid-cols-3 items-center">
+          <h3 className="text-2xl font-bold text-[#333C4D] col-span-2">Olá, {firstName}!</h3>
 
           {/* Desktop */}
           <div className="hidden lg:flex gap-4 items-center">
@@ -159,7 +159,7 @@ export default function Header({
           </div>
 
           {/* Mobile */}
-          <div className="flex lg:hidden gap-4 items-center">
+          <div className="flex lg:hidden gap-4 items-center w-full justify-end col-span-1">
             <DateRangeSelect value={datePickerValue as any} onChange={handleDateChange as any} />
             <button
               type="button"
@@ -182,7 +182,7 @@ export default function Header({
         <TransactionDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
       </div>
 
-      <p className="text-sm font-light pb-4 pt-2 md:pt-0">{subtitle}</p>
+      <p className="text-sm font-light pt-2 md:pt-0">{subtitle}</p>
     </header>
   )
 }

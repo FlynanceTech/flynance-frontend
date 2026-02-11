@@ -62,7 +62,7 @@ export default function DateRangeSelect({ value, onChange, className, withDispla
     setRangeDraft((prev) => ({ start: prev.start && end < prev.start ? end : prev.start, end }))
   }
 
-  const baseButtonClass = `h-9 ${withDisplay ? 'px-4 py-2' : 'w-9 p-0'} flex w-full lg:max-w-44 items-center justify-center gap-2 rounded-full border border-[#E2E8F0] bg-white text-gray-500 text-sm font-medium hover:bg-gray-50 cursor-pointer`
+  const baseButtonClass = `h-9 ${withDisplay ? 'px-4 py-2' : 'w-9  p-0'} flex w-full lg:max-w-44 items-center justify-center gap-2 rounded-full border border-[#E2E8F0] bg-white text-gray-500 text-sm font-medium hover:bg-gray-50 cursor-pointer`
   const buttonClass = className ? `${baseButtonClass} ${className}` : baseButtonClass
 
   if (inline) {
