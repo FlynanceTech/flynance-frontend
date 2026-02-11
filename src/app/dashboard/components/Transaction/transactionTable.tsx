@@ -104,7 +104,7 @@ export function TransactionTable({
             type="button"
             role="columnheader"
             onClick={() => onSortChange('date')}
-            className="flex items-center gap-2 text-left text-sm font-semibold text-primary hover:text-gray-900"
+            className="flex items-center gap-2 text-left text-sm font-semibold text-primary hover:text-gray-900 cursor-pointer"
             title="Ordenar por data"
           >
             Data
@@ -131,7 +131,7 @@ export function TransactionTable({
             type="button"
             role="columnheader"
             onClick={() => onSortChange('value')}
-            className="flex items-center justify-end gap-2 text-right text-sm font-semibold text-primary hover:text-gray-900 pr-8"
+            className="flex items-center justify-end gap-2 text-right text-sm font-semibold text-primary hover:text-gray-900 pr-8 cursor-pointer"
             title="Ordenar por valor"
           >
             Valor
@@ -235,7 +235,7 @@ export function TransactionTable({
                   <div role="cell" className="flex items-center justify-end gap-2">
                     <button
                       onClick={() => onEdit(t)}
-                      className="h-9 w-9 rounded-full border border-gray-200 hover:bg-gray-50 flex items-center justify-center"
+                      className="h-9 w-9 rounded-full border border-gray-200 hover:bg-gray-50 flex items-center justify-center cursor-pointer"
                       title="Editar"
                       aria-label="Editar transação"
                     >
@@ -244,7 +244,7 @@ export function TransactionTable({
 
                     <button
                       onClick={() => onDelete(t.id)}
-                      className="h-9 w-9 rounded-full border border-gray-200 hover:bg-red-50 flex items-center justify-center"
+                      className="h-9 w-9 rounded-full border border-gray-200 hover:bg-red-50 flex items-center justify-center cursor-pointer"
                       title="Excluir"
                       aria-label="Excluir transação"
                     >

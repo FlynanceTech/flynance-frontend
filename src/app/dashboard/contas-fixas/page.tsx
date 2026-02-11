@@ -2,9 +2,10 @@
 
 import React, { useMemo, useState } from 'react'
 import Header from '../components/Header'
-import { Check, Plus, Trash2, X } from 'lucide-react'
+import { Check, Pencil, Plus, Trash2, X } from 'lucide-react'
 import clsx from 'clsx'
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
+import DeleteConfirmModal from '../components/DeleteConfirmModal'
 import { useFixedAccounts } from '@/hooks/query/useFixedAccounts'
 import { CategorySelect } from '../components/CategorySelect'
 import { useCategories } from '@/hooks/query/useCategory'
@@ -23,6 +24,7 @@ type FixedBill = {
   autoPay?: boolean
   startDate?: string
   endDate?: string | null
+  categoryId?: string | null
   categoryName?: string | null
   isPaid?: boolean
   payment?: {
@@ -56,9 +58,36 @@ function monthKeyFromDate(d = new Date()) {
   return `${y}-${m}`
 }
 
+function getMonthKeyFromISO(iso?: string) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return monthKeyFromDate(d)
+}
+
+function getCycleInfo(dueDay: number, leadDays = 10, now = new Date()) {
+  const currentMonthDue = new Date(now.getFullYear(), now.getMonth(), dueDay)
+  const boundary = new Date(currentMonthDue)
+  boundary.setDate(boundary.getDate() - leadDays)
+
+  let cycleYear = now.getFullYear()
+  let cycleMonth = now.getMonth()
+  if (now < boundary) {
+    const prev = new Date(currentMonthDue)
+    prev.setMonth(prev.getMonth() - 1)
+    cycleYear = prev.getFullYear()
+    cycleMonth = prev.getMonth()
+  }
+
+  const cycleDueDate = new Date(cycleYear, cycleMonth, dueDay)
+  const cycleKey = monthKeyFromDate(cycleDueDate)
+
+  return { cycleKey, cycleDueDate }
+}
+
 export default function FixedBillsPage() {
   const router = useRouter()
-  const { fixedAccountsQuery, createMutation, deleteMutation, markPaidMutation, unmarkPaidMutation } =
+  const { fixedAccountsQuery, createMutation, updateMutation, deleteMutation, markPaidMutation, unmarkPaidMutation } =
     useFixedAccounts()
   const {
     categoriesQuery: { data: categories = [] },
@@ -66,14 +95,32 @@ export default function FixedBillsPage() {
   } = useCategories()
   const [filter, setFilter] = useState<FilterKey>('all')
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
+  const [payConfirmOpen, setPayConfirmOpen] = useState(false)
+  const [payTarget, setPayTarget] = useState<FixedBill | null>(null)
+  const [payAmount, setPayAmount] = useState('')
+  const [payDate, setPayDate] = useState(todayISODate())
 
   const [name, setName] = useState('')
   const [amount, setAmount] = useState('')
   const [dueDay, setDueDay] = useState('10')
   const [notes, setNotes] = useState('')
   const [categoryId, setCategoryId] = useState('')
+  const [editingBill, setEditingBill] = useState<FixedBill | null>(null)
 
   const isPaid = (bill: FixedBill) => !!bill.isPaid
+
+  const computeIsPaid = (bill: FixedBill) => {
+    if (!bill.payment) return !!bill.isPaid
+
+    const { cycleKey } = getCycleInfo(bill.dueDay)
+    const paymentMonthKey =
+      bill.payment.periodKey ||
+      getMonthKeyFromISO(bill.payment.dueDate ?? undefined) ||
+      getMonthKeyFromISO(bill.payment.paidAt)
+    return !!paymentMonthKey && paymentMonthKey === cycleKey
+  }
 
   const bills = useMemo(() => {
     const data = fixedAccountsQuery.data ?? []
@@ -89,8 +136,24 @@ export default function FixedBillsPage() {
         autoPay: b.autoPay,
         startDate: b.startDate,
         endDate: b.endDate,
+        categoryId: b.category?.id ?? null,
         categoryName: b.category?.name ?? null,
-        isPaid: b.isPaid ?? !!b.payment,
+        isPaid: computeIsPaid({
+          id: b.id,
+          name: b.name,
+          amount: b.amount,
+          dueDay: b.dueDay,
+          notes: b.notes,
+          currency: b.currency,
+          status: b.status,
+          autoPay: b.autoPay,
+          startDate: b.startDate,
+          endDate: b.endDate,
+          categoryId: b.category?.id ?? null,
+          categoryName: b.category?.name ?? null,
+          isPaid: b.isPaid ?? false,
+          payment: b.payment ?? null,
+        } as FixedBill),
         payment: b.payment ?? null,
       }))
       .sort((a, b) => a.dueDay - b.dueDay)
@@ -119,10 +182,12 @@ export default function FixedBillsPage() {
     setDueDay('10')
     setNotes('')
     setCategoryId('')
+    setEditingBill(null)
   }
 
   const closeDrawer = () => {
     setDrawerOpen(false)
+    resetForm()
   }
 
   const handleCreateCategory = async (draft: CreateCategoryDraft): Promise<CategoryResponse> => {
@@ -146,34 +211,88 @@ export default function FixedBillsPage() {
     if (!trimmed || Number.isNaN(parsedAmount) || parsedAmount <= 0) return
     if (!parsedDueDay || parsedDueDay < 1 || parsedDueDay > 31) return
 
-    createMutation.mutate(
-      {
+    const createPayload = {
+      name: trimmed,
+      amount: parsedAmount,
+      dueDay: parsedDueDay,
+      startDate: todayISODate(),
+      categoryId: categoryId || undefined,
+      notes: notes.trim() || undefined,
+    }
+
+    if (editingBill?.id) {
+      const updatePayload = {
         name: trimmed,
         amount: parsedAmount,
         dueDay: parsedDueDay,
-        startDate: todayISODate(),
         categoryId: categoryId || undefined,
         notes: notes.trim() || undefined,
-      },
-      {
-        onSuccess: () => {
-          resetForm()
-          closeDrawer()
-        },
       }
-    )
+      updateMutation.mutate(
+        { id: editingBill.id, data: updatePayload },
+        {
+          onSuccess: () => {
+            resetForm()
+            closeDrawer()
+          },
+        }
+      )
+      return
+    }
+
+    createMutation.mutate(createPayload, {
+      onSuccess: () => {
+        resetForm()
+        closeDrawer()
+      },
+    })
+  }
+
+  const handleEdit = (bill: FixedBill) => {
+    setEditingBill(bill)
+    setName(bill.name ?? '')
+    setAmount(String(bill.amount ?? ''))
+    setDueDay(String(bill.dueDay ?? '10'))
+    setNotes(bill.notes ?? '')
+    setCategoryId((bill.categoryId as string) ?? '')
+    setDrawerOpen(true)
+  }
+
+  const openPayConfirm = (bill: FixedBill) => {
+    setPayTarget(bill)
+    setPayAmount(String(bill.payment?.amount ?? bill.amount ?? ''))
+    setPayDate(todayISODate())
+    setPayConfirmOpen(true)
+  }
+
+  const handleConfirmPay = () => {
+    if (!payTarget) return
+    const parsedAmount = Number(payAmount)
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) return
+    const paidAtDate = payDate ? new Date(payDate) : new Date()
+    const { cycleDueDate } = getCycleInfo(payTarget.dueDay, 10, paidAtDate)
+    const cycleDueISO = cycleDueDate.toISOString().split('T')[0]
+    markPaidMutation.mutate({
+      id: payTarget.id,
+      data: {
+        amount: parsedAmount,
+        paidAt: payDate || todayISODate(),
+        dueDate: cycleDueISO,
+      },
+    })
+    setPayConfirmOpen(false)
+    setPayTarget(null)
+  }
+
+  const closePayConfirm = () => {
+    setPayConfirmOpen(false)
+    setPayTarget(null)
+    setPayDate(todayISODate())
   }
 
   const togglePaid = (id: string, bill: FixedBill) => {
     if (!isPaid(bill)) {
-      markPaidMutation.mutate({
-        id,
-        data: {
-          amount: bill.payment?.amount ?? bill.amount,
-          paidAt: todayISODate(),
-          dueDate: bill.payment?.dueDate ?? (bill.startDate ? bill.startDate.split('T')[0] : undefined),
-        },
-      })
+      openPayConfirm(bill)
       return
     }
 
@@ -186,6 +305,11 @@ export default function FixedBillsPage() {
 
   const removeBill = (id: string) => {
     deleteMutation.mutate(id)
+  }
+
+  const requestDelete = (id: string) => {
+    setDeleteTargetId(id)
+    setDeleteConfirmOpen(true)
   }
 
   return (
@@ -205,7 +329,10 @@ export default function FixedBillsPage() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => setDrawerOpen(true)}
+                onClick={() => {
+                  resetForm()
+                  setDrawerOpen(true)
+                }}
                 className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-white hover:bg-secondary"
               >
                 <Plus className="h-4 w-4" />
@@ -250,6 +377,9 @@ export default function FixedBillsPage() {
 
             {visibleBills.map((bill) => {
               const paid = isPaid(bill)
+              const { cycleDueDate } = getCycleInfo(bill.dueDay)
+              const { cycleKey } = getCycleInfo(bill.dueDay)
+              const overdue = !paid && new Date() > cycleDueDate
               return (
                 <div
                   key={bill.id}
@@ -271,7 +401,7 @@ export default function FixedBillsPage() {
                     <div className="flex flex-col min-w-0 gap-1">
                       <h3 className="text-sm font-semibold text-gray-800 truncate">{bill.name}</h3>
                       <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                        <span>Vence dia {bill.dueDay}</span>
+                        <span>Vence todo dia {bill.dueDay}</span>
                       {/*   <span>{toBRL(bill.amount)}</span>
                         {bill.currency && bill.currency !== 'BRL' && (
                           <>
@@ -287,8 +417,10 @@ export default function FixedBillsPage() {
                         )}
                       </div>
                       <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-400">
+                        <span>Competência: {cycleKey}</span>
+                        <span>•</span>
                         <span>
-                          Status: {paid ? 'Paga' : bill.status === 'active' ? 'Ativa' : bill.status === 'paused' ? 'Pausada' : 'Cancelada'}
+                          Status: {paid ? 'Paga' : overdue ? 'Atrasada' : bill.status === 'active' ? 'Ativa' : bill.status === 'paused' ? 'Pausada' : 'Cancelada'}
                         </span>
                        {/*  {bill.autoPay != null && (
                           <>
@@ -313,14 +445,21 @@ export default function FixedBillsPage() {
                         <span className="text-xs text-gray-400 mt-1 truncate">{bill.notes}</span>
                       )}
                     </div>
-                    <span
-                      className={clsx(
-                        'inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold',
-                        paid ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                    <div className="flex items-center gap-2">
+                      {overdue && (
+                        <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-700">
+                          Atrasada
+                        </span>
                       )}
-                    >
-                      {paid ? 'Pago' : 'Pendente'}
-                    </span>
+                      <span
+                        className={clsx(
+                          'inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold',
+                          paid ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                        )}
+                      >
+                        {paid ? 'Pago' : 'Pendente'}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
@@ -328,10 +467,21 @@ export default function FixedBillsPage() {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation()
+                        handleEdit(bill)
+                      }}
+                      className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 cursor-pointer"
+                    >
+                      <Pencil className="h-3 w-3" />
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
                         togglePaid(bill.id, bill)
                       }}
                       className={clsx(
-                        'inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold border',
+                        'inline-flex items-center cursor-pointer gap-2 rounded-full px-3 py-1 text-xs font-semibold border',
                         paid
                           ? 'border-emerald-300 text-emerald-700 hover:bg-emerald-50'
                           : 'border-gray-200 text-gray-700 hover:bg-gray-50'
@@ -345,7 +495,7 @@ export default function FixedBillsPage() {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation()
-                        removeBill(bill.id)
+                        requestDelete(bill.id)
                       }}
                       disabled={deleteMutation.isPending}
                       className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold border border-gray-200 text-red-600 hover:bg-red-50"
@@ -361,12 +511,81 @@ export default function FixedBillsPage() {
         </div>
       </div>
 
+      <DeleteConfirmModal
+        isOpen={deleteConfirmOpen}
+        onClose={() => {
+          setDeleteConfirmOpen(false)
+          setDeleteTargetId(null)
+        }}
+        onConfirm={() => {
+          if (deleteTargetId) removeBill(deleteTargetId)
+        }}
+        title="Excluir conta fixa"
+        description="Tem certeza que deseja excluir esta conta fixa?"
+      />
+
+      <Dialog open={payConfirmOpen} onClose={closePayConfirm} className="relative z-50">
+        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <DialogPanel className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <DialogTitle className="text-lg font-semibold text-gray-800">
+              Confirmar pagamento
+            </DialogTitle>
+            <p className="mt-2 text-sm text-gray-500">
+              Confira o valor pago para {payTarget?.name ?? 'esta conta fixa'}.
+            </p>
+
+            <div className="mt-4">
+              <label className="text-sm text-gray-600">Valor pago</label>
+              <input
+                value={payAmount}
+                onChange={(e) => setPayAmount(e.target.value)}
+                type="number"
+                step="0.01"
+                min="0"
+                className="mt-2 w-full rounded-full border border-gray-200 px-4 py-2 text-sm"
+                placeholder="0,00"
+              />
+            </div>
+
+            <div className="mt-4">
+              <label className="text-sm text-gray-600">Data do pagamento</label>
+              <input
+                value={payDate}
+                onChange={(e) => setPayDate(e.target.value)}
+                type="date"
+                className="mt-2 w-full rounded-full border border-gray-200 px-4 py-2 text-sm"
+              />
+            </div>
+
+            <div className="mt-6 flex w-full gap-2">
+              <button
+                type="button"
+                className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 cursor-pointer"
+                onClick={closePayConfirm}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 cursor-pointer"
+                onClick={handleConfirmPay}
+              >
+                Confirmar pagamento
+              </button>
+            </div>
+          </DialogPanel>
+        </div>
+      </Dialog>
+
       <Dialog open={drawerOpen} onClose={closeDrawer} className="relative z-50">
         <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-end">
           <DialogPanel className="bg-white w-4/5 max-w-md h-full rounded-l-xl shadow-lg p-6 space-y-6 overflow-y-auto">
             <div className="flex justify-between items-center">
-              <DialogTitle className="text-lg font-semibold text-gray-800">Nova conta fixa</DialogTitle>
+              <DialogTitle className="text-lg font-semibold text-gray-800">
+                {editingBill ? 'Editar conta fixa' : 'Nova conta fixa'}
+              </DialogTitle>
               <button
                 onClick={closeDrawer}
                 className="text-gray-500 hover:text-gray-700 cursor-pointer"
@@ -443,9 +662,13 @@ export default function FixedBillsPage() {
               <button
                 type="submit"
                 className="w-full mt-4 bg-primary hover:bg-secondary text-white font-semibold py-2 px-4 rounded-full cursor-pointer disabled:opacity-60"
-                disabled={createMutation.isPending}
+                disabled={createMutation.isPending || updateMutation.isPending}
               >
-                {createMutation.isPending ? 'Salvando...' : 'Adicionar conta fixa'}
+                {createMutation.isPending || updateMutation.isPending
+                  ? 'Salvando...'
+                  : editingBill
+                  ? 'Salvar alteraÃ§Ãµes'
+                  : 'Adicionar conta fixa'}
               </button>
             </form>
           </DialogPanel>

@@ -11,6 +11,7 @@ import {
   unmarkFixedAccountPaid,
   updateFixedAccount,
 } from '@/services/fixedAccounts'
+import { deleteFixedAccountPayment } from '@/services/fixedAccountPayments'
 
 export function useFixedAccounts(params?: {
   status?: 'active' | 'paused' | 'canceled'
@@ -78,5 +79,21 @@ export function useFixedAccountPayments(id?: string) {
     queryKey: ['fixed-accounts', id, 'payments'],
     queryFn: () => getFixedAccountPayments(id as string),
     enabled: !!id,
+  })
+}
+
+export function useDeleteFixedAccountPayment(fixedAccountId?: string) {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: (paymentId: string) => deleteFixedAccountPayment(paymentId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['fixed-accounts'] })
+      if (fixedAccountId) {
+        qc.invalidateQueries({ queryKey: ['fixed-accounts', fixedAccountId, 'payments'] })
+      } else {
+        qc.invalidateQueries({ queryKey: ['fixed-accounts'] })
+      }
+    },
   })
 }

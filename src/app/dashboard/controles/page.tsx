@@ -7,6 +7,7 @@ import { StarIcon } from '@phosphor-icons/react'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
+import DeleteConfirmModal from '../components/DeleteConfirmModal'
 
 import Header from '../components/Header'
 import SpendingControlDrawer from '../components/SpendingControlDrawer'
@@ -110,6 +111,8 @@ export default function SpendingControlPage() {
 
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editingControl, setEditingControl] = useState<ControlWithProgress | null>(null)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
 
   // ====== MODAL FAVORITOS ======
   const [favoriteModalOpen, setFavoriteModalOpen] = useState(false)
@@ -164,6 +167,11 @@ export default function SpendingControlPage() {
     } catch {
       toast.error('Erro ao remover controle')
     }
+  }
+
+  const requestDelete = (id: string) => {
+    setDeleteTargetId(id)
+    setDeleteConfirmOpen(true)
   }
 
   const handleEdit = (control: ControlWithProgress) => {
@@ -457,7 +465,7 @@ export default function SpendingControlPage() {
 
                         <button
                           type="button"
-                          onClick={() => handleDelete(c.id)}
+                          onClick={() => requestDelete(c.id)}
                           className="text-gray-500 hover:text-red-500 cursor-pointer"
                           title="Excluir"
                           aria-label="Excluir"
@@ -473,6 +481,19 @@ export default function SpendingControlPage() {
           )
         })}
       </ul>
+
+      <DeleteConfirmModal
+        isOpen={deleteConfirmOpen}
+        onClose={() => {
+          setDeleteConfirmOpen(false)
+          setDeleteTargetId(null)
+        }}
+        onConfirm={() => {
+          if (deleteTargetId) handleDelete(deleteTargetId)
+        }}
+        title="Excluir controle"
+        description="Tem certeza que deseja excluir este controle?"
+      />
 
       <SpendingControlDrawer
         open={drawerOpen}

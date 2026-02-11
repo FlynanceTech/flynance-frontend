@@ -9,8 +9,8 @@ import {
   Tooltip,
   Cell,
 } from 'recharts'
-import { useUserSession } from '@/stores/useUserSession'
-import { useTranscation } from '@/hooks/query/useTransaction'
+import { useCategories } from '@/hooks/query/useCategory'
+import { useCategoryStore } from '@/stores/useCategoryStore'
 import {
   ArrowDownUp,
   ArrowLeft,
@@ -70,12 +70,24 @@ export default function CategorySpendingDistribution({transactions, isLoading}) 
   const [selectedCategoryName, setSelectedCategoryName] = useState('')
   const [freezeAnimation, setFreezeAnimation] = useState(false)
 
+  useCategories()
+  const categoryStore = useCategoryStore((s) => s.categoryStore)
+  const categoryMap = useMemo(
+    () => new Map(categoryStore.map((cat) => [cat.id, cat])),
+    [categoryStore]
+  )
+
   const despesas = transactions.filter(t => t.type === 'EXPENSE')
 
   const map = despesas.reduce((acc, t) => {
     const categoriaId = t.category?.id || 'outros'
-    const categoriaNome = t.category?.name || 'Outros'
-    const color = t.category?.color || '#CBD5E1'
+    const categoryFromStore = categoryMap.get(categoriaId)
+    const rawName = t.category?.name
+    const categoriaNome =
+      (rawName && rawName !== categoriaId ? rawName : undefined) ||
+      categoryFromStore?.name ||
+      (categoriaId === 'outros' ? 'Outros' : 'Sem categoria')
+    const color = t.category?.color || categoryFromStore?.color || '#CBD5E1'
     if (!acc[categoriaId]) {
       acc[categoriaId] = { id: categoriaId, name: categoriaNome, value: 0, color }
     }
@@ -85,8 +97,13 @@ export default function CategorySpendingDistribution({transactions, isLoading}) 
 
   const categoriasAgrupadas = despesas.reduce((acc, d) => {
     const id = d.category?.id || 'outros'
-    const nome = d.category?.name || 'Outros'
-    const cor = d.category?.color || '#CBD5E1'
+    const categoryFromStore = categoryMap.get(id)
+    const rawName = d.category?.name
+    const nome =
+      (rawName && rawName !== id ? rawName : undefined) ||
+      categoryFromStore?.name ||
+      (id === 'outros' ? 'Outros' : 'Sem categoria')
+    const cor = d.category?.color || categoryFromStore?.color || '#CBD5E1'
 
     if (!acc[id]) {
       acc[id] = { id, name: nome, size: 0, color: cor }
@@ -105,7 +122,14 @@ export default function CategorySpendingDistribution({transactions, isLoading}) 
   ];
 
   
-  const dataPae = Object.entries(map).map(([name, { value, color }]) => ({ name, value, color }))
+  console.log('[CategorySpendingDistribution] data', data)
+  const dataPae = Object.values(map).map(({ id, name, value, color }) => ({
+    id,
+    name,
+    value,
+    color,
+  }))
+  console.log('[CategorySpendingDistribution] dataPae', dataPae)
 
   const total = data[0]?.children?.reduce((sum, item) => sum + item.size, 0) ?? 0
   const selectedTransactions = selectedCategoryId
@@ -171,6 +195,7 @@ export default function CategorySpendingDistribution({transactions, isLoading}) 
                 cx="50%"
                 cy="50%"
                 dataKey="value"
+                nameKey="name"
                 outerRadius={120}
                 isAnimationActive={!disableAnimation}
               >
@@ -178,7 +203,12 @@ export default function CategorySpendingDistribution({transactions, isLoading}) 
                   <Cell key={i} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip formatter={(v) => toBRL(v)} />
+              <Tooltip
+                formatter={(value, _name, props) => [
+                  toBRL(value),
+                  props?.payload?.name ?? '',
+                ]}
+              />
             </PieChart>   
           }
         </ResponsiveContainer>
@@ -197,7 +227,7 @@ export default function CategorySpendingDistribution({transactions, isLoading}) 
                   </p>
                 </div>
                 <button
-                  className="rounded-full border border-gray-200 p-1 text-gray-500 hover:bg-gray-50"
+                  className="rounded-full border border-gray-200 p-1 text-gray-500 hover:bg-gray-50 cursor-pointer"
                   onClick={() => {
                     setSelectedCategoryId(null)
                     setSelectedCategoryName('')
@@ -240,7 +270,7 @@ export default function CategorySpendingDistribution({transactions, isLoading}) 
                 return (
                   <button
                     key={i}
-                    className="w-full text-left space-y-1 rounded-lg p-2 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    className="w-full text-left space-y-1 rounded-lg p-2 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 cursor-pointer"
                     onClick={() => {
                       setSelectedCategoryId(entry.id)
                       setSelectedCategoryName(entry.name)

@@ -14,6 +14,7 @@ import { useTranscation } from '@/hooks/query/useTransaction'
 import { useUserSession } from '@/stores/useUserSession'
 import { useCategories } from '@/hooks/query/useCategory'
 import { TrashIcon } from 'lucide-react'
+import DeleteConfirmModal from '../components/DeleteConfirmModal'
 
 const PAGE_SIZE = 10
 
@@ -37,6 +38,9 @@ export default function TransactionsPage() {
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [selectAll, setSelectAll] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [deleteConfirmIds, setDeleteConfirmIds] = useState<string[]>([])
+  const [deleteConfirmMode, setDeleteConfirmMode] = useState<'single' | 'bulk'>('single')
 
   const [sortState, setSortState] = useState<{
     field: 'date' | 'value' | null
@@ -322,8 +326,8 @@ const meta = useMemo(() => {
     setSelectAll(!selectAll)
   }
 
-  const handleDeleteSelected = async () => {
-    const idsToDelete = Array.from(selectedIds)
+  const handleDeleteSelected = async (ids?: string[]) => {
+    const idsToDelete = ids ?? Array.from(selectedIds)
     try {
       await Promise.all(idsToDelete.map((id) => deleteMutation.mutateAsync(id)))
       setSelectedIds(new Set())
@@ -345,6 +349,26 @@ const meta = useMemo(() => {
       console.error('Error deleting item:', err)
     }
   }
+
+  const requestDeleteSingle = (id: string) => {
+    setDeleteConfirmMode('single')
+    setDeleteConfirmIds([id])
+    setDeleteConfirmOpen(true)
+  }
+
+  const requestDeleteSelected = () => {
+    const idsToDelete = Array.from(selectedIds)
+    if (idsToDelete.length === 0) return
+    setDeleteConfirmMode('bulk')
+    setDeleteConfirmIds(idsToDelete)
+    setDeleteConfirmOpen(true)
+  }
+
+  const isRefreshing =
+    transactionsQuery.isFetching ||
+    deleteMutation.isPending ||
+    updateMutation.isPending ||
+    createMutation.isPending
 
   if (!userId) return <SkeletonSection />
   if (transactionsQuery.isLoading) return <SkeletonSection />
@@ -789,6 +813,12 @@ const meta = useMemo(() => {
         </div>
       )}
 
+      {isRefreshing && (
+        <div className="w-full rounded-md border border-secondary/40 bg-secondary/10 px-4 py-2 text-xs text-secondary">
+          Atualizando transaÃ§Ãµes...
+        </div>
+      )}
+
       <section className="flex flex-col gap-4 lg:gap-0 overflow-auto">
         <TransactionTable
           transactions={displayedTransactions}
@@ -800,7 +830,7 @@ const meta = useMemo(() => {
             setSelectedTransaction(t)
             setDrawerOpen(true)
           }}
-          onDelete={handleDeleteSingle}
+          onDelete={requestDeleteSingle}
           sortField={sortField}
           sortDirection={sortDirection}
           onSortChange={handleSortChange}
@@ -850,7 +880,7 @@ const meta = useMemo(() => {
  */}
           <div className="flex justify-end">
             <button
-              onClick={handleDeleteSelected}
+              onClick={requestDeleteSelected}
               className="px-4 py-2 bg-red-500 text-white text-sm rounded hover:bg-red-600"
             >
               Deletar seleção ({selectedIds.size})
@@ -868,6 +898,28 @@ const meta = useMemo(() => {
             </div>
           )}
         </div>
+
+        <DeleteConfirmModal
+          isOpen={deleteConfirmOpen}
+          onClose={() => {
+            setDeleteConfirmOpen(false)
+            setDeleteConfirmIds([])
+          }}
+          onConfirm={() => {
+            if (deleteConfirmMode === 'bulk') {
+              handleDeleteSelected(deleteConfirmIds)
+            } else if (deleteConfirmIds[0]) {
+              handleDeleteSingle(deleteConfirmIds[0])
+            }
+          }}
+          title={deleteConfirmMode === 'bulk' ? 'Excluir transaÃ§Ãµes' : 'Excluir transação'}
+          description={
+            deleteConfirmMode === 'bulk'
+              ? `Tem certeza que deseja excluir ${deleteConfirmIds.length} transação(Ãµes)?`
+              : 'Tem certeza que deseja excluir esta transação?'
+          }
+          confirmLabel={deleteConfirmMode === 'bulk' ? 'Excluir seleÃ§Ã£o' : 'Excluir'}
+        />
 
         {selectedTransaction && (
           <TransactionDrawer

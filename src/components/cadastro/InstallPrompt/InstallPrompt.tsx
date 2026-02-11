@@ -1,4 +1,3 @@
-"use client"
 
 import Lottie from "lottie-react";
 import { Fragment, useEffect, useState } from "react"
@@ -9,23 +8,42 @@ import { X } from "lucide-react";
 export default function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [showPrompt, setShowPrompt] = useState(false)
+  const [dismissed, setDismissed] = useState(false)
+  const dismissedKey = 'flynance_pwa_install_dismissed'
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-  
+
+    const alreadyDismissed = window.localStorage.getItem(dismissedKey) === 'true'
+    if (alreadyDismissed) {
+      setDismissed(true)
+    }
+
     const handler = (e: Event) => {
+      if (window.localStorage.getItem(dismissedKey) === 'true') return
       if (!("prompt" in e)) return;
-  
+
       const promptEvent = e as BeforeInstallPromptEvent;
       promptEvent.preventDefault();
       setDeferredPrompt(promptEvent);
       setShowPrompt(true);
     };
-  
+
+    const handleInstalled = () => {
+      window.localStorage.setItem(dismissedKey, 'true')
+      setDismissed(true)
+      setShowPrompt(false)
+      setDeferredPrompt(null)
+    }
+
     window.addEventListener("beforeinstallprompt", handler);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
+    window.addEventListener("appinstalled", handleInstalled)
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler);
+      window.removeEventListener("appinstalled", handleInstalled)
+    };
   }, []);
-  
+
   const handleInstall = async () => {
     if (!deferredPrompt) return
 
@@ -34,18 +52,27 @@ export default function InstallPrompt() {
 
     const choice = await promptEvent.userChoice
     if (choice.outcome === 'accepted') {
-      console.log('Usuário aceitou instalação PWA ✅')
+      console.log('UsuÃ¡rio aceitou instalaÃ§Ã£o PWA âœ…')
     }
 
     setDeferredPrompt(null)
     setShowPrompt(false)
   }
 
-  if (!showPrompt) return null
+  const handleDismiss = () => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(dismissedKey, 'true')
+    }
+    setDismissed(true)
+    setShowPrompt(false)
+    setDeferredPrompt(null)
+  }
+
+  if (!showPrompt || dismissed) return null
 
   return (
     <Transition appear show={showPrompt} as={Fragment}>
-      <Dialog as="div" className="relative z-50" onClose={() => setShowPrompt(false)}>
+      <Dialog as="div" className="relative z-50" onClose={handleDismiss}>
         <TransitionChild
           as={Fragment}
           enter="ease-out duration-300"
@@ -71,7 +98,7 @@ export default function InstallPrompt() {
             <DialogPanel className="relative w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
               <button
                 className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
-                onClick={() => setShowPrompt(false)}
+                onClick={handleDismiss}
               >
                 <X className="h-5 w-5 cursor-pointer" />
               </button>
@@ -83,19 +110,25 @@ export default function InstallPrompt() {
               />
 
               <div className="relative z-10 text-center">
-                <div className="text-4xl mb-2">🎉</div>
+                <div className="text-4xl mb-2">ðŸŽ‰</div>
                 <DialogTitle className="text-xl font-semibold text-gray-800">
                   Instale o app da Flynance!
                 </DialogTitle>
                 <p className="text-gray-600 text-sm mb-6">
-                  Aproveite a experiência completa diretamente no seu dispositivo.
+                  Aproveite a experiÃªncia completa diretamente no seu dispositivo.
                 </p>
 
                 <button
                   onClick={handleInstall}
                   className="bg-gradient-to-r from-secondary to-primary text-white font-medium py-2 px-8 rounded-lg hover:scale-105 transition cursor-pointer"
                 >
-                  Vamos lá!
+                  Vamos lÃ¡!
+                </button>
+                <button
+                  onClick={handleDismiss}
+                  className="mt-3 text-xs text-gray-500 hover:text-gray-700 underline underline-offset-4 cursor-pointer"
+                >
+                  JÃ¡ instalei
                 </button>
               </div>
             </DialogPanel>
