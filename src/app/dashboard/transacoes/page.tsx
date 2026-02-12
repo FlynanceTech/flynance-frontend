@@ -493,13 +493,15 @@ const meta = useMemo(() => {
                             value={selectedCategory as CategoryResponse | null}
                             onChange={(value) => {
                               const selected = value as CategoryResponse | null
-                              const normalizedCategory = selected
+                              const normalizedType: CategoryType =
+                                selected?.type === 'INCOME' ? 'INCOME' : 'EXPENSE'
+                              const normalizedCategory: Transaction['category'] | undefined = selected
                                 ? {
                                     id: selected.id,
                                     name: selected.name,
                                     color: selected.color,
                                     icon: selected.icon,
-                                    type: selected.type === 'INCOME' ? 'INCOME' : 'EXPENSE',
+                                    type: normalizedType,
                                   }
                                 : undefined
                               updateImportedTransaction(t.id, {
@@ -644,13 +646,15 @@ const meta = useMemo(() => {
                             value={selectedCategory as CategoryResponse | null}
                             onChange={(value) => {
                               const selected = value as CategoryResponse | null
-                              const normalizedCategory = selected
+                              const normalizedType: CategoryType =
+                                selected?.type === 'INCOME' ? 'INCOME' : 'EXPENSE'
+                              const normalizedCategory: Transaction['category'] | undefined = selected
                                 ? {
                                     id: selected.id,
                                     name: selected.name,
                                     color: selected.color,
                                     icon: selected.icon,
-                                    type: selected.type === 'INCOME' ? 'INCOME' : 'EXPENSE',
+                                    type: normalizedType,
                                   }
                                 : undefined
                               updateImportedTransaction(t.id, {
