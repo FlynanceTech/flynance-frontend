@@ -15,6 +15,37 @@ import { useUserSession } from '@/stores/useUserSession'
 import { useCategories } from '@/hooks/query/useCategory'
 import { TrashIcon } from 'lucide-react'
 import DeleteConfirmModal from '../components/DeleteConfirmModal'
+import { CategorySelect } from '../components/CategorySelect'
+import Select from 'react-select'
+import type { StylesConfig } from 'react-select'
+import type { CategoryResponse } from '@/services/category'
+
+type TypeOption = { value: CategoryType; label: string }
+
+const typeOptions: TypeOption[] = [
+  { value: 'EXPENSE', label: 'Despesa' },
+  { value: 'INCOME', label: 'Receita' },
+]
+
+const typeSelectStyles: StylesConfig<TypeOption, false> = {
+  control: (base, state) => ({
+    ...base,
+    minHeight: 36,
+    borderRadius: 12,
+    borderColor: state.isFocused ? '#CBD5E1' : '#E2E8F0',
+    boxShadow: state.isFocused ? '0 0 0 2px rgba(59, 130, 246, 0.15)' : 'none',
+    ':hover': { borderColor: '#CBD5E1' },
+  }),
+  valueContainer: (base) => ({ ...base, paddingLeft: 10, paddingRight: 6 }),
+  placeholder: (base) => ({ ...base, color: '#64748B' }),
+  menu: (base) => ({ ...base, borderRadius: 12, overflow: 'hidden' }),
+  menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+  option: (base, state) => ({
+    ...base,
+    backgroundColor: state.isFocused ? '#F1F5F9' : 'white',
+    color: '#0F172A',
+  }),
+}
 
 const PAGE_SIZE = 10
 
@@ -158,15 +189,7 @@ export default function TransactionsPage() {
       setImportError(null)
       const payload = {
         mode: 'import' as const,
-        transactions: importedTransactions.map((t) => ({
-          description: t.description ?? '',
-          value: Number(t.value ?? 0),
-          date: t.date,
-          type: t.type ?? t.category?.type ?? 'EXPENSE',
-          categoryId: t.category?.id ?? t.categoryId ?? '',
-          paymentType: t.paymentType ?? 'MONEY',
-          origin: t.origin ?? 'DASHBOARD',
-        })),
+        transactions: importedTransactions,
       }
       await importConfirmMutation.mutateAsync({ userId, payload })
       setImportedTransactions([])
@@ -393,7 +416,7 @@ const meta = useMemo(() => {
             <div className="flex-1 overflow-auto p-3 md:p-4">
               <div className="rounded-xl border border-gray-200 bg-secondary/10 p-3">
                 <div className="hidden md:block">
-                  <div className="grid grid-cols-[110px_minmax(240px,1fr)_220px_110px_140px_48px] items-center gap-0 rounded-lg border border-gray-200 bg-secondary/30 px-4 py-3 text-sm font-semibold text-primary">
+                  <div className="grid grid-cols-[110px_minmax(240px,1fr)_220px_160px_140px_48px] items-center gap-0 rounded-lg border border-gray-200 bg-secondary/30 px-4 py-3 text-sm font-semibold text-primary">
                     <div>Data</div>
                     <div>Descricao</div>
                     <div>Categoria</div>
@@ -404,15 +427,20 @@ const meta = useMemo(() => {
 
                   <div className="max-h-[460px] overflow-auto rounded-lg border border-gray-200 bg-white">
                     {importedTransactions.map((t, idx) => {
-                      const categoryId = t.category?.id ?? ''
-                      const categoryType = t.category?.type ?? t.type ?? 'EXPENSE'
-                      const isIncome = categoryType === 'INCOME'
-                        const rowIsEditing = editingPreviewId === t.id
+                      const categoryId = t.categoryId ?? t.category?.id ?? ''
+                      const categoryType = t.type ?? t.category?.type ?? 'EXPENSE'
+                      const rowIsEditing = editingPreviewId === t.id
+                      const confidence = t.confidence
+                      const matchedKeyword = t.matchedKeyword
+                      const selectedCategory =
+                        t.category ?? categories.find((c) => c.id === categoryId) ?? null
+                      const selectedTypeOption =
+                        typeOptions.find((o) => o.value === categoryType) ?? typeOptions[0]
 
                       return (
                         <div
                           key={t.id}
-                          className="grid grid-cols-[110px_minmax(240px,1fr)_220px_110px_140px_48px] items-center gap-0 border-b border-gray-100 px-4 py-2 text-sm"
+                          className="grid grid-cols-[110px_minmax(240px,1fr)_220px_160px_140px_48px] items-center gap-0 border-b border-gray-100 px-4 py-2 text-sm"
                         >
                           <div className="text-gray-700">
                             {new Date(t.date).toLocaleDateString('pt-BR')}
@@ -441,53 +469,69 @@ const meta = useMemo(() => {
                                 className="w-full truncate text-left text-gray-800"
                                 title="Duplo clique para editar"
                               >
-                                {t.description ?? 'Sem descricao'}
-                              </button>
-                            )}
-                          </div>
-                          <div className="pr-3">
-                            <select
-                              value={categoryId}
-                              onChange={(e) => {
-                                const id = e.target.value
-                                const selected = categories.find((c) => c.id === id)
-                                updateImportedTransaction(t.id, {
-                                  category: selected
-                                    ? {
-                                        id: selected.id,
-                                        name: selected.name,
-                                        color: selected.color,
-                                        icon: selected.icon,
-                                        type: selected.type,
-                                      } as any
-                                    : undefined,
-                                })
-                                handleCategoryChange(t.description ?? '', id)
-                              }}
-                              className="w-full rounded-md border border-gray-200 bg-white px-2 py-1 text-sm"
-                            >
-                              <option value="">Selecionar categoria</option>
-                              {categories.map((c) => (
-                                <option key={c.id} value={c.id}>
-                                  {c.name}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
+                              {t.description}
+                            </button>
+                          )}
+                          {confidence && (
                             <span
                               className={[
-                                'inline-flex rounded-full px-2 py-1 text-xs font-medium',
-                                isIncome ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700',
+                                'mt-1 inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold',
+                                confidence === 'HIGH'
+                                  ? 'bg-emerald-100 text-emerald-700'
+                                  : confidence === 'MEDIUM'
+                                  ? 'bg-amber-100 text-amber-700'
+                                  : 'bg-gray-100 text-gray-600',
                               ].join(' ')}
+                              title={matchedKeyword ? `Categoria sugerida por: ${matchedKeyword}` : undefined}
                             >
-                              {isIncome ? 'Receita' : 'Despesa'}
+                              {confidence}
                             </span>
-                          </div>
-                          <div className="text-right pr-2 font-semibold">
-                            {new Intl.NumberFormat('pt-BR', {
-                              style: 'currency',
-                              currency: 'BRL',
+                          )}
+                        </div>
+                        <div className="pr-3">
+                          <CategorySelect
+                            value={selectedCategory as CategoryResponse | null}
+                            onChange={(value) => {
+                              const selected = value as CategoryResponse | null
+                              updateImportedTransaction(t.id, {
+                                category: selected ?? undefined,
+                                categoryId: selected?.id ?? '',
+                                type: (selected?.type as CategoryType) ?? categoryType,
+                              })
+                              if (selected?.id) {
+                                handleCategoryChange(t.description, selected.id)
+                              }
+                            }}
+                            allowCreate={false}
+                            typeFilter={categoryType}
+                            closeMenuOnSelect
+                            placeholder="Selecionar categoria"
+                            className="w-full"
+                            menuPlacement="auto"
+                          />
+                        </div>
+                        <div>
+                          <Select
+                            instanceId={`preview-type-${t.id}`}
+                            options={typeOptions}
+                            value={selectedTypeOption}
+                            onChange={(option) => {
+                              const nextType = (option?.value ?? categoryType) as CategoryType
+                              const nextPatch: Partial<Transaction> = { type: nextType }
+                              if (selectedCategory && selectedCategory.type !== nextType) {
+                                nextPatch.category = undefined
+                                nextPatch.categoryId = ''
+                              }
+                              updateImportedTransaction(t.id, nextPatch)
+                            }}
+                            styles={typeSelectStyles}
+                            menuPortalTarget={typeof window !== 'undefined' ? document.body : null}
+                          />
+                        </div>
+                        <div className="text-right pr-2 font-semibold">
+                          {new Intl.NumberFormat('pt-BR', {
+                            style: 'currency',
+                            currency: 'BRL',
                             }).format(Number(t.value ?? 0))}
                           </div>
                           <div className="flex justify-end">
@@ -511,10 +555,15 @@ const meta = useMemo(() => {
 
                 <div className="md:hidden">
                   {importedTransactions.map((t, idx) => {
-                    const categoryId = t.category?.id ?? ''
-                    const categoryType = t.category?.type ?? t.type ?? 'EXPENSE'
-                    const isIncome = categoryType === 'INCOME'
-                        const rowIsEditing = editingPreviewId === t.id
+                    const categoryId = t.categoryId ?? t.category?.id ?? ''
+                    const categoryType = t.type ?? t.category?.type ?? 'EXPENSE'
+                    const rowIsEditing = editingPreviewId === t.id
+                    const confidence = t.confidence
+                    const matchedKeyword = t.matchedKeyword
+                    const selectedCategory =
+                      t.category ?? categories.find((c) => c.id === categoryId) ?? null
+                    const selectedTypeOption =
+                      typeOptions.find((o) => o.value === categoryType) ?? typeOptions[0]
 
                     return (
                       <div
@@ -561,50 +610,68 @@ const meta = useMemo(() => {
                               className="w-full truncate text-left text-sm font-semibold text-gray-800"
                               title="Duplo clique para editar"
                             >
-                              {t.description ?? 'Sem descricao'}
+                              {t.description}
                             </button>
                           )}
                         </div>
-
-                        <div className="mt-2">
-                          <select
-                            value={categoryId}
-                            onChange={(e) => {
-                              const id = e.target.value
-                              const selected = categories.find((c) => c.id === id)
-                              updateImportedTransaction(t.id, {
-                                category: selected
-                                  ? {
-                                      id: selected.id,
-                                      name: selected.name,
-                                      color: selected.color,
-                                      icon: selected.icon,
-                                      type: selected.type,
-                                    } as any
-                                  : undefined,
-                              })
-                              handleCategoryChange(t.description ?? '', id)
-                            }}
-                            className="w-full rounded-md border border-gray-200 bg-white px-2 py-1 text-sm"
-                          >
-                            <option value="">Selecionar categoria</option>
-                            {categories.map((c) => (
-                              <option key={c.id} value={c.id}>
-                                {c.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="mt-3 flex items-center justify-between">
+                        {confidence && (
                           <span
                             className={[
-                              'inline-flex rounded-full px-2 py-1 text-xs font-medium',
-                              isIncome ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700',
+                              'mt-2 inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold',
+                              confidence === 'HIGH'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : confidence === 'MEDIUM'
+                                ? 'bg-amber-100 text-amber-700'
+                                : 'bg-gray-100 text-gray-600',
                             ].join(' ')}
+                            title={matchedKeyword ? `Categoria sugerida por: ${matchedKeyword}` : undefined}
                           >
-                            {isIncome ? 'Receita' : 'Despesa'}
+                            {confidence}
                           </span>
+                        )}
+
+                        <div className="mt-2">
+                          <CategorySelect
+                            value={selectedCategory as CategoryResponse | null}
+                            onChange={(value) => {
+                              const selected = value as CategoryResponse | null
+                              updateImportedTransaction(t.id, {
+                                category: selected ?? undefined,
+                                categoryId: selected?.id ?? '',
+                                type: (selected?.type as CategoryType) ?? categoryType,
+                              })
+                              if (selected?.id) {
+                                handleCategoryChange(t.description, selected.id)
+                              }
+                            }}
+                            allowCreate={false}
+                            typeFilter={categoryType}
+                            closeMenuOnSelect
+                            placeholder="Selecionar categoria"
+                            className="w-full"
+                            menuPlacement="auto"
+                          />
+                        </div>
+
+                        <div className="mt-3 flex items-center justify-between gap-3">
+                          <div className="w-32">
+                            <Select
+                              instanceId={`preview-type-mobile-${t.id}`}
+                              options={typeOptions}
+                              value={selectedTypeOption}
+                              onChange={(option) => {
+                                const nextType = (option?.value ?? categoryType) as CategoryType
+                                const nextPatch: Partial<Transaction> = { type: nextType }
+                                if (selectedCategory && selectedCategory.type !== nextType) {
+                                  nextPatch.category = undefined
+                                  nextPatch.categoryId = ''
+                                }
+                                updateImportedTransaction(t.id, nextPatch)
+                              }}
+                              styles={typeSelectStyles}
+                              menuPortalTarget={typeof window !== 'undefined' ? document.body : null}
+                            />
+                          </div>
                           <span className="text-sm font-semibold text-gray-800">
                             {new Intl.NumberFormat('pt-BR', {
                               style: 'currency',

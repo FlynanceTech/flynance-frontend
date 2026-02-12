@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo } from 'react'
-import { AlertTriangle, ArrowDown, ArrowUp, Bell, CheckCircle2, Wallet } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { AlertTriangle, ArrowDown, ArrowUp, Bell, CheckCircle2, Eye, EyeOff, Wallet } from 'lucide-react'
 import FinanceCard from '../FinanceCard'
 import { TabGroup, TabList, Tab, TabPanels, TabPanel } from '@headlessui/react'
 import { useFixedAccounts } from '@/hooks/query/useFixedAccounts'
@@ -47,11 +47,34 @@ export default function FinanceStatus({
   periodLabel = 'período anterior',
 }: FinanceStatusProps) {
   const { fixedAccountsQuery } = useFixedAccounts()
+  const [showValues, setShowValues] = useState(true)
+  const storageKey = 'flynance:finance-status:show-values'
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const stored = window.localStorage.getItem(storageKey)
+    if (stored === '0') setShowValues(false)
+    if (stored === '1') setShowValues(true)
+  }, [])
+
+  const toggleShowValues = () => {
+    setShowValues((prev) => {
+      const next = !prev
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(storageKey, next ? '1' : '0')
+      }
+      return next
+    })
+  }
 
   const fmt = (v?: number) =>
     typeof v === 'number' && Number.isFinite(v)
       ? `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
       : 'R$ 0,00'
+
+  const maskedValue = (v: number) => (showValues ? fmt(v) : 'R$ ••••')
+  const visibilityLabel = showValues ? 'Ocultar valores' : 'Mostrar valores'
+  const visibilityIcon = showValues ? <EyeOff size={16} /> : <Eye size={16} />
 
   const reminder = useMemo<ReminderStatus | null>(() => {
     const bills = fixedAccountsQuery.data ?? []
@@ -139,28 +162,25 @@ export default function FinanceStatus({
         : `vence em ${reminder?.nextInDays ?? 0} dia${(reminder?.nextInDays ?? 0) === 1 ? '' : 's'}`
       : reminder?.variant === 'overdue'
       ? 'em atraso'
-      : 'tudo em dia'
+      : ''
   const reminderTitle =
     reminder?.variant === 'overdue' ? (
       <h2 className="text-red-600 font-medium flex flex-col gap-1">
         <span className="flex items-center gap-2">
           <AlertTriangle /> Contas em atraso
         </span>
-        <span className="text-xs font-normal text-red-700">{reminderLabel}</span>
       </h2>
     ) : reminder?.variant === 'due' ? (
       <h2 className="text-amber-600 font-medium flex flex-col gap-1">
         <span className="flex items-center gap-2">
           <Bell /> Contas a vencer
         </span>
-        <span className="text-xs font-normal text-amber-700">{reminderLabel}</span>
       </h2>
     ) : (
       <h2 className="text-emerald-600 font-medium flex flex-col gap-1">
         <span className="flex items-center gap-2">
           <CheckCircle2 /> Contas em dia
         </span>
-        <span className="text-xs font-normal text-emerald-700">{reminderLabel}</span>
       </h2>
     )
   const reminderCard = reminder && (
@@ -206,15 +226,26 @@ export default function FinanceStatus({
             <TabPanel>
               <FinanceCard
                 title={
-                  <h2
-                    className={`font-medium flex gap-2 ${
-                      balance < 0 ? 'text-[#F15959]' : 'text-[#41B46B]'
-                    }`}
-                  >
-                    <Wallet /> Saldo
-                  </h2>
+                  <div className="flex items-center justify-between gap-3">
+                    <h2
+                      className={`font-medium flex gap-2 ${
+                        balance < 0 ? 'text-[#F15959]' : 'text-[#41B46B]'
+                      }`}
+                    >
+                      <Wallet /> Saldo
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={toggleShowValues}
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"
+                      aria-label={visibilityLabel}
+                      title={visibilityLabel}
+                    >
+                      {visibilityIcon}
+                    </button>
+                  </div>
                 }
-                value={fmt(balance)}
+                value={maskedValue(balance)}
                 isLabel
                 isBalance
               />
@@ -225,11 +256,22 @@ export default function FinanceStatus({
                 percentage={incomeChange}
                 periodLabel={periodLabel}
                 title={
-                  <h2 className="text-[#41B46B] font-medium flex gap-2">
-                    <ArrowUp /> Receita
-                  </h2>
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className="text-[#41B46B] font-medium flex gap-2">
+                      <ArrowUp /> Receita
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={toggleShowValues}
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"
+                      aria-label={visibilityLabel}
+                      title={visibilityLabel}
+                    >
+                      {visibilityIcon}
+                    </button>
+                  </div>
                 }
-                value={fmt(income)}
+                value={maskedValue(income)}
                 isLabel
               />
             </TabPanel>
@@ -239,11 +281,22 @@ export default function FinanceStatus({
                 percentage={expenseChange}
                 periodLabel={periodLabel}
                 title={
-                  <h2 className="text-[#F15959] font-medium flex gap-2">
-                    <ArrowDown /> Despesas
-                  </h2>
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className="text-[#F15959] font-medium flex gap-2">
+                      <ArrowDown /> Despesas
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={toggleShowValues}
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"
+                      aria-label={visibilityLabel}
+                      title={visibilityLabel}
+                    >
+                      {visibilityIcon}
+                    </button>
+                  </div>
                 }
-                value={fmt(expense)}
+                value={maskedValue(expense)}
                 isExpense
                 isLabel
               />
@@ -258,15 +311,26 @@ export default function FinanceStatus({
       <div className="hidden lg:grid lg:grid-flow-col gap-4 lg:gap-4">
         <FinanceCard
           title={
-            <h2
-              className={`font-medium flex gap-2 ${
-                balance < 0 ? 'text-[#F15959]' : 'text-[#41B46B]'
-              }`}
-            >
-              <Wallet /> Saldo
-            </h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2
+                className={`font-medium flex gap-2 ${
+                  balance < 0 ? 'text-[#F15959]' : 'text-[#41B46B]'
+                }`}
+              >
+                <Wallet /> Saldo
+              </h2>
+              <button
+                type="button"
+                onClick={toggleShowValues}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"
+                aria-label={visibilityLabel}
+                title={visibilityLabel}
+              >
+                {visibilityIcon}
+              </button>
+            </div>
           }
-          value={fmt(balance)}
+          value={maskedValue(balance)}
           periodLabel={periodLabel}
           isLabel
           isBalance   
@@ -274,15 +338,45 @@ export default function FinanceStatus({
         <FinanceCard
           percentage={incomeChange}
           periodLabel={periodLabel}
-          title={<h2 className="text-[#41B46B] font-medium flex gap-2"><ArrowUp /> Receita</h2>}
-          value={fmt(income)}
+          title={
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-[#41B46B] font-medium flex gap-2">
+                <ArrowUp /> Receita
+              </h2>
+              <button
+                type="button"
+                onClick={toggleShowValues}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"
+                aria-label={visibilityLabel}
+                title={visibilityLabel}
+              >
+                {visibilityIcon}
+              </button>
+            </div>
+          }
+          value={maskedValue(income)}
           isLabel
         />
         <FinanceCard
           percentage={expenseChange}
           periodLabel={periodLabel}
-          title={<h2 className="text-[#F15959] font-medium flex gap-2"><ArrowDown /> Despesas</h2>}
-          value={fmt(expense)}
+          title={
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-[#F15959] font-medium flex gap-2">
+                <ArrowDown /> Despesas
+              </h2>
+              <button
+                type="button"
+                onClick={toggleShowValues}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"
+                aria-label={visibilityLabel}
+                title={visibilityLabel}
+              >
+                {visibilityIcon}
+              </button>
+            </div>
+          }
+          value={maskedValue(expense)}
           isExpense
           isLabel
         />

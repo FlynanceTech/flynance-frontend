@@ -1,4 +1,3 @@
-// AtualizaÃ§Ã£o para Sidebar retrÃ¡til estilo "collapsed" com toggle
 'use client'
 
 import Image from 'next/image'
@@ -15,7 +14,8 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   BookOpenCheck,
-  ClipboardList
+  ClipboardList,
+  BarChart3,
 } from 'lucide-react'
 import SidebarItem from './SidebarItem'
 import { useUserSession } from '@/stores/useUserSession'
@@ -32,6 +32,7 @@ export default function Sidebar() {
     { label: 'Dashboard', icon: <LayoutDashboard />, path: '/dashboard' },
     { label: 'Transações', icon: <Landmark />, path: '/dashboard/transacoes' },
     { label: 'Contas', icon: <ClipboardList />, path: '/dashboard/contas-fixas' },
+    { label: 'Relatórios', icon: <BarChart3 />, path: '/dashboard/relatorios' },
     { label: 'Categorias', icon: <Tag />, path: '/dashboard/categorias' },
     { label: 'Educação', icon: <BookOpenCheck />, path: '/dashboard/educacao' },
     { label: 'Perfil', icon: <User />, path: '/dashboard/perfil' },

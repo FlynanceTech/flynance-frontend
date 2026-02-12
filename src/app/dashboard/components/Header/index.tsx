@@ -19,12 +19,14 @@ interface HeaderProps {
   title?: string
   subtitle: string  
   asFilter?: boolean
+  asReport?: boolean
   dataToFilter?: Category[]
   newTransation?: boolean
   importTransations?: boolean
   onApplyFilters?: () => void
   onImportClick?: () => void
   importLoading?: boolean
+  rightContent?: React.ReactNode
 }
 
 type AnyDateFilter =
@@ -39,7 +41,7 @@ function diffDaysInclusive(start: string, end: string) {
   return Math.max(1, Math.floor((e - s) / ms) + 1)
 }
 
-export default function Header({ title, subtitle, asFilter = false, dataToFilter, newTransation = true, importTransations, onApplyFilters, onImportClick, importLoading}: HeaderProps) {
+export default function Header({ title, subtitle, asFilter = false, asReport = false, dataToFilter, newTransation = true, importTransations, onApplyFilters, onImportClick, importLoading, rightContent}: HeaderProps) {
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   const selectedCategories = useTransactionFilter((s) => s.selectedCategories)
@@ -130,8 +132,9 @@ export default function Header({ title, subtitle, asFilter = false, dataToFilter
         <div className="flex items-center justify-between lg:pb-2 sm:px-0">
         <div className="w-full flex  md:flex-row justify-between md:items-center gap-2 mb-4">
           <h1 className="lg:text-xl text-base font-semibold text-[#333C4D]">{title}</h1>
+  
 
-          <div className="hidden lg:flex gap-4 items-center">
+          <div className="hidden lg:flex gap-4 items-center justify-end">
            {/*  <NotificationBell asFilter={asFilter} /> */}
            {
             importTransations &&
@@ -149,9 +152,13 @@ export default function Header({ title, subtitle, asFilter = false, dataToFilter
               <NewTransactionButton onClick={() => setDrawerOpen(true)} />
             }
           </div>
-
-          <div className="flex lg:hidden gap-2 items-center">
-        
+              {rightContent && (
+              <div className="flex items-center gap-2">
+                {rightContent}
+              </div>
+            )}
+          <div className="flex lg:hidden gap-2 items-center ">
+          
           {/*   <NotificationBell  asFilter={asFilter} /> */}
             {importTransations && (
               <ImportTransactionsButton
@@ -163,6 +170,7 @@ export default function Header({ title, subtitle, asFilter = false, dataToFilter
                 label={importLoading ? 'Importando...' : 'Importar'}
               />
             )}
+          
             {asFilter && (
             <Menu as="div" className="relative lg:hidden">
             {({ open, close }) => (
@@ -232,7 +240,7 @@ export default function Header({ title, subtitle, asFilter = false, dataToFilter
       </div>
 
           {asFilter && (
-          <div className="gap-4 items-center hidden md:flex">
+          <div className="gap-4 items-center hidden md:flex ">
           
             {dataToFilter && (
               <div className="flex gap-3 items-center w-full">

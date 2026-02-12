@@ -667,7 +667,7 @@ export default function FixedBillsPage() {
                 {createMutation.isPending || updateMutation.isPending
                   ? 'Salvando...'
                   : editingBill
-                  ? 'Salvar alteraÃ§Ãµes'
+                  ? 'Salvar Alterações'
                   : 'Adicionar conta fixa'}
               </button>
             </form>

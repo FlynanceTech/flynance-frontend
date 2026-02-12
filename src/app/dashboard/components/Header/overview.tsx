@@ -130,9 +130,9 @@ export default function Header({
       <div className="flex flex-col gap-2">
         <div className="grid grid-cols-3 items-center">
           <h3 className="text-2xl font-bold text-[#333C4D] col-span-2">Olá, {firstName}!</h3>
-
+    
           {/* Desktop */}
-          <div className="hidden lg:flex gap-4 items-center">
+          <div className="hidden lg:flex gap-4 items-center justify-end col-span-1">
             {asFilter && (
               <div className="flex gap-4 items-center">
                 {dataToFilter && (

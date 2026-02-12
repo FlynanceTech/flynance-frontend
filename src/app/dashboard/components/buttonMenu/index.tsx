@@ -8,6 +8,7 @@ import {
   ClipboardList,
   Menu,
   X,
+  BarChart3,
 } from 'lucide-react'
 import React, { useState } from 'react'
 import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react'
@@ -22,6 +23,7 @@ export default function BottomMenu() {
     { label: 'Contas', icon: ClipboardList, path: '/dashboard/contas-fixas' },
   ]
   const moreItems = [
+    { label: 'Relatórios', icon: BarChart3, path: '/dashboard/relatorios' },
     { label: 'Categorias', icon: Tag, path: '/dashboard/categorias' },
     { label: 'Educação', icon: BookOpenCheck, path: '/dashboard/educacao' },
     { label: 'Perfil', icon: User, path: '/dashboard/perfil' },

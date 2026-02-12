@@ -24,6 +24,8 @@ export interface Transaction {
   origin: TransactionOrigin
   category: Category 
   paymentType: PaymentType
+  confidence?: 'LOW' | 'MEDIUM' | 'HIGH'
+  matchedKeyword?: string
 }
 
 export interface User {
