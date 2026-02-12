@@ -493,10 +493,19 @@ const meta = useMemo(() => {
                             value={selectedCategory as CategoryResponse | null}
                             onChange={(value) => {
                               const selected = value as CategoryResponse | null
+                              const normalizedCategory = selected
+                                ? {
+                                    id: selected.id,
+                                    name: selected.name,
+                                    color: selected.color,
+                                    icon: selected.icon,
+                                    type: selected.type === 'INCOME' ? 'INCOME' : 'EXPENSE',
+                                  }
+                                : undefined
                               updateImportedTransaction(t.id, {
-                                category: selected ?? undefined,
+                                category: normalizedCategory,
                                 categoryId: selected?.id ?? '',
-                                type: (selected?.type as CategoryType) ?? categoryType,
+                                type: normalizedCategory?.type ?? categoryType,
                               })
                               if (selected?.id) {
                                 handleCategoryChange(t.description, selected.id)
@@ -635,10 +644,19 @@ const meta = useMemo(() => {
                             value={selectedCategory as CategoryResponse | null}
                             onChange={(value) => {
                               const selected = value as CategoryResponse | null
+                              const normalizedCategory = selected
+                                ? {
+                                    id: selected.id,
+                                    name: selected.name,
+                                    color: selected.color,
+                                    icon: selected.icon,
+                                    type: selected.type === 'INCOME' ? 'INCOME' : 'EXPENSE',
+                                  }
+                                : undefined
                               updateImportedTransaction(t.id, {
-                                category: selected ?? undefined,
+                                category: normalizedCategory,
                                 categoryId: selected?.id ?? '',
-                                type: (selected?.type as CategoryType) ?? categoryType,
+                                type: normalizedCategory?.type ?? categoryType,
                               })
                               if (selected?.id) {
                                 handleCategoryChange(t.description, selected.id)
