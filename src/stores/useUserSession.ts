@@ -14,6 +14,11 @@ type UserSessionStore = {
   clearUser: () => void
 }
 
+const clearAuthToken = () => {
+  if (typeof window === 'undefined') return
+  localStorage.removeItem('token')
+}
+
 export const useUserSession = create<UserSessionStore>((set) => ({
   user: null,
   status: 'idle', // ainda não buscamos nada
@@ -27,6 +32,7 @@ export const useUserSession = create<UserSessionStore>((set) => ({
       })
       set({ user: res.data, status: 'authenticated' })
     } catch {
+      clearAuthToken()
       set({ user: null, status: 'unauthenticated' })
     }
   },
@@ -39,5 +45,8 @@ export const useUserSession = create<UserSessionStore>((set) => ({
 
   setUser: (user) => set({ user, status: 'authenticated' }),
 
-  clearUser: () => set({ user: null, status: 'unauthenticated' }),
+  clearUser: () => {
+    clearAuthToken()
+    set({ user: null, status: 'unauthenticated' })
+  },
 }))

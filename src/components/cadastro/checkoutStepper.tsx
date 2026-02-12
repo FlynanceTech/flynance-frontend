@@ -111,6 +111,22 @@ function getErrorMessage(err: unknown): string {
   return "Erro inesperado.";
 }
 
+const isUserNotFoundError = (err: unknown) => {
+  if (!axios.isAxiosError(err)) return false;
+
+  const status = err.response?.status;
+  const msg = (err.response?.data?.message ?? err.message ?? "").toString().toLowerCase();
+
+  if (status === 404 && msg.includes("user")) return true;
+
+  return (
+    msg.includes("user not found") ||
+    msg.includes("usuário não encontrado") ||
+    msg.includes("usuario nao encontrado") ||
+    msg.includes("user not exists")
+  );
+};
+
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -200,6 +216,10 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    fetchAccount();
+  }, [fetchAccount]);
 
   useEffect(() => {
     if (revalidate) fetchAccount();
@@ -724,10 +744,19 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
         throw new Error("Preencha corretamente os dados do cartão.");
       }
 
-      const ensuredUser = await resolveUserAndSync();
+      let ensuredUser = await resolveUserAndSync();
 
       // 1) SetupIntent (backend cria/garante customer do Stripe)
-      const { clientSecret } = await createSetupIntent(ensuredUser.id);
+      let clientSecret: string;
+      try {
+        ({ clientSecret } = await createSetupIntent(ensuredUser.id));
+      } catch (err) {
+        if (!isUserNotFoundError(err)) throw err;
+
+        const recoveredUser = await resolveUserAndSync();
+        ensuredUser = recoveredUser;
+        ({ clientSecret } = await createSetupIntent(ensuredUser.id));
+      }
 
       // 2) Confirmar cartão no Stripe (gera pm_...)
       const paymentMethodId = await confirmCardSetup(clientSecret);
@@ -746,7 +775,15 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
         payload.annualBilling = annualBilling; // "UPFRONT" | "INSTALLMENTS"
       }
 
-      await api.post("/billing/subscription", payload);
+      try {
+        await api.post("/billing/subscription", payload);
+      } catch (err) {
+        if (!isUserNotFoundError(err)) throw err;
+
+        const recoveredUser = await resolveUserAndSync();
+        payload.userId = recoveredUser.id;
+        await api.post("/billing/subscription", payload);
+      }
 
       setLoading(false);
       setView("SUCCESS");
