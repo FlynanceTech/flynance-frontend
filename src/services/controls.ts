@@ -43,8 +43,12 @@ export async function createControl(data: CreateControlDTO) {
 }
 
 // Listar (sem/ com progresso)
-export async function getAllControls(withProgress = false) {
-  const response = await api.get('/controls', { params: { withProgress } })
+export async function getAllControls(withProgress = false, date?: Date) {
+  const params: Record<string, unknown> = { withProgress }
+  if (date) {
+    params.date = date.toISOString().split('T')[0]
+  }
+  const response = await api.get('/controls', { params })
   return response.data
 }
 

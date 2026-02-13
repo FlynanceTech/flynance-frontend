@@ -11,6 +11,7 @@ export interface FixedAccountDTO {
   currency?: string
   categoryId?: string | null
   dueDay: number
+  dueDate?: string
   frequency?: FixedAccountFrequency
   startDate: string
   endDate?: string | null
@@ -26,6 +27,7 @@ export interface FixedAccountResponse {
   currency?: string
   categoryId?: string | null
   dueDay: number
+  dueDate?: string
   frequency?: FixedAccountFrequency
   startDate?: string
   endDate?: string | null

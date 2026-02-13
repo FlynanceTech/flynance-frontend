@@ -62,7 +62,7 @@ const CustomRect = (props) => {
 }
 
 
-export default function CategorySpendingDistribution({transactions, isLoading}) {
+export default function CategorySpendingDistribution({transactions, isLoading, periodTag}) {
   
   const [sortDesc, setSortDesc] = useState(true)
   const [changeChart, setChangeChart] = useState(true)
@@ -156,7 +156,14 @@ export default function CategorySpendingDistribution({transactions, isLoading}) 
     <div className="bg-white p-6 rounded-xl shadow border border-gray-200 w-full flex flex-col lg:flex-row gap-4 items-center lg:items-start">
       <div className="w-full lg:w-1/2 flex flex-col gap-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold text-gray-800 mb-1">Gastos por Categoria</h2>
+          <div className="flex flex-col">
+            <h2 className="text-lg font-semibold text-gray-800 mb-1">Gastos por Categoria</h2>
+            {periodTag && (
+              <span className="w-fit rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                {periodTag}
+              </span>
+            )}
+          </div>
           <div className='flex items-center gap-4 justify-between'>
             <button  
               className='border border-gray-300 rounded-full p-1 text-gray-500 w-9 h-9 flex items-center justify-center hover:bg-gray-50 cursor-pointer'

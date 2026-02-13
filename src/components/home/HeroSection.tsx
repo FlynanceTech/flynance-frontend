@@ -8,8 +8,8 @@ import { ArrowRight } from "lucide-react";
 import chatFly from "../../../assets/chat-fly.jpeg";
 import dashboardMobile from "../../../assets/dashboard-mobile.png";
 
-// ✅ vídeo principal (coloque em /public/videos/hero.mp4)
-const HERO_VIDEO_SRC = "/videos/hero.mp4";
+// ✅ vídeo principal (public/videos/app-demo.mp4)
+const HERO_VIDEO_SRC = "/videos/app-demo.mp4";
 
 type Slide =
   | { type: "video"; key: string; src: string; poster?: string }
@@ -22,8 +22,8 @@ const HeroSection = () => {
         type: "video",
         key: "video",
         src: HERO_VIDEO_SRC,
-        // opcional: poster pra antes de carregar
-        poster: "/videos/hero-poster.jpg",
+        // poster enquanto carrega o video
+        poster: dashboardMobile.src,
       },
       { type: "image", key: "chat", src: chatFly, alt: "Chat da Fly no WhatsApp" },
       { type: "image", key: "dash", src: dashboardMobile, alt: "Dashboard mobile da Flynance" },
@@ -59,28 +59,54 @@ const HeroSection = () => {
           <PhoneCarousel slides={slides} />
         </div>
 
-        {/* ✅ DESKTOP: mantém duas telas como você já tinha */}
-        <div className="hidden lg:flex justify-center gap-4 md:gap-8 overflow-hidden p-4">
-          <PhoneFrame tilt="-3">
-            <Image
-              src={chatFly}
-              className="object-contain rounded-2xl"
-              alt="Chat da Fly no WhatsApp"
-              width={300}
-              height={900}
-              priority
-            />
-          </PhoneFrame>
+        {/* ✅ DESKTOP: video em destaque + imagens por tras */}
+        <div className="hidden lg:flex justify-center overflow-visible p-6">
+          <div className="relative w-full max-w-7xl h-[640px] flex items-center justify-center">
+            <PhoneFrame
+              tilt="-6"
+              className="absolute left-60 z-0 opacity-90 scale-[0.96] -translate-x-6 -translate-y-2 rotate-12"
+            >
+              <Image
+                src={chatFly}
+                className="object-contain rounded-2xl"
+                alt="Chat da Fly no WhatsApp"
+                width={300}
+                height={600}
+                priority
+              />
+            </PhoneFrame>
 
-          <PhoneFrame tilt="3">
-            <Image
-              src={dashboardMobile}
-              className="object-contain rounded-2xl"
-              alt="Dashboard mobile da Flynance"
-              width={300}
-              height={900}
-            />
-          </PhoneFrame>
+            <PhoneFrame
+              tilt="0"
+              className="relative z-10 scale-[1.05] shadow-[0_30px_80px_rgba(15,23,42,0.35)]"
+            >
+              <video
+                className="w-[390px] h-[640px] object-cover rounded-2xl"
+                src={HERO_VIDEO_SRC}
+                poster={dashboardMobile.src}
+                muted
+                playsInline
+                preload="metadata"
+                autoPlay
+                loop
+                controls={false}
+                aria-label="Video da aplicacao Flynance"
+              />
+            </PhoneFrame>
+
+            <PhoneFrame
+              tilt="6"
+              className="absolute right-60 z-0 opacity-90 scale-[0.96] translate-x-6 -translate-y-2 -rotate-12"
+            >
+              <Image
+                src={dashboardMobile}
+                className="object-contain rounded-2xl"
+                alt="Dashboard mobile da Flynance"
+                width={300}
+                height={600}
+              />
+            </PhoneFrame>
+          </div>
         </div>
       </div>
     </section>
@@ -93,7 +119,15 @@ export default HeroSection;
 /* UI helpers */
 /* ----------------------------- */
 
-function PhoneFrame({ children, tilt }: { children: React.ReactNode; tilt: "-3" | "3" | string }) {
+function PhoneFrame({
+  children,
+  tilt,
+  className,
+}: {
+  children: React.ReactNode;
+  tilt: "-3" | "3" | string;
+  className?: string;
+}) {
   const tiltClass =
     tilt === "-3"
       ? "transform -rotate-3 hover:rotate-0"
@@ -105,7 +139,8 @@ function PhoneFrame({ children, tilt }: { children: React.ReactNode; tilt: "-3" 
     <div
       className={clsx(
         "w-[220px] md:w-[280px] bg-foreground rounded-3xl p-2 shadow-2xl transition-transform duration-300",
-        tiltClass
+        tiltClass,
+        className
       )}
     >
       {children}
@@ -136,13 +171,16 @@ function PhoneCarousel({ slides }: { slides: Slide[] }) {
   const prev = () => goTo(index - 1);
 
   // autoplay (pausa quando usuário está interagindo)
+  // para vídeo: só avança quando terminar
   useEffect(() => {
     if (isTouching) return;
+    const slide = slides[index];
+    if (slide?.type === "video") return;
     const t = setInterval(() => {
       setIndex((prev) => (prev + 1) % slides.length);
     }, 4500);
     return () => clearInterval(t);
-  }, [isTouching, slides.length]);
+  }, [isTouching, slides.length, index, slides]);
 
   // se o slide atual for vídeo: tenta tocar (sem som) e pausa quando sai
   useEffect(() => {
@@ -213,6 +251,7 @@ function PhoneCarousel({ slides }: { slides: Slide[] }) {
                       muted
                       playsInline
                       preload="metadata"
+                      onEnded={next}
                       controls={false}
                     />
                   ) : (

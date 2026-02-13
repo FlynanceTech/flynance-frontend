@@ -113,6 +113,10 @@ function formatBRL(v: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(v || 0))
 }
 
+function roundCurrency(v: number) {
+  return Math.round(Number(v || 0) * 100) / 100
+}
+
 function formatDateBR(iso?: string | null) {
   if (!iso) return '-'
   const d = new Date(iso)
@@ -201,6 +205,7 @@ export default function FuturosPage() {
   const [installmentEditModalOpen, setInstallmentEditModalOpen] = useState(false)
   const [editingInstallment, setEditingInstallment] = useState<FutureInstallment | null>(null)
   const [deleteInstallmentTarget, setDeleteInstallmentTarget] = useState<FutureInstallment | null>(null)
+  const [syncingPlanId, setSyncingPlanId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
   const { categoriesQuery } = useCategories()
@@ -231,6 +236,15 @@ export default function FuturosPage() {
       status: filters.status || undefined,
       page: filters.page,
       limit: filters.limit,
+    },
+    { enabled: Boolean(selectedPlanId) }
+  )
+
+  const planTotalCheckQuery = useFutureInstallments(
+    {
+      planId: selectedPlanId || undefined,
+      page: 1,
+      limit: 300,
     },
     { enabled: Boolean(selectedPlanId) }
   )
@@ -337,6 +351,22 @@ export default function FuturosPage() {
     return 1
   }, [installmentsMeta])
 
+  const planTotalCheckInstallments = planTotalCheckQuery.data?.installments ?? []
+  const planTotalCheckMeta = planTotalCheckQuery.data?.meta
+  const planInstallmentsSum = useMemo(
+    () => roundCurrency(planTotalCheckInstallments.reduce((sum, item) => sum + Number(item.amount || 0), 0)),
+    [planTotalCheckInstallments]
+  )
+  const canComparePlanTotal = useMemo(() => {
+    if (!selectedPlan || !planTotalCheckMeta) return false
+    return Number(planTotalCheckMeta.total || 0) <= planTotalCheckInstallments.length
+  }, [selectedPlan, planTotalCheckMeta, planTotalCheckInstallments.length])
+  const planTotalDifference = useMemo(() => {
+    if (!selectedPlan || !canComparePlanTotal) return 0
+    return roundCurrency(planInstallmentsSum - Number(selectedPlan.totalAmount || 0))
+  }, [selectedPlan, canComparePlanTotal, planInstallmentsSum])
+  const hasPlanTotalMismatch = canComparePlanTotal && Math.abs(planTotalDifference) >= 0.01
+
   const openCreatePlanModal = () => {
     setPlanModalMode('create')
     setEditingPlan(null)
@@ -414,9 +444,9 @@ export default function FuturosPage() {
       }
 
       closePlanModal()
-      toast.success(planModalMode === 'edit' ? 'Parcelamento atualizado.' : 'Parcelamento criado.')
+      toast.success(planModalMode === 'edit' ? 'Transação Futura atualizada.' : 'Transação Futura criada.')
     } catch (err) {
-      const raw = err instanceof Error ? err.message : 'Erro ao salvar parcelamento.'
+      const raw = err instanceof Error ? err.message : 'Erro ao salvar Transação Futura.'
       const message = mapFutureDomainError(raw)
       setActionError(message)
       toast.error(message)
@@ -432,9 +462,9 @@ export default function FuturosPage() {
         setSelectedPlanId(null)
       }
       setDeletePlanTarget(null)
-      toast.success('Parcelamento excluído.')
+      toast.success('Transação Futura excluído.')
     } catch (err) {
-      const raw = err instanceof Error ? err.message : 'Erro ao excluir parcelamento.'
+      const raw = err instanceof Error ? err.message : 'Erro ao excluir Transação Futura.'
       const message = mapFutureDomainError(raw)
       setActionError(message)
       toast.error(message)
@@ -540,6 +570,29 @@ export default function FuturosPage() {
     }
   }
 
+  const onSyncPlanTotalWithInstallments = async () => {
+    if (!selectedPlan?.id || !canComparePlanTotal || !hasPlanTotalMismatch) return
+    setActionError(null)
+    setSyncingPlanId(selectedPlan.id)
+    try {
+      await updatePlanMutation.mutateAsync({
+        id: selectedPlan.id,
+        payload: {
+          totalAmount: planInstallmentsSum,
+          recalculateRemaining: false,
+        },
+      })
+      toast.success('Total da transação futura sincronizado com as parcelas.')
+    } catch (err) {
+      const raw = err instanceof Error ? err.message : 'Erro ao sincronizar total da transação futura.'
+      const message = mapFutureDomainError(raw)
+      setActionError(message)
+      toast.error(message)
+    } finally {
+      setSyncingPlanId(null)
+    }
+  }
+
   const loadingCards = forecastQuery.isLoading
   const loadingPlans = plansQuery.isLoading
   const loadingInstallments = installmentsQuery.isLoading
@@ -562,7 +615,7 @@ export default function FuturosPage() {
     <section className="w-full h-full pt-8 lg:px-8 px-4 pb-24 lg:pb-0 flex flex-col gap-6 overflow-auto">
       <Header
         title="Futuros"
-        subtitle="Gerencie parcelamentos e acompanhe previsoes de despesas e receitas futuras."
+        subtitle="Gerencie Transaçôes Futuras e acompanhe previsoes de despesas e receitas futuras."
         newTransation={false}
         rightContent={
           <button
@@ -571,7 +624,7 @@ export default function FuturosPage() {
             className="h-10 rounded-full bg-primary px-4 text-sm font-semibold text-white hover:bg-secondary flex items-center gap-2"
           >
             <Plus size={16} />
-            Novo parcelamento
+            Transação Futura
           </button>
         }
       />
@@ -700,14 +753,14 @@ export default function FuturosPage() {
 
       <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between pb-3">
-          <h3 className="text-base font-semibold text-gray-800">Lista de parcelamentos</h3>
+          <h3 className="text-base font-semibold text-gray-800">Lista de transações futuras</h3>
           <span className="text-xs text-gray-500">{visiblePlans.length} ativo(s)</span>
         </div>
 
         {loadingPlans ? (
           <Skeleton type="table" rows={6} />
         ) : visiblePlans.length === 0 ? (
-          <div className="py-10 text-center text-sm text-gray-500">Nenhum parcelamento encontrado.</div>
+          <div className="py-10 text-center text-sm text-gray-500">Nenhuma transação futura encontrada.</div>
         ) : (
           <>
             <div className="overflow-x-auto">
@@ -726,15 +779,56 @@ export default function FuturosPage() {
                 <tbody>
                   {visiblePlans.map((plan) => {
                     const selected = selectedPlanId === plan.id
+                    const isSyncingThisPlan = syncingPlanId === plan.id
+                    const selectedRowShowsMismatch = selected && hasPlanTotalMismatch
                     return (
                       <tr
                         key={plan.id}
-                        className={`border-b border-gray-100 ${selected ? 'bg-sky-50/60' : ''}`}
+                        className={`border-b border-gray-100 ${selected ? 'bg-sky-50/60' : ''} ${
+                          selectedRowShowsMismatch ? 'bg-amber-50/70' : ''
+                        }`}
                       >
-                        <td className="py-3 pr-3 font-medium text-gray-800">{plan.description}</td>
+                        <td className="py-3 pr-3 font-medium text-gray-800">
+                          <div className="flex items-center gap-2">
+                            <span>{plan.description}</span>
+                            {selectedRowShowsMismatch ? (
+                              <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+                                Divergente
+                              </span>
+                            ) : null}
+                            {isSyncingThisPlan ? (
+                              <span className="inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-700">
+                                Sincronizando...
+                              </span>
+                            ) : null}
+                          </div>
+                        </td>
                         <td className="py-3 pr-3">{plan.type === 'EXPENSE' ? 'Despesa' : 'Receita'}</td>
                         <td className="py-3 pr-3">{plan.installmentCount}x</td>
-                        <td className="py-3 pr-3">{formatBRL(plan.totalAmount)}</td>
+                        <td className="py-3 pr-3">
+                          <div className="flex flex-col">
+                            <span className={selectedRowShowsMismatch ? 'font-semibold text-amber-800' : ''}>
+                              {formatBRL(plan.totalAmount)}
+                            </span>
+                            {selected ? (
+                              planTotalCheckQuery.isLoading ? (
+                                <span className="text-[11px] text-gray-400">Somando parcelas...</span>
+                              ) : canComparePlanTotal ? (
+                                <span
+                                  className={`text-[11px] ${
+                                    hasPlanTotalMismatch ? 'text-amber-700' : 'text-emerald-700'
+                                  }`}
+                                >
+                                  Soma parcelas: {formatBRL(planInstallmentsSum)}
+                                </span>
+                              ) : (
+                                <span className="text-[11px] text-gray-400">
+                                  Soma parcial (nem todas as parcelas foram carregadas)
+                                </span>
+                              )
+                            ) : null}
+                          </div>
+                        </td>
                         <td className="py-3 pr-3">{formatDateBR(plan.firstDueDate)}</td>
                         <td className="py-3 pr-3">{plan.intervalMonths} mes(es)</td>
                         <td className="py-3 text-right">
@@ -791,7 +885,7 @@ export default function FuturosPage() {
       <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between pb-3">
           <h3 className="text-base font-semibold text-gray-800">
-            {selectedPlan ? `Parcelas do parcelamento: ${selectedPlan.description}` : 'Parcelas do parcelamento'}
+            {selectedPlan ? `Parcelas da transação futura: ${selectedPlan.description}` : 'Parcelas da transação futura'}
           </h3>
           {selectedPlan ? (
             <button
@@ -804,14 +898,50 @@ export default function FuturosPage() {
           ) : null}
         </div>
 
+        {selectedPlan ? (
+          <div
+            className={`mb-4 rounded-lg border px-3 py-2 text-xs ${
+              hasPlanTotalMismatch ? 'border-amber-200 bg-amber-50' : 'border-gray-200 bg-gray-50'
+            }`}
+          >
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <span className="text-gray-700">
+                Total do plano: <strong>{formatBRL(selectedPlan.totalAmount)}</strong>
+              </span>
+              <span className="text-gray-700">
+                Soma das parcelas:{' '}
+                <strong>{planTotalCheckQuery.isLoading ? '...' : formatBRL(planInstallmentsSum)}</strong>
+              </span>
+              {canComparePlanTotal ? (
+                <span className={hasPlanTotalMismatch ? 'text-amber-800' : 'text-emerald-700'}>
+                  Diferença: <strong>{formatBRL(planTotalDifference)}</strong>
+                </span>
+              ) : (
+                <span className="text-gray-500">Sem base completa para comparar totais.</span>
+              )}
+
+              {hasPlanTotalMismatch ? (
+                <button
+                  type="button"
+                  onClick={onSyncPlanTotalWithInstallments}
+                  disabled={syncingPlanId === selectedPlan.id || updatePlanMutation.isPending}
+                  className="rounded-full border border-amber-300 bg-white px-3 py-1 font-semibold text-amber-800 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {syncingPlanId === selectedPlan.id ? 'Sincronizando...' : 'Sincronizar total com parcelas'}
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
         {!selectedPlanId ? (
           <div className="py-10 text-center text-sm text-gray-500">
-            Selecione um parcelamento na lista acima para ver as parcelas.
+            Selecione uma transação futura na lista acima para ver as parcelas.
           </div>
         ) : loadingInstallments ? (
           <Skeleton type="table" rows={8} />
         ) : installments.length === 0 ? (
-          <div className="py-10 text-center text-sm text-gray-500">Nenhuma parcela encontrada para este parcelamento.</div>
+          <div className="py-10 text-center text-sm text-gray-500">Nenhuma parcela encontrada para esta transação futura.</div>
         ) : (
           <>
             <div className="overflow-x-auto">
@@ -908,7 +1038,7 @@ export default function FuturosPage() {
           <DialogPanel className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between mb-4">
               <DialogTitle className="text-lg font-semibold text-gray-900">
-                {planModalMode === 'edit' ? 'Editar parcelamento' : 'Novo parcelamento'}
+                {planModalMode === 'edit' ? 'Editar Transação Futura' : 'Nova Transação Futura'}
               </DialogTitle>
               <button type="button" onClick={closePlanModal} className="text-gray-500 hover:text-gray-700">
                 <X size={18} />
@@ -1062,7 +1192,7 @@ export default function FuturosPage() {
                   disabled={isSavingPlan}
                   className="h-10 rounded-full bg-primary px-4 text-sm font-semibold text-white hover:bg-secondary disabled:opacity-60"
                 >
-                  {isSavingPlan ? 'Salvando...' : planModalMode === 'edit' ? 'Salvar alteracoes' : 'Criar parcelamento'}
+                  {isSavingPlan ? 'Salvando...' : planModalMode === 'edit' ? 'Salvar alteracoes' : 'Criar transação futura'}
                 </button>
               </div>
             </form>
@@ -1221,7 +1351,7 @@ export default function FuturosPage() {
         isOpen={Boolean(deletePlanTarget)}
         onClose={() => setDeletePlanTarget(null)}
         onConfirm={onDeletePlan}
-        title="Excluir parcelamento"
+        title="Excluir transação futura"
         description={`Deseja excluir "${deletePlanTarget?.description ?? ''}"? Essa acao nao pode ser desfeita.`}
         confirmLabel={deletePlanMutation.isPending ? 'Excluindo...' : 'Excluir'}
       />

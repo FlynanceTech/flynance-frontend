@@ -11,6 +11,7 @@ import DeleteConfirmModal from '../components/DeleteConfirmModal'
 
 import Header from '../components/Header'
 import SpendingControlDrawer from '../components/SpendingControlDrawer'
+import MonthSelector from '../components/MonthSelector'
 
 import { ControlWithProgress, useControls } from '@/hooks/query/useSpendingControl'
 import { useCategoryStore } from '@/stores/useCategoryStore'
@@ -23,16 +24,30 @@ function clamp(n: number, min: number, max: number) {
   return Math.min(max, Math.max(min, n))
 }
 
+function getSafeUsagePct(c: Pick<ControlWithProgress, 'usagePctOfGoal' | 'goal' | 'spent'>) {
+  const usageFromApi = Number(c.usagePctOfGoal)
+  if (Number.isFinite(usageFromApi)) return usageFromApi
+
+  const goal = Number(c.goal)
+  const spent = Number(c.spent)
+  if (!Number.isFinite(goal) || goal <= 0 || !Number.isFinite(spent)) return 0
+
+  return (spent / goal) * 100
+}
+
 function formatPeriodShort(startISO: string, endISO: string) {
   const start = new Date(startISO)
   const end = new Date(endISO)
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return '--'
   const fmt = (d: Date) =>
     d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })
   return `${fmt(start)} – ${fmt(end)}`
 }
 
 function formatWeekdayShort(dateISO: string) {
+  if (!dateISO) return '--'
   const d = new Date(dateISO)
+  if (Number.isNaN(d.getTime())) return '--'
   return d
     .toLocaleDateString('pt-BR', { weekday: 'short', timeZone: 'America/Sao_Paulo' })
     .replace('.', '')
@@ -42,8 +57,10 @@ function formatWeekdayShort(dateISO: string) {
 type Tone = 'ok' | 'warning' | 'danger'
 
 function getTone(c: ControlWithProgress): Tone {
-  if (c.overLimit || c.usagePctOfGoal >= 100) return 'danger'
-  if (c.usagePctOfGoal >= 70) return 'warning'
+  const usagePct = getSafeUsagePct(c)
+  const overLimit = c.overLimit || Number(c.spent) > Number(c.goal)
+  if (overLimit || usagePct >= 100) return 'danger'
+  if (usagePct >= 70) return 'warning'
   return 'ok'
 }
 
@@ -58,7 +75,7 @@ function getTone(c: ControlWithProgress): Tone {
  * --tw-gradient-via-position / --tw-gradient-to-position
  */
 function toneConfig(tone: Tone, usagePct: number) {
-  const pct = clamp(usagePct, 0, 100)
+  const pct = clamp(Number.isFinite(usagePct) ? usagePct : 0, 0, 100)
 
   // não deixa comer todo o header (pra sempre sobrar branco pro "Meta")
   const stop = Math.min(92, pct)
@@ -105,7 +122,8 @@ function toneConfig(tone: Tone, usagePct: number) {
 }
 
 export default function SpendingControlPage() {
-  const { controlsQuery, deleteMutation, favoriteMutation } = useControls()
+  const [selectedDate, setSelectedDate] = useState(new Date())
+  const { controlsQuery, deleteMutation, favoriteMutation } = useControls(undefined, selectedDate)
   const categoryStore = useCategoryStore((s) => s.categoryStore)
   const { addControl, controls, removeControl, resetControls } = useSpendingControlStore()
 
@@ -139,7 +157,7 @@ export default function SpendingControlPage() {
 
   const sortedControls = useMemo(() => {
     const arr = Array.isArray(controlsQuery.data) ? (controlsQuery.data as ControlWithProgress[]) : []
-    return [...arr].sort((a, b) => b.usagePctOfGoal - a.usagePctOfGoal)
+    return [...arr].sort((a, b) => getSafeUsagePct(b) - getSafeUsagePct(a))
   }, [controlsQuery.data])
 
   const favorites = useMemo(() => {
@@ -301,7 +319,7 @@ export default function SpendingControlPage() {
                       <div className="flex flex-col">
                         <span className="text-sm font-medium text-gray-800">{getCategoryName(f)}</span>
                         <span className="text-xs text-gray-500">
-                          Meta {toBRL(f.goal)} · {Math.round(f.usagePctOfGoal)}% usado
+                          Meta {toBRL(f.goal)} · {Math.round(getSafeUsagePct(f))}% usado
                         </span>
                       </div>
                       <span className={clsx('text-xs font-semibold', selected ? 'text-primary' : 'text-gray-500')}>
@@ -338,7 +356,12 @@ export default function SpendingControlPage() {
       {/* ================================== */}
 
       <div className="w-full flex justify-between items-center gap-2">
-        <h2 className="text-lg font-semibold text-[#333C4D]">Todos os controles</h2>
+        <div className="flex flex-col gap-1">
+          <h2 className="text-lg font-semibold text-[#333C4D]">Todos os controles</h2>
+          <span className="w-fit rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+            {selectedDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+          </span>
+        </div>
 
         <button
           type="button"
@@ -353,6 +376,16 @@ export default function SpendingControlPage() {
         </button>
       </div>
 
+      <div className="flex items-center justify-between gap-2">
+        <MonthSelector initialDate={selectedDate} onChange={setSelectedDate} />
+      </div>
+
+      {sortedControls.length === 0 && (
+        <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-600">
+          Nenhum controle encontrado para o periodo selecionado.
+        </div>
+      )}
+
       <ul className="lg:grid lg:grid-cols-3 flex flex-col gap-4">
         {sortedControls.map((c) => {
           const categoryName = getCategoryName(c)
@@ -360,9 +393,10 @@ export default function SpendingControlPage() {
           const restanteRaw = c.goal - c.spent
           const restante = Math.max(0, restanteRaw)
           const excedeu = Math.max(0, -restanteRaw)
+          const usagePct = getSafeUsagePct(c)
 
           const tone = getTone(c)
-          const cfg = toneConfig(tone, c.usagePctOfGoal)
+          const cfg = toneConfig(tone, usagePct)
 
           const periodo = formatPeriodShort(c.periodStart, c.periodEnd)
           const reinicia = formatWeekdayShort(c.nextResetAt)
@@ -419,7 +453,7 @@ export default function SpendingControlPage() {
                         </div>
                         <div className="flex gap-2">
                           <span className="text-gray-500">% da meta:</span>
-                          <strong>{Math.round(c.usagePctOfGoal)}%</strong>
+                          <strong>{Math.round(usagePct)}%</strong>
                         </div>
                       </div>
                     </div>

@@ -113,6 +113,7 @@ export default function TransactionsPage() {
   const [isImporting, setIsImporting] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
   const [isPreviewLoading, setIsPreviewLoading] = useState(false)
+  const [showCsvTip, setShowCsvTip] = useState(true)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [editingPreviewId, setEditingPreviewId] = useState<string | null>(null)
   const [editingPreviewValue, setEditingPreviewValue] = useState('')
@@ -144,7 +145,7 @@ export default function TransactionsPage() {
 
   const isValidImportFile = (file: File) => {
     const name = file.name.toLowerCase()
-    return name.endsWith('.pdf') || name.endsWith('.csv')
+    return name.endsWith('.csv')
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -152,7 +153,7 @@ export default function TransactionsPage() {
     if (!file) return
 
     if (!isValidImportFile(file)) {
-      setImportError('Arquivo invalido. Envie PDF ou CSV.')
+      setImportError('Arquivo invalido. Envie um arquivo .csv.')
       e.target.value = ''
       return
     }
@@ -891,11 +892,27 @@ const meta = useMemo(() => {
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.csv,application/pdf,text/csv"
+        accept=".csv,text/csv,application/csv,application/vnd.ms-excel"
         className="hidden"
         onChange={handleFileChange}
       />
-
+      {showCsvTip && (
+        <div className="w-full rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+          <div className="flex items-start justify-between gap-3">
+            <p className="font-medium">
+              Indicamos pedir ao aplicativo do banco o arquivo <span className="font-semibold">.csv</span> para a
+              importação dos dados 😊
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowCsvTip(false)}
+              className="rounded-md px-2 py-1 text-xs font-semibold text-sky-900 hover:bg-sky-100"
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
       {importError && (
         <div className="w-full rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
           {importError}
@@ -1001,13 +1018,13 @@ const meta = useMemo(() => {
               handleDeleteSingle(deleteConfirmIds[0])
             }
           }}
-          title={deleteConfirmMode === 'bulk' ? 'Excluir transaÃ§Ãµes' : 'Excluir transação'}
+          title={deleteConfirmMode === 'bulk' ? 'Excluir transações' : 'Excluir transação'}
           description={
             deleteConfirmMode === 'bulk'
-              ? `Tem certeza que deseja excluir ${deleteConfirmIds.length} transação(Ãµes)?`
+              ? `Tem certeza que deseja excluir ${deleteConfirmIds.length} transação(ções)?`
               : 'Tem certeza que deseja excluir esta transação?'
           }
-          confirmLabel={deleteConfirmMode === 'bulk' ? 'Excluir seleÃ§Ã£o' : 'Excluir'}
+          confirmLabel={deleteConfirmMode === 'bulk' ? 'Excluir seleção' : 'Excluir'}
         />
 
         {selectedTransaction && (

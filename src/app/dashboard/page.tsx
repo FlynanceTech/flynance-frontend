@@ -35,7 +35,10 @@ function pad2(v: any) {
 
 function monthLabel(month: string, year: string) {
   if (!month || !year) return ''
-  return `${pad2(month)}/${year}`
+  const shortMonths = ['Jan.', 'Fev.', 'Mar.', 'Abr.', 'Mai.', 'Jun.', 'Jul.', 'Ago.', 'Set.', 'Out.', 'Nov.', 'Dez.']
+  const monthIndex = Number(month) - 1
+  if (monthIndex < 0 || monthIndex > 11) return `${pad2(month)}/${year}`
+  return `${shortMonths[monthIndex]} ${year}`
 }
 
 function computeFinanceStatusFromTransactions(transactions: any[]) {
@@ -114,15 +117,22 @@ export default function Dashboard() {
     }
 
     const days = Math.max(1, Number(dateRange || 30))
-    const start = new Date(todayEnd)
-    start.setHours(0, 0, 0, 0)
-    start.setDate(start.getDate() - (days - 1))
+    const todayStart = new Date(todayEnd)
+    todayStart.setHours(0, 0, 0, 0)
+
+    const start = new Date(todayStart)
+    const end = new Date(todayEnd)
+    if (includeFuture) {
+      end.setDate(end.getDate() + (days - 1))
+    } else {
+      start.setDate(start.getDate() - (days - 1))
+    }
 
     return list.filter((t: any) => {
       const txDate = new Date(t.date)
       if (Number.isNaN(txDate.getTime())) return false
       if (txDate < start) return false
-      if (!includeFuture && txDate > todayEnd) return false
+      if (txDate > end) return false
       return true
     })
   }, [allTransactions, mode, selectedMonth, selectedYear, dateRange, includeFuture])
@@ -130,7 +140,10 @@ export default function Dashboard() {
   const periodLabel = useMemo(() => {
     const suffix = includeFuture ? ' (incluindo futuros)' : ''
     if (mode === 'month' && selectedMonth && selectedYear) {
-      return `mes (${monthLabel(selectedMonth, selectedYear)})${suffix}`
+      return `${monthLabel(selectedMonth, selectedYear)}${suffix}`
+    }
+    if (includeFuture) {
+      return `proximos ${Number(dateRange || 30)} dias`
     }
     return `ultimos ${Number(dateRange || 30)} dias${suffix}`
   }, [mode, selectedMonth, selectedYear, dateRange, includeFuture])
@@ -163,7 +176,7 @@ export default function Dashboard() {
           <div className="md:col-span-4 flex gap-4 flex-col w-full">
             <div className="flex flex-col lg:grid lg:grid-cols-5 lg:gap-4">
               <div className="lg:col-span-3">
-                <ComparisonChart transactions={transactions} isLoading={isTxLoading} />
+                <ComparisonChart transactions={transactions} isLoading={isTxLoading} periodTag={periodLabel} />
               </div>
 
               <div className="lg:col-span-2 h-full">
@@ -172,7 +185,7 @@ export default function Dashboard() {
             </div>
 
             <div className="flex flex-col lg:flex-row gap-4 h-full">
-              <CategorySpendingDistribution transactions={transactions} isLoading={isTxLoading} />
+              <CategorySpendingDistribution transactions={transactions} isLoading={isTxLoading} periodTag={periodLabel} />
             </div>
           </div>
         </section>

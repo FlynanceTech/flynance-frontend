@@ -15,6 +15,7 @@ import { BarCompareChart, BarDetailChart } from './barChart'
 interface ComparisonChartProps {
   transactions?: Transaction[]
   isLoading?: boolean
+  periodTag?: string
 }
 
 function useContainerWidth(): [number, RefObject<HTMLDivElement | null>] {
@@ -36,7 +37,7 @@ function useContainerWidth(): [number, RefObject<HTMLDivElement | null>] {
   return [w, ref]
 }
 
-export default function ComparisonChart({ transactions = [], isLoading = false }: ComparisonChartProps) {
+export default function ComparisonChart({ transactions = [], isLoading = false, periodTag }: ComparisonChartProps) {
   const isMobile = useIsMobile()
   const [showLegend, setShowLegend] = useState(false)
   const [containerW, containerRef] = useContainerWidth()
@@ -139,6 +140,11 @@ export default function ComparisonChart({ transactions = [], isLoading = false }
             <h2 className="text-xl font-semibold text-gray-800">
               {categoriaSelecionada ? `Detalhes de ${categoriaSelecionada.name}` : 'Receita x Despesas'}
             </h2>
+            {!categoriaSelecionada && periodTag && (
+              <span className="mt-1 w-fit rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                {periodTag}
+              </span>
+            )}
           </div>
 
           {categoriaSelecionada ? (

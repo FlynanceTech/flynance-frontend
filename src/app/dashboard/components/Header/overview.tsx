@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
 
 import { NewTransactionButton } from '../Buttons'
@@ -42,6 +42,30 @@ function diffDaysInclusive(start: string, end: string) {
   return Math.max(1, Math.floor((e - s) / ms) + 1)
 }
 
+function parseISODate(value: string) {
+  return new Date(`${value}T00:00:00`)
+}
+
+function asFullMonthRange(start: string, end: string): { month: string; year: string } | null {
+  const startDate = parseISODate(start)
+  const endDate = parseISODate(end)
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return null
+
+  const sameMonth =
+    startDate.getFullYear() === endDate.getFullYear() && startDate.getMonth() === endDate.getMonth()
+  if (!sameMonth) return null
+
+  const firstDayOk = startDate.getDate() === 1
+  const lastDayOfMonth = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0).getDate()
+  const lastDayOk = endDate.getDate() === lastDayOfMonth
+  if (!firstDayOk || !lastDayOk) return null
+
+  return {
+    month: String(startDate.getMonth() + 1).padStart(2, '0'),
+    year: String(startDate.getFullYear()),
+  }
+}
+
 export default function Header({
   subtitle,
   asFilter = false,
@@ -50,6 +74,7 @@ export default function Header({
   showFutureFilter = false,
 }: HeaderProps) {
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [isApplyingFilters, setIsApplyingFilters] = useState(false)
 
   const { user } = useUserSession()
   const firstName =
@@ -111,6 +136,14 @@ export default function Header({
 
     // - Se for "range": converte para "days" (store atual não tem start/end)
     if (next?.mode === 'range') {
+      const fullMonth = asFullMonthRange(next.start, next.end)
+      if (fullMonth) {
+        setMode('month')
+        setSelectedMonth(fullMonth.month)
+        setSelectedYear(fullMonth.year)
+        return
+      }
+
       const days = diffDaysInclusive(next.start, next.end)
       setMode('days')
       setDateRange(days)
@@ -127,9 +160,29 @@ export default function Header({
     includeFuture !== appliedIncludeFuture
 
   const handleApplyFilters = () => {
-    if (!hasPendingFilters) return
+    if (!hasPendingFilters || isApplyingFilters) return
+    setIsApplyingFilters(true)
     applyFilters()
+    setTimeout(() => setIsApplyingFilters(false), 400)
   }
+
+  useEffect(() => {
+    if (!hasPendingFilters) {
+      setIsApplyingFilters(false)
+    }
+  }, [hasPendingFilters])
+
+  const desktopFilterLabel = isApplyingFilters
+    ? 'Aplicando...'
+    : hasPendingFilters
+    ? 'Aplicar'
+    : 'Filtrar'
+
+  const mobileFilterLabel = isApplyingFilters
+    ? 'Aplicando...'
+    : hasPendingFilters
+    ? 'Aplicar'
+    : 'Aplicado'
 
   return (
     <header className="flex flex-col px-6 pt-6">
@@ -149,25 +202,25 @@ export default function Header({
                 )}
 
                 {/* ✅ DateRangeSelect agora alimenta o filtro global */}
-                <DateRangeSelect value={datePickerValue as any} onChange={handleDateChange as any} withDisplay />
-                {showFutureFilter && (
-                  <label className="inline-flex items-center gap-2 text-xs text-slate-600 whitespace-nowrap">
-                    <input
-                      type="checkbox"
-                      checked={includeFuture}
-                      onChange={(e) => setIncludeFuture(e.target.checked)}
-                      className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40"
-                    />
-                    Incluir futuros
-                  </label>
-                )}
+                <DateRangeSelect
+                  value={datePickerValue as any}
+                  onChange={handleDateChange as any}
+                  includeFuture={showFutureFilter ? includeFuture : undefined}
+                  onIncludeFutureChange={showFutureFilter ? setIncludeFuture : undefined}
+                  withDisplay
+                />
                 <button
                   type="button"
                   onClick={handleApplyFilters}
-                  disabled={!hasPendingFilters}
+                  disabled={!hasPendingFilters || isApplyingFilters}
                   className="h-9 rounded-full bg-primary px-4 text-sm font-semibold text-white hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Filtrar
+                  <span className="inline-flex items-center gap-2">
+                    {isApplyingFilters && (
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/70 border-t-transparent" />
+                    )}
+                    {desktopFilterLabel}
+                  </span>
                 </button>
               </div>
             )}
@@ -177,25 +230,24 @@ export default function Header({
 
           {/* Mobile */}
           <div className="flex lg:hidden gap-4 items-center w-full justify-end col-span-1">
-            <DateRangeSelect value={datePickerValue as any} onChange={handleDateChange as any} />
-            {showFutureFilter && (
-              <label className="inline-flex items-center gap-1 text-[11px] text-slate-600 whitespace-nowrap">
-                <input
-                  type="checkbox"
-                  checked={includeFuture}
-                  onChange={(e) => setIncludeFuture(e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40"
-                />
-                Futuros
-              </label>
-            )}
+            <DateRangeSelect
+              value={datePickerValue as any}
+              onChange={handleDateChange as any}
+              includeFuture={showFutureFilter ? includeFuture : undefined}
+              onIncludeFutureChange={showFutureFilter ? setIncludeFuture : undefined}
+            />
             <button
               type="button"
               onClick={handleApplyFilters}
-              disabled={!hasPendingFilters}
+              disabled={!hasPendingFilters || isApplyingFilters}
               className="h-9 rounded-full bg-primary px-4 text-xs font-semibold text-white hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Filtrar
+              <span className="inline-flex items-center gap-2">
+                {isApplyingFilters && (
+                  <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/70 border-t-transparent" />
+                )}
+                {mobileFilterLabel}
+              </span>
             </button>
           </div>
         </div>

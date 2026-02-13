@@ -34,10 +34,30 @@ export type FavoriteConflictPayload = {
 
 export function useControls(id?: string, date?: Date) {
   const qc = useQueryClient()
+  const dateKey = date ? date.toISOString().split('T')[0] : 'current'
 
   const controlsQuery = useQuery<ControlWithProgress[]>({
-    queryKey: ['controls', { withProgress: true }],
-    queryFn: () => getAllControls(true),
+    queryKey: ['controls', { withProgress: true, date: dateKey }],
+    queryFn: async () => {
+      const list = (await getAllControls(true, date)) as ControlWithProgress[]
+      if (!date || !Array.isArray(list) || list.length === 0) {
+        return list
+      }
+
+      // Fallback: garante o mesmo comportamento da tela de detalhe (/controls/:id?date=...)
+      // caso o endpoint de listagem não recalcule corretamente por mês.
+      const enriched = await Promise.all(
+        list.map(async (control) => {
+          try {
+            return (await getControlsById(control.id, date)) as ControlWithProgress
+          } catch {
+            return control
+          }
+        })
+      )
+
+      return enriched
+    },
   })
 
   const controlsByIdQuery = useQuery({

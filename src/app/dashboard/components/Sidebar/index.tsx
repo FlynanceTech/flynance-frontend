@@ -31,7 +31,7 @@ export default function Sidebar() {
 
   const navItems = [
     { label: 'Dashboard', icon: <LayoutDashboard />, path: '/dashboard' },
-    { label: 'Transacoes', icon: <Landmark />, path: '/dashboard/transacoes' },
+    { label: 'Transações', icon: <Landmark />, path: '/dashboard/transacoes' },
     { label: 'Contas', icon: <ClipboardList />, path: '/dashboard/contas-fixas' },
     { label: 'Futuros', icon: <Clock3 />, path: '/dashboard/futuros' },
     { label: 'Relatorios', icon: <BarChart3 />, path: '/dashboard/relatorios' },

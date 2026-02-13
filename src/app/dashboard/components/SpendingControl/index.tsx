@@ -6,6 +6,7 @@ import { useControls } from '@/hooks/query/useSpendingControl'
 import SpendingControlDrawer from '../SpendingControlDrawer'
 import { useCategories } from '@/hooks/query/useCategory'
 import Link from 'next/link'
+import MonthSelector from '../MonthSelector'
 
 type Channel = 'IN_APP' | 'EMAIL' | 'WHATSAPP'
 
@@ -53,8 +54,10 @@ const STATUS = {
 type StatusKey = keyof typeof STATUS
 
 function getStatus(c: ControlWithProgress): StatusKey {
-  if (c.overLimit) return 'danger'
-  if (c.usagePctOfGoal >= 100) return 'warning'
+  const usagePct = Number.isFinite(c.usagePctOfGoal) ? c.usagePctOfGoal : c.goal > 0 ? (c.spent / c.goal) * 100 : 0
+  const isOverLimit = typeof c.overLimit === 'boolean' ? c.overLimit : c.spent > c.goal
+  if (isOverLimit) return 'danger'
+  if (usagePct >= 100) return 'warning'
   return 'ok'
 }
 
@@ -64,8 +67,8 @@ function getStatus(c: ControlWithProgress): StatusKey {
  * - Depois desempata por maior % (ex: 120% vem antes de 105%)
  */
 function compareClosestToGoal(a: ControlWithProgress, b: ControlWithProgress) {
-  const ap = a.usagePctOfGoal ?? 0
-  const bp = b.usagePctOfGoal ?? 0
+  const ap = Number.isFinite(a.usagePctOfGoal) ? a.usagePctOfGoal : a.goal > 0 ? (a.spent / a.goal) * 100 : 0
+  const bp = Number.isFinite(b.usagePctOfGoal) ? b.usagePctOfGoal : b.goal > 0 ? (b.spent / b.goal) * 100 : 0
 
   const aDist = ap >= 100 ? 0 : 100 - ap
   const bDist = bp >= 100 ? 0 : 100 - bp
@@ -77,7 +80,8 @@ function compareClosestToGoal(a: ControlWithProgress, b: ControlWithProgress) {
 }
 
 export function SpendingControl() {
-  const { controlsQuery, favoritesQuery } = useControls()
+  const [selectedDate, setSelectedDate] = useState(new Date())
+  const { controlsQuery, favoritesQuery } = useControls(undefined, selectedDate)
   const {
     categoriesQuery: { data: categories = [] },
   } = useCategories()
@@ -107,7 +111,9 @@ export function SpendingControl() {
   }
 
   function formatNextReset(nextISO: string): string {
+    if (!nextISO) return '--'
     const d = new Date(nextISO)
+    if (Number.isNaN(d.getTime())) return '--'
     return d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short' })
   }
 
@@ -149,8 +155,16 @@ export function SpendingControl() {
   return (
     <div className="bg-white p-6 rounded-xl shadow border border-gray-200 w-full h-full flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-bold text-gray-800">Controle de Metas</h2>
+        <div className="flex flex-col">
+          <h2 className="text-lg font-bold text-gray-800">Controle de Metas</h2>
+          <span className="w-fit rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+            {selectedDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+          </span>
+        </div>
         <div className="flex items-center gap-4">
+          <div className="hidden lg:block">
+            <MonthSelector initialDate={selectedDate} onChange={setSelectedDate} />
+          </div>
           <Link
             href="/dashboard/controles"
             className="text-xs bg-secondary/30 hover:bg-secondary/35 text-primary px-4 py-2 rounded-full cursor-pointer hidden lg:block"
@@ -170,6 +184,9 @@ export function SpendingControl() {
       </div>
 
       <div className="flex flex-col gap-4">
+        <div className="lg:hidden">
+          <MonthSelector initialDate={selectedDate} onChange={setSelectedDate} />
+        </div>
         {isLoading ? (
           <div className="flex flex-col gap-4 animate-pulse">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -191,12 +208,13 @@ export function SpendingControl() {
               const catLabel = c.categoryId ? categoryNameById[c.categoryId] ?? 'Categoria' : 'Geral'
               const status = getStatus(c)
               const { Icon, cls, label } = STATUS[status]
-              const pct = Math.min(c.usagePctOfGoal ?? 0, 100)
+              const usagePct = Number.isFinite(c.usagePctOfGoal) ? c.usagePctOfGoal : c.goal > 0 ? (c.spent / c.goal) * 100 : 0
+              const pct = Math.min(usagePct, 100)
 
               const barColor =
-                c.usagePctOfGoal <= 60
+                usagePct <= 60
                   ? 'bg-blue-500'
-                  : c.usagePctOfGoal <= 80
+                  : usagePct <= 80
                     ? 'bg-yellow-400'
                     : 'bg-red-500'
 
@@ -206,20 +224,18 @@ export function SpendingControl() {
                   key={c.id}
                   className="w-full relative space-y-1 border border-gray-100 rounded-lg p-2 hover:shadow-sm transition-all"
                 >
-                  {c.usagePctOfGoal >= 80 && (
-                    <span
-                      className={`absolute top-7 right-1 z-30 text-[10px] font-semibold px-1.5 py-0.5 rounded-full
-                      ${
-                        status === 'danger'
-                          ? 'bg-red-600 text-white'
-                          : status === 'warning'
-                            ? 'bg-yellow-400 text-black'
-                            : 'bg-blue-500 text-white'
-                      }`}
-                    >
-                      {Math.round(c.usagePctOfGoal)}%
-                    </span>
-                  )}
+                  <span
+                    className={`absolute top-7 right-1 z-30 text-[10px] font-semibold px-1.5 py-0.5 rounded-full
+                    ${
+                      status === 'danger'
+                        ? 'bg-red-600 text-white'
+                        : status === 'warning'
+                          ? 'bg-yellow-400 text-black'
+                          : 'bg-blue-500 text-white'
+                    }`}
+                  >
+                    {Math.round(usagePct)}%
+                  </span>
 
                   <div className="flex items-center gap-2">
                     <Icon className={`w-4 h-4 ${cls}`} aria-hidden />

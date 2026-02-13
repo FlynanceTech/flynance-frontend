@@ -5,6 +5,7 @@ import Header from '../components/Header'
 import { Check, Pencil, Plus, Trash2, X } from 'lucide-react'
 import clsx from 'clsx'
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
+import toast from 'react-hot-toast'
 import DeleteConfirmModal from '../components/DeleteConfirmModal'
 import { useFixedAccounts } from '@/hooks/query/useFixedAccounts'
 import { CategorySelect } from '../components/CategorySelect'
@@ -50,6 +51,39 @@ function formatDateBR(iso?: string) {
 
 function todayISODate() {
   return new Date().toISOString().split('T')[0]
+}
+
+function getDayFromISODate(isoDate: string) {
+  const [_, __, day] = (isoDate || '').split('-')
+  const parsed = Number(day)
+  return Number.isFinite(parsed) ? parsed : NaN
+}
+
+function parseAmountInput(value: string) {
+  const raw = String(value ?? '').trim()
+  if (!raw) return NaN
+
+  const hasComma = raw.includes(',')
+  const hasDot = raw.includes('.')
+  let normalized = raw
+
+  if (hasComma && hasDot) {
+    // Usa o ultimo separador como decimal e remove o outro como milhar.
+    const lastComma = raw.lastIndexOf(',')
+    const lastDot = raw.lastIndexOf('.')
+    if (lastComma > lastDot) {
+      normalized = raw.replace(/\./g, '').replace(',', '.')
+    } else {
+      normalized = raw.replace(/,/g, '')
+    }
+  } else if (hasComma) {
+    normalized = raw.replace(/\./g, '').replace(',', '.')
+  } else {
+    normalized = raw.replace(/,/g, '')
+  }
+
+  const parsed = Number(normalized)
+  return Number.isFinite(parsed) ? parsed : NaN
 }
 
 function monthKeyFromDate(d = new Date()) {
@@ -104,7 +138,7 @@ export default function FixedBillsPage() {
 
   const [name, setName] = useState('')
   const [amount, setAmount] = useState('')
-  const [dueDay, setDueDay] = useState('10')
+  const [firstDueDate, setFirstDueDate] = useState(todayISODate())
   const [notes, setNotes] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [editingBill, setEditingBill] = useState<FixedBill | null>(null)
@@ -179,7 +213,7 @@ export default function FixedBillsPage() {
   const resetForm = () => {
     setName('')
     setAmount('')
-    setDueDay('10')
+    setFirstDueDate(todayISODate())
     setNotes('')
     setCategoryId('')
     setEditingBill(null)
@@ -206,16 +240,18 @@ export default function FixedBillsPage() {
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault()
     const trimmed = name.trim()
-    const parsedAmount = Number(amount)
-    const parsedDueDay = Number(dueDay)
+    const parsedAmount = parseAmountInput(amount)
+    const parsedDueDay = getDayFromISODate(firstDueDate)
     if (!trimmed || Number.isNaN(parsedAmount) || parsedAmount <= 0) return
     if (!parsedDueDay || parsedDueDay < 1 || parsedDueDay > 31) return
+    if (!firstDueDate) return
 
     const createPayload = {
       name: trimmed,
       amount: parsedAmount,
       dueDay: parsedDueDay,
-      startDate: todayISODate(),
+      dueDate: firstDueDate,
+      startDate: firstDueDate,
       categoryId: categoryId || undefined,
       notes: notes.trim() || undefined,
     }
@@ -225,6 +261,7 @@ export default function FixedBillsPage() {
         name: trimmed,
         amount: parsedAmount,
         dueDay: parsedDueDay,
+        dueDate: firstDueDate,
         categoryId: categoryId || undefined,
         notes: notes.trim() || undefined,
       }
@@ -252,7 +289,7 @@ export default function FixedBillsPage() {
     setEditingBill(bill)
     setName(bill.name ?? '')
     setAmount(String(bill.amount ?? ''))
-    setDueDay(String(bill.dueDay ?? '10'))
+    setFirstDueDate((bill.startDate ?? todayISODate()).split('T')[0])
     setNotes(bill.notes ?? '')
     setCategoryId((bill.categoryId as string) ?? '')
     setDrawerOpen(true)
@@ -265,23 +302,30 @@ export default function FixedBillsPage() {
     setPayConfirmOpen(true)
   }
 
-  const handleConfirmPay = () => {
+  const handleConfirmPay = async () => {
     if (!payTarget) return
-    const parsedAmount = Number(payAmount)
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) return
-    const paidAtDate = payDate ? new Date(payDate) : new Date()
-    const { cycleDueDate } = getCycleInfo(payTarget.dueDay, 10, paidAtDate)
-    const cycleDueISO = cycleDueDate.toISOString().split('T')[0]
-    markPaidMutation.mutate({
-      id: payTarget.id,
-      data: {
-        amount: parsedAmount,
-        paidAt: payDate || todayISODate(),
-        dueDate: cycleDueISO,
-      },
-    })
-    setPayConfirmOpen(false)
-    setPayTarget(null)
+    const parsedAmount = parseAmountInput(payAmount)
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      toast.error('Informe um valor valido para confirmar o pagamento.')
+      return
+    }
+
+    try {
+      await markPaidMutation.mutateAsync({
+        id: payTarget.id,
+        data: {
+          amount: parsedAmount,
+          paidAt: payDate || todayISODate(),
+        },
+      })
+      toast.success('Pagamento confirmado com sucesso.')
+      setPayConfirmOpen(false)
+      setPayTarget(null)
+      setPayDate(todayISODate())
+      setPayAmount('')
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Nao foi possivel confirmar o pagamento.')
+    }
   }
 
   const closePayConfirm = () => {
@@ -540,9 +584,8 @@ export default function FixedBillsPage() {
               <input
                 value={payAmount}
                 onChange={(e) => setPayAmount(e.target.value)}
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
+                inputMode="decimal"
                 className="mt-2 w-full rounded-full border border-gray-200 px-4 py-2 text-sm"
                 placeholder="0,00"
               />
@@ -570,8 +613,9 @@ export default function FixedBillsPage() {
                 type="button"
                 className="w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 cursor-pointer"
                 onClick={handleConfirmPay}
+                disabled={markPaidMutation.isPending}
               >
-                Confirmar pagamento
+                {markPaidMutation.isPending ? 'Confirmando...' : 'Confirmar pagamento'}
               </button>
             </div>
           </DialogPanel>
@@ -626,24 +670,20 @@ export default function FixedBillsPage() {
                   <input
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    type="text"
+                    inputMode="decimal"
                     className="w-full rounded-full border border-gray-200 px-4 py-2 text-sm"
                     placeholder="0,00"
                     required
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-sm text-gray-600">Vencimento</label>
+                  <label className="text-sm text-gray-600">Primeiro vencimento</label>
                   <input
-                    value={dueDay}
-                    onChange={(e) => setDueDay(e.target.value)}
-                    type="number"
-                    min="1"
-                    max="31"
+                    value={firstDueDate}
+                    onChange={(e) => setFirstDueDate(e.target.value)}
+                    type="date"
                     className="w-full rounded-full border border-gray-200 px-4 py-2 text-sm"
-                    placeholder="Dia"
                     required
                   />
                 </div>

@@ -20,7 +20,7 @@ export default function BottomMenu() {
 
   const primaryItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
-    { label: 'Transacoes', icon: Landmark, path: '/dashboard/transacoes' },
+    { label: 'Transações', icon: Landmark, path: '/dashboard/transacoes' },
     { label: 'Contas', icon: ClipboardList, path: '/dashboard/contas-fixas' },
   ]
   const moreItems = [
