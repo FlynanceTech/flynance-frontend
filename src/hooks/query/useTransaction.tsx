@@ -23,6 +23,7 @@ type UseTransactionParams = {
   page?: number
   limit?: number
   filters?: Record<string, FilterValue>
+  useGlobalFilters?: boolean
 }
 
 type ImportPayload = {
@@ -62,10 +63,13 @@ export function useTranscation(params: UseTransactionParams) {
   }
 
   // ✅ merge: filtros do caller + global (global vence)
-  const mergedFilters: TransactionFilters = {
-    ...(params.filters ?? {}),
-    ...globalFilters,
-  }
+  const mergedFilters: TransactionFilters =
+    params.useGlobalFilters === false
+      ? ({ ...(params.filters ?? {}) } as TransactionFilters)
+      : ({
+          ...(params.filters ?? {}),
+          ...globalFilters,
+        } as TransactionFilters)
   const transactionsQuery = useQuery({
     // ✅ importantíssimo: o cache precisa depender do filtro global
     queryKey: ['transactions', params.userId, params.page ?? 1, params.limit ?? 10, mergedFilters],

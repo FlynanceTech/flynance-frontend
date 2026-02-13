@@ -9,6 +9,7 @@ import {
   Menu,
   X,
   BarChart3,
+  Clock3,
 } from 'lucide-react'
 import React, { useState } from 'react'
 import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react'
@@ -19,13 +20,14 @@ export default function BottomMenu() {
 
   const primaryItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
-    { label: 'Transações', icon: Landmark, path: '/dashboard/transacoes' },
+    { label: 'Transacoes', icon: Landmark, path: '/dashboard/transacoes' },
     { label: 'Contas', icon: ClipboardList, path: '/dashboard/contas-fixas' },
   ]
   const moreItems = [
-    { label: 'Relatórios', icon: BarChart3, path: '/dashboard/relatorios' },
+    { label: 'Futuros', icon: Clock3, path: '/dashboard/futuros' },
+    { label: 'Relatorios', icon: BarChart3, path: '/dashboard/relatorios' },
     { label: 'Categorias', icon: Tag, path: '/dashboard/categorias' },
-    { label: 'Educação', icon: BookOpenCheck, path: '/dashboard/educacao' },
+    { label: 'Educacao', icon: BookOpenCheck, path: '/dashboard/educacao' },
     { label: 'Perfil', icon: User, path: '/dashboard/perfil' },
   ]
   const [moreOpen, setMoreOpen] = useState(false)
@@ -93,7 +95,7 @@ export default function BottomMenu() {
             >
               <DialogPanel className="w-full rounded-t-2xl bg-white p-5 shadow-xl">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-gray-700">Mais opções</span>
+                  <span className="text-sm font-semibold text-gray-700">Mais opcoes</span>
                   <button
                     onClick={() => setMoreOpen(false)}
                     className="rounded-full border border-gray-200 p-2 text-gray-500 hover:bg-gray-50"

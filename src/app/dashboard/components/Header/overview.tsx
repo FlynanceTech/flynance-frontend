@@ -21,6 +21,7 @@ interface HeaderProps {
   dataToFilter?: Category[]
   newTransation?: boolean
   userId: string
+  showFutureFilter?: boolean
 }
 
 /**
@@ -46,6 +47,7 @@ export default function Header({
   asFilter = false,
   dataToFilter,
   newTransation = true,
+  showFutureFilter = false,
 }: HeaderProps) {
   const [drawerOpen, setDrawerOpen] = useState(false)
 
@@ -58,16 +60,19 @@ export default function Header({
   const dateRange = useTransactionFilter((s) => s.dateRange)
   const selectedMonth = useTransactionFilter((s) => s.selectedMonth)
   const selectedYear = useTransactionFilter((s) => s.selectedYear)
+  const includeFuture = useTransactionFilter((s) => s.includeFuture)
 
   const appliedMode = useTransactionFilter((s) => s.appliedMode)
   const appliedDateRange = useTransactionFilter((s) => s.appliedDateRange)
   const appliedMonth = useTransactionFilter((s) => s.appliedSelectedMonth)
   const appliedYear = useTransactionFilter((s) => s.appliedSelectedYear)
+  const appliedIncludeFuture = useTransactionFilter((s) => s.appliedIncludeFuture)
 
   const setMode = useTransactionFilter((s) => s.setMode)
   const setDateRange = useTransactionFilter((s) => s.setDateRange)
   const setSelectedMonth = useTransactionFilter((s) => s.setSelectedMonth)
   const setSelectedYear = useTransactionFilter((s) => s.setSelectedYear)
+  const setIncludeFuture = useTransactionFilter((s) => s.setIncludeFuture)
   const applyFilters = useTransactionFilter((s) => s.applyFilters)
 
   // ✅ valor do DateRangeSelect derivado do store (sem state local)
@@ -118,7 +123,8 @@ export default function Header({
     mode !== appliedMode ||
     Number(dateRange || 30) !== Number(appliedDateRange || 30) ||
     (selectedMonth || '') !== (appliedMonth || '') ||
-    (selectedYear || '') !== (appliedYear || '')
+    (selectedYear || '') !== (appliedYear || '') ||
+    includeFuture !== appliedIncludeFuture
 
   const handleApplyFilters = () => {
     if (!hasPendingFilters) return
@@ -144,6 +150,17 @@ export default function Header({
 
                 {/* ✅ DateRangeSelect agora alimenta o filtro global */}
                 <DateRangeSelect value={datePickerValue as any} onChange={handleDateChange as any} withDisplay />
+                {showFutureFilter && (
+                  <label className="inline-flex items-center gap-2 text-xs text-slate-600 whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      checked={includeFuture}
+                      onChange={(e) => setIncludeFuture(e.target.checked)}
+                      className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40"
+                    />
+                    Incluir futuros
+                  </label>
+                )}
                 <button
                   type="button"
                   onClick={handleApplyFilters}
@@ -161,6 +178,17 @@ export default function Header({
           {/* Mobile */}
           <div className="flex lg:hidden gap-4 items-center w-full justify-end col-span-1">
             <DateRangeSelect value={datePickerValue as any} onChange={handleDateChange as any} />
+            {showFutureFilter && (
+              <label className="inline-flex items-center gap-1 text-[11px] text-slate-600 whitespace-nowrap">
+                <input
+                  type="checkbox"
+                  checked={includeFuture}
+                  onChange={(e) => setIncludeFuture(e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40"
+                />
+                Futuros
+              </label>
+            )}
             <button
               type="button"
               onClick={handleApplyFilters}

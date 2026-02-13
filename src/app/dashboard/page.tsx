@@ -38,8 +38,7 @@ function monthLabel(month: string, year: string) {
   return `${pad2(month)}/${year}`
 }
 
-// fallback local caso backend ainda não retorne meta.financeStatus
-function computeFinanceStatusFromTransactions(transactions: any) {
+function computeFinanceStatusFromTransactions(transactions: any[]) {
   const income = (transactions || [])
     .filter((t: { type: string }) => t.type === 'INCOME')
     .reduce((acc: number, t: { value: any }) => acc + Number(t.value || 0), 0)
@@ -75,35 +74,70 @@ export default function Dashboard() {
   const dateRange = useTransactionFilter((s) => s.appliedDateRange)
   const selectedMonth = useTransactionFilter((s) => s.appliedSelectedMonth)
   const selectedYear = useTransactionFilter((s) => s.appliedSelectedYear)
+  const includeFuture = useTransactionFilter((s) => s.appliedIncludeFuture)
 
   const [hydrated, setHydrated] = useState(false)
   useEffect(() => setHydrated(true), [])
 
-  // ✅ única chamada de transactions (já filtrada globalmente pelo hook)
-  const { transactionsQuery } = useTranscation({ userId, page: 1, limit: 5000 })
+  // Fetch baseline transactions and apply dashboard filters locally
+  const { transactionsQuery } = useTranscation({
+    userId,
+    page: 1,
+    limit: 5000,
+    useGlobalFilters: false,
+  })
   const isTxLoading = transactionsQuery.isLoading
 
-  const transactions =
+  const allTransactions =
     (transactionsQuery.data?.transactions ?? transactionsQuery.data ?? []) || []
 
-  const periodLabel = useMemo(() => {
-    if (mode === 'month' && selectedMonth && selectedYear) {
-      return `mês (${monthLabel(selectedMonth, selectedYear)})`
-    }
-    return `últimos ${Number(dateRange || 30)} dias`
-  }, [mode, selectedMonth, selectedYear, dateRange])
+  const transactions = useMemo(() => {
+    const list = Array.isArray(allTransactions) ? allTransactions : []
+    const todayEnd = new Date()
+    todayEnd.setHours(23, 59, 59, 999)
 
-  // ✅ prioridade: backend manda pronto (ideal)
-  // Exemplo esperado: response.meta.financeStatus = { period, accumulated }
-  const financeFromApi =
-    transactionsQuery.data?.meta?.financeStatus ||
-    transactionsQuery.data?.financeStatus ||
-    null
+    if (mode === 'month' && selectedMonth && selectedYear) {
+      const monthNum = Number(selectedMonth)
+      const yearNum = Number(selectedYear)
+      if (!monthNum || !yearNum) return list
+
+      const start = new Date(yearNum, monthNum - 1, 1, 0, 0, 0, 0)
+      const end = new Date(yearNum, monthNum, 0, 23, 59, 59, 999)
+
+      return list.filter((t: any) => {
+        const txDate = new Date(t.date)
+        if (Number.isNaN(txDate.getTime())) return false
+        if (txDate < start || txDate > end) return false
+        if (!includeFuture && txDate > todayEnd) return false
+        return true
+      })
+    }
+
+    const days = Math.max(1, Number(dateRange || 30))
+    const start = new Date(todayEnd)
+    start.setHours(0, 0, 0, 0)
+    start.setDate(start.getDate() - (days - 1))
+
+    return list.filter((t: any) => {
+      const txDate = new Date(t.date)
+      if (Number.isNaN(txDate.getTime())) return false
+      if (txDate < start) return false
+      if (!includeFuture && txDate > todayEnd) return false
+      return true
+    })
+  }, [allTransactions, mode, selectedMonth, selectedYear, dateRange, includeFuture])
+
+  const periodLabel = useMemo(() => {
+    const suffix = includeFuture ? ' (incluindo futuros)' : ''
+    if (mode === 'month' && selectedMonth && selectedYear) {
+      return `mes (${monthLabel(selectedMonth, selectedYear)})${suffix}`
+    }
+    return `ultimos ${Number(dateRange || 30)} dias${suffix}`
+  }, [mode, selectedMonth, selectedYear, dateRange, includeFuture])
 
   const financeStatus = useMemo(() => {
-    if (financeFromApi?.period && financeFromApi?.accumulated) return financeFromApi
     return computeFinanceStatusFromTransactions(transactions)
-  }, [financeFromApi, transactions])
+  }, [transactions])
 
   if (!hydrated) return null
 
@@ -113,11 +147,11 @@ export default function Dashboard() {
         title="Dashboard Financeiro"
         subtitle="Veja um resumo da sua vida financeira."
         asFilter
+        showFutureFilter
         userId={userId}
       />
 
       <div className="flex flex-col gap-4 md:pt-0 px-4 lg:pl-0 pb-24 lg:pb-0">
-        {/* ✅ Agora FinanceStatus vem da query de transactions */}
         <FinanceStatus
           period={financeStatus?.period ?? PERIOD_ZERO}
           accumulated={financeStatus?.accumulated ?? ACC_ZERO}
@@ -129,10 +163,7 @@ export default function Dashboard() {
           <div className="md:col-span-4 flex gap-4 flex-col w-full">
             <div className="flex flex-col lg:grid lg:grid-cols-5 lg:gap-4">
               <div className="lg:col-span-3">
-                <ComparisonChart
-                  transactions={transactions}
-                  isLoading={isTxLoading}
-                />
+                <ComparisonChart transactions={transactions} isLoading={isTxLoading} />
               </div>
 
               <div className="lg:col-span-2 h-full">
@@ -141,10 +172,7 @@ export default function Dashboard() {
             </div>
 
             <div className="flex flex-col lg:flex-row gap-4 h-full">
-              <CategorySpendingDistribution
-                transactions={transactions}
-                isLoading={isTxLoading}
-              />
+              <CategorySpendingDistribution transactions={transactions} isLoading={isTxLoading} />
             </div>
           </div>
         </section>

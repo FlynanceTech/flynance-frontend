@@ -16,6 +16,7 @@ import {
   BookOpenCheck,
   ClipboardList,
   BarChart3,
+  Clock3,
 } from 'lucide-react'
 import SidebarItem from './SidebarItem'
 import { useUserSession } from '@/stores/useUserSession'
@@ -30,11 +31,12 @@ export default function Sidebar() {
 
   const navItems = [
     { label: 'Dashboard', icon: <LayoutDashboard />, path: '/dashboard' },
-    { label: 'Transações', icon: <Landmark />, path: '/dashboard/transacoes' },
+    { label: 'Transacoes', icon: <Landmark />, path: '/dashboard/transacoes' },
     { label: 'Contas', icon: <ClipboardList />, path: '/dashboard/contas-fixas' },
-    { label: 'Relatórios', icon: <BarChart3 />, path: '/dashboard/relatorios' },
+    { label: 'Futuros', icon: <Clock3 />, path: '/dashboard/futuros' },
+    { label: 'Relatorios', icon: <BarChart3 />, path: '/dashboard/relatorios' },
     { label: 'Categorias', icon: <Tag />, path: '/dashboard/categorias' },
-    { label: 'Educação', icon: <BookOpenCheck />, path: '/dashboard/educacao' },
+    { label: 'Educacao', icon: <BookOpenCheck />, path: '/dashboard/educacao' },
     { label: 'Perfil', icon: <User />, path: '/dashboard/perfil' },
   ]
 
@@ -59,15 +61,15 @@ export default function Sidebar() {
   return (
     <aside
       className={
-        'bg-white py-6 px-4 rounded-2xl border border-[#E2E8F0] flex flex-col justify-center items-center  transition-all duration-300 ' +
+        'bg-white py-6 px-4 rounded-2xl border border-[#E2E8F0] flex flex-col justify-center items-center transition-all duration-300 ' +
         (collapsed ? 'w-20 items-center' : 'min-w-44')
       }
     >
       <div className="relative">
         <button
           className={clsx(
-            'absolute  text-gray-400 bg-white p-2 rounded-full shadow-md border border-gray-200',
-            collapsed ? '-right-16' : '-right-[110px]',
+            'absolute text-gray-400 bg-white p-2 rounded-full shadow-md border border-gray-200',
+            collapsed ? '-right-16' : '-right-[110px]'
           )}
           onClick={() => setCollapsed((prev) => !prev)}
           title="Expandir/retrair menu"

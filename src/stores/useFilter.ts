@@ -8,6 +8,7 @@ interface FiltroTransacoesStore {
   dateRange: number
   searchTerm: string
   mode: FilterMode
+  includeFuture: boolean
   selectedMonth: string // formato: '05'
   selectedYear: string  // formato: '2025'
   typeFilter: TxTypeFilter
@@ -15,9 +16,11 @@ interface FiltroTransacoesStore {
   appliedDateRange: number
   appliedSearchTerm: string
   appliedMode: FilterMode
+  appliedIncludeFuture: boolean
   appliedSelectedMonth: string
   appliedSelectedYear: string
   appliedTypeFilter: TxTypeFilter
+  setIncludeFuture: (value: boolean) => void
   setTypeFilter: (v: TxTypeFilter) => void
   setSelectedCategories: (cats: CategoryResponse[]) => void
   setDateRange: (value: number) => void
@@ -30,6 +33,7 @@ interface FiltroTransacoesStore {
   setAppliedDateRange: (value: number) => void
   setAppliedSearchTerm: (termo: string) => void
   setAppliedMode: (mode: FilterMode) => void
+  setAppliedIncludeFuture: (value: boolean) => void
   setAppliedSelectedMonth: (month: string) => void
   setAppliedSelectedYear: (year: string) => void
   applyFilters: () => void
@@ -41,6 +45,7 @@ export const useTransactionFilter = create<FiltroTransacoesStore>((set) => ({
   dateRange: 30,
   searchTerm: '',
   mode: 'days',
+  includeFuture: false,
   selectedMonth: '',
   selectedYear: '',
   typeFilter: 'ALL',
@@ -48,9 +53,11 @@ export const useTransactionFilter = create<FiltroTransacoesStore>((set) => ({
   appliedDateRange: 30,
   appliedSearchTerm: '',
   appliedMode: 'days',
+  appliedIncludeFuture: false,
   appliedSelectedMonth: '',
   appliedSelectedYear: '',
   appliedTypeFilter: 'ALL',
+  setIncludeFuture: (value) => set({ includeFuture: value }),
   setTypeFilter: (v) => set({ typeFilter: v }),
   setSelectedCategories: (categorias) => set({ selectedCategories: categorias }),
   setDateRange: (periodo) => set({ dateRange: periodo }),
@@ -64,6 +71,7 @@ export const useTransactionFilter = create<FiltroTransacoesStore>((set) => ({
   setAppliedDateRange: (periodo) => set({ appliedDateRange: periodo, dateRange: periodo }),
   setAppliedSearchTerm: (termo) => set({ appliedSearchTerm: termo, searchTerm: termo }),
   setAppliedMode: (mode) => set({ appliedMode: mode, mode }),
+  setAppliedIncludeFuture: (value) => set({ appliedIncludeFuture: value, includeFuture: value }),
   setAppliedSelectedMonth: (month) =>
     set({ appliedSelectedMonth: month, selectedMonth: month }),
   setAppliedSelectedYear: (year) => set({ appliedSelectedYear: year, selectedYear: year }),
@@ -73,6 +81,7 @@ export const useTransactionFilter = create<FiltroTransacoesStore>((set) => ({
       appliedDateRange: state.dateRange,
       appliedSearchTerm: state.searchTerm,
       appliedMode: state.mode,
+      appliedIncludeFuture: state.includeFuture,
       appliedSelectedMonth: state.selectedMonth,
       appliedSelectedYear: state.selectedYear,
       appliedTypeFilter: state.typeFilter,
@@ -83,6 +92,7 @@ export const useTransactionFilter = create<FiltroTransacoesStore>((set) => ({
       dateRange: 30,
       searchTerm: '',
       mode: 'days',
+      includeFuture: false,
       selectedMonth: '',
       selectedYear: '',
       typeFilter: 'ALL',
@@ -90,6 +100,7 @@ export const useTransactionFilter = create<FiltroTransacoesStore>((set) => ({
       appliedDateRange: 30,
       appliedSearchTerm: '',
       appliedMode: 'days',
+      appliedIncludeFuture: false,
       appliedSelectedMonth: '',
       appliedSelectedYear: '',
       appliedTypeFilter: 'ALL',
