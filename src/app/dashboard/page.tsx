@@ -78,6 +78,8 @@ export default function Dashboard() {
   const selectedMonth = useTransactionFilter((s) => s.appliedSelectedMonth)
   const selectedYear = useTransactionFilter((s) => s.appliedSelectedYear)
   const includeFuture = useTransactionFilter((s) => s.appliedIncludeFuture)
+  const rangeStart = useTransactionFilter((s) => s.appliedRangeStart)
+  const rangeEnd = useTransactionFilter((s) => s.appliedRangeEnd)
 
   const [hydrated, setHydrated] = useState(false)
   useEffect(() => setHydrated(true), [])
@@ -98,6 +100,18 @@ export default function Dashboard() {
     const list = Array.isArray(allTransactions) ? allTransactions : []
     const todayEnd = new Date()
     todayEnd.setHours(23, 59, 59, 999)
+
+    if (mode === 'range' && rangeStart && rangeEnd) {
+      const start = new Date(`${rangeStart}T00:00:00`)
+      const end = new Date(`${rangeEnd}T23:59:59.999`)
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return list
+
+      return list.filter((t: any) => {
+        const txDate = new Date(t.date)
+        if (Number.isNaN(txDate.getTime())) return false
+        return txDate >= start && txDate <= end
+      })
+    }
 
     if (mode === 'month' && selectedMonth && selectedYear) {
       const monthNum = Number(selectedMonth)
@@ -135,10 +149,17 @@ export default function Dashboard() {
       if (txDate > end) return false
       return true
     })
-  }, [allTransactions, mode, selectedMonth, selectedYear, dateRange, includeFuture])
+  }, [allTransactions, mode, selectedMonth, selectedYear, dateRange, includeFuture, rangeStart, rangeEnd])
 
   const periodLabel = useMemo(() => {
     const suffix = includeFuture ? ' (incluindo futuros)' : ''
+    if (mode === 'range' && rangeStart && rangeEnd) {
+      const start = new Date(`${rangeStart}T00:00:00`)
+      const end = new Date(`${rangeEnd}T00:00:00`)
+      if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())) {
+        return `${start.toLocaleDateString('pt-BR')} - ${end.toLocaleDateString('pt-BR')}`
+      }
+    }
     if (mode === 'month' && selectedMonth && selectedYear) {
       return `${monthLabel(selectedMonth, selectedYear)}${suffix}`
     }
@@ -146,7 +167,7 @@ export default function Dashboard() {
       return `proximos ${Number(dateRange || 30)} dias`
     }
     return `ultimos ${Number(dateRange || 30)} dias${suffix}`
-  }, [mode, selectedMonth, selectedYear, dateRange, includeFuture])
+  }, [mode, selectedMonth, selectedYear, dateRange, includeFuture, rangeStart, rangeEnd])
 
   const financeStatus = useMemo(() => {
     return computeFinanceStatusFromTransactions(transactions)

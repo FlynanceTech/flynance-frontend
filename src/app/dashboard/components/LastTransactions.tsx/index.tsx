@@ -29,7 +29,7 @@ const SkeletonRow: React.FC = () => (
 
 export const LastTransactions: React.FC = () => {
   const { user } = useUserSession()
-  const userId =  user?.userData.user.id ?? ''
+  const userId = user?.userData.user.id ?? ''
 
   const { transactionsQuery } = useTranscation({ userId })
   const isLoading: boolean = transactionsQuery.isLoading
@@ -46,6 +46,19 @@ export const LastTransactions: React.FC = () => {
       const now = Date.now()
       const maxAgeMs = (filter.days ?? 30) * 24 * 60 * 60 * 1000
       filtered = ordered.filter((t) => now - new Date(t.date).getTime() <= maxAgeMs)
+    } else if (filter.mode === 'month') {
+      const mm = Number(filter.month)
+      const yy = Number(filter.year)
+      if (!Number.isInteger(mm) || mm < 1 || mm > 12 || !Number.isInteger(yy) || yy < 1) {
+        filtered = []
+      } else {
+        const start = Date.UTC(yy, mm - 1, 1, 0, 0, 0, 0)
+        const end = Date.UTC(yy, mm, 0, 23, 59, 59, 999)
+        filtered = ordered.filter((t) => {
+          const d = new Date(t.date).getTime()
+          return d >= start && d <= end
+        })
+      }
     } else {
       const [sy, sm, sd] = filter.start.split('-').map(Number)
       const [ey, em, ed] = filter.end.split('-').map(Number)
@@ -61,18 +74,32 @@ export const LastTransactions: React.FC = () => {
     return filtered.slice(0, 7)
   }, [transactions, filter])
 
-
   return (
     <div className="bg-white p-6 rounded-xl shadow border border-gray-200 w-full h-full">
       <div className="flex items-center justify-between gap-3 mb-4">
         <div>
-          <h2 className="text-lg font-semibold text-gray-800">Últimas Transações</h2>
+          <h2 className="text-lg font-semibold text-gray-800">Ultimas Transacoes</h2>
           <p className="text-sm text-gray-500">
-            {filter.mode === 'days'
-              ? <>Últimos <strong>{filter.days}</strong> dias</>
-              : <>Período de <strong>{new Date(filter.start + 'T00:00:00').toLocaleDateString('pt-BR')}</strong> até <strong>{new Date(filter.end + 'T00:00:00').toLocaleDateString('pt-BR')}</strong></>}
+            {filter.mode === 'days' && <>Ultimos <strong>{filter.days}</strong> dias</>}
+            {filter.mode === 'month' && (
+              <>
+                Mes de{' '}
+                <strong>
+                  {new Date(Number(filter.year), Number(filter.month) - 1, 1).toLocaleDateString('pt-BR', {
+                    month: 'long',
+                    year: 'numeric',
+                  })}
+                </strong>
+              </>
+            )}
+            {filter.mode === 'range' && (
+              <>
+                Periodo de{' '}
+                <strong>{new Date(filter.start + 'T00:00:00').toLocaleDateString('pt-BR')}</strong> ate{' '}
+                <strong>{new Date(filter.end + 'T00:00:00').toLocaleDateString('pt-BR')}</strong>
+              </>
+            )}
           </p>
-
         </div>
 
         <DateRangeSelect value={filter} onChange={setFilter} />
@@ -84,7 +111,7 @@ export const LastTransactions: React.FC = () => {
         ) : filteredSortedTop7.length === 0 ? (
           <div className="text-sm text-gray-500 py-6 flex items-center gap-2">
             <CalendarDays className="w-4 h-4 text-gray-400" />
-            Nenhuma transação no período selecionado.
+            Nenhuma transacao no periodo selecionado.
           </div>
         ) : (
           filteredSortedTop7.map((t) => {
@@ -99,10 +126,10 @@ export const LastTransactions: React.FC = () => {
                   <IconResolver name={t.category?.icon} size={16} />
                   <div className="min-w-0">
                     <div className="text-sm text-gray-800 truncate">
-                      {t.description || '(Sem descrição)'}
+                      {t.description || '(Sem descricao)'}
                     </div>
                     <div className="text-xs text-gray-500">
-                      {categoryName} · {new Date(t.date).toLocaleDateString('pt-BR')}
+                      {categoryName} - {new Date(t.date).toLocaleDateString('pt-BR')}
                     </div>
                   </div>
                 </div>

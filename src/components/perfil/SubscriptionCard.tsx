@@ -1,211 +1,311 @@
-"use client"
+'use client'
 
-import { useMemo, useState } from "react"
-import { CreditCard, AlertCircle, RotateCw, Loader2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { useUserSession } from "@/stores/useUserSession"
-import { cancelSignature, undoCancelSignature } from "@/services/payment"
-import { useRouter } from "next/navigation"
-import { useSignature } from "@/hooks/query/useSignature"
+import { useEffect, useMemo, useState } from 'react'
+import { CreditCard, AlertCircle, RotateCw, Loader2 } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { cancelSignature, undoCancelSignature } from '@/services/payment'
+import { useRouter } from 'next/navigation'
+import { useUserSession } from '@/stores/useUserSession'
+import {
+  useBillingSubscriptionSummary,
+  useCreateBillingSetupIntent,
+  useUpdateBillingPaymentMethod,
+} from '@/hooks/query/useBilling'
+import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
+import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js'
+import { loadStripe } from '@stripe/stripe-js'
+import toast from 'react-hot-toast'
 
-// ==============================
-// Tipos (DB + Stripe)
-// ==============================
-type Cycle = "MONTHLY" | "YEARLY" | string
-type BillingType = "CREDIT_CARD" | "PIX" | "BOLETO" | string
-type SignatureStatus =
-  | "ACTIVE"
-  | "TRIALING"
-  | "PAST_DUE"
-  | "SUSPENDED"
-  | "CANCELED"
-  | "INCOMPLETE"
-  | "EXPIRED"
-  | "INACTIVE"
-  | string
+const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
+const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null
 
-type StripeSubscriptionStatus =
-  | "active"
-  | "trialing"
-  | "past_due"
-  | "canceled"
-  | "incomplete"
-  | "incomplete_expired"
-  | "unpaid"
-  | "paused"
-  | string
-
-interface SignaturePlan {
-  id: string
-  name: string
-  slug: string
-  description: string | null
-  priceCents: number
-  currency: string
-  period: Cycle
-  trialDays: number
+function parseDate(value?: string | null): Date | null {
+  if (!value) return null
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
 }
 
-interface Signature {
-  id: string
-  startDate: string
-  endDate: string | null
-  nextDueDate: string | null
-  active: boolean
-  status: SignatureStatus
-  billingType: BillingType
-  cycle: Cycle
-  value: number
-  updatedAt: string
-  cancelAtPeriodEnd?: boolean | null
-  plan?: SignaturePlan
+function toBrDate(value?: string | null): string {
+  const parsed = parseDate(value)
+  if (!parsed) return '-'
+  return parsed.toLocaleDateString('pt-BR')
 }
 
-type StripeSubscription = {
-  id: string
-  status: StripeSubscriptionStatus
-  cancel_at_period_end?: boolean
-  cancel_at?: number | null
-  canceled_at?: number | null
-  current_period_start?: number | null
-  current_period_end?: number | null
-  trial_start?: number | null
-  trial_end?: number | null
-  default_payment_method?: string | null
-  latest_invoice?: any
-  items?: { data?: any[] }
+function toBrMoney(value?: number | null): string {
+  if (value == null || !Number.isFinite(value)) return '-'
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(value)
 }
 
-type LastSubscriptionResponse = {
-  signature: Signature
-  stripeSubscription?: StripeSubscription | null
-  stripe?: { ok: boolean }
+function mapStripeStatusToLabel(status?: string | null): string {
+  const normalized = String(status ?? '').toLowerCase()
+  if (normalized === 'active') return 'Ativa'
+  if (normalized === 'trialing') return 'Em teste'
+  if (normalized === 'past_due') return 'Em atraso'
+  if (normalized === 'canceled') return 'Cancelada'
+  if (normalized === 'incomplete') return 'Incompleta'
+  if (normalized === 'incomplete_expired') return 'Incompleta (expirada)'
+  if (normalized === 'unpaid') return 'Nao paga'
+  if (normalized === 'paused') return 'Pausada'
+  return normalized || 'Indefinido'
 }
 
-// ==============================
-// Helpers
-// ==============================
-function safeDateFromIsoOrNull(v?: string | null): Date | null {
-  if (!v) return null
-  const d = new Date(v)
-  return isNaN(d.getTime()) ? null : d
+function mapDbStatusToLabel(status?: string | null): string {
+  const normalized = String(status ?? '').toUpperCase()
+  if (normalized === 'ACTIVE') return 'Ativa'
+  if (normalized === 'TRIALING') return 'Em teste'
+  if (normalized === 'PAST_DUE') return 'Em atraso'
+  if (normalized === 'CANCELED') return 'Cancelada'
+  if (normalized === 'INCOMPLETE') return 'Incompleta'
+  if (normalized === 'INACTIVE') return 'Inativa'
+  return normalized || 'Indefinido'
 }
 
-function safeDateFromUnixOrNull(v?: number | null): Date | null {
-  if (v == null) return null
-  const d = new Date(v * 1000)
-  return isNaN(d.getTime()) ? null : d
+function formatBrand(brand?: string | null): string {
+  if (!brand) return 'Cartao'
+  return brand.charAt(0).toUpperCase() + brand.slice(1).toLowerCase()
 }
 
-function brDate(d: Date | null) {
-  return d ? d.toLocaleDateString("pt-BR") : null
+function formatExpiry(month?: number | null, year?: number | null): string {
+  if (!month || !year) return '-'
+  const mm = String(month).padStart(2, '0')
+  const yy = String(year).slice(-2)
+  return `${mm}/${yy}`
 }
 
-function brMoney(n?: number | null) {
-  if (n == null || Number.isNaN(Number(n))) return null
-  return `R$ ${Number(n).toFixed(2).replace(".", ",")}`
+type ChangeCardModalContentProps = {
+  onClose: () => void
+  onCompleted: () => Promise<void>
+  subscriptionId?: string | null
 }
 
-function mapStripeStatusToLabel(status: StripeSubscriptionStatus) {
-  switch (status) {
-    case "active":
-      return "Ativo"
-    case "trialing":
-      return "Em teste"
-    case "past_due":
-      return "Vencida"
-    case "canceled":
-      return "Cancelada"
-    case "incomplete":
-      return "Incompleta"
-    case "incomplete_expired":
-      return "Incompleta (expirada)"
-    case "unpaid":
-      return "Não paga"
-    case "paused":
-      return "Pausada"
-    default:
-      return status
+function ChangeCardModalContent({
+  onClose,
+  onCompleted,
+  subscriptionId,
+}: ChangeCardModalContentProps) {
+  const stripe = useStripe()
+  const elements = useElements()
+  const createSetupIntentMutation = useCreateBillingSetupIntent()
+  const updatePaymentMethodMutation = useUpdateBillingPaymentMethod()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleSubmit = async () => {
+    if (!stripe || !elements) {
+      toast.error('Stripe ainda nao carregou. Tente novamente.')
+      return
+    }
+
+    const cardElement = elements.getElement(CardElement)
+    if (!cardElement) {
+      toast.error('Nao foi possivel carregar o campo de cartao.')
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      const setupIntent = await createSetupIntentMutation.mutateAsync()
+      const confirmation = await stripe.confirmCardSetup(setupIntent.clientSecret, {
+        payment_method: {
+          card: cardElement,
+        },
+      })
+
+      if (confirmation.error) {
+        throw new Error(confirmation.error.message || 'Falha ao validar o cartao.')
+      }
+
+      const paymentMethod = confirmation.setupIntent?.payment_method
+      const paymentMethodId =
+        typeof paymentMethod === 'string' ? paymentMethod : paymentMethod?.id
+
+      if (!paymentMethodId) {
+        throw new Error('Nao foi possivel identificar o metodo de pagamento.')
+      }
+
+      await updatePaymentMethodMutation.mutateAsync({
+        paymentMethodId,
+        subscriptionId: subscriptionId || undefined,
+      })
+
+      await onCompleted()
+      toast.success('Cartao atualizado para as proximas faturas.')
+      onClose()
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao trocar cartao.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
+
+  const pending =
+    isSubmitting || createSetupIntentMutation.isPending || updatePaymentMethodMutation.isPending
+
+  return (
+    <DialogPanel className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
+      <DialogTitle className="text-lg font-semibold text-[#333C4D]">Trocar cartao</DialogTitle>
+      <p className="mt-1 text-sm text-slate-600">
+        O novo cartao sera usado nas proximas faturas da assinatura.
+      </p>
+
+      <div className="mt-4 rounded-xl border border-slate-200 p-3">
+        <CardElement
+          options={{
+            hidePostalCode: true,
+            style: {
+              base: {
+                fontSize: '16px',
+                color: '#1f2937',
+                '::placeholder': { color: '#94a3b8' },
+              },
+              invalid: {
+                color: '#dc2626',
+              },
+            },
+          }}
+        />
+      </div>
+
+      <div className="mt-5 flex justify-end gap-2">
+        <Button variant="outline" onClick={onClose} disabled={pending}>
+          Cancelar
+        </Button>
+        <Button onClick={handleSubmit} disabled={pending}>
+          {pending ? (
+            <span className="inline-flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Atualizando...
+            </span>
+          ) : (
+            'Salvar cartao'
+          )}
+        </Button>
+      </div>
+    </DialogPanel>
+  )
 }
 
-function mapDbStatusToLabel(status: SignatureStatus) {
-  switch (status) {
-    case "ACTIVE":
-      return "Ativo"
-    case "CANCELED":
-      return "Cancelado"
-    case "TRIALING":
-      return "Em teste"
-    case "SUSPENDED":
-      return "Suspensa"
-    case "PAST_DUE":
-      return "Vencida"
-    case "INCOMPLETE":
-      return "Incompleta"
-    case "EXPIRED":
-      return "Expirada"
-    case "INACTIVE":
-      return "Inativa"
-    default:
-      return status
-  }
+type ChangeCardModalProps = {
+  open: boolean
+  onClose: () => void
+  onCompleted: () => Promise<void>
+  subscriptionId?: string | null
 }
 
-function mapCycleToLabel(cycle: Cycle) {
-  switch (cycle) {
-    case "MONTHLY":
-      return "Mensal"
-    case "YEARLY":
-      return "Anual"
-    default:
-      return cycle
-  }
-}
+function ChangeCardModal({
+  open,
+  onClose,
+  onCompleted,
+  subscriptionId,
+}: ChangeCardModalProps) {
+  if (!stripePromise) return null
 
-function mapBillingToLabel(b: BillingType) {
-  switch (b) {
-    case "CREDIT_CARD":
-      return "Cartão de crédito"
-    case "PIX":
-      return "Pix"
-    case "BOLETO":
-      return "Boleto"
-    default:
-      return b
-  }
+  return (
+    <Dialog open={open} onClose={onClose} className="relative z-50">
+      <div className="fixed inset-0 bg-black/40" aria-hidden="true" />
+      <div className="fixed inset-0 flex items-center justify-center p-4">
+        <Elements stripe={stripePromise}>
+          <ChangeCardModalContent
+            onClose={onClose}
+            onCompleted={onCompleted}
+            subscriptionId={subscriptionId}
+          />
+        </Elements>
+      </div>
+    </Dialog>
+  )
 }
 
 const SubscriptionCard = () => {
-  const { user, fetchAccount } = useUserSession()
+  const router = useRouter()
+  const { user, status, fetchAccount } = useUserSession()
   const [loadingCancel, setLoadingCancel] = useState(false)
   const [loadingReactivate, setLoadingReactivate] = useState(false)
   const [confirmingCancel, setConfirmingCancel] = useState(false)
-  const router = useRouter()
+  const [isChangeCardOpen, setIsChangeCardOpen] = useState(false)
 
   const userId = user?.userData?.user?.id
+  const summaryQuery = useBillingSubscriptionSummary(Boolean(userId))
 
-  // ✅ query só dispara quando userId existir (enabled já está no hook)
-  const { useSignatureByUserId } = useSignature(userId)
-  const { data, isLoading, isError, isFetching, refetch } = useSignatureByUserId
-
-  // Normaliza payload vindo do backend: { lastSubscription: { signature, stripeSubscription, ... } }
-  const last: LastSubscriptionResponse | null = useMemo(() => {
-    if (!data) return null
-    const raw = (data as any).lastSubscription
-    if (!raw?.signature) return null
-    return {
-      signature: raw.signature,
-      stripeSubscription: raw.stripeSubscription ?? null,
-      stripe: raw.stripe,
+  useEffect(() => {
+    if (status === 'idle') {
+      fetchAccount()
     }
-  }, [data])
+  }, [status, fetchAccount])
 
-  // ==============================
-  // Loading / Error states
-  // ==============================
-  if (isLoading || isFetching) {
+  const summary = summaryQuery.data
+  const db = summary?.db
+  const stripe = summary?.stripe
+  const paymentMethod = summary?.paymentMethod
+  const planName = db?.plan?.name || 'Plano Flynance'
+
+  const normalizedStripeStatus = String(stripe?.status ?? '').toLowerCase()
+  const normalizedDbStatus = String(db?.status ?? '').toUpperCase()
+  const statusLabel = stripe
+    ? mapStripeStatusToLabel(stripe.status)
+    : mapDbStatusToLabel(db?.status)
+  const isCancelled =
+    normalizedStripeStatus === 'canceled' || normalizedDbStatus === 'CANCELED'
+  const isActive =
+    normalizedStripeStatus === 'active' ||
+    normalizedStripeStatus === 'trialing' ||
+    Boolean(db?.active)
+  const cancelAtPeriodEnd = Boolean(stripe?.cancelAtPeriodEnd ?? db?.cancelAtPeriodEnd)
+  const scheduledToCancel = isActive && !isCancelled && cancelAtPeriodEnd
+  const nextDueDate = stripe?.currentPeriodEnd ?? db?.nextDueDate
+  const endedAt = db?.endDate ?? stripe?.canceledAt ?? null
+  const signatureId = db?.signatureId ?? null
+  const subscriptionId = stripe?.id ?? db?.subscriptionId ?? undefined
+
+  const statusBadgeClass = useMemo(() => {
+    if (isActive && !isCancelled) return 'bg-emerald-100 text-emerald-700 border-emerald-200'
+    return 'bg-red-100 text-red-700 border-red-200'
+  }, [isActive, isCancelled])
+
+  const handleCancelSubscription = async () => {
+    if (!signatureId) return
+    try {
+      setLoadingCancel(true)
+      await cancelSignature(signatureId)
+      await fetchAccount()
+      await summaryQuery.refetch()
+      toast.success('Cancelamento solicitado com sucesso.')
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao cancelar assinatura.')
+    } finally {
+      setLoadingCancel(false)
+      setConfirmingCancel(false)
+    }
+  }
+
+  const handleUndoCancel = async () => {
+    if (!signatureId) return
+    try {
+      setLoadingReactivate(true)
+      await undoCancelSignature(signatureId)
+      await fetchAccount()
+      await summaryQuery.refetch()
+      toast.success('Cancelamento desfeito com sucesso.')
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao desfazer cancelamento.')
+    } finally {
+      setLoadingReactivate(false)
+    }
+  }
+
+  const handleReactivateSubscription = async () => {
+    try {
+      setLoadingReactivate(true)
+      router.push('/WinbackPage/planos')
+    } finally {
+      setLoadingReactivate(false)
+    }
+  }
+
+  if (status === 'idle' || status === 'loading' || summaryQuery.isLoading) {
     return (
       <div className="bg-card rounded-2xl p-6 shadow-sm border border-border/15 animate-slide-up">
         <div className="flex items-center gap-3 mb-4">
@@ -216,13 +316,13 @@ const SubscriptionCard = () => {
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Carregando informações da assinatura...
+          Carregando dados da assinatura...
         </div>
       </div>
     )
   }
 
-  if (isError) {
+  if (summaryQuery.isError) {
     return (
       <div className="bg-card rounded-2xl p-6 shadow-sm border border-border/15 animate-slide-up">
         <div className="flex items-center gap-3 mb-4">
@@ -231,16 +331,18 @@ const SubscriptionCard = () => {
           </div>
           <h2 className="text-xl font-semibold text-foreground">Assinatura e Plano</h2>
         </div>
-        <div className="flex items-start gap-3 p-4 bg-destructive/5 border border-destructive/20 rounded-xl">
-          <AlertCircle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
+        <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
+          <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
           <div>
-            <p className="text-sm font-medium text-foreground">
-              Não foi possível carregar sua assinatura
+            <p className="text-sm font-medium text-slate-900">
+              Nao foi possivel carregar os dados da assinatura.
             </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Tente novamente. Se o problema persistir, contate o suporte.
+            <p className="text-xs text-slate-600 mt-1">
+              {summaryQuery.error instanceof Error
+                ? summaryQuery.error.message
+                : 'Tente novamente em instantes.'}
             </p>
-            <Button variant="outline" size="sm" className="mt-3" onClick={() => refetch()}>
+            <Button variant="outline" size="sm" className="mt-3" onClick={() => summaryQuery.refetch()}>
               Tentar novamente
             </Button>
           </div>
@@ -249,10 +351,7 @@ const SubscriptionCard = () => {
     )
   }
 
-  const signature = last?.signature
-  const stripeSubscription = last?.stripeSubscription ?? null
-
-  if (!signature) {
+  if (!summary?.hasSubscription || !db) {
     return (
       <div className="bg-card rounded-2xl p-6 shadow-sm border border-border/15 animate-slide-up">
         <div className="flex items-center gap-3 mb-4">
@@ -262,157 +361,10 @@ const SubscriptionCard = () => {
           <h2 className="text-xl font-semibold text-foreground">Assinatura e Plano</h2>
         </div>
         <p className="text-sm text-muted-foreground">
-          Você ainda não possui uma assinatura ativa. Quando contratar um plano, os detalhes aparecerão aqui.
+          Voce ainda nao possui assinatura ativa. Quando contratar um plano, os detalhes aparecerao aqui.
         </p>
       </div>
     )
-  }
-
-  // ==============================
-  // Prioridade Stripe > DB
-  // ==============================
-  const planName = signature.plan?.name ?? "Plano Flynance"
-  const cycleLabel = mapCycleToLabel(signature.cycle)
-  const billingLabel = mapBillingToLabel(signature.billingType)
-
-  const price =
-    signature.value ??
-    (signature.plan?.priceCents ? signature.plan.priceCents / 100 : null)
-
-  const stripeStatus = stripeSubscription?.status
-
-  // Status label: prefere Stripe quando houver
-  const effectiveStatusLabel = stripeStatus
-    ? mapStripeStatusToLabel(stripeStatus)
-    : mapDbStatusToLabel(signature.status)
-
-  // Ativo: Stripe (active/trialing) ou DB
-  const isActive = stripeStatus
-    ? stripeStatus === "active" || stripeStatus === "trialing"
-    : !!signature.active && signature.status === "ACTIVE"
-
-  // Cancelado “de verdade”: Stripe status === canceled OU DB status === CANCELED
-  const isCancelled = stripeStatus
-    ? stripeStatus === "canceled"
-    : signature.status === "CANCELED"
-
-  // Cancelamento agendado: active/trialing e cancel_at_period_end === true
-  const isScheduledToCancel =
-    (stripeStatus === "active" || stripeStatus === "trialing") &&
-    (stripeSubscription?.cancel_at_period_end ?? false)
-
-  // Datas
-  const startDate = safeDateFromIsoOrNull(signature.startDate)
-
-  // Próxima cobrança: preferir Stripe current_period_end; fallback para cancel_at; depois DB
-  const nextDue = (() => {
-    const byStripe = safeDateFromUnixOrNull(stripeSubscription?.current_period_end ?? null)
-    if (byStripe) return byStripe
-
-    const byStripeCancelAt = safeDateFromUnixOrNull(stripeSubscription?.cancel_at ?? null)
-    if (byStripeCancelAt) return byStripeCancelAt
-
-    const byDb = safeDateFromIsoOrNull(signature.nextDueDate)
-    if (byDb) return byDb
-
-    return null
-  })()
-
-  // Trial end: preferir Stripe trial_end
-  const trialEnd = (() => {
-    const byStripe = safeDateFromUnixOrNull(stripeSubscription?.trial_end ?? null)
-    if (byStripe) return byStripe
-
-    if (!signature.plan?.trialDays || signature.plan.trialDays <= 0) return null
-    if (!startDate) return null
-    const end = new Date(startDate)
-    end.setDate(end.getDate() + signature.plan.trialDays)
-    return end
-  })()
-
-  const today = new Date()
-
-  // Em trial: Stripe trialing + trialEnd no futuro
-  const isInTrial =
-    stripeStatus === "trialing" && !!trialEnd && trialEnd.getTime() >= today.getTime()
-
-  const renewalDateLabel = brDate(nextDue)
-  const trialEndLabel = brDate(trialEnd)
-
-  const daysUntilRenewal = (() => {
-    if (!nextDue) return null
-    const diffMs = nextDue.getTime() - today.getTime()
-    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
-    return diffDays < 0 ? 0 : diffDays
-  })()
-
-  const isNearRenewal =
-    isActive && !isInTrial && daysUntilRenewal != null && daysUntilRenewal <= 15
-
-  // Cancelado em:
-  const cancelledAt = (() => {
-    const byStripe = safeDateFromUnixOrNull(stripeSubscription?.canceled_at ?? null)
-    if (byStripe) return byStripe
-    return safeDateFromIsoOrNull(signature.updatedAt)
-  })()
-
-  const cancelledAtLabel = brDate(cancelledAt)
-
-  // Ainda pode usar até:
-  const endDateObj = safeDateFromIsoOrNull(signature.endDate)
-  const endDateLabel = brDate(endDateObj)
-  const canStillUse = isCancelled && endDateObj !== null && endDateObj >= today
-
-  // ==============================
-  // Ações
-  // ==============================
-  const handleCancelSubscription = async () => {
-    if (!signature.id) return
-    try {
-      setLoadingCancel(true)
-      await cancelSignature(signature.id)
-      await fetchAccount()
-      await refetch()
-    } catch (error) {
-      console.error("error canceling subscription", error)
-      alert("Erro ao cancelar a assinatura. Tente novamente mais tarde.")
-    } finally {
-      setLoadingCancel(false)
-      setConfirmingCancel(false)
-    }
-  }
-
-  // ✅ Desfazer cancelamento agendado (Stripe cancel_at_period_end=false)
-  const handleUndoCancel = async () => {
-    if (!signature.id) return
-    try {
-      setLoadingReactivate(true)
-      await undoCancelSignature(signature.id)
-      await fetchAccount()
-      await refetch()
-    } catch (error) {
-      console.error("error undo cancel", error)
-      alert("Erro ao desfazer cancelamento. Tente novamente mais tarde.")
-    } finally {
-      setLoadingReactivate(false)
-    }
-  }
-
-  // ✅ Reativar (quando realmente cancelada)
-  const handleReactivateSubscription = async () => {
-    try {
-      setLoadingReactivate(true)
-      if (signature?.plan?.slug) {
-        router.push(`/reativacao?plano=${encodeURIComponent(signature.plan.slug)}`)
-      } else {
-        router.push(`/WinbackPage/planos`)
-      }
-    } catch (error) {
-      console.error("error reactivating subscription", error)
-      alert("Erro ao reativar a assinatura. Tente novamente mais tarde.")
-    } finally {
-      setLoadingReactivate(false)
-    }
   }
 
   return (
@@ -425,108 +377,83 @@ const SubscriptionCard = () => {
       </div>
 
       <div className="space-y-4">
-        {/* Cabeçalho plano + status */}
-        <div className="flex items-start justify-between pb-4 border-b border-border/15">
+        <div className="flex items-start justify-between gap-4 pb-4 border-b border-border/15">
           <div className="w-full">
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               <h3 className="text-lg font-semibold text-foreground">{planName}</h3>
-
-              <Badge
-                variant="outline"
-                className={
-                  isActive
-                    ? "bg-success/10 text-success border-success/20"
-                    : "bg-destructive/10 text-destructive border-destructive/20"
-                }
-                title={
-                  stripeStatus
-                    ? `Stripe: ${stripeStatus}`
-                    : `DB: ${signature.status}`
-                }
-              >
-                {effectiveStatusLabel}
+              <Badge variant="outline" className={statusBadgeClass}>
+                {statusLabel}
               </Badge>
-
-              {/* Tag quando cancelamento agendado */}
-              {isScheduledToCancel && (
-                <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20">
-                  Cancelará no fim do período
+              {scheduledToCancel && (
+                <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-200">
+                  Cancelara no fim do periodo
                 </Badge>
               )}
             </div>
 
             <p className="text-sm text-muted-foreground">
-              {cycleLabel} · {billingLabel}
-              {price != null && <> · {brMoney(price)}</>}
+              Valor: {toBrMoney(db.value)} {summary.source ? `· Fonte: ${summary.source}` : ''}
             </p>
-
-            {startDate &&  (
+            <p className="text-xs text-muted-foreground mt-1">
+              Proxima cobranca: {toBrDate(nextDueDate)}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Cancelamento no fim do periodo: {cancelAtPeriodEnd ? 'Sim' : 'Nao'}
+            </p>
+            {endedAt && isCancelled && (
               <p className="text-xs text-muted-foreground mt-1">
-                Início da assinatura: {brDate(startDate)}
-              </p>
-            )}
-
-            {/* Próxima cobrança */}
-            {isActive && renewalDateLabel && !isScheduledToCancel && (
-              <p className="text-xs text-muted-foreground mt-1">
-                {isInTrial ? "Primeira cobrança em " : "Próxima cobrança em "}
-                {renewalDateLabel}
-              </p>
-            )}
-
-            {/* Mensagem de trial */}
-            {isActive && isInTrial && trialEndLabel && !isScheduledToCancel &&(
-              <p className="text-xs font-medium text-primary mt-1">
-                Você está no período gratuito até {trialEndLabel}. Após essa data, será realizada a primeira cobrança automaticamente.
-              </p>
-            )}
-
-            {/* Cancelada */}
-            {isCancelled && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Assinatura cancelada {cancelledAtLabel ? `em ${cancelledAtLabel}.` : "."}
-                {canStillUse && endDateLabel && <> Você ainda terá acesso à Flynance até {endDateLabel}.</>}
+                Encerrada em: {toBrDate(endedAt)}
               </p>
             )}
           </div>
         </div>
 
-        {/* Banner trial */}
-        {isActive && isInTrial && renewalDateLabel && !isScheduledToCancel && (
-          <div className="flex items-start gap-3 p-4 bg-primary/5 border border-primary/30 rounded-xl">
-            <AlertCircle className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-medium text-foreground">Período gratuito ativo</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Você está aproveitando seu período de teste. A primeira cobrança será em {renewalDateLabel}.
+              <p className="text-sm font-semibold text-[#1F2A37]">Cartao atual</p>
+              {paymentMethod ? (
+                <div className="mt-1 text-sm text-slate-700">
+                  <p>
+                    {formatBrand(paymentMethod.brand)} ****{paymentMethod.last4 || '----'}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Validade: {formatExpiry(paymentMethod.expMonth, paymentMethod.expYear)}
+                    {paymentMethod.funding ? ` · ${paymentMethod.funding}` : ''}
+                  </p>
+                </div>
+              ) : (
+                <p className="mt-1 text-sm text-slate-600">
+                  Nenhum cartao vinculado a assinatura no momento.
+                </p>
+              )}
+            </div>
+
+            <div className="flex flex-col items-start gap-2 sm:items-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (!stripePromise) {
+                    toast.error('Stripe nao configurado no frontend (NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY).')
+                    return
+                  }
+                  setIsChangeCardOpen(true)
+                }}
+              >
+                Trocar cartao
+              </Button>
+              <p className="text-xs text-slate-500">
+                Atualiza apenas as proximas faturas.
               </p>
             </div>
           </div>
-        )}
+        </div>
 
-        {/* Banner renovação próxima */}
-        {isNearRenewal && daysUntilRenewal != null && (
-          <div className="flex items-start gap-3 p-4 bg-warning/10 border border-warning/20 rounded-xl">
-            <AlertCircle className="h-5 w-5 text-warning mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-foreground">Renovação próxima</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Sua assinatura será renovada em {daysUntilRenewal}{" "}
-                {daysUntilRenewal === 1 ? "dia" : "dias"}. Certifique-se de que seus dados de pagamento estão atualizados.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Ações */}
         <div className="space-y-2">
-          {/* ✅ Caso: assinatura ativa (ou trialing) com cancelamento agendado => mostrar "Desfazer cancelamento" */}
-          {isScheduledToCancel && (
+          {scheduledToCancel && (
             <div className="rounded-xl border border-border/60 bg-muted/40 p-3 space-y-3">
               <p className="text-xs text-muted-foreground">
-                Sua assinatura está{" "}
-                <span className="font-semibold text-warning">programada para cancelar</span>{" "}
-                no fim do período. Se mudou de ideia, você pode desfazer o cancelamento agora.
+                Sua assinatura esta programada para cancelar no fim do periodo.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
@@ -553,8 +480,7 @@ const SubscriptionCard = () => {
             </div>
           )}
 
-          {/* ✅ Caso: assinatura ativa (sem cancelamento agendado) => botão cancelar */}
-          {isActive && !isCancelled && !isScheduledToCancel && (
+          {isActive && !isCancelled && !scheduledToCancel && (
             <>
               {!confirmingCancel ? (
                 <Button
@@ -564,27 +490,13 @@ const SubscriptionCard = () => {
                   onClick={() => setConfirmingCancel(true)}
                   disabled={loadingCancel}
                 >
-                  Cancelar Assinatura
+                  Cancelar assinatura
                 </Button>
               ) : (
-                <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 space-y-3">
-                  <p className="text-xs text-muted-foreground">
-                    {isInTrial && trialEndLabel ? (
-                      <>
-                        Você ainda está no{" "}
-                        <span className="font-semibold text-destructive">período gratuito</span>{" "}
-                        até{" "}
-                        <span className="font-semibold text-destructive">{trialEndLabel}</span>. Ao cancelar agora, você pode perder o acesso antes mesmo de aproveitar todo o teste.
-                      </>
-                    ) : (
-                      <>
-                        Ao confirmar o cancelamento, sua assinatura ficará programada para{" "}
-                        <span className="font-semibold text-destructive">cancelar no fim do período</span>{" "}
-                        atual (você mantém acesso até lá).
-                      </>
-                    )}
+                <div className="rounded-xl border border-red-300 bg-red-50 p-3 space-y-3">
+                  <p className="text-xs text-slate-700">
+                    Ao confirmar, sua assinatura sera cancelada no fim do periodo atual.
                   </p>
-
                   <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
                     <Button
                       variant="outline"
@@ -600,7 +512,7 @@ const SubscriptionCard = () => {
                       onClick={handleCancelSubscription}
                       disabled={loadingCancel}
                     >
-                      {loadingCancel ? "Cancelando..." : "Confirmar cancelamento"}
+                      {loadingCancel ? 'Cancelando...' : 'Confirmar cancelamento'}
                     </Button>
                   </div>
                 </div>
@@ -608,24 +520,11 @@ const SubscriptionCard = () => {
             </>
           )}
 
-          {/* ✅ Caso: assinatura realmente cancelada => mostrar "Reativar assinatura" */}
           {isCancelled && (
             <div className="rounded-xl border border-border/60 bg-muted/40 p-3 space-y-3">
               <p className="text-xs text-muted-foreground">
-                {canStillUse && endDateLabel ? (
-                  <>
-                    Sua assinatura está{" "}
-                    <span className="font-semibold text-destructive">cancelada</span>, mas você ainda terá acesso à Flynance até{" "}
-                    <span className="font-semibold">{endDateLabel}</span>. Se mudou de ideia, você pode reativar abaixo e continuar de onde parou.
-                  </>
-                ) : (
-                  <>
-                    Sua assinatura está{" "}
-                    <span className="font-semibold text-destructive">cancelada</span>. Para voltar a usar a Flynance, reative sua assinatura abaixo.
-                  </>
-                )}
+                Sua assinatura esta cancelada. Voce pode reativar selecionando um novo plano.
               </p>
-
               <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
                 <Button
                   variant="default"
@@ -637,7 +536,7 @@ const SubscriptionCard = () => {
                   {loadingReactivate ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Reativando...
+                      Redirecionando...
                     </>
                   ) : (
                     <>
@@ -650,12 +549,17 @@ const SubscriptionCard = () => {
             </div>
           )}
         </div>
-
-        {/* Debug opcional */}
-        {/* <pre className="text-[10px] text-muted-foreground bg-muted/30 p-3 rounded-xl overflow-auto">
-          {JSON.stringify({ signature, stripeSubscription }, null, 2)}
-        </pre> */}
       </div>
+
+      <ChangeCardModal
+        open={isChangeCardOpen}
+        onClose={() => setIsChangeCardOpen(false)}
+        onCompleted={async () => {
+          await summaryQuery.refetch()
+          await fetchAccount()
+        }}
+        subscriptionId={subscriptionId}
+      />
     </div>
   )
 }

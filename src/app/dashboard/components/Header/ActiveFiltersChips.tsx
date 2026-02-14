@@ -1,10 +1,10 @@
-// app/dashboard/components/Header/ActiveFiltersChips.tsx
 'use client'
 
 import React from 'react'
 import { X } from 'lucide-react'
-import { useTransactionFilter } from '@/stores/useFilter'
 import clsx from 'clsx'
+import { useTransactionFilter } from '@/stores/useFilter'
+import { toRangeFromDays } from '@/utils/transactionPeriod'
 
 function Chip({
   children,
@@ -18,7 +18,7 @@ function Chip({
   return (
     <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm">
       {color && <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />}
-      <span className="max-w-[220px] truncate">{children}</span>
+      <span className="max-w-[260px] truncate">{children}</span>
       {onRemove && (
         <button
           type="button"
@@ -33,12 +33,48 @@ function Chip({
   )
 }
 
+function formatDate(iso: string): string {
+  const parsed = new Date(`${iso}T00:00:00`)
+  if (Number.isNaN(parsed.getTime())) return iso
+  return parsed.toLocaleDateString('pt-BR')
+}
+
+function getPeriodLabel(
+  mode: 'days' | 'month' | 'range',
+  dateRange: number,
+  includeFuture: boolean,
+  month: string,
+  year: string,
+  rangeStart: string,
+  rangeEnd: string
+): string {
+  if (mode === 'range' && rangeStart && rangeEnd) {
+    return `${formatDate(rangeStart)} - ${formatDate(rangeEnd)}`
+  }
+
+  if (mode === 'month' && month && year) {
+    return `${month}/${year}`
+  }
+
+  const safeDays = Math.max(1, Number(dateRange || 30))
+  if (includeFuture) {
+    return `Proximos ${safeDays} dias`
+  }
+  return `Ultimos ${safeDays} dias`
+}
+
 export default function ActiveFiltersChips({ fallbackText }: { fallbackText?: string }) {
   const selectedCategoriesDraft = useTransactionFilter((s) => s.selectedCategories)
   const setSelectedCategoriesDraft = useTransactionFilter((s) => s.setSelectedCategories)
 
   const dateRangeDraft = useTransactionFilter((s) => s.dateRange)
   const setDateRangeDraft = useTransactionFilter((s) => s.setDateRange)
+  const setModeDraft = useTransactionFilter((s) => s.setMode)
+  const setIncludeFutureDraft = useTransactionFilter((s) => s.setIncludeFuture)
+  const setSelectedMonthDraft = useTransactionFilter((s) => s.setSelectedMonth)
+  const setSelectedYearDraft = useTransactionFilter((s) => s.setSelectedYear)
+  const setRangeStartDraft = useTransactionFilter((s) => s.setRangeStart)
+  const setRangeEndDraft = useTransactionFilter((s) => s.setRangeEnd)
 
   const searchTermDraft = useTransactionFilter((s) => s.searchTerm)
   const setSearchTermDraft = useTransactionFilter((s) => s.setSearchTerm)
@@ -47,14 +83,23 @@ export default function ActiveFiltersChips({ fallbackText }: { fallbackText?: st
   const setTypeFilterDraft = useTransactionFilter((s) => s.setTypeFilter)
 
   const modeDraft = useTransactionFilter((s) => s.mode)
+  const includeFutureDraft = useTransactionFilter((s) => s.includeFuture)
   const selectedMonthDraft = useTransactionFilter((s) => s.selectedMonth)
   const selectedYearDraft = useTransactionFilter((s) => s.selectedYear)
+  const rangeStartDraft = useTransactionFilter((s) => s.rangeStart)
+  const rangeEndDraft = useTransactionFilter((s) => s.rangeEnd)
 
   const selectedCategoriesApplied = useTransactionFilter((s) => s.appliedSelectedCategories)
   const setSelectedCategoriesApplied = useTransactionFilter((s) => s.setAppliedSelectedCategories)
 
   const dateRangeApplied = useTransactionFilter((s) => s.appliedDateRange)
   const setDateRangeApplied = useTransactionFilter((s) => s.setAppliedDateRange)
+  const setModeApplied = useTransactionFilter((s) => s.setAppliedMode)
+  const setIncludeFutureApplied = useTransactionFilter((s) => s.setAppliedIncludeFuture)
+  const setSelectedMonthApplied = useTransactionFilter((s) => s.setAppliedSelectedMonth)
+  const setSelectedYearApplied = useTransactionFilter((s) => s.setAppliedSelectedYear)
+  const setRangeStartApplied = useTransactionFilter((s) => s.setAppliedRangeStart)
+  const setRangeEndApplied = useTransactionFilter((s) => s.setAppliedRangeEnd)
 
   const searchTermApplied = useTransactionFilter((s) => s.appliedSearchTerm)
   const setSearchTermApplied = useTransactionFilter((s) => s.setAppliedSearchTerm)
@@ -63,8 +108,11 @@ export default function ActiveFiltersChips({ fallbackText }: { fallbackText?: st
   const setTypeFilterApplied = useTransactionFilter((s) => s.setAppliedTypeFilter)
 
   const modeApplied = useTransactionFilter((s) => s.appliedMode)
+  const includeFutureApplied = useTransactionFilter((s) => s.appliedIncludeFuture)
   const selectedMonthApplied = useTransactionFilter((s) => s.appliedSelectedMonth)
   const selectedYearApplied = useTransactionFilter((s) => s.appliedSelectedYear)
+  const rangeStartApplied = useTransactionFilter((s) => s.appliedRangeStart)
+  const rangeEndApplied = useTransactionFilter((s) => s.appliedRangeEnd)
 
   const limparFiltros = useTransactionFilter((s) => s.limparFiltros)
 
@@ -80,18 +128,30 @@ export default function ActiveFiltersChips({ fallbackText }: { fallbackText?: st
     Number(dateRangeDraft || 30) !== Number(dateRangeApplied || 30) ||
     typeFilterDraft !== typeFilterApplied ||
     modeDraft !== modeApplied ||
+    includeFutureDraft !== includeFutureApplied ||
     (selectedMonthDraft || '') !== (selectedMonthApplied || '') ||
-    (selectedYearDraft || '') !== (selectedYearApplied || '')
+    (selectedYearDraft || '') !== (selectedYearApplied || '') ||
+    (rangeStartDraft || '') !== (rangeStartApplied || '') ||
+    (rangeEndDraft || '') !== (rangeEndApplied || '')
 
   const selectedCategories = hasPending ? selectedCategoriesDraft : selectedCategoriesApplied
   const dateRange = hasPending ? dateRangeDraft : dateRangeApplied
   const searchTerm = hasPending ? searchTermDraft : searchTermApplied
   const typeFilter = hasPending ? typeFilterDraft : typeFilterApplied
+  const mode = hasPending ? modeDraft : modeApplied
+  const includeFuture = hasPending ? includeFutureDraft : includeFutureApplied
+  const month = hasPending ? selectedMonthDraft : selectedMonthApplied
+  const year = hasPending ? selectedYearDraft : selectedYearApplied
+  const rangeStart = hasPending ? rangeStartDraft : rangeStartApplied
+  const rangeEnd = hasPending ? rangeEndDraft : rangeEndApplied
 
   const hasAny =
     selectedCategories.length > 0 ||
     !!searchTerm ||
     (dateRange && Number(dateRange) !== 30) ||
+    includeFuture ||
+    mode === 'range' ||
+    mode === 'month' ||
     typeFilter !== 'ALL'
 
   const typeLabel =
@@ -103,8 +163,42 @@ export default function ActiveFiltersChips({ fallbackText }: { fallbackText?: st
     else setSelectedCategoriesApplied(next)
   }
 
+  const removePeriod = () => {
+    const defaultRange = toRangeFromDays(30)
+
+    if (hasPending) {
+      setModeDraft('days')
+      setDateRangeDraft(30)
+      setIncludeFutureDraft(false)
+      setSelectedMonthDraft('')
+      setSelectedYearDraft('')
+      setRangeStartDraft(defaultRange.start)
+      setRangeEndDraft(defaultRange.end)
+      return
+    }
+
+    setModeApplied('days')
+    setDateRangeApplied(30)
+    setIncludeFutureApplied(false)
+    setSelectedMonthApplied('')
+    setSelectedYearApplied('')
+    setRangeStartApplied(defaultRange.start)
+    setRangeEndApplied(defaultRange.end)
+  }
+
+  const periodLabel = getPeriodLabel(
+    mode,
+    Number(dateRange || 30),
+    includeFuture,
+    month,
+    year,
+    rangeStart,
+    rangeEnd
+  )
+
   return (
     <div className="flex flex-wrap items-center gap-2">
+   
       {!hasAny ? (
         <p className="text-sm font-light text-slate-500">{fallbackText}</p>
       ) : (
@@ -114,12 +208,11 @@ export default function ActiveFiltersChips({ fallbackText }: { fallbackText?: st
               Filtros pendentes
             </span>
           )}
-          {dateRange && Number(dateRange) !== 30 && (
-            <Chip onRemove={() => (hasPending ? setDateRangeDraft(30) : setDateRangeApplied(30))}>
-              Ultimos {dateRange} dias
-            </Chip>
-          )}
-
+          {periodLabel && 
+          <Chip onRemove={removePeriod}>
+            {periodLabel}
+          </Chip>
+          }
           {typeFilter !== 'ALL' && (
             <Chip onRemove={() => (hasPending ? setTypeFilterDraft('ALL') : setTypeFilterApplied('ALL'))}>
               {typeLabel}

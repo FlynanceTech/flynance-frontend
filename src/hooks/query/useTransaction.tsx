@@ -4,9 +4,9 @@ import {
   createTransaction,
   deleteTransaction,
   getTransaction,
-  importTransactionsPreview,
-  importTransactionsConfirm,
   importTransactions,
+  importTransactionsConfirm,
+  importTransactionsPreview,
   TransactionDTO,
   TransactionFilters,
   updateTransaction,
@@ -14,6 +14,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { cardKeys } from './cardkeys'
 import { useTransactionFilter } from '@/stores/useFilter'
+import { getBrowserTimezone, toFutureRangeFromDays } from '@/utils/transactionPeriod'
 
 type Primitive = string | number | boolean
 type FilterValue = Primitive | Primitive[] | undefined
@@ -42,27 +43,44 @@ type ImportConfirmPayload = {
 export function useTranscation(params: UseTransactionParams) {
   const queryClient = useQueryClient()
 
-  // ✅ filtro global (zustand)
   const mode = useTransactionFilter((s) => s.appliedMode)
   const dateRange = useTransactionFilter((s) => s.appliedDateRange)
   const selectedMonth = useTransactionFilter((s) => s.appliedSelectedMonth)
   const selectedYear = useTransactionFilter((s) => s.appliedSelectedYear)
+  const includeFuture = useTransactionFilter((s) => s.appliedIncludeFuture)
+  const rangeStart = useTransactionFilter((s) => s.appliedRangeStart)
+  const rangeEnd = useTransactionFilter((s) => s.appliedRangeEnd)
   const searchTerm = useTransactionFilter((s) => s.appliedSearchTerm)
   const selectedCategories = useTransactionFilter((s) => s.appliedSelectedCategories)
   const selectedTypeTrasaction = useTransactionFilter((s) => s.appliedTypeFilter)
 
-  // ✅ transforma store -> filtros da API
+  const safeDays = Math.max(1, Number(dateRange || 30))
+  const includeFutureDays =
+    mode === 'days' && includeFuture ? Math.max(0, safeDays - 1) : undefined
+  const futureDaysRange =
+    mode === 'days' && includeFuture ? toFutureRangeFromDays(safeDays) : null
+  const timezone = getBrowserTimezone()
+
   const globalFilters: TransactionFilters = {
-    mode: mode === 'month' ? 'month' : 'days',
-    days: mode === 'days' ? Number(dateRange || 30) : undefined,
+    mode,
+    days: mode === 'days' ? safeDays : undefined,
+    includeFutureDays,
     month: mode === 'month' ? selectedMonth : undefined,
     year: mode === 'month' ? selectedYear : undefined,
+    dateFrom:
+      mode === 'range'
+        ? rangeStart || undefined
+        : futureDaysRange?.start,
+    dateTo:
+      mode === 'range'
+        ? rangeEnd || undefined
+        : futureDaysRange?.end,
+    timezone,
     search: searchTerm?.trim() ? searchTerm.trim() : undefined,
     categoryIds: selectedCategories?.length ? selectedCategories.map((c) => c.id) : undefined,
     type: selectedTypeTrasaction !== 'ALL' ? selectedTypeTrasaction : undefined,
   }
 
-  // ✅ merge: filtros do caller + global (global vence)
   const mergedFilters: TransactionFilters =
     params.useGlobalFilters === false
       ? ({ ...(params.filters ?? {}) } as TransactionFilters)
@@ -70,12 +88,12 @@ export function useTranscation(params: UseTransactionParams) {
           ...(params.filters ?? {}),
           ...globalFilters,
         } as TransactionFilters)
+
   const transactionsQuery = useQuery({
-    // ✅ importantíssimo: o cache precisa depender do filtro global
     queryKey: ['transactions', params.userId, params.page ?? 1, params.limit ?? 10, mergedFilters],
     queryFn: () =>
       getTransaction({
-        userId: params.userId as string,
+        userId: params.userId,
         page: params.page ?? 1,
         limit: params.limit ?? 10,
         filters: mergedFilters,
@@ -84,7 +102,6 @@ export function useTranscation(params: UseTransactionParams) {
     staleTime: 30_000,
     retry: 1,
   })
-
 
   const createMutation = useMutation({
     mutationFn: createTransaction,
@@ -138,7 +155,8 @@ export function useTranscation(params: UseTransactionParams) {
   })
 
   const importConfirmMutation = useMutation({
-    mutationFn: ({ userId, payload }: ImportConfirmPayload) => importTransactionsConfirm(userId, payload),
+    mutationFn: ({ userId, payload }: ImportConfirmPayload) =>
+      importTransactionsConfirm(userId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
       queryClient.invalidateQueries({ queryKey: ['fixed-accounts'] })

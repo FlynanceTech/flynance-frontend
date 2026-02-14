@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
 import Header from '../components/Header'
 import { useTransactionFilter } from '@/stores/useFilter'
@@ -48,6 +48,7 @@ const typeSelectStyles: StylesConfig<TypeOption, false> = {
 }
 
 const PAGE_SIZE = 10
+const CSV_TIP_AUTO_CLOSE_MS = 8000
 
 function SkeletonSection() {
   return (
@@ -85,23 +86,14 @@ export default function TransactionsPage() {
   const selectedCategories = useTransactionFilter((s) => s.appliedSelectedCategories)
   const searchTerm = useTransactionFilter((s) => s.appliedSearchTerm)
   const dateRange = useTransactionFilter((s) => s.appliedDateRange)
+  const mode = useTransactionFilter((s) => s.appliedMode)
+  const includeFuture = useTransactionFilter((s) => s.appliedIncludeFuture)
+  const rangeStart = useTransactionFilter((s) => s.appliedRangeStart)
+  const rangeEnd = useTransactionFilter((s) => s.appliedRangeEnd)
 
   const typeFilter = useTransactionFilter((s) => s.appliedTypeFilter)
 
-  const params = useMemo(() => ({
-    userId,
-    page: currentPage,
-    limit: PAGE_SIZE,
-    filters: {
-      category: selectedCategories.map(c => c.id).join(',') || undefined,
-      days: dateRange || undefined,
-      type: typeFilter !== 'ALL' ? typeFilter : undefined, // ✅
-      search: searchTerm || undefined, // se teu backend aceitar
-    },
-  }), [userId, currentPage, selectedCategories, dateRange, typeFilter, searchTerm])
-
-
- const { transactionsQuery, deleteMutation, updateMutation, createMutation, importMutation, importPreviewMutation, importConfirmMutation } = useTranscation({
+  const { transactionsQuery, deleteMutation, updateMutation, createMutation, importMutation, importPreviewMutation, importConfirmMutation } = useTranscation({
   userId,
   page: currentPage,
   limit: PAGE_SIZE,
@@ -137,6 +129,16 @@ export default function TransactionsPage() {
   const {
     categoriesQuery: { data: categories = [] },
   } = useCategories()
+
+  useEffect(() => {
+    if (!showCsvTip) return
+
+    const timer = window.setTimeout(() => {
+      setShowCsvTip(false)
+    }, CSV_TIP_AUTO_CLOSE_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [showCsvTip])
 
   const handleImportClick = () => {
     if (!userId) return
@@ -324,7 +326,14 @@ const meta = useMemo(() => {
   const endIndex = Math.min(currentPage * PAGE_SIZE, totalFiltered)
 
   const isFiltered =
-    selectedCategories.length > 0 || !!searchTerm || !!dateRange
+    selectedCategories.length > 0 ||
+    !!searchTerm ||
+    typeFilter !== 'ALL' ||
+    includeFuture ||
+    mode === 'month' ||
+    mode === 'range' ||
+    Number(dateRange || 30) !== 30 ||
+    (!!rangeStart && !!rangeEnd)
 
   const handleSortChange = (field: 'date' | 'value') => {
     setSortState((prev) => {
@@ -921,7 +930,7 @@ const meta = useMemo(() => {
 
       {isRefreshing && (
         <div className="w-full rounded-md border border-secondary/40 bg-secondary/10 px-4 py-2 text-xs text-secondary">
-          Atualizando transaÃ§Ãµes...
+          Atualizando transações...
         </div>
       )}
 
@@ -1041,3 +1050,4 @@ const meta = useMemo(() => {
     </section>
   )
 }
+

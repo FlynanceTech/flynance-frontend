@@ -116,19 +116,20 @@ export default function InstallPrompt() {
                 <p className="text-gray-600 text-sm mb-6">
                   Aproveite a experência completa diretamente no seu dispositivo.
                 </p>
-
-                <button
-                  onClick={handleInstall}
-                  className="bg-gradient-to-r from-secondary to-primary text-white font-medium py-2 px-8 rounded-lg hover:scale-105 transition cursor-pointer"
-                >
-                  Vamos lá!
-                </button>
-                <button
-                  onClick={handleDismiss}
-                  className="mt-3 text-xs text-gray-500 hover:text-gray-700 underline underline-offset-4 cursor-pointer"
-                >
-                  Já instalei
-                </button>
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={handleInstall}
+                    className="bg-gradient-to-r from-secondary to-primary text-white font-medium py-2 px-8 rounded-lg hover:scale-105 transition cursor-pointer"
+                  >
+                    Vamos lá!
+                  </button> 
+                  <button
+                    onClick={handleDismiss}
+                    className="mt-3 text-xs text-gray-500 hover:text-gray-700 underline underline-offset-4 cursor-pointer"
+                  >
+                    Já instalei
+                  </button>
+                </div>
               </div>
             </DialogPanel>
           </TransitionChild>

@@ -11,6 +11,7 @@ import TransactionDrawer from '../TransactionDrawer'
 import DateRangeSelect from '../DateRangeSelect'
 import { useUserSession } from '@/stores/useUserSession'
 import { useTransactionFilter } from '@/stores/useFilter'
+import { toFutureRangeFromDays, toRangeFromDays } from '@/utils/transactionPeriod'
 
 import type { Category } from '@/types/Transaction'
 
@@ -66,6 +67,18 @@ function asFullMonthRange(start: string, end: string): { month: string; year: st
   }
 }
 
+function monthToRange(month: string, year: string): { start: string; end: string } | null {
+  const mm = Number(month)
+  const yy = Number(year)
+  if (!Number.isInteger(mm) || mm < 1 || mm > 12) return null
+  if (!Number.isInteger(yy) || yy < 1) return null
+
+  const start = `${String(yy)}-${String(mm).padStart(2, '0')}-01`
+  const lastDay = new Date(yy, mm, 0).getDate()
+  const end = `${String(yy)}-${String(mm).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+  return { start, end }
+}
+
 export default function Header({
   subtitle,
   asFilter = false,
@@ -86,27 +99,41 @@ export default function Header({
   const selectedMonth = useTransactionFilter((s) => s.selectedMonth)
   const selectedYear = useTransactionFilter((s) => s.selectedYear)
   const includeFuture = useTransactionFilter((s) => s.includeFuture)
+  const rangeStart = useTransactionFilter((s) => s.rangeStart)
+  const rangeEnd = useTransactionFilter((s) => s.rangeEnd)
 
   const appliedMode = useTransactionFilter((s) => s.appliedMode)
   const appliedDateRange = useTransactionFilter((s) => s.appliedDateRange)
   const appliedMonth = useTransactionFilter((s) => s.appliedSelectedMonth)
   const appliedYear = useTransactionFilter((s) => s.appliedSelectedYear)
   const appliedIncludeFuture = useTransactionFilter((s) => s.appliedIncludeFuture)
+  const appliedRangeStart = useTransactionFilter((s) => s.appliedRangeStart)
+  const appliedRangeEnd = useTransactionFilter((s) => s.appliedRangeEnd)
 
   const setMode = useTransactionFilter((s) => s.setMode)
   const setDateRange = useTransactionFilter((s) => s.setDateRange)
   const setSelectedMonth = useTransactionFilter((s) => s.setSelectedMonth)
   const setSelectedYear = useTransactionFilter((s) => s.setSelectedYear)
+  const setRangeStart = useTransactionFilter((s) => s.setRangeStart)
+  const setRangeEnd = useTransactionFilter((s) => s.setRangeEnd)
   const setIncludeFuture = useTransactionFilter((s) => s.setIncludeFuture)
   const applyFilters = useTransactionFilter((s) => s.applyFilters)
 
   // ✅ valor do DateRangeSelect derivado do store (sem state local)
   const datePickerValue: AnyDateFilter = useMemo(() => {
-    if (mode === 'month') {
+    if (mode === 'range' && rangeStart && rangeEnd) {
+      return {
+        mode: 'range',
+        start: rangeStart,
+        end: rangeEnd,
+      }
+    }
+
+    if (mode === 'month' && selectedMonth && selectedYear) {
       return {
         mode: 'month',
-        month: selectedMonth || '',
-        year: selectedYear || '',
+        month: selectedMonth,
+        year: selectedYear,
       }
     }
 
@@ -114,13 +141,19 @@ export default function Header({
       mode: 'days',
       days: Number(dateRange || 30),
     }
-  }, [mode, dateRange, selectedMonth, selectedYear])
+  }, [mode, dateRange, selectedMonth, selectedYear, rangeStart, rangeEnd])
 
   function handleDateChange(next: AnyDateFilter) {
     // - Se for "days": grava no store
     if (next?.mode === 'days') {
+      const safeDays = Number(next.days || 30)
+      const range = includeFuture
+        ? toFutureRangeFromDays(safeDays)
+        : toRangeFromDays(safeDays)
       setMode('days')
-      setDateRange(Number(next.days || 30))
+      setDateRange(safeDays)
+      setRangeStart(range.start)
+      setRangeEnd(range.end)
       setSelectedMonth('')
       setSelectedYear('')
       return
@@ -128,9 +161,14 @@ export default function Header({
 
     // - Se for "month": grava no store
     if (next?.mode === 'month') {
+      const monthRange = monthToRange(next.month, next.year)
       setMode('month')
       setSelectedMonth(next.month || '')
       setSelectedYear(next.year || '')
+      if (monthRange) {
+        setRangeStart(monthRange.start)
+        setRangeEnd(monthRange.end)
+      }
       return
     }
 
@@ -141,12 +179,16 @@ export default function Header({
         setMode('month')
         setSelectedMonth(fullMonth.month)
         setSelectedYear(fullMonth.year)
+        setRangeStart(next.start)
+        setRangeEnd(next.end)
         return
       }
 
       const days = diffDaysInclusive(next.start, next.end)
-      setMode('days')
+      setMode('range')
       setDateRange(days)
+      setRangeStart(next.start)
+      setRangeEnd(next.end)
       setSelectedMonth('')
       setSelectedYear('')
     }
@@ -157,7 +199,9 @@ export default function Header({
     Number(dateRange || 30) !== Number(appliedDateRange || 30) ||
     (selectedMonth || '') !== (appliedMonth || '') ||
     (selectedYear || '') !== (appliedYear || '') ||
-    includeFuture !== appliedIncludeFuture
+    includeFuture !== appliedIncludeFuture ||
+    (rangeStart || '') !== (appliedRangeStart || '') ||
+    (rangeEnd || '') !== (appliedRangeEnd || '')
 
   const handleApplyFilters = () => {
     if (!hasPendingFilters || isApplyingFilters) return

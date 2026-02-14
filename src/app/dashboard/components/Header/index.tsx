@@ -14,6 +14,7 @@ import ActiveFiltersChips from './ActiveFiltersChips'
 import QuickTypeFilter from './QuickTypeFilter'
 import { useTransactionFilter } from '@/stores/useFilter'
 import DateRangeSelect from '../DateRangeSelect'
+import { toFutureRangeFromDays, toRangeFromDays } from '@/utils/transactionPeriod'
 
 interface HeaderProps {
   title?: string
@@ -41,6 +42,42 @@ function diffDaysInclusive(start: string, end: string) {
   return Math.max(1, Math.floor((e - s) / ms) + 1)
 }
 
+function monthToRange(month: string, year: string): { start: string; end: string } | null {
+  const mm = Number(month)
+  const yy = Number(year)
+  if (!Number.isInteger(mm) || mm < 1 || mm > 12) return null
+  if (!Number.isInteger(yy) || yy < 1) return null
+
+  const start = `${String(yy)}-${String(mm).padStart(2, '0')}-01`
+  const lastDay = new Date(yy, mm, 0).getDate()
+  const end = `${String(yy)}-${String(mm).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+  return { start, end }
+}
+
+function parseISODate(value: string) {
+  return new Date(`${value}T00:00:00`)
+}
+
+function asFullMonthRange(start: string, end: string): { month: string; year: string } | null {
+  const startDate = parseISODate(start)
+  const endDate = parseISODate(end)
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return null
+
+  const sameMonth =
+    startDate.getFullYear() === endDate.getFullYear() && startDate.getMonth() === endDate.getMonth()
+  if (!sameMonth) return null
+
+  const firstDayOk = startDate.getDate() === 1
+  const lastDayOfMonth = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0).getDate()
+  const lastDayOk = endDate.getDate() === lastDayOfMonth
+  if (!firstDayOk || !lastDayOk) return null
+
+  return {
+    month: String(startDate.getMonth() + 1).padStart(2, '0'),
+    year: String(startDate.getFullYear()),
+  }
+}
+
 export default function Header({ title, subtitle, asFilter = false, asReport = false, dataToFilter, newTransation = true, importTransations, onApplyFilters, onImportClick, importLoading, rightContent}: HeaderProps) {
   const [drawerOpen, setDrawerOpen] = useState(false)
 
@@ -49,29 +86,53 @@ export default function Header({ title, subtitle, asFilter = false, asReport = f
   const dateRange = useTransactionFilter((s) => s.dateRange)
   const typeFilter = useTransactionFilter((s) => s.typeFilter)
   const mode = useTransactionFilter((s) => s.mode)
+  const includeFuture = useTransactionFilter((s) => s.includeFuture)
   const selectedMonth = useTransactionFilter((s) => s.selectedMonth)
   const selectedYear = useTransactionFilter((s) => s.selectedYear)
+  const rangeStart = useTransactionFilter((s) => s.rangeStart)
+  const rangeEnd = useTransactionFilter((s) => s.rangeEnd)
 
   const appliedCategories = useTransactionFilter((s) => s.appliedSelectedCategories)
   const appliedSearchTerm = useTransactionFilter((s) => s.appliedSearchTerm)
   const appliedDateRange = useTransactionFilter((s) => s.appliedDateRange)
   const appliedTypeFilter = useTransactionFilter((s) => s.appliedTypeFilter)
   const appliedMode = useTransactionFilter((s) => s.appliedMode)
+  const appliedIncludeFuture = useTransactionFilter((s) => s.appliedIncludeFuture)
   const appliedMonth = useTransactionFilter((s) => s.appliedSelectedMonth)
   const appliedYear = useTransactionFilter((s) => s.appliedSelectedYear)
+  const appliedRangeStart = useTransactionFilter((s) => s.appliedRangeStart)
+  const appliedRangeEnd = useTransactionFilter((s) => s.appliedRangeEnd)
 
   const setMode = useTransactionFilter((s) => s.setMode)
   const setDateRange = useTransactionFilter((s) => s.setDateRange)
+  const setIncludeFuture = useTransactionFilter((s) => s.setIncludeFuture)
   const setSelectedMonth = useTransactionFilter((s) => s.setSelectedMonth)
   const setSelectedYear = useTransactionFilter((s) => s.setSelectedYear)
+  const setRangeStart = useTransactionFilter((s) => s.setRangeStart)
+  const setRangeEnd = useTransactionFilter((s) => s.setRangeEnd)
   const applyFilters = useTransactionFilter((s) => s.applyFilters)
 
   const datePickerValue: AnyDateFilter = React.useMemo(() => {
-    if (mode === 'month') {
+    if (mode === 'range' && rangeStart && rangeEnd) {
+      return {
+        mode: 'range',
+        start: rangeStart,
+        end: rangeEnd,
+      }
+    }
+
+    if (mode === 'month' && selectedMonth && selectedYear) {
       return {
         mode: 'month',
-        month: selectedMonth || '',
-        year: selectedYear || '',
+        month: selectedMonth,
+        year: selectedYear,
+      }
+    }
+
+    if (mode === 'range') {
+      return {
+        mode: 'range',
+        ...toRangeFromDays(Number(dateRange || 30)),
       }
     }
 
@@ -79,28 +140,51 @@ export default function Header({ title, subtitle, asFilter = false, asReport = f
       mode: 'days',
       days: Number(dateRange || 30),
     }
-  }, [mode, dateRange, selectedMonth, selectedYear])
+  }, [mode, dateRange, selectedMonth, selectedYear, rangeStart, rangeEnd])
 
   function handleDateChange(next: AnyDateFilter) {
     if (next?.mode === 'days') {
+      const safeDays = Number(next.days || 30)
+      const range = includeFuture
+        ? toFutureRangeFromDays(safeDays)
+        : toRangeFromDays(safeDays)
       setMode('days')
-      setDateRange(Number(next.days || 30))
+      setDateRange(safeDays)
+      setRangeStart(range.start)
+      setRangeEnd(range.end)
       setSelectedMonth('')
       setSelectedYear('')
       return
     }
 
     if (next?.mode === 'month') {
+      const monthRange = monthToRange(next.month, next.year)
       setMode('month')
       setSelectedMonth(next.month || '')
       setSelectedYear(next.year || '')
+      if (monthRange) {
+        setRangeStart(monthRange.start)
+        setRangeEnd(monthRange.end)
+      }
       return
     }
 
     if (next?.mode === 'range') {
+      const fullMonth = asFullMonthRange(next.start, next.end)
+      if (fullMonth) {
+        setMode('month')
+        setSelectedMonth(fullMonth.month)
+        setSelectedYear(fullMonth.year)
+        setRangeStart(next.start)
+        setRangeEnd(next.end)
+        return
+      }
+
       const days = diffDaysInclusive(next.start, next.end)
-      setMode('days')
+      setMode('range')
       setDateRange(days)
+      setRangeStart(next.start)
+      setRangeEnd(next.end)
       setSelectedMonth('')
       setSelectedYear('')
     }
@@ -117,15 +201,20 @@ export default function Header({ title, subtitle, asFilter = false, asReport = f
     (searchTerm || '') !== (appliedSearchTerm || '') ||
     Number(dateRange || 30) !== Number(appliedDateRange || 30) ||
     typeFilter !== appliedTypeFilter ||
+    includeFuture !== appliedIncludeFuture ||
     mode !== appliedMode ||
     (selectedMonth || '') !== (appliedMonth || '') ||
-    (selectedYear || '') !== (appliedYear || '')
+    (selectedYear || '') !== (appliedYear || '') ||
+    (rangeStart || '') !== (appliedRangeStart || '') ||
+    (rangeEnd || '') !== (appliedRangeEnd || '')
 
   const handleApplyFilters = () => {
     if (!hasPendingFilters) return
     applyFilters()
     onApplyFilters?.()
   }
+
+  const filterButtonLabel = hasPendingFilters ? 'Aplicar filtro' : 'Filtrar'
   return (
     <header className='flex flex-col'>
       <div className="flex flex-col gap-2">
@@ -195,6 +284,8 @@ export default function Header({ title, subtitle, asFilter = false, asReport = f
                         <DateRangeSelect
                           value={datePickerValue as any}
                           onChange={handleDateChange as any}
+                          includeFuture={includeFuture}
+                          onIncludeFutureChange={setIncludeFuture}
                           inline
                           withDisplay
                           className="w-full justify-between px-3"
@@ -212,7 +303,7 @@ export default function Header({ title, subtitle, asFilter = false, asReport = f
                           disabled={!hasPendingFilters}
                           className="h-10 w-full rounded-full bg-primary px-4 text-sm font-semibold text-white hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          Filtrar
+                          {filterButtonLabel}
                         </button>
 
                       </div>
@@ -247,14 +338,20 @@ export default function Header({ title, subtitle, asFilter = false, asReport = f
               <SearchBar />
               <QuickTypeFilter />
               <CategoriesSelectWithChips />
-              <DateRangeSelect value={datePickerValue as any} onChange={handleDateChange as any} withDisplay />
+              <DateRangeSelect
+                value={datePickerValue as any}
+                onChange={handleDateChange as any}
+                includeFuture={includeFuture}
+                onIncludeFutureChange={setIncludeFuture}
+                className="w-9 max-w-9"
+              />
               <button
                 type="button"
                 onClick={handleApplyFilters}
                 disabled={!hasPendingFilters}
                 className="h-10 rounded-full bg-primary px-4 text-sm font-semibold text-white hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Filtrar
+                {filterButtonLabel}
               </button>
             </div>
 

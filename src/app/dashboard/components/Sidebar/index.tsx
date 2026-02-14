@@ -17,15 +17,18 @@ import {
   ClipboardList,
   BarChart3,
   Clock3,
+  ShieldCheck,
 } from 'lucide-react'
 import SidebarItem from './SidebarItem'
 import { useUserSession } from '@/stores/useUserSession'
 import clsx from 'clsx'
+import { isAdminRole } from '@/utils/roles'
 
 export default function Sidebar() {
   const router = useRouter()
   const pathname = usePathname()
-  const { logout } = useUserSession()
+  const { logout, user } = useUserSession()
+  const isAdmin = isAdminRole(user?.userData?.user?.role)
 
   const [collapsed, setCollapsed] = useState(false)
 
@@ -38,6 +41,9 @@ export default function Sidebar() {
     { label: 'Categorias', icon: <Tag />, path: '/dashboard/categorias' },
     { label: 'Educacao', icon: <BookOpenCheck />, path: '/dashboard/educacao' },
     { label: 'Perfil', icon: <User />, path: '/dashboard/perfil' },
+    ...(isAdmin
+      ? [{ label: 'Admin', icon: <ShieldCheck />, path: '/admin/dashboard' }]
+      : []),
   ]
 
   const normalize = (p: string) => p.replace(/\/+$/, '')

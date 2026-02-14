@@ -27,20 +27,24 @@ export interface TransactionDTO {
 type Primitive = string | number | boolean
 type FilterValue = Primitive | Primitive[] | undefined
 
-export type TransactionFilterMode = 'days' | 'month'
+export type TransactionFilterMode = 'days' | 'month' | 'range'
 
 export type TransactionFilters = {
   mode?: TransactionFilterMode
   days?: number
+  includeFutureDays?: number
   month?: string // '05'
   year?: string  // '2026'
+  dateFrom?: string
+  dateTo?: string
+  timezone?: string
   search?: string
   categoryIds?: string[] // no request vira "a,b,c"
   type?: 'ALL' | 'INCOME' | 'EXPENSE'
 }
 
 export type GetTransactionParams = {
-  userId: string
+  userId?: string
   page?: number
   limit?: number
   filters?: TransactionFilters
@@ -52,29 +56,43 @@ export type GetTransactionResponse<TTransaction = any> = {
     page: number
     limit: number
     total: number
+    totalPages?: number
     hasNext: boolean
+    dateFrom?: string
+    dateTo?: string
+    timezone?: string
   }
 }
 
 export async function getTransaction({
-  userId,
   page = 1,
   limit = 10,
   filters,
 }: GetTransactionParams) {
   const params = new URLSearchParams()
-  params.set('userId', userId)
   params.set('page', String(page))
   params.set('limit', String(limit))
   if (filters) {
-    if (filters.mode) params.set('mode', filters.mode)
+    if (filters.mode && filters.mode !== 'range') params.set('mode', filters.mode)
 
     if (filters.mode === 'month') {
       if (filters.month) params.set('month', filters.month)
       if (filters.year) params.set('year', filters.year)
-    } else {
+    } else if (filters.mode === 'days') {
       // default days
       if (filters.days != null) params.set('days', String(filters.days))
+      if (filters.includeFutureDays != null) {
+        params.set('includeFutureDays', String(filters.includeFutureDays))
+      }
+    }
+
+    if (filters.dateFrom && filters.dateTo) {
+      params.set('dateFrom', filters.dateFrom)
+      params.set('dateTo', filters.dateTo)
+    }
+
+    if (filters.timezone) {
+      params.set('timezone', filters.timezone)
     }
 
     if (filters.search) params.set('search', filters.search)
