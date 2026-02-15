@@ -13,6 +13,7 @@ export type AdminMetrics = {
   clients: AdminMetricItem
   advisors: AdminMetricItem
   leads: AdminMetricItem
+  leadsByStatus: Record<string, number>
 }
 
 export type PaginationMeta = {
@@ -33,6 +34,7 @@ export type AdvisorInvite = {
   expiresAt?: string | null
   maxUses: number
   usedCount: number
+  defaultPermission?: 'READ_ONLY' | 'READ_WRITE'
   status: AdvisorInviteStatus
   revokedAt?: string | null
   createdAt?: string | null
@@ -50,6 +52,7 @@ export type CreateAdvisorInvitePayload = {
   expiresInHours?: number
   expiresInDays?: number
   maxUses?: number
+  defaultPermission?: 'READ_ONLY' | 'READ_WRITE'
 }
 
 export type CreateAdvisorInviteResponse = {
@@ -77,6 +80,7 @@ export type AdminLeadsParams = {
   search?: string
   createdFrom?: string
   createdTo?: string
+  status?: string
 }
 
 export type AdminLeadsResponse = {
@@ -124,7 +128,12 @@ export type AdminPlansParams = {
 }
 
 export type AdminPlansResponse = {
+  rows: AdminPlan[]
   plans: AdminPlan[]
+  page: number
+  limit: number
+  total: number
+  totalPages: number
   meta: PaginationMeta
 }
 
@@ -326,6 +335,31 @@ function toMetricItem(raw: any): AdminMetricItem {
   }
 }
 
+function toStatusCountMap(raw: unknown): Record<string, number> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
+
+  return Object.entries(raw as Record<string, unknown>).reduce<Record<string, number>>(
+    (acc, [key, value]) => {
+      const normalizedKey = String(key ?? '')
+        .trim()
+        .toLowerCase()
+      if (!normalizedKey) return acc
+
+      const count = Number(value)
+      acc[normalizedKey] = Number.isFinite(count) && count > 0 ? Math.trunc(count) : 0
+      return acc
+    },
+    {}
+  )
+}
+
+function toLeadStatus(raw: unknown): string {
+  const normalized = String(raw ?? '')
+    .trim()
+    .toLowerCase()
+  return normalized || 'no_signature_id'
+}
+
 function toInviteStatus(raw: any): AdvisorInviteStatus {
   const normalized = String(raw ?? '').toLowerCase()
   if (normalized === 'expired') return 'expired'
@@ -346,9 +380,67 @@ function toAdvisorInvite(raw: any): AdvisorInvite | null {
     expiresAt: toIsoDate(raw?.expiresAt ?? raw?.expires_at),
     maxUses: Number(raw?.maxUses ?? 1) || 1,
     usedCount: Number(raw?.usedCount ?? raw?.uses ?? raw?.used ?? 0) || 0,
+    defaultPermission:
+      String(raw?.defaultPermission ?? '')
+        .trim()
+        .toUpperCase() === 'READ_ONLY'
+        ? 'READ_ONLY'
+        : 'READ_WRITE',
     status: toInviteStatus(raw?.status),
     revokedAt: toIsoDate(raw?.revokedAt ?? raw?.revoked_at),
     createdAt: toIsoDate(raw?.createdAt ?? raw?.created_at),
+  }
+}
+
+function getAdvisorInviteRowsFromPayload(data: any): any[] {
+  const candidates = [
+    data?.invites,
+    data?.items,
+    data?.rows,
+    data?.data,
+    data?.data?.invites,
+    data?.data?.items,
+    data?.data?.rows,
+  ]
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) return candidate
+  }
+
+  return Array.isArray(data) ? data : []
+}
+
+function normalizeAdvisorInvitesResponse(
+  data: any,
+  fallbackPage: number,
+  fallbackLimit: number
+): AdvisorInvitesResponse {
+  const invitesRaw = getAdvisorInviteRowsFromPayload(data)
+  const invites = invitesRaw
+    .map(toAdvisorInvite)
+    .filter((item): item is AdvisorInvite => Boolean(item))
+
+  const meta = toMeta(data, fallbackPage, fallbackLimit)
+  const page = Number(data?.page ?? meta.page ?? fallbackPage) || fallbackPage
+  const limit = Number(data?.limit ?? meta.limit ?? fallbackLimit) || fallbackLimit
+  const totalRaw = Number(data?.total ?? meta.total)
+  const total = Number.isFinite(totalRaw) && totalRaw >= 0 ? Math.trunc(totalRaw) : invites.length
+  const totalPagesRaw = Number(data?.totalPages ?? meta.totalPages)
+  const totalPages =
+    Number.isFinite(totalPagesRaw) && totalPagesRaw > 0
+      ? Math.trunc(totalPagesRaw)
+      : Math.max(1, Math.ceil(total / Math.max(1, limit)))
+
+  return {
+    invites,
+    meta: {
+      ...meta,
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNext: page < totalPages,
+    },
   }
 }
 
@@ -362,7 +454,7 @@ function toLead(raw: any): AdminLead | null {
     email: String(raw?.email ?? ''),
     phone: raw?.phone == null ? null : String(raw?.phone),
     createdAt: String(raw?.createdAt ?? ''),
-    leadStatus: String(raw?.leadStatus ?? raw?.status ?? 'no_customer_id'),
+    leadStatus: toLeadStatus(raw?.leadStatus ?? raw?.status),
     latestSubscriptionUpdatedAt:
       toIsoDate(raw?.latestSubscriptionUpdatedAt ?? raw?.lastActivityAt) ?? null,
   }
@@ -433,6 +525,96 @@ function toAdminPlan(raw: any): AdminPlan | null {
       .map(toPlanFeature)
       .filter((item: AdminPlanFeature | null): item is AdminPlanFeature => Boolean(item)),
   }
+}
+
+function getPlanRowsFromPayload(data: any): any[] {
+  const candidates = [
+    data?.items,
+    data?.plans,
+    data?.rows,
+    data?.data,
+    data?.data?.items,
+    data?.data?.plans,
+    data?.data?.rows,
+  ]
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) return candidate
+  }
+
+  return []
+}
+
+function normalizeAdminPlansResponse(data: any, fallbackPage: number, fallbackLimit: number): AdminPlansResponse {
+  const rowsRaw = getPlanRowsFromPayload(data)
+  const rows = rowsRaw
+    .map(toAdminPlan)
+    .filter((item: AdminPlan | null): item is AdminPlan => Boolean(item))
+
+  const meta = toMeta(data, fallbackPage, fallbackLimit)
+  const page = Number(data?.page ?? meta.page ?? fallbackPage) || fallbackPage
+  const limit = Number(data?.limit ?? meta.limit ?? fallbackLimit) || fallbackLimit
+  const total = Number(data?.total ?? meta.total ?? rows.length) || rows.length
+  const totalPagesRaw = Number(data?.totalPages ?? meta.totalPages)
+  const totalPages =
+    Number.isFinite(totalPagesRaw) && totalPagesRaw > 0
+      ? Math.trunc(totalPagesRaw)
+      : Math.max(1, Math.ceil(total / Math.max(1, limit)))
+
+  return {
+    rows,
+    plans: rows,
+    page,
+    limit,
+    total,
+    totalPages,
+    meta: {
+      ...meta,
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNext: page < totalPages,
+    },
+  }
+}
+
+async function requestAdminPlansByPath(path: string, query: string, page: number, limit: number) {
+  const url = `${path}${query ? `?${query}` : ''}`
+  if (process.env.NODE_ENV !== 'production') {
+    console.debug('[admin:plans] GET', url)
+  }
+
+  const response = await api.get(url)
+  const data = response.data ?? {}
+  const normalized = normalizeAdminPlansResponse(data, page, limit)
+
+  if (process.env.NODE_ENV !== 'production') {
+    const keys = data && typeof data === 'object' ? Object.keys(data) : []
+    console.debug('[admin:plans] payload keys', keys)
+    console.debug('[admin:plans] rows normalized', normalized.rows.length)
+  }
+
+  return normalized
+}
+
+async function requestAdvisorInvitesByPath(path: string, query: string, page: number, limit: number) {
+  const url = `${path}${query ? `?${query}` : ''}`
+  if (process.env.NODE_ENV !== 'production') {
+    console.debug('[admin:advisor-invites] GET', url)
+  }
+
+  const response = await api.get(url)
+  const data = response.data ?? {}
+  const normalized = normalizeAdvisorInvitesResponse(data, page, limit)
+
+  if (process.env.NODE_ENV !== 'production') {
+    const keys = data && typeof data === 'object' ? Object.keys(data) : []
+    console.debug('[admin:advisor-invites] payload keys', keys)
+    console.debug('[admin:advisor-invites] rows normalized', normalized.invites.length)
+  }
+
+  return normalized
 }
 
 function toStripeCoupon(raw: any): StripeCoupon | null {
@@ -617,33 +799,38 @@ function normalizePartialPlanPayload(payload: Partial<UpsertAdminPlanPayload>) {
 export async function getAdminMetrics(): Promise<AdminMetrics> {
   try {
     const response = await api.get('/admin/metrics')
-    const data = response.data ?? {}
-    const users = data?.users ?? {
+    const payload = response.data ?? {}
+    const data = payload?.data ?? payload
+    const cards = data?.cards ?? {}
+
+    const users = cards?.users ?? data?.users ?? {
       total: data?.totalUsers,
       new7d: data?.newUsers7d,
       new30d: data?.newUsers30d,
     }
-    const clients = data?.clients ?? {
+    const clients = cards?.clients ?? data?.clients ?? {
       total: data?.totalClients,
       new7d: data?.newClients7d,
       new30d: data?.newClients30d,
     }
-    const advisors = data?.advisors ?? {
+    const advisors = cards?.advisors ?? data?.advisors ?? {
       total: data?.totalAdvisors,
       new7d: data?.newAdvisors7d,
       new30d: data?.newAdvisors30d,
     }
-    const leads = data?.leads ?? {
-      total: data?.totalLeads,
+    const leads = cards?.leads ?? data?.leads ?? {
+      total: data?.leadsCaptured ?? data?.totalLeads,
       new7d: data?.newLeads7d,
       new30d: data?.newLeads30d,
     }
+    const leadsByStatus = toStatusCountMap(data?.leadsByStatus ?? cards?.leadsByStatus)
 
     return {
       users: toMetricItem(users),
       clients: toMetricItem(clients),
       advisors: toMetricItem(advisors),
       leads: toMetricItem(leads),
+      leadsByStatus,
     }
   } catch (e: unknown) {
     throw new Error(toAdminErrorMessage(e, 'Erro ao buscar metricas do admin.'))
@@ -654,22 +841,48 @@ export async function getAdvisorInvites(params?: {
   page?: number
   limit?: number
 }): Promise<AdvisorInvitesResponse> {
-  try {
-    const page = params?.page ?? 1
-    const limit = params?.limit ?? 10
-    const query = toQuery({ page, limit })
-    const response = await api.get(`/admin/advisor-invites${query ? `?${query}` : ''}`)
-    const data = response.data
-    const invitesRaw = data?.invites ?? data?.data ?? (Array.isArray(data) ? data : [])
-    const invites = (Array.isArray(invitesRaw) ? invitesRaw : [])
-      .map(toAdvisorInvite)
-      .filter((item): item is AdvisorInvite => Boolean(item))
+  const page = params?.page ?? 1
+  const limit = params?.limit ?? 10
+  const query = toQuery({ page, limit })
 
-    return {
-      invites,
-      meta: toMeta(data, page, limit),
-    }
+  try {
+    return await requestAdvisorInvitesByPath('/admin/advisor-invites', query, page, limit)
   } catch (e: unknown) {
+    if (axios.isAxiosError(e) && e.response?.status === 404) {
+      try {
+        return await requestAdvisorInvitesByPath('/admin/advisor-invite', query, page, limit)
+      } catch (fallbackError: unknown) {
+        if (axios.isAxiosError(fallbackError)) {
+          const status = fallbackError.response?.status
+          if (status === 401) throw new Error('Sua sessao expirou. Faca login novamente.')
+          if (status === 403) throw new Error('Acesso restrito.')
+          if (status === 400)
+            throw new Error(
+              'Nao foi possivel carregar os convites de advisor. Revise os filtros e tente novamente.'
+            )
+          if (status && status >= 500)
+            throw new Error(
+              'Nao foi possivel carregar os convites de advisor agora. Tente novamente em instantes.'
+            )
+        }
+        throw new Error(toAdminErrorMessage(fallbackError, 'Erro ao buscar convites de advisor.'))
+      }
+    }
+
+    if (axios.isAxiosError(e)) {
+      const status = e.response?.status
+      if (status === 401) throw new Error('Sua sessao expirou. Faca login novamente.')
+      if (status === 403) throw new Error('Acesso restrito.')
+      if (status === 400)
+        throw new Error(
+          'Nao foi possivel carregar os convites de advisor. Revise os filtros e tente novamente.'
+        )
+      if (status && status >= 500)
+        throw new Error(
+          'Nao foi possivel carregar os convites de advisor agora. Tente novamente em instantes.'
+        )
+    }
+
     throw new Error(toAdminErrorMessage(e, 'Erro ao buscar convites de advisor.'))
   }
 }
@@ -686,6 +899,7 @@ export async function createAdvisorInvite(
       expiresAt: payload.expiresAt,
       expiresInHours,
       maxUses: payload.maxUses ?? 1,
+      defaultPermission: payload.defaultPermission ?? 'READ_WRITE',
     }
 
     const response = await api.post('/admin/advisor-invites', requestPayload)
@@ -703,6 +917,7 @@ export async function createAdvisorInvite(
           expiresAt: null,
           maxUses: payload.maxUses ?? 1,
           usedCount: 0,
+          defaultPermission: payload.defaultPermission ?? 'READ_WRITE',
           status: 'active',
           revokedAt: null,
           createdAt: null,
@@ -744,6 +959,7 @@ export async function getAdminLeads(params: AdminLeadsParams): Promise<AdminLead
       search: params.search,
       createdFrom: params.createdFrom,
       createdTo: params.createdTo,
+      status: params.status?.trim() || undefined,
     })
     const response = await api.get(`/admin/leads${query ? `?${query}` : ''}`)
     const data = response.data ?? {}
@@ -762,28 +978,46 @@ export async function getAdminLeads(params: AdminLeadsParams): Promise<AdminLead
 }
 
 export async function getAdminPlans(params?: AdminPlansParams): Promise<AdminPlansResponse> {
-  try {
-    const page = params?.page ?? 1
-    const limit = params?.limit ?? 20
-    const query = toQuery({
-      page,
-      limit,
-      search: params?.search?.trim() || undefined,
-      isActive: params?.isActive,
-      isPublic: params?.isPublic,
-    })
-    const response = await api.get(`/admin/plans${query ? `?${query}` : ''}`)
-    const data = response.data ?? {}
-    const plansRaw = data?.plans ?? data?.data ?? (Array.isArray(data) ? data : [])
-    const plans = (Array.isArray(plansRaw) ? plansRaw : [])
-      .map(toAdminPlan)
-      .filter((item: AdminPlan | null): item is AdminPlan => Boolean(item))
+  const page = params?.page ?? 1
+  const limit = params?.limit ?? 20
+  const query = toQuery({
+    page,
+    limit,
+    search: params?.search?.trim() || undefined,
+    isActive: params?.isActive,
+    isPublic: params?.isPublic,
+  })
 
-    return {
-      plans,
-      meta: toMeta(data, page, limit),
-    }
+  try {
+    return await requestAdminPlansByPath('/admin/plans', query, page, limit)
   } catch (e: unknown) {
+    if (axios.isAxiosError(e) && e.response?.status === 404) {
+      try {
+        return await requestAdminPlansByPath('/admin/plan', query, page, limit)
+      } catch (fallbackError: unknown) {
+        if (axios.isAxiosError(fallbackError)) {
+          const status = fallbackError.response?.status
+          if (status === 401) throw new Error('Sua sessao expirou. Faca login novamente.')
+          if (status === 403) throw new Error('Acesso restrito.')
+          if (status === 400)
+            throw new Error('Nao foi possivel carregar os planos. Revise os filtros e tente novamente.')
+          if (status && status >= 500)
+            throw new Error('Nao foi possivel carregar os planos agora. Tente novamente em instantes.')
+        }
+        throw new Error(toAdminErrorMessage(fallbackError, 'Erro ao buscar planos.'))
+      }
+    }
+
+    if (axios.isAxiosError(e)) {
+      const status = e.response?.status
+      if (status === 401) throw new Error('Sua sessao expirou. Faca login novamente.')
+      if (status === 403) throw new Error('Acesso restrito.')
+      if (status === 400)
+        throw new Error('Nao foi possivel carregar os planos. Revise os filtros e tente novamente.')
+      if (status && status >= 500)
+        throw new Error('Nao foi possivel carregar os planos agora. Tente novamente em instantes.')
+    }
+
     throw new Error(toAdminErrorMessage(e, 'Erro ao buscar planos.'))
   }
 }

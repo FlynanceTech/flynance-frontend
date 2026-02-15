@@ -13,6 +13,7 @@ import FinanceStatus from './components/FincanceStatus'
 import { useUserSession } from '@/stores/useUserSession'
 import { useTransactionFilter } from '@/stores/useFilter'
 import { useTranscation } from '@/hooks/query/useTransaction'
+import { getBrowserTimezone, toFutureRangeFromDays } from '@/utils/transactionPeriod'
 
 const PERIOD_ZERO = {
   income: 0,
@@ -84,72 +85,52 @@ export default function Dashboard() {
   const [hydrated, setHydrated] = useState(false)
   useEffect(() => setHydrated(true), [])
 
-  // Fetch baseline transactions and apply dashboard filters locally
+  const safeDays = Math.max(1, Number(dateRange || 30))
+  const periodFilters = useMemo(() => {
+    if (mode === 'range' && rangeStart && rangeEnd) {
+      return {
+        mode: 'range' as const,
+        dateFrom: rangeStart,
+        dateTo: rangeEnd,
+        timezone: getBrowserTimezone(),
+      }
+    }
+
+    if (mode === 'month' && selectedMonth && selectedYear) {
+      return {
+        mode: 'month' as const,
+        month: selectedMonth,
+        year: selectedYear,
+        timezone: getBrowserTimezone(),
+      }
+    }
+
+    const futureRange = includeFuture ? toFutureRangeFromDays(safeDays) : null
+    return {
+      mode: 'days' as const,
+      days: safeDays,
+      includeFutureDays: includeFuture ? Math.max(0, safeDays - 1) : undefined,
+      dateFrom: futureRange?.start,
+      dateTo: futureRange?.end,
+      timezone: getBrowserTimezone(),
+    }
+  }, [mode, rangeStart, rangeEnd, selectedMonth, selectedYear, includeFuture, safeDays])
+
+  // Fetch using the same period semantics used in /dashboard/transacoes
   const { transactionsQuery } = useTranscation({
     userId,
     page: 1,
     limit: 5000,
+    filters: periodFilters,
     useGlobalFilters: false,
   })
   const isTxLoading = transactionsQuery.isLoading
 
-  const allTransactions =
-    (transactionsQuery.data?.transactions ?? transactionsQuery.data ?? []) || []
-
   const transactions = useMemo(() => {
-    const list = Array.isArray(allTransactions) ? allTransactions : []
-    const todayEnd = new Date()
-    todayEnd.setHours(23, 59, 59, 999)
-
-    if (mode === 'range' && rangeStart && rangeEnd) {
-      const start = new Date(`${rangeStart}T00:00:00`)
-      const end = new Date(`${rangeEnd}T23:59:59.999`)
-      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return list
-
-      return list.filter((t: any) => {
-        const txDate = new Date(t.date)
-        if (Number.isNaN(txDate.getTime())) return false
-        return txDate >= start && txDate <= end
-      })
-    }
-
-    if (mode === 'month' && selectedMonth && selectedYear) {
-      const monthNum = Number(selectedMonth)
-      const yearNum = Number(selectedYear)
-      if (!monthNum || !yearNum) return list
-
-      const start = new Date(yearNum, monthNum - 1, 1, 0, 0, 0, 0)
-      const end = new Date(yearNum, monthNum, 0, 23, 59, 59, 999)
-
-      return list.filter((t: any) => {
-        const txDate = new Date(t.date)
-        if (Number.isNaN(txDate.getTime())) return false
-        if (txDate < start || txDate > end) return false
-        if (!includeFuture && txDate > todayEnd) return false
-        return true
-      })
-    }
-
-    const days = Math.max(1, Number(dateRange || 30))
-    const todayStart = new Date(todayEnd)
-    todayStart.setHours(0, 0, 0, 0)
-
-    const start = new Date(todayStart)
-    const end = new Date(todayEnd)
-    if (includeFuture) {
-      end.setDate(end.getDate() + (days - 1))
-    } else {
-      start.setDate(start.getDate() - (days - 1))
-    }
-
-    return list.filter((t: any) => {
-      const txDate = new Date(t.date)
-      if (Number.isNaN(txDate.getTime())) return false
-      if (txDate < start) return false
-      if (txDate > end) return false
-      return true
-    })
-  }, [allTransactions, mode, selectedMonth, selectedYear, dateRange, includeFuture, rangeStart, rangeEnd])
+    const payload = transactionsQuery.data as any
+    const list = payload?.transactions ?? payload ?? []
+    return Array.isArray(list) ? list : []
+  }, [transactionsQuery.data])
 
   const periodLabel = useMemo(() => {
     const suffix = includeFuture ? ' (incluindo futuros)' : ''

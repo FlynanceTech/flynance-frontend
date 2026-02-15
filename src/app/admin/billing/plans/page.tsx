@@ -1,10 +1,12 @@
-'use client'
+﻿'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useRouter } from 'next/navigation'
+import toast from 'react-hot-toast'
 import {
   useAdminPlan,
   useAdminPlans,
@@ -12,6 +14,7 @@ import {
   useDeleteAdminPlan,
   useUpdateAdminPlan,
 } from '@/hooks/query/useAdmin'
+import type { AdminPlan } from '@/services/admin'
 
 const featureSchema = z.object({
   label: z.string().trim().min(1, 'Label obrigatorio'),
@@ -63,10 +66,18 @@ function defaultValues(): PlanFormValues {
 }
 
 function formatCurrencyFromCents(value: number, currency: string) {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: currency.toUpperCase(),
-  }).format((Number(value) || 0) / 100)
+  const resolvedCurrency = (currency || 'BRL').toUpperCase()
+  try {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: resolvedCurrency,
+    }).format((Number(value) || 0) / 100)
+  } catch {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format((Number(value) || 0) / 100)
+  }
 }
 
 function formatDate(value?: string | null) {
@@ -82,6 +93,7 @@ function mapFilterToBoolean(value: BoolFilter): boolean | undefined {
 }
 
 export default function AdminBillingPlansPage() {
+  const router = useRouter()
   const [page, setPage] = useState(1)
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
@@ -91,6 +103,15 @@ export default function AdminBillingPlansPage() {
   const [appliedIsPublic, setAppliedIsPublic] = useState<BoolFilter>('all')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null)
+  const [cachedRows, setCachedRows] = useState<AdminPlan[]>([])
+  const [cachedPaging, setCachedPaging] = useState<{
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+    hasNext: boolean
+  } | null>(null)
+  const lastErrorToastRef = useRef('')
 
   const plansQuery = useAdminPlans({
     page,
@@ -115,12 +136,85 @@ export default function AdminBillingPlansPage() {
     name: 'features',
   })
 
-  const plans = plansQuery.data?.plans ?? []
-  const meta = plansQuery.data?.meta
-  const totalPages = useMemo(() => {
-    if (!meta) return 1
-    return Math.max(1, Math.ceil(meta.total / Math.max(1, meta.limit)))
-  }, [meta])
+  const responseRows = plansQuery.data?.rows ?? plansQuery.data?.plans ?? []
+  const responsePage = plansQuery.data?.page ?? plansQuery.data?.meta?.page ?? page
+  const responseLimit = plansQuery.data?.limit ?? plansQuery.data?.meta?.limit ?? 20
+  const responseTotal = plansQuery.data?.total ?? plansQuery.data?.meta?.total ?? responseRows.length
+  const responseTotalPages =
+    plansQuery.data?.totalPages ??
+    plansQuery.data?.meta?.totalPages ??
+    Math.max(1, Math.ceil(responseTotal / Math.max(1, responseLimit)))
+  const responseHasNext =
+    plansQuery.data?.meta?.hasNext ?? responsePage < Math.max(1, responseTotalPages)
+
+  useEffect(() => {
+    if (!plansQuery.data || plansQuery.isError) return
+
+    setCachedRows(responseRows)
+    setCachedPaging({
+      page: responsePage,
+      limit: responseLimit,
+      total: responseTotal,
+      totalPages: Math.max(1, responseTotalPages),
+      hasNext: responseHasNext,
+    })
+  }, [
+    plansQuery.data,
+    plansQuery.isError,
+    responseRows,
+    responsePage,
+    responseLimit,
+    responseTotal,
+    responseTotalPages,
+    responseHasNext,
+  ])
+
+  const errorMessage =
+    plansQuery.isError && plansQuery.error instanceof Error
+      ? plansQuery.error.message
+      : plansQuery.isError
+      ? 'Erro ao carregar planos.'
+      : ''
+
+  useEffect(() => {
+    if (!plansQuery.isError) {
+      lastErrorToastRef.current = ''
+      return
+    }
+
+    const normalized = errorMessage.toLowerCase()
+    if (normalized.includes('sessao expirou')) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('token')
+      }
+      router.replace('/login?next=%2Fadmin%2Fbilling%2Fplans')
+      return
+    }
+
+    if (
+      cachedRows.length > 0 &&
+      lastErrorToastRef.current !== errorMessage &&
+      (normalized.includes('nao foi possivel carregar os planos') || normalized.includes('servidor'))
+    ) {
+      toast.error(errorMessage)
+      lastErrorToastRef.current = errorMessage
+    }
+  }, [plansQuery.isError, errorMessage, cachedRows.length, router])
+
+  const isAccessRestricted = errorMessage.trim().toLowerCase() === 'acesso restrito.'
+  const hasCachedRows = cachedRows.length > 0
+  const rowsToRender = plansQuery.isError && hasCachedRows ? cachedRows : responseRows
+  const pageToRender = plansQuery.isError && hasCachedRows ? cachedPaging?.page ?? page : responsePage
+  const totalToRender =
+    plansQuery.isError && hasCachedRows ? cachedPaging?.total ?? rowsToRender.length : responseTotal
+  const totalPagesToRender =
+    plansQuery.isError && hasCachedRows
+      ? cachedPaging?.totalPages ?? Math.max(1, responseTotalPages)
+      : Math.max(1, responseTotalPages)
+  const hasNextToRender =
+    plansQuery.isError && hasCachedRows
+      ? cachedPaging?.hasNext ?? pageToRender < totalPagesToRender
+      : responseHasNext
 
   useEffect(() => {
     if (!isModalOpen || !editingPlanId || !planDetailQuery.data) return
@@ -304,18 +398,21 @@ export default function AdminBillingPlansPage() {
 
         {plansQuery.isLoading ? (
           <div className="mt-4 h-56 animate-pulse rounded-xl bg-slate-100" />
-        ) : plansQuery.isError ? (
+        ) : plansQuery.isError && (!hasCachedRows || isAccessRestricted) ? (
           <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {plansQuery.error instanceof Error
-              ? plansQuery.error.message
-              : 'Erro ao carregar planos.'}
+            {errorMessage || 'Erro ao carregar planos.'}
           </div>
-        ) : plans.length === 0 ? (
+        ) : !plansQuery.isLoading && rowsToRender.length === 0 ? (
           <div className="mt-4 rounded-xl border border-dashed border-slate-200 p-6 text-sm text-slate-500">
             Nenhum plano encontrado.
           </div>
         ) : (
           <div className="mt-4 overflow-x-auto">
+            {plansQuery.isError && hasCachedRows && !isAccessRestricted && (
+              <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
+                Exibindo ultima lista carregada. Nao foi possivel atualizar os dados agora.
+              </div>
+            )}
             <table className="w-full min-w-[1000px] text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-left text-slate-500">
@@ -330,7 +427,7 @@ export default function AdminBillingPlansPage() {
                 </tr>
               </thead>
               <tbody>
-                {plans.map((plan) => (
+                {rowsToRender.map((plan) => (
                   <tr key={plan.id} className="border-b border-slate-100">
                     <td className="py-3">{plan.name}</td>
                     <td className="py-3 text-slate-600">{plan.slug}</td>
@@ -402,8 +499,8 @@ export default function AdminBillingPlansPage() {
 
         <div className="mt-4 flex items-center justify-between">
           <p className="text-xs text-slate-500">
-            Pagina {page} de {totalPages}
-            {meta ? ` · Total: ${meta.total}` : ''}
+            Pagina {pageToRender} de {totalPagesToRender}
+            {` · Total: ${totalToRender}`}
           </p>
           <div className="flex gap-2">
             <button
@@ -416,8 +513,8 @@ export default function AdminBillingPlansPage() {
             </button>
             <button
               type="button"
-              onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-              disabled={!meta?.hasNext || page >= totalPages}
+              onClick={() => setPage((prev) => Math.min(totalPagesToRender, prev + 1))}
+              disabled={!hasNextToRender || page >= totalPagesToRender}
               className="rounded-lg border border-slate-200 px-3 py-1 text-xs disabled:opacity-50"
             >
               Proxima
@@ -671,3 +768,4 @@ export default function AdminBillingPlansPage() {
     </section>
   )
 }
+

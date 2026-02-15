@@ -10,13 +10,21 @@ import {
   X,
   BarChart3,
   Clock3,
+  ShieldCheck,
+  Users,
 } from 'lucide-react'
 import React, { useState } from 'react'
 import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react'
+import { useUserSession } from '@/stores/useUserSession'
+import { isAdvisorRole, isAdminRole } from '@/utils/roles'
 
 export default function BottomMenu() {
   const router = useRouter()
   const pathname = usePathname()
+  const { user } = useUserSession()
+  const role = user?.userData?.user?.role
+  const isAdmin = isAdminRole(role)
+  const isAdvisor = isAdvisorRole(role)
 
   const primaryItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
@@ -28,7 +36,9 @@ export default function BottomMenu() {
     { label: 'Relatorios', icon: BarChart3, path: '/dashboard/relatorios' },
     { label: 'Categorias', icon: Tag, path: '/dashboard/categorias' },
     { label: 'Educacao', icon: BookOpenCheck, path: '/dashboard/educacao' },
+    ...(isAdvisor ? [{ label: 'Clientes', icon: Users, path: '/advisor' }] : []),
     { label: 'Perfil', icon: User, path: '/dashboard/perfil' },
+    ...(isAdmin ? [{ label: 'Admin', icon: ShieldCheck, path: '/admin/dashboard' }] : []),
   ]
   const [moreOpen, setMoreOpen] = useState(false)
 
@@ -39,6 +49,12 @@ export default function BottomMenu() {
 
     if (base === '/dashboard') {
       return current === '/dashboard' || current.startsWith('/dashboard/controles')
+    }
+    if (base === '/admin/dashboard') {
+      return current.startsWith('/admin')
+    }
+    if (base === '/advisor') {
+      return current.startsWith('/advisor')
     }
 
     return current === base || current.startsWith(`${base}/`)

@@ -3,7 +3,7 @@ import { Mail } from 'lucide-react'
 import Link from 'next/link'
 import React, { useEffect, useState, useTransition } from 'react'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Lottie from 'lottie-react'
 import emailSendingAnimation from '../../../assets/animation/send-email.json'
 
@@ -30,6 +30,11 @@ export default function Login() {
 
 
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  const rawNext = searchParams.get('next')
+  const nextRoute =
+    rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/dashboard'
 
   type LoginMethod = 'email' | 'whatsapp';
 
@@ -108,17 +113,24 @@ function handleIdentifierChange(value: string) {
     try {
       setMessage('')
       const body = method === 'email'
-        ? { email: identifier.trim(),  code  }
-        : { whatsappPhone: identifier.trim(),  code  };
+        ? { email: identifier.trim(), code }
+        : { whatsappPhone: identifier.trim(), code }
       await verifyCode(body)
 
-      await fetchAccount();
+      await fetchAccount()
+
+      const { status } = useUserSession.getState()
+      if (status !== 'authenticated') {
+        setError('Não foi possível validar sua sessão. Tente novamente.')
+        setLoading(false)
+        return
+      }
 
       startTransition(() => {
-        router.push('/dashboard')
+        router.push(nextRoute)
       })
-    } catch {
-      setError('Código inválido ou expirado.')
+    } catch (err: unknown) {
+      setError(getErrorMessage(err) || 'Código inválido ou expirado.')
       setLoading(false)     
     }
   }

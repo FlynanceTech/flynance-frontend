@@ -13,6 +13,7 @@ import '../globals.css'
 import FeedbackWidget from "@/components/widgets/feedback";
 import { AuthGuardProvider } from "@/providers/authGuardProvider";
 import { useTransactionFilter } from "@/stores/useFilter";
+import AdvisorActingPill from "./components/AdvisorActingPill";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -57,6 +58,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         theme === "dark" ? "bg-gray-800 text-white" : "bg-[#F7F8FA]"
       )}
     >
+      <AdvisorActingPill />
       {children}
       <FeedbackWidget />
     </main>

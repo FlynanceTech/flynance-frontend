@@ -4,17 +4,20 @@ import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { CircleHelp } from 'lucide-react'
 import {
   useAdvisorInvites,
   useCreateAdvisorInvite,
   useRevokeAdvisorInvite,
 } from '@/hooks/query/useAdmin'
 import toast from 'react-hot-toast'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 const inviteSchema = z.object({
   email: z.union([z.literal(''), z.string().email('Email invalido')]).optional(),
   expiresInDays: z.coerce.number().int().min(1, 'Minimo 1 dia').max(365),
   maxUses: z.coerce.number().int().min(1, 'Minimo 1 uso').max(1000),
+  defaultPermission: z.enum(['READ_ONLY', 'READ_WRITE']),
 })
 
 type InviteFormValues = z.infer<typeof inviteSchema>
@@ -36,6 +39,38 @@ function statusBadge(status: string) {
   return map[status] ?? 'bg-slate-200 text-slate-700'
 }
 
+function statusLabel(status: string) {
+  const map: Record<string, string> = {
+    active: 'Ativo',
+    expired: 'Expirado',
+    revoked: 'Revogado',
+    used: 'Usado',
+  }
+  return map[status] ?? status
+}
+
+function LabelWithTooltip({ label, tip }: { label: string; tip: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 text-slate-600">
+      {label}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            aria-label={`Ajuda: ${label}`}
+            className="rounded-full p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          >
+            <CircleHelp size={14} />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-64 text-xs leading-relaxed">
+          {tip}
+        </TooltipContent>
+      </Tooltip>
+    </span>
+  )
+}
+
 async function copyText(text: string) {
   await navigator.clipboard.writeText(text)
 }
@@ -54,6 +89,7 @@ export default function AdminAdvisorsPage() {
       email: '',
       expiresInDays: 7,
       maxUses: 1,
+      defaultPermission: 'READ_WRITE',
     },
   })
 
@@ -69,19 +105,24 @@ export default function AdminAdvisorsPage() {
       emailOptional: values.email || undefined,
       expiresInDays: values.expiresInDays,
       maxUses: values.maxUses,
+      defaultPermission: values.defaultPermission,
     })
 
     setGeneratedInviteUrl(response.inviteUrl || response.invite.inviteUrl || '')
   })
 
   return (
-    <section className="space-y-4">
+    <TooltipProvider delayDuration={150}>
+      <section className="space-y-4">
       <article className="rounded-2xl border border-slate-200 bg-white p-5">
-        <h3 className="text-base font-semibold text-[#333C4D]">Gerar convite advisor</h3>
+        <h3 className="text-base font-semibold text-[#333C4D]">Gerar convite de advisor</h3>
 
-        <form onSubmit={onSubmit} className="mt-4 grid gap-3 md:grid-cols-4">
+        <form onSubmit={onSubmit} className="mt-4 grid gap-3 md:grid-cols-5">
           <label className="flex flex-col gap-1 text-sm">
-            <span className="text-slate-600">Email (opcional)</span>
+            <LabelWithTooltip
+              label="E-mail do advisor (opcional)"
+              tip="Se informado, o convite fica vinculado a este e-mail. Se vazio, o link pode ser usado por qualquer e-mail valido."
+            />
             <input
               type="email"
               className="h-10 rounded-xl border border-slate-200 px-3 outline-none focus:border-[#7CB8D8]"
@@ -92,7 +133,10 @@ export default function AdminAdvisorsPage() {
           </label>
 
           <label className="flex flex-col gap-1 text-sm">
-            <span className="text-slate-600">Expiracao (dias)</span>
+            <LabelWithTooltip
+              label="Validade do convite (dias)"
+              tip="Quantidade de dias ate o link expirar. Exemplo: 7 significa que o convite vale por 7 dias a partir da criacao."
+            />
             <input
               type="number"
               min={1}
@@ -105,7 +149,10 @@ export default function AdminAdvisorsPage() {
           </label>
 
           <label className="flex flex-col gap-1 text-sm">
-            <span className="text-slate-600">Max uses</span>
+            <LabelWithTooltip
+              label="Maximo de usos do convite"
+              tip="Define quantas vezes o mesmo link pode ser aceito. Exemplo: 1 = uso unico; 5 = ate cinco aceites."
+            />
             <input
               type="number"
               min={1}
@@ -113,6 +160,20 @@ export default function AdminAdvisorsPage() {
               {...form.register('maxUses')}
             />
             <span className="text-xs text-red-600">{form.formState.errors.maxUses?.message}</span>
+          </label>
+
+          <label className="flex flex-col gap-1 text-sm">
+            <LabelWithTooltip
+              label="Permissao padrao"
+              tip="READ_WRITE permite editar dados do cliente. READ_ONLY libera apenas visualizacao."
+            />
+            <select
+              className="h-10 rounded-xl border border-slate-200 px-3 outline-none focus:border-[#7CB8D8]"
+              {...form.register('defaultPermission')}
+            >
+              <option value="READ_WRITE">Leitura e escrita</option>
+              <option value="READ_ONLY">Somente leitura</option>
+            </select>
           </label>
 
           <div className="flex items-end">
@@ -158,8 +219,9 @@ export default function AdminAdvisorsPage() {
               <thead>
                 <tr className="border-b border-slate-200 text-left text-slate-500">
                   <th className="pb-2 font-medium">Email</th>
-                  <th className="pb-2 font-medium">Expira</th>
-                  <th className="pb-2 font-medium">Usos</th>
+                  <th className="pb-2 font-medium">Expira em</th>
+                  <th className="pb-2 font-medium">Usos (atual/maximo)</th>
+                  <th className="pb-2 font-medium">Permissao</th>
                   <th className="pb-2 font-medium">Status</th>
                   <th className="pb-2 font-medium text-right">Acoes</th>
                 </tr>
@@ -173,13 +235,18 @@ export default function AdminAdvisorsPage() {
                       {invite.usedCount}/{invite.maxUses}
                     </td>
                     <td className="py-3">
+                      {invite.defaultPermission === 'READ_ONLY'
+                        ? 'Somente leitura'
+                        : 'Leitura e escrita'}
+                    </td>
+                    <td className="py-3">
                       <span
                         className={[
                           'inline-flex rounded-full px-2 py-1 text-xs font-semibold',
                           statusBadge(invite.status),
                         ].join(' ')}
                       >
-                        {invite.status}
+                        {statusLabel(invite.status)}
                       </span>
                     </td>
                     <td className="py-3">
@@ -236,6 +303,7 @@ export default function AdminAdvisorsPage() {
           </div>
         </div>
       </article>
-    </section>
+      </section>
+    </TooltipProvider>
   )
 }

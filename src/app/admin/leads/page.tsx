@@ -12,6 +12,7 @@ const leadFiltersSchema = z
     search: z.string().optional(),
     createdFrom: z.string().optional(),
     createdTo: z.string().optional(),
+    status: z.string().optional(),
   })
   .refine(
     (data) => {
@@ -36,6 +37,21 @@ function formatDate(value?: string | null) {
   })}`
 }
 
+function formatLeadStatusLabel(status?: string | null) {
+  const normalized = String(status ?? '')
+    .trim()
+    .toLowerCase()
+
+  if (!normalized) return '-'
+  if (normalized === 'no_signature_id') return 'Sem assinatura'
+
+  return normalized
+    .split('_')
+    .filter(Boolean)
+    .map((part) => part[0].toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
 async function copyContact(name: string, email: string, phone?: string | null) {
   const payload = phone ? `${name} <${email}> | ${phone}` : `${name} <${email}>`
   await navigator.clipboard.writeText(payload)
@@ -48,6 +64,7 @@ export default function AdminLeadsPage() {
     search: '',
     createdFrom: '',
     createdTo: '',
+    status: '',
   })
 
   const form = useForm<LeadFiltersForm>({
@@ -61,6 +78,7 @@ export default function AdminLeadsPage() {
     search: appliedFilters.search,
     createdFrom: appliedFilters.createdFrom,
     createdTo: appliedFilters.createdTo,
+    status: appliedFilters.status,
   })
 
   const leads = leadsQuery.data?.leads ?? []
@@ -77,6 +95,7 @@ export default function AdminLeadsPage() {
       search: values.search?.trim() ?? '',
       createdFrom: values.createdFrom ?? '',
       createdTo: values.createdTo ?? '',
+      status: values.status ?? '',
     })
     setPage(1)
   })
@@ -86,7 +105,7 @@ export default function AdminLeadsPage() {
       <article className="rounded-2xl border border-slate-200 bg-white p-5">
         <h3 className="text-base font-semibold text-[#333C4D]">Filtros de leads</h3>
 
-        <form onSubmit={onSubmit} className="mt-4 grid gap-3 md:grid-cols-4">
+        <form onSubmit={onSubmit} className="mt-4 grid gap-3 md:grid-cols-5">
           <label className="flex flex-col gap-1 text-sm md:col-span-2">
             <span className="text-slate-600">Busca (nome/email)</span>
             <input
@@ -116,12 +135,23 @@ export default function AdminLeadsPage() {
             <span className="text-xs text-red-600">{form.formState.errors.createdTo?.message}</span>
           </label>
 
-          <div className="md:col-span-4 flex items-center justify-end gap-2">
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-slate-600">Status</span>
+            <select
+              className="h-10 rounded-xl border border-slate-200 px-3 outline-none focus:border-[#7CB8D8]"
+              {...form.register('status')}
+            >
+              <option value="">Todos</option>
+              <option value="no_signature_id">Sem assinatura</option>
+            </select>
+          </label>
+
+          <div className="md:col-span-5 flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={() => {
-                form.reset({ search: '', createdFrom: '', createdTo: '' })
-                setAppliedFilters({ search: '', createdFrom: '', createdTo: '' })
+                form.reset({ search: '', createdFrom: '', createdTo: '', status: '' })
+                setAppliedFilters({ search: '', createdFrom: '', createdTo: '', status: '' })
                 setPage(1)
               }}
               className="h-10 rounded-xl border border-slate-200 px-4 text-sm text-slate-700 hover:bg-slate-50"
@@ -174,7 +204,7 @@ export default function AdminLeadsPage() {
                     <td className="py-3">{formatDate(lead.createdAt)}</td>
                     <td className="py-3">
                       <span className="inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
-                        {lead.leadStatus}
+                        {formatLeadStatusLabel(lead.leadStatus)}
                       </span>
                     </td>
                     <td className="py-3">{formatDate(lead.latestSubscriptionUpdatedAt)}</td>

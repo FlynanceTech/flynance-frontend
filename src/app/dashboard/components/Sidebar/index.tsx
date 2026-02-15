@@ -18,17 +18,20 @@ import {
   BarChart3,
   Clock3,
   ShieldCheck,
+  Users,
 } from 'lucide-react'
 import SidebarItem from './SidebarItem'
 import { useUserSession } from '@/stores/useUserSession'
 import clsx from 'clsx'
-import { isAdminRole } from '@/utils/roles'
+import { isAdvisorRole, isAdminRole } from '@/utils/roles'
 
 export default function Sidebar() {
   const router = useRouter()
   const pathname = usePathname()
   const { logout, user } = useUserSession()
-  const isAdmin = isAdminRole(user?.userData?.user?.role)
+  const role = user?.userData?.user?.role
+  const isAdmin = isAdminRole(role)
+  const isAdvisor = isAdvisorRole(role)
 
   const [collapsed, setCollapsed] = useState(false)
 
@@ -40,6 +43,9 @@ export default function Sidebar() {
     { label: 'Relatorios', icon: <BarChart3 />, path: '/dashboard/relatorios' },
     { label: 'Categorias', icon: <Tag />, path: '/dashboard/categorias' },
     { label: 'Educacao', icon: <BookOpenCheck />, path: '/dashboard/educacao' },
+    ...(isAdvisor
+      ? [{ label: 'Clientes', icon: <Users />, path: '/advisor' }]
+      : []),
     { label: 'Perfil', icon: <User />, path: '/dashboard/perfil' },
     ...(isAdmin
       ? [{ label: 'Admin', icon: <ShieldCheck />, path: '/admin/dashboard' }]

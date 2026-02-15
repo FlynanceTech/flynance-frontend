@@ -2,6 +2,8 @@
 import api from '@/lib/axios'
 import { SessionResponse } from '@/types/Transaction'
 import { create } from 'zustand'
+import { useAdvisorActing } from './useAdvisorActing'
+import axios from 'axios'
 
 type AuthStatus = 'idle' | 'loading' | 'authenticated' | 'unauthenticated'
 
@@ -31,14 +33,26 @@ export const useUserSession = create<UserSessionStore>((set) => ({
         withCredentials: true,
       })
       set({ user: res.data, status: 'authenticated' })
-    } catch {
-      clearAuthToken()
-      set({ user: null, status: 'unauthenticated' })
+    } catch (error: unknown) {
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined
+
+      if (status === 401 || status === 403) {
+        clearAuthToken()
+        useAdvisorActing.getState().clearActingClient()
+        set({ user: null, status: 'unauthenticated' })
+        return
+      }
+
+      set((state) => ({
+        user: state.user,
+        status: state.user ? 'authenticated' : 'idle',
+      }))
     }
   },
 
   logout: async () => {
     await api.post('/auth/logout', {}, { withCredentials: true })
+    useAdvisorActing.getState().clearActingClient()
     set({ user: null, status: 'unauthenticated' })
     localStorage.clear()
   },
@@ -47,6 +61,7 @@ export const useUserSession = create<UserSessionStore>((set) => ({
 
   clearUser: () => {
     clearAuthToken()
+    useAdvisorActing.getState().clearActingClient()
     set({ user: null, status: 'unauthenticated' })
   },
 }))

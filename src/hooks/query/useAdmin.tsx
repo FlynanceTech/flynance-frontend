@@ -1,6 +1,6 @@
 'use client'
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import {
   acceptAdvisorInvite,
@@ -119,6 +119,7 @@ export function useAdminPlans(params?: AdminPlansParams) {
     queryKey: adminKeys.plans(params),
     queryFn: () => getAdminPlans(params),
     staleTime: 20_000,
+    placeholderData: keepPreviousData,
     retry: 1,
   })
 }

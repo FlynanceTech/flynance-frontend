@@ -3,6 +3,8 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useUserSession } from "@/stores/useUserSession";
+import { useAdvisorActing } from "@/stores/useAdvisorActing";
+import { canActAsClientRole } from "@/utils/roles";
 
 type Props = {
   children: React.ReactNode;
@@ -12,12 +14,15 @@ export function AuthGuardProvider({ children }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, status, fetchAccount } = useUserSession();
+  const clearActingClient = useAdvisorActing((s) => s.clearActingClient);
 
   const isPublicRoute = pathname === "/login" || pathname === "/WinbackPage";
 
   const computeAccessFlags = () => {
+    const role = user?.userData?.user?.role;
     const signature = user?.userData?.signature;
     const hasActiveSignature = user?.userData?.hasActiveSignature ?? false;
+    const hasRoleBypass = canActAsClientRole(role);
 
     const now = new Date();
     let endDateIso: string | null = null;
@@ -41,11 +46,13 @@ export function AuthGuardProvider({ children }: Props) {
       isWithinAccessWindow = now <= endOfDayLocal;
     }
 
-    const canAccessPlatform = hasActiveSignature || isWithinAccessWindow;
+    const canAccessPlatform = hasRoleBypass || hasActiveSignature || isWithinAccessWindow;
 
     return {
+      role,
       signature,
       hasActiveSignature,
+      hasRoleBypass,
       isWithinAccessWindow,
       canAccessPlatform,
       endDateIso,
@@ -78,6 +85,13 @@ export function AuthGuardProvider({ children }: Props) {
       return;
     }
   }, [isPublicRoute, status, user, pathname, router]);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    if (!canActAsClientRole(user?.userData?.user?.role)) {
+      clearActingClient();
+    }
+  }, [status, user, clearActingClient]);
 
   if (isPublicRoute) {
     return <>{children}</>;
