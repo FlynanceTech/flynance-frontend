@@ -14,6 +14,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { cardKeys } from './cardkeys'
 import { useTransactionFilter } from '@/stores/useFilter'
+import { useAdvisorActing } from '@/stores/useAdvisorActing'
 import { getBrowserTimezone, toFutureRangeFromDays } from '@/utils/transactionPeriod'
 
 type Primitive = string | number | boolean
@@ -42,6 +43,8 @@ type ImportConfirmPayload = {
 
 export function useTranscation(params: UseTransactionParams) {
   const queryClient = useQueryClient()
+  const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
+  const actingContextKey = activeClientId ?? 'self'
 
   const mode = useTransactionFilter((s) => s.appliedMode)
   const dateRange = useTransactionFilter((s) => s.appliedDateRange)
@@ -90,7 +93,14 @@ export function useTranscation(params: UseTransactionParams) {
         } as TransactionFilters)
 
   const transactionsQuery = useQuery({
-    queryKey: ['transactions', params.userId, params.page ?? 1, params.limit ?? 10, mergedFilters],
+    queryKey: [
+      'transactions',
+      params.userId,
+      actingContextKey,
+      params.page ?? 1,
+      params.limit ?? 10,
+      mergedFilters,
+    ],
     queryFn: () =>
       getTransaction({
         userId: params.userId,
@@ -98,7 +108,7 @@ export function useTranscation(params: UseTransactionParams) {
         limit: params.limit ?? 10,
         filters: mergedFilters,
       }),
-    enabled: !!params.userId,
+    enabled: Boolean(params.userId || activeClientId),
     staleTime: 30_000,
     retry: 1,
   })
@@ -144,19 +154,21 @@ export function useTranscation(params: UseTransactionParams) {
   })
 
   const importMutation = useMutation({
-    mutationFn: ({ userId, file }: ImportPayload) => importTransactions(userId, file),
+    mutationFn: ({ userId, file }: ImportPayload) =>
+      importTransactions(activeClientId ?? userId, file),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
     },
   })
 
   const importPreviewMutation = useMutation({
-    mutationFn: ({ userId, file }: ImportPayload) => importTransactionsPreview(userId, file),
+    mutationFn: ({ userId, file }: ImportPayload) =>
+      importTransactionsPreview(activeClientId ?? userId, file),
   })
 
   const importConfirmMutation = useMutation({
     mutationFn: ({ userId, payload }: ImportConfirmPayload) =>
-      importTransactionsConfirm(userId, payload),
+      importTransactionsConfirm(activeClientId ?? userId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
       queryClient.invalidateQueries({ queryKey: ['fixed-accounts'] })

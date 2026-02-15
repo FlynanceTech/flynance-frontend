@@ -10,6 +10,7 @@ import {
   setControlFavorite,
   getFavoriteControls,
 } from '@/services/controls'
+import { useAdvisorActing } from '@/stores/useAdvisorActing'
 
 export interface ControlWithProgress extends ControlResponse {
   spent: number
@@ -35,9 +36,11 @@ export type FavoriteConflictPayload = {
 export function useControls(id?: string, date?: Date) {
   const qc = useQueryClient()
   const dateKey = date ? date.toISOString().split('T')[0] : 'current'
+  const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
+  const actingContextKey = activeClientId ?? 'self'
 
   const controlsQuery = useQuery<ControlWithProgress[]>({
-    queryKey: ['controls', { withProgress: true, date: dateKey }],
+    queryKey: ['controls', actingContextKey, { withProgress: true, date: dateKey }],
     queryFn: async () => {
       const list = (await getAllControls(true, date)) as ControlWithProgress[]
       if (!date || !Array.isArray(list) || list.length === 0) {
@@ -61,13 +64,13 @@ export function useControls(id?: string, date?: Date) {
   })
 
   const controlsByIdQuery = useQuery({
-    queryKey: ['controls', id, date?.toISOString()],
+    queryKey: ['controls', actingContextKey, id, date?.toISOString()],
     queryFn: () => getControlsById(id as string, date),
     enabled: !!id,
   })
 
   const favoritesQuery = useQuery({
-    queryKey: ['controls', 'favorites'],
+    queryKey: ['controls', actingContextKey, 'favorites'],
     queryFn: () => getFavoriteControls(),
   })
 

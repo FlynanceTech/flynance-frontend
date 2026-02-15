@@ -1,14 +1,17 @@
 import { CategoryResponse, getCategories, createCategory, CategoryDTO, updateCategory, deleteCategory } from '@/services/category'
 import { useCategoryStore } from '@/stores/useCategoryStore'
+import { useAdvisorActing } from '@/stores/useAdvisorActing'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 
 export function useCategories() {
   const queryClient = useQueryClient()
   const setCategoryStore = useCategoryStore((s) => s.setCategoryStore)
+  const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
+  const actingContextKey = activeClientId ?? 'self'
 
   const categoriesQuery = useQuery<CategoryResponse[]>({
-    queryKey: ['categories'],
+    queryKey: ['categories', actingContextKey],
     queryFn: async () => {
       const data = await getCategories()
       setCategoryStore(data)

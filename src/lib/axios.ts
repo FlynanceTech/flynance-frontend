@@ -16,9 +16,83 @@ function resolveRequestPath(url?: string) {
   }
 }
 
-function shouldAttachActingHeader(pathname: string) {
-  if (!pathname) return true
-  return !pathname.startsWith('/auth')
+function normalizeApiPath(pathname: string) {
+  if (!pathname) return ''
+  return pathname.replace(/^\/api(?=\/|$)/, '')
+}
+
+const ACTING_CONTEXT_PREFIXES = [
+  '/transactions',
+  '/dashboard/finance-status',
+  '/dashboard/payment-summary',
+  '/cards',
+  '/categories',
+  '/category',
+  '/fixed-accounts',
+  '/controls',
+]
+
+const ACTING_QUERY_KEYS = ['userId', 'clientUserId', 'asUserId'] as const
+
+function hasContextInSearchParams(searchParams: URLSearchParams) {
+  return ACTING_QUERY_KEYS.some((key) => {
+    const value = searchParams.get(key)
+    return typeof value === 'string' && value.trim().length > 0
+  })
+}
+
+function hasContextInUrl(url?: string) {
+  if (!url) return false
+  try {
+    const parsed = new URL(url, 'http://localhost')
+    return hasContextInSearchParams(parsed.searchParams)
+  } catch {
+    return false
+  }
+}
+
+function hasContextInParams(params: unknown) {
+  if (!params) return false
+
+  if (params instanceof URLSearchParams) {
+    return hasContextInSearchParams(params)
+  }
+
+  if (typeof params === 'object') {
+    const asRecord = params as Record<string, unknown>
+    return ACTING_QUERY_KEYS.some((key) => {
+      const value = asRecord[key]
+      if (Array.isArray(value)) return value.length > 0
+      return value !== undefined && value !== null && String(value).trim().length > 0
+    })
+  }
+
+  return false
+}
+
+function shouldApplyActingContext(pathname: string) {
+  if (!pathname) return false
+  const normalized = normalizeApiPath(pathname)
+  if (!normalized || normalized.startsWith('/auth')) return false
+  return ACTING_CONTEXT_PREFIXES.some(
+    (prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`)
+  )
+}
+
+function addActingUserIdToParams(
+  params: unknown,
+  activeClientId: string
+): Record<string, unknown> | URLSearchParams {
+  if (params instanceof URLSearchParams) {
+    params.set('userId', activeClientId)
+    return params
+  }
+
+  if (params && typeof params === 'object') {
+    return { ...(params as Record<string, unknown>), userId: activeClientId }
+  }
+
+  return { userId: activeClientId }
 }
 
 api.interceptors.request.use((config) => {
@@ -30,11 +104,24 @@ api.interceptors.request.use((config) => {
   }
 
   const requestPath = resolveRequestPath(config.url)
-  const actingClientId = useAdvisorActing.getState().selectedClientId
-  if (actingClientId && shouldAttachActingHeader(requestPath)) {
-    config.headers['x-acting-user-id'] = actingClientId
-  } else if (config.headers && 'x-acting-user-id' in config.headers) {
-    delete config.headers['x-acting-user-id']
+  const actingState = useAdvisorActing.getState()
+  const activeClientId = actingState.activeClientId ?? actingState.selectedClientId
+  const shouldApply = Boolean(activeClientId) && shouldApplyActingContext(requestPath)
+
+  if (shouldApply && activeClientId) {
+    config.headers['x-client-user-id'] = activeClientId
+
+    const hasContextParam = hasContextInUrl(config.url) || hasContextInParams(config.params)
+    if (!hasContextParam) {
+      config.params = addActingUserIdToParams(config.params, activeClientId)
+    }
+  } else {
+    if (config.headers && 'x-client-user-id' in config.headers) {
+      delete config.headers['x-client-user-id']
+    }
+    if (config.headers && 'x-acting-user-id' in config.headers) {
+      delete config.headers['x-acting-user-id']
+    }
   }
 
   if (process.env.NODE_ENV !== 'production') {

@@ -45,7 +45,7 @@ export const useUserSession = create<UserSessionStore>((set) => ({
 
       set((state) => ({
         user: state.user,
-        status: state.user ? 'authenticated' : 'idle',
+        status: state.user ? 'authenticated' : 'unauthenticated',
       }))
     }
   },

@@ -11,6 +11,7 @@ import {
   unmarkFixedAccountPaid,
   updateFixedAccount,
 } from '@/services/fixedAccounts'
+import { useAdvisorActing } from '@/stores/useAdvisorActing'
 import { deleteFixedAccountPayment } from '@/services/fixedAccountPayments'
 
 export function useFixedAccounts(params?: {
@@ -20,9 +21,11 @@ export function useFixedAccounts(params?: {
   periodEnd?: string
 }) {
   const qc = useQueryClient()
+  const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
+  const actingContextKey = activeClientId ?? 'self'
 
   const fixedAccountsQuery = useQuery<FixedAccountResponse[]>({
-    queryKey: ['fixed-accounts', params ?? {}],
+    queryKey: ['fixed-accounts', actingContextKey, params ?? {}],
     queryFn: () => getFixedAccounts(params),
   })
 
@@ -75,8 +78,11 @@ export function useFixedAccounts(params?: {
 }
 
 export function useFixedAccountPayments(id?: string) {
+  const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
+  const actingContextKey = activeClientId ?? 'self'
+
   return useQuery<FixedAccountPaymentResponse[]>({
-    queryKey: ['fixed-accounts', id, 'payments'],
+    queryKey: ['fixed-accounts', actingContextKey, id, 'payments'],
     queryFn: () => getFixedAccountPayments(id as string),
     enabled: !!id,
   })

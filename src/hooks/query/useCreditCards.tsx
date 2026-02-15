@@ -11,19 +11,24 @@ import {
   getCardSummary,
   CardSummaryResponse,
 } from '@/services/cards'
+import { useAdvisorActing } from '@/stores/useAdvisorActing'
 import { cardKeys } from './cardkeys' // <-- corrige o path/case
 
 export function useCardMutations(cardId?: string, tz?: string) {
     const qc = useQueryClient()
+    const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
+    const actingContextKey = activeClientId ?? 'self'
 
     const cardQuery = useQuery<CreditCardResponse[]>({
-        queryKey: ['creditCard'],
+        queryKey: ['creditCard', actingContextKey],
         queryFn: getCards,
         staleTime: 60_000,
       });
     
     const CardSummary = useQuery<CardSummaryResponse>({
-        queryKey: cardId ? ['creditCard-summary', { cardId: cardId }] : ['noop'],
+        queryKey: cardId
+          ? ['creditCard-summary', { cardId: cardId, actingContextKey }]
+          : ['noop', actingContextKey],
         queryFn: () => getCardSummary(cardId!, tz),
         enabled: !!cardId,
         staleTime: 30_000,
@@ -32,6 +37,8 @@ export function useCardMutations(cardId?: string, tz?: string) {
     const createCardMutation = useMutation({
         mutationFn: (data: CreditCardDTO) => createCard(data),
         onSuccess: () => {
+        qc.invalidateQueries({ queryKey: ['creditCard'] })
+        qc.invalidateQueries({ queryKey: ['creditCard-summary'] })
         qc.invalidateQueries({ queryKey: cardKeys.list })
         },
     })
@@ -40,6 +47,8 @@ export function useCardMutations(cardId?: string, tz?: string) {
         mutationFn: ({ id, data }: { id: string; data: CreditCardUpdateDTO }) =>
         updateCard(id, data),
         onSuccess: (updated: CreditCardResponse) => {
+        qc.invalidateQueries({ queryKey: ['creditCard'] })
+        qc.invalidateQueries({ queryKey: ['creditCard-summary'] })
         qc.invalidateQueries({ queryKey: cardKeys.list })
         qc.invalidateQueries({ queryKey: cardKeys.card(updated.id) })
         qc.invalidateQueries({ queryKey: cardKeys.summary(updated.id) })
@@ -49,6 +58,8 @@ export function useCardMutations(cardId?: string, tz?: string) {
     const deleteCardMutation = useMutation({
         mutationFn: (id: string) => deleteCard(id),
         onSuccess: () => {
+        qc.invalidateQueries({ queryKey: ['creditCard'] })
+        qc.invalidateQueries({ queryKey: ['creditCard-summary'] })
         qc.invalidateQueries({ queryKey: cardKeys.list })
         },
     })

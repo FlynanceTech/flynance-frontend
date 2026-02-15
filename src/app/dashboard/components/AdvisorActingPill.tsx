@@ -12,18 +12,18 @@ export default function AdvisorActingPill() {
   const role = user?.userData?.user?.role
   const isAdvisor = isAdvisorRole(role)
 
-  const selectedClientId = useAdvisorActing((s) => s.selectedClientId)
-  const selectedClientName = useAdvisorActing((s) => s.selectedClientName)
-  const selectedClientEmail = useAdvisorActing((s) => s.selectedClientEmail)
+  const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
+  const activeClientName = useAdvisorActing((s) => s.activeClientName ?? s.selectedClientName)
+  const activeClientEmail = useAdvisorActing((s) => s.activeClientEmail ?? s.selectedClientEmail)
   const clearActingClient = useAdvisorActing((s) => s.clearActingClient)
 
   const clientLabel = useMemo(() => {
-    if (selectedClientName?.trim()) return selectedClientName.trim()
-    if (selectedClientEmail?.trim()) return selectedClientEmail.trim()
-    return selectedClientId ?? ''
-  }, [selectedClientEmail, selectedClientId, selectedClientName])
+    if (activeClientName?.trim()) return activeClientName.trim()
+    if (activeClientEmail?.trim()) return activeClientEmail.trim()
+    return activeClientId ?? ''
+  }, [activeClientEmail, activeClientId, activeClientName])
 
-  if (!isAdvisor || !selectedClientId) return null
+  if (!isAdvisor || !activeClientId) return null
 
   return (
     <div className="fixed left-1/2 top-3 z-[70] w-[95%] max-w-[760px] -translate-x-1/2 rounded-xl border border-[#BFE0F5] bg-[#EEF8FF] px-3 py-2 shadow-sm">
@@ -35,7 +35,8 @@ export default function AdvisorActingPill() {
           type="button"
           onClick={() => {
             clearActingClient()
-            router.push('/advisor')
+            router.push('/dashboard')
+            router.refresh()
           }}
           className="whitespace-nowrap rounded-full border border-[#94C9E7] bg-white px-3 py-1 text-xs font-semibold text-[#1E5F86] hover:bg-[#F4FAFF]"
         >
