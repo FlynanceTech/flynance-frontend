@@ -1,7 +1,7 @@
 'use client'
 import { Mail } from 'lucide-react'
 import Link from 'next/link'
-import React, { useEffect, useState, useTransition } from 'react'
+import React, { Suspense, useEffect, useState, useTransition } from 'react'
 import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Lottie from 'lottie-react'
@@ -19,7 +19,7 @@ import { getErrorMessage } from '@/lib/getErrorMessage'
 import clsx from 'clsx'
 import { useUserSession } from '@/stores/useUserSession'
 
-export default function Login() {
+function LoginContent() {
   const [code, setCode] = useState('')
   const [step, setStep] = useState<'identifier' | 'code'>('identifier')
   const [error, setError] = useState('')
@@ -366,5 +366,21 @@ function handleIdentifierChange(value: string) {
       </section>
       
     </main>
+  )
+}
+
+function LoginFallback() {
+  return (
+    <main className="w-screen h-screen flex items-center justify-center bg-white">
+      <p className="text-sm text-slate-600">Carregando login...</p>
+    </main>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginFallback />}>
+      <LoginContent />
+    </Suspense>
   )
 }
