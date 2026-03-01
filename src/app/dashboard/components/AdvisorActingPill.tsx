@@ -4,13 +4,13 @@ import { useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUserSession } from '@/stores/useUserSession'
 import { useAdvisorActing } from '@/stores/useAdvisorActing'
-import { isAdvisorRole } from '@/utils/roles'
+import { canAccessAdvisorRole } from '@/utils/roles'
 
 export default function AdvisorActingPill() {
   const router = useRouter()
   const { user } = useUserSession()
   const role = user?.userData?.user?.role
-  const isAdvisor = isAdvisorRole(role)
+  const isAdvisor = canAccessAdvisorRole(role)
 
   const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
   const activeClientName = useAdvisorActing((s) => s.activeClientName ?? s.selectedClientName)

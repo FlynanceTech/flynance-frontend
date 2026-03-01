@@ -157,9 +157,9 @@ export function SpendingControl() {
       <div className="flex items-center justify-between gap-3">
         <div className="flex flex-col">
           <h2 className="text-lg font-bold text-gray-800">Controle de Metas</h2>
-          <span className="w-fit rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+         {/*  <span className="w-fit rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
             {selectedDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
-          </span>
+          </span> */}
         </div>
         <div className="flex items-center gap-4">
           <div className="hidden lg:block">

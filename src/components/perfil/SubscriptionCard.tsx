@@ -8,28 +8,44 @@ import { cancelSignature, undoCancelSignature } from '@/services/payment'
 import { useRouter } from 'next/navigation'
 import { useUserSession } from '@/stores/useUserSession'
 import {
+  billingKeys,
   useBillingSubscriptionSummary,
   useCreateBillingSetupIntent,
   useUpdateBillingPaymentMethod,
 } from '@/hooks/query/useBilling'
+import { resolveSubscriptionNextDueDate } from '@/services/billing'
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
 import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js'
 import { loadStripe } from '@stripe/stripe-js'
 import toast from 'react-hot-toast'
+import { useQueryClient } from '@tanstack/react-query'
 
 const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null
 
 function parseDate(value?: string | null): Date | null {
   if (!value) return null
-  const parsed = new Date(value)
-  return Number.isNaN(parsed.getTime()) ? null : parsed
+  const raw = String(value).trim()
+  if (!raw) return null
+
+  const dateOnly = raw.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (dateOnly) {
+    return new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
+  }
+
+  const parsed = new Date(raw)
+  if (Number.isNaN(parsed.getTime())) return null
+  return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate())
 }
 
 function toBrDate(value?: string | null): string {
   const parsed = parseDate(value)
   if (!parsed) return '-'
-  return parsed.toLocaleDateString('pt-BR')
+  return parsed.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
 }
 
 function toBrMoney(value?: number | null): string {
@@ -74,6 +90,16 @@ function formatExpiry(month?: number | null, year?: number | null): string {
   const mm = String(month).padStart(2, '0')
   const yy = String(year).slice(-2)
   return `${mm}/${yy}`
+}
+
+function uniqueIds(...values: Array<string | null | undefined>): string[] {
+  const unique = new Set<string>()
+  for (const value of values) {
+    const normalized = String(value ?? '').trim()
+    if (!normalized) continue
+    unique.add(normalized)
+  }
+  return Array.from(unique)
 }
 
 type ChangeCardModalContentProps = {
@@ -221,6 +247,7 @@ function ChangeCardModal({
 
 const SubscriptionCard = () => {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const { user, status, fetchAccount } = useUserSession()
   const [loadingCancel, setLoadingCancel] = useState(false)
   const [loadingReactivate, setLoadingReactivate] = useState(false)
@@ -228,7 +255,7 @@ const SubscriptionCard = () => {
   const [isChangeCardOpen, setIsChangeCardOpen] = useState(false)
 
   const userId = user?.userData?.user?.id
-  const summaryQuery = useBillingSubscriptionSummary(Boolean(userId))
+  const summaryQuery = useBillingSubscriptionSummary(Boolean(userId), userId)
 
   useEffect(() => {
     if (status === 'idle') {
@@ -255,10 +282,22 @@ const SubscriptionCard = () => {
     Boolean(db?.active)
   const cancelAtPeriodEnd = Boolean(stripe?.cancelAtPeriodEnd ?? db?.cancelAtPeriodEnd)
   const scheduledToCancel = isActive && !isCancelled && cancelAtPeriodEnd
-  const nextDueDate = stripe?.currentPeriodEnd ?? db?.nextDueDate
+  const nextDueDate = resolveSubscriptionNextDueDate(summary)
   const endedAt = db?.endDate ?? stripe?.canceledAt ?? null
-  const signatureId = db?.signatureId ?? null
+  const sessionSignatureId = user?.userData?.signature?.id ?? null
+  const signatureCandidates = useMemo(
+    () => uniqueIds(sessionSignatureId, db?.signatureId),
+    [sessionSignatureId, db?.signatureId]
+  )
   const subscriptionId = stripe?.id ?? db?.subscriptionId ?? undefined
+
+  const refreshSubscriptionSummary = async () => {
+    await queryClient.invalidateQueries({
+      queryKey: billingKeys.subscriptionSummaryRoot,
+      refetchType: 'active',
+    })
+    await summaryQuery.refetch()
+  }
 
   const statusBadgeClass = useMemo(() => {
     if (isActive && !isCancelled) return 'bg-emerald-100 text-emerald-700 border-emerald-200'
@@ -266,12 +305,31 @@ const SubscriptionCard = () => {
   }, [isActive, isCancelled])
 
   const handleCancelSubscription = async () => {
-    if (!signatureId) return
+    if (!signatureCandidates.length) {
+      toast.error('Nao foi possivel identificar a assinatura para cancelar.')
+      return
+    }
     try {
       setLoadingCancel(true)
-      await cancelSignature(signatureId)
+      let canceled = false
+      let lastError: unknown = null
+
+      for (const candidateId of signatureCandidates) {
+        try {
+          await cancelSignature(candidateId)
+          canceled = true
+          break
+        } catch (error: unknown) {
+          lastError = error
+        }
+      }
+
+      if (!canceled) {
+        throw lastError ?? new Error('Erro ao cancelar assinatura.')
+      }
+
       await fetchAccount()
-      await summaryQuery.refetch()
+      await refreshSubscriptionSummary()
       toast.success('Cancelamento solicitado com sucesso.')
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : 'Erro ao cancelar assinatura.')
@@ -282,12 +340,31 @@ const SubscriptionCard = () => {
   }
 
   const handleUndoCancel = async () => {
-    if (!signatureId) return
+    if (!signatureCandidates.length) {
+      toast.error('Nao foi possivel identificar a assinatura para reativar.')
+      return
+    }
     try {
       setLoadingReactivate(true)
-      await undoCancelSignature(signatureId)
+      let restored = false
+      let lastError: unknown = null
+
+      for (const candidateId of signatureCandidates) {
+        try {
+          await undoCancelSignature(candidateId)
+          restored = true
+          break
+        } catch (error: unknown) {
+          lastError = error
+        }
+      }
+
+      if (!restored) {
+        throw lastError ?? new Error('Erro ao reativar assinatura.')
+      }
+
       await fetchAccount()
-      await summaryQuery.refetch()
+      await refreshSubscriptionSummary()
       toast.success('Cancelamento desfeito com sucesso.')
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : 'Erro ao desfazer cancelamento.')
@@ -555,7 +632,7 @@ const SubscriptionCard = () => {
         open={isChangeCardOpen}
         onClose={() => setIsChangeCardOpen(false)}
         onCompleted={async () => {
-          await summaryQuery.refetch()
+          await refreshSubscriptionSummary()
           await fetchAccount()
         }}
         subscriptionId={subscriptionId}

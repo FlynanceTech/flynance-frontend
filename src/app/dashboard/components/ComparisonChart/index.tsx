@@ -134,9 +134,9 @@ export default function ComparisonChart({ transactions = [], isLoading = false, 
 
   return (
     <div ref={containerRef} className="relative h-full w-full rounded-xl border border-gray-200 bg-white p-4 shadow">
-      <div className="flex items-center justify-between px-4 pt-4">
-        <div className="flex w-full flex-col items-start gap-2 lg:flex-row lg:justify-between">
-          <div className="flex w-full flex-col">
+      <div className="flex items-center justify-between lg:px-4 lg:pt-4">
+        <div className="grid grid-cols-3 w-full items-start gap-2 lg:flex lg:flex-row lg:justify-between">
+          <div className="flex w-full flex-col col-span-2">
             <h2 className="text-xl font-semibold text-gray-800">
               {categoriaSelecionada ? `Detalhes de ${categoriaSelecionada.name}` : 'Receita x Despesas'}
             </h2>
@@ -159,10 +159,10 @@ export default function ComparisonChart({ transactions = [], isLoading = false, 
             <div className="mb-4 flex w-full items-center justify-between gap-4 md:justify-end">
               <button
                 onClick={handleShowLegend}
-                className="flex cursor-pointer items-center gap-2 rounded-full bg-secondary/30 px-4 py-2 text-sm text-[#333C4D]"
+                className="flex cursor-pointer items-center gap-2 rounded-full bg-secondary/30 px-4 py-2 text-xs lg:text-sm text-[#333C4D]"
               >
                 <strong>Legenda</strong>
-                <ChevronDown className={`h-5 w-5 transition-transform duration-200 ${showLegend ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`lg:h-5 lg:w-5 h-4 w-4 transition-transform duration-200 ${showLegend ? 'rotate-180' : ''}`} />
               </button>
             </div>
           )}

@@ -11,7 +11,7 @@ const dayOptions = [7, 15, 30, 60, 90, 180]
 const monthOptions = [
   { value: '01', label: 'Janeiro' },
   { value: '02', label: 'Fevereiro' },
-  { value: '03', label: 'Marco' },
+  { value: '03', label: 'Março' },
   { value: '04', label: 'Abril' },
   { value: '05', label: 'Maio' },
   { value: '06', label: 'Junho' },

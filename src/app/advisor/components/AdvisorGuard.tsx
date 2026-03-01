@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useUserSession } from '@/stores/useUserSession'
-import { isAdvisorRole } from '@/utils/roles'
+import { canAccessAdvisorRole } from '@/utils/roles'
 
 export default function AdvisorGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -16,7 +16,7 @@ export default function AdvisorGuard({ children }: { children: React.ReactNode }
     }
   }, [status, fetchAccount])
 
-  const canAccessAdvisor = isAdvisorRole(user?.userData?.user?.role)
+  const canAccessAdvisor = canAccessAdvisorRole(user?.userData?.user?.role)
 
   useEffect(() => {
     if (status === 'idle' || status === 'loading') return
