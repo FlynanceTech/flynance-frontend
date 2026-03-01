@@ -85,7 +85,7 @@ export async function cancelSignature(id: string): Promise<{ ok: true }> {
     await api.delete(`/signature/${id}`);
     return { ok: true };
   } catch (err) {
-    throw asApiError(err, "Erro ao excluir cliente");
+    throw asApiError(err, "Erro ao cancelar assinatura");
   }
 }
 

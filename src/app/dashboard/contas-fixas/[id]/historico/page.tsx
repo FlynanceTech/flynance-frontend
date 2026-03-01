@@ -1,14 +1,12 @@
 'use client'
 
-'use client'
-
 import Header from '../../../components/Header'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import DeleteConfirmModal from '../../../components/DeleteConfirmModal'
-import { useDeleteFixedAccountPayment, useFixedAccountPayments, useFixedAccounts } from '@/hooks/query/useFixedAccounts'
+import { useDeleteFixedAccountPayment, useFixedAccount } from '@/hooks/query/useFixedAccounts'
 import {
   LineChart,
   Line,
@@ -18,22 +16,36 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from 'recharts'
+import type { FixedAccountPayment } from '@/services/fixedAccounts'
 
 function toBRL(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0)
 }
 
-function formatDateBR(iso?: string) {
-  if (!iso) return ''
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
+function parseDateOnly(value?: string | null) {
+  if (!value) return null
+  const raw = String(value).trim()
+  if (!raw) return null
+
+  const dateOnly = raw.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (dateOnly) {
+    return new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
+  }
+
+  const parsed = new Date(raw)
+  if (Number.isNaN(parsed.getTime())) return null
+  return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate())
+}
+
+function formatDateBR(iso?: string | null) {
+  const d = parseDateOnly(iso)
+  if (!d) return ''
   return d.toLocaleDateString('pt-BR')
 }
 
-function monthKey(iso?: string) {
-  if (!iso) return ''
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
+function monthKey(iso?: string | null) {
+  const d = parseDateOnly(iso)
+  if (!d) return ''
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
   return `${y}-${m}`
@@ -46,34 +58,38 @@ function formatMonthLabel(key: string) {
   return dt.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })
 }
 
-function buildMonthlySeries(payments: { dueDate: string; paidAt: string; amount: number }[]) {
-  const map = new Map<string, number>()
-  payments.forEach((p) => {
-    const key = monthKey(p.dueDate || p.paidAt)
+function buildMonthlySeries(payments: FixedAccountPayment[]) {
+  const monthlyTotalByKey = new Map<string, number>()
+  payments.forEach((payment) => {
+    const key = monthKey(payment.dueDate ?? payment.paidAt)
     if (!key) return
-    map.set(key, (map.get(key) ?? 0) + Number(p.amount ?? 0))
+    monthlyTotalByKey.set(key, (monthlyTotalByKey.get(key) ?? 0) + Number(payment.amount ?? 0))
   })
-  return Array.from(map.entries())
+
+  return Array.from(monthlyTotalByKey.entries())
     .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([key, total]) => ({ month: key, total }))
+    .map(([month, total]) => ({ month, total }))
 }
 
 export default function FixedAccountHistoryPage() {
   const params = useParams<{ id: string }>()
   const id = params?.id ?? ''
-  const paymentsQuery = useFixedAccountPayments(id)
+  const fixedAccountQuery = useFixedAccount(id)
   const deletePaymentMutation = useDeleteFixedAccountPayment(id)
-  const payments = paymentsQuery.data ?? []
+  const fixedAccount = fixedAccountQuery.data
+  const payments = fixedAccount?.payments ?? []
   const chartData = buildMonthlySeries(payments)
-  const fixedAccountsQuery = useFixedAccounts().fixedAccountsQuery
-  const fixedAccount = (fixedAccountsQuery.data ?? []).find((item) => item.id === id)
   const categoryLabel = fixedAccount?.category?.name ?? 'Sem categoria'
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
 
   return (
     <section className="w-full h-full pt-8 lg:px-8 px-4 pb-24 lg:pb-0 flex flex-col gap-6 overflow-auto">
-      <Header title="Histórico de pagamentos" subtitle="Acompanhe os pagamentos desta conta fixa." newTransation={false} />
+      <Header
+        title="Historico de pagamentos"
+        subtitle="Acompanhe os pagamentos desta conta fixa."
+        newTransation={false}
+      />
 
       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm flex flex-col gap-4">
         <div className="flex items-center justify-between gap-3">
@@ -89,32 +105,32 @@ export default function FixedAccountHistoryPage() {
           </Link>
         </div>
 
-        {paymentsQuery.isLoading && (
+        {fixedAccountQuery.isLoading && (
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-            Carregando Histórico...
+            Carregando historico...
           </div>
         )}
 
-        {paymentsQuery.isError && (
+        {fixedAccountQuery.isError && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            Erro ao carregar Histórico.
+            Erro ao carregar historico.
           </div>
         )}
 
-        {!paymentsQuery.isLoading && !paymentsQuery.isError && payments.length === 0 && (
+        {!fixedAccountQuery.isLoading && !fixedAccountQuery.isError && payments.length === 0 && (
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
             Nenhum pagamento registrado.
           </div>
         )}
 
-        {!paymentsQuery.isLoading && !paymentsQuery.isError && payments.length > 0 && (
+        {!fixedAccountQuery.isLoading && !fixedAccountQuery.isError && payments.length > 0 && (
           <div className="flex flex-col gap-3">
             <div className="rounded-lg border border-gray-200 p-4 bg-white">
               <div className="mb-3 text-sm font-semibold text-gray-700">
-                Histórico de gastos (por Competência)
+                Historico de gastos (por competencia)
               </div>
               {chartData.length === 0 ? (
-                <div className="text-sm text-gray-500">Sem dados para gerar o grÃ¡fico.</div>
+                <div className="text-sm text-gray-500">Sem dados para gerar o grafico.</div>
               ) : (
                 <ResponsiveContainer width="100%" height={240}>
                   <LineChart data={chartData}>
@@ -128,16 +144,16 @@ export default function FixedAccountHistoryPage() {
                     <YAxis
                       tickLine={false}
                       axisLine={false}
-                      tickFormatter={(v) => `R$ ${Number(v).toFixed(0)}`}
+                      tickFormatter={(value) => `R$ ${Number(value).toFixed(0)}`}
                     />
                     <Tooltip
-                      formatter={(v: number) =>
+                      formatter={(value: number) =>
                         new Intl.NumberFormat('pt-BR', {
                           style: 'currency',
                           currency: 'BRL',
-                        }).format(Number(v))
+                        }).format(Number(value))
                       }
-                      labelFormatter={(label) => `Competência: ${formatMonthLabel(String(label))}`}
+                      labelFormatter={(label) => `Competencia: ${formatMonthLabel(String(label))}`}
                     />
                     <Line
                       type="monotone"
@@ -151,6 +167,7 @@ export default function FixedAccountHistoryPage() {
                 </ResponsiveContainer>
               )}
             </div>
+
             {payments.map((payment) => (
               <div
                 key={payment.id}
@@ -200,7 +217,7 @@ export default function FixedAccountHistoryPage() {
           }
         }}
         title="Excluir pagamento"
-        description="Tem certeza que deseja excluir este pagamento do histórico?"
+        description="Tem certeza que deseja excluir este pagamento do historico?"
         confirmLabel="Excluir"
       />
     </section>

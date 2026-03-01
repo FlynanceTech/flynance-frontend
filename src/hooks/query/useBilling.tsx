@@ -9,15 +9,18 @@ import {
 } from '@/services/billing'
 
 export const billingKeys = {
-  subscriptionSummary: ['billing', 'subscription', 'summary'] as const,
+  subscriptionSummaryRoot: ['billing', 'subscription', 'summary'] as const,
+  subscriptionSummary: (userId?: string) =>
+    [...billingKeys.subscriptionSummaryRoot, userId ?? 'anonymous'] as const,
 }
 
-export function useBillingSubscriptionSummary(enabled = true) {
+export function useBillingSubscriptionSummary(enabled = true, userId?: string) {
   return useQuery({
-    queryKey: billingKeys.subscriptionSummary,
+    queryKey: billingKeys.subscriptionSummary(userId),
     queryFn: getBillingSubscriptionSummary,
     enabled,
-    staleTime: 20_000,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
     retry: 1,
   })
 }
@@ -34,7 +37,10 @@ export function useUpdateBillingPaymentMethod() {
     mutationFn: (payload: UpdateBillingPaymentMethodPayload) =>
       updateBillingSubscriptionPaymentMethod(payload),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: billingKeys.subscriptionSummary })
+      qc.invalidateQueries({
+        queryKey: billingKeys.subscriptionSummaryRoot,
+        refetchType: 'active',
+      })
     },
   })
 }

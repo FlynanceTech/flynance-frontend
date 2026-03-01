@@ -23,7 +23,7 @@ import {
 import SidebarItem from './SidebarItem'
 import { useUserSession } from '@/stores/useUserSession'
 import clsx from 'clsx'
-import { isAdvisorRole, isAdminRole } from '@/utils/roles'
+import { canAccessAdvisorRole, isAdminRole } from '@/utils/roles'
 
 export default function Sidebar() {
   const router = useRouter()
@@ -31,7 +31,7 @@ export default function Sidebar() {
   const { logout, user } = useUserSession()
   const role = user?.userData?.user?.role
   const isAdmin = isAdminRole(role)
-  const isAdvisor = isAdvisorRole(role)
+  const isAdvisor = canAccessAdvisorRole(role)
 
   const [collapsed, setCollapsed] = useState(false)
 

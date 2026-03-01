@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { acceptAdvisorInvite } from '@/services/advisor'
 import { useUserSession } from '@/stores/useUserSession'
-import { isAdvisorRole } from '@/utils/roles'
+import { canAccessAdvisorRole } from '@/utils/roles'
 
 export default function AdvisorInviteAcceptPage() {
   const router = useRouter()
@@ -56,7 +56,7 @@ export default function AdvisorInviteAcceptPage() {
       await fetchAccount()
       setAccepted(true)
       const role = useUserSession.getState().user?.userData?.user?.role
-      if (isAdvisorRole(role)) {
+      if (canAccessAdvisorRole(role)) {
         router.replace('/advisor')
       } else {
         router.replace('/dashboard')

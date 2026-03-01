@@ -3,6 +3,7 @@
 import Header from '../components/Header'
 /* import ActivityCard from '@/components/perfil/ActivityCard' */
 import AuthPreferencesCard from '@/components/perfil/AuthPreferencesCard'
+import CyclePreferencesCard from '@/components/perfil/CyclePreferencesCard'
 /* import DataExportCard from '@/components/perfil/DataExportCard' */
 import NotificationsCard from '@/components/perfil/NotificationsCard'
 import { ProfileSidebar } from '@/components/perfil/ProfileSidebar'
@@ -46,6 +47,10 @@ export default function ProfilePage() {
                 
                 <div id="auth-preferences">
                   <AuthPreferencesCard />
+                </div>
+
+                <div id="cycle-preferences">
+                  <CyclePreferencesCard />
                 </div>
                 
                 <div id="notifications">

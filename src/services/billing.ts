@@ -27,6 +27,7 @@ export type BillingSubscriptionStripe = {
   canceledAt: string | null
   currentPeriodStart: string | null
   currentPeriodEnd: string | null
+  nextDueDate: string | null
   pauseCollection: unknown
 }
 
@@ -47,6 +48,28 @@ export type BillingSubscriptionSummary = {
   db: BillingSubscriptionDb | null
   stripe: BillingSubscriptionStripe | null
   paymentMethod: BillingSubscriptionPaymentMethod | null
+}
+
+export function resolveSubscriptionNextDueDate(
+  summary?: Pick<BillingSubscriptionSummary, 'source' | 'db' | 'stripe'> | null
+): string | null {
+  if (!summary) return null
+
+  const source = String(summary.source ?? '').toLowerCase()
+  if (source === 'stripe') {
+    return summary.stripe?.nextDueDate ?? summary.stripe?.currentPeriodEnd ?? null
+  }
+
+  if (source === 'db_only') {
+    return summary.db?.nextDueDate ?? null
+  }
+
+  return (
+    summary.stripe?.nextDueDate ??
+    summary.stripe?.currentPeriodEnd ??
+    summary.db?.nextDueDate ??
+    null
+  )
 }
 
 export type BillingSetupIntentResponse = {
@@ -168,6 +191,7 @@ function toStripe(raw: any): BillingSubscriptionStripe | null {
     canceledAt: toIsoDate(raw?.canceledAt),
     currentPeriodStart: toIsoDate(raw?.currentPeriodStart),
     currentPeriodEnd: toIsoDate(raw?.currentPeriodEnd),
+    nextDueDate: toIsoDate(raw?.nextDueDate),
     pauseCollection: raw?.pauseCollection ?? null,
   }
 }

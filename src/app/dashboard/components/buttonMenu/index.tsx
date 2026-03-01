@@ -16,7 +16,7 @@ import {
 import React, { useState } from 'react'
 import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react'
 import { useUserSession } from '@/stores/useUserSession'
-import { isAdvisorRole, isAdminRole } from '@/utils/roles'
+import { canAccessAdvisorRole, isAdminRole } from '@/utils/roles'
 
 export default function BottomMenu() {
   const router = useRouter()
@@ -24,7 +24,7 @@ export default function BottomMenu() {
   const { user } = useUserSession()
   const role = user?.userData?.user?.role
   const isAdmin = isAdminRole(role)
-  const isAdvisor = isAdvisorRole(role)
+  const isAdvisor = canAccessAdvisorRole(role)
 
   const primaryItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
