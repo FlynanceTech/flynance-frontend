@@ -17,9 +17,11 @@ import {
   CartesianGrid,
 } from 'recharts'
 import type { FixedAccountPayment } from '@/services/fixedAccounts'
+import { formatCurrency } from '@/utils/formatter'
+import { useLocale, useTranslations } from 'next-intl'
 
 function toBRL(value: number) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0)
+  return formatCurrency(value || 0)
 }
 
 function parseDateOnly(value?: string | null) {
@@ -37,10 +39,10 @@ function parseDateOnly(value?: string | null) {
   return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate())
 }
 
-function formatDateBR(iso?: string | null) {
+function formatDateForLocale(iso?: string | null, locale: string = 'pt-BR') {
   const d = parseDateOnly(iso)
   if (!d) return ''
-  return d.toLocaleDateString('pt-BR')
+  return d.toLocaleDateString(locale)
 }
 
 function monthKey(iso?: string | null) {
@@ -51,11 +53,11 @@ function monthKey(iso?: string | null) {
   return `${y}-${m}`
 }
 
-function formatMonthLabel(key: string) {
+function formatMonthLabel(key: string, locale: string = 'pt-BR') {
   const [y, m] = key.split('-')
   if (!y || !m) return key
   const dt = new Date(Number(y), Number(m) - 1, 1)
-  return dt.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })
+  return dt.toLocaleDateString(locale, { month: 'short', year: '2-digit' })
 }
 
 function buildMonthlySeries(payments: FixedAccountPayment[]) {
@@ -72,6 +74,8 @@ function buildMonthlySeries(payments: FixedAccountPayment[]) {
 }
 
 export default function FixedAccountHistoryPage() {
+  const t = useTranslations('fixedAccountHistoryPage')
+  const locale = useLocale()
   const params = useParams<{ id: string }>()
   const id = params?.id ?? ''
   const fixedAccountQuery = useFixedAccount(id)
@@ -79,47 +83,47 @@ export default function FixedAccountHistoryPage() {
   const fixedAccount = fixedAccountQuery.data
   const payments = fixedAccount?.payments ?? []
   const chartData = buildMonthlySeries(payments)
-  const categoryLabel = fixedAccount?.category?.name ?? 'Sem categoria'
+  const categoryLabel = fixedAccount?.category?.name ?? t('uncategorized')
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
 
   return (
     <section className="w-full h-full pt-8 lg:px-8 px-4 pb-24 lg:pb-0 flex flex-col gap-6 overflow-auto">
       <Header
-        title="Historico de pagamentos"
-        subtitle="Acompanhe os pagamentos desta conta fixa."
+        title={t('title')}
+        subtitle={t('subtitle')}
         newTransation={false}
       />
 
       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm flex flex-col gap-4">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-[#333C4D]">{fixedAccount?.name ?? 'Conta fixa'}</h2>
-            <p className="text-sm text-slate-500">Categoria: {categoryLabel}</p>
+            <h2 className="text-lg font-semibold text-[#333C4D]">{fixedAccount?.name ?? t('fixedAccount')}</h2>
+            <p className="text-sm text-slate-500">{t('categoryLabel', { category: categoryLabel })}</p>
           </div>
           <Link
             href="/dashboard/contas-fixas"
             className="inline-flex items-center justify-center rounded-full border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
           >
-            Voltar
+            {t('back')}
           </Link>
         </div>
 
         {fixedAccountQuery.isLoading && (
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-            Carregando historico...
+            {t('loading')}
           </div>
         )}
 
         {fixedAccountQuery.isError && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            Erro ao carregar historico.
+            {t('loadError')}
           </div>
         )}
 
         {!fixedAccountQuery.isLoading && !fixedAccountQuery.isError && payments.length === 0 && (
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-            Nenhum pagamento registrado.
+            {t('empty')}
           </div>
         )}
 
@@ -127,33 +131,30 @@ export default function FixedAccountHistoryPage() {
           <div className="flex flex-col gap-3">
             <div className="rounded-lg border border-gray-200 p-4 bg-white">
               <div className="mb-3 text-sm font-semibold text-gray-700">
-                Historico de gastos (por competencia)
+                {t('chart.title')}
               </div>
               {chartData.length === 0 ? (
-                <div className="text-sm text-gray-500">Sem dados para gerar o grafico.</div>
+                <div className="text-sm text-gray-500">{t('chart.noData')}</div>
               ) : (
                 <ResponsiveContainer width="100%" height={240}>
                   <LineChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                     <XAxis
                       dataKey="month"
-                      tickFormatter={formatMonthLabel}
+                      tickFormatter={(value) => formatMonthLabel(String(value), locale)}
                       tickLine={false}
                       axisLine={false}
                     />
                     <YAxis
                       tickLine={false}
                       axisLine={false}
-                      tickFormatter={(value) => `R$ ${Number(value).toFixed(0)}`}
+                      tickFormatter={(value) => formatCurrency(Number(value))}
                     />
                     <Tooltip
-                      formatter={(value: number) =>
-                        new Intl.NumberFormat('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL',
-                        }).format(Number(value))
+                      formatter={(value: number) => formatCurrency(Number(value))}
+                      labelFormatter={(label) =>
+                        t('chart.competenceLabel', { month: formatMonthLabel(String(label), locale) })
                       }
-                      labelFormatter={(label) => `Competencia: ${formatMonthLabel(String(label))}`}
                     />
                     <Line
                       type="monotone"
@@ -175,8 +176,8 @@ export default function FixedAccountHistoryPage() {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex flex-wrap items-center gap-2 text-sm text-gray-700">
-                    <span className="font-semibold">Pago em:</span>
-                    <span>{formatDateBR(payment.paidAt)}</span>
+                    <span className="font-semibold">{t('paidAt')}</span>
+                    <span>{formatDateForLocale(payment.paidAt, locale)}</span>
                   </div>
                   <button
                     type="button"
@@ -184,20 +185,20 @@ export default function FixedAccountHistoryPage() {
                       setDeleteTargetId(payment.id)
                       setDeleteOpen(true)
                     }}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 text-red-600 hover:bg-red-50 cursor-pointer"
-                    title="Excluir pagamento"
-                    aria-label="Excluir pagamento"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 text-red-400 hover:bg-red-50 cursor-pointer"
+                    title={t('deletePayment')}
+                    aria-label={t('deletePayment')}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-sm text-gray-700">
-                  <span className="font-semibold">Valor:</span>
+                  <span className="font-semibold">{t('value')}</span>
                   <span>{toBRL(payment.amount)}</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-sm text-gray-700">
-                  <span className="font-semibold">Vencimento:</span>
-                  <span>{formatDateBR(payment.dueDate)}</span>
+                  <span className="font-semibold">{t('dueDate')}</span>
+                  <span>{formatDateForLocale(payment.dueDate, locale)}</span>
                 </div>
               </div>
             ))}
@@ -216,9 +217,9 @@ export default function FixedAccountHistoryPage() {
             deletePaymentMutation.mutate(deleteTargetId)
           }
         }}
-        title="Excluir pagamento"
-        description="Tem certeza que deseja excluir este pagamento do historico?"
-        confirmLabel="Excluir"
+        title={t('deletePayment')}
+        description={t('deletePaymentDescription')}
+        confirmLabel={t('delete')}
       />
     </section>
   )

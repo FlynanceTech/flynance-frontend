@@ -4,6 +4,7 @@ import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
 import { X } from 'lucide-react'
 import { useState } from 'react'
 import type { Goal } from '@/types/Goals'
+import { formatCurrency } from '@/utils/formatter'
 
 interface GoalsChartProps {
   goals?: Goal[]
@@ -51,7 +52,7 @@ export default function GoalsChart({ goals, isLoading }: GoalsChartProps) {
           />
         </div>
         <div className="text-xs text-gray-500">
-          R$ {meta.current.toFixed(2)} de R$ {meta.goal.toFixed(2)}
+          {formatCurrency(meta.current)} de {formatCurrency(meta.goal)}
         </div>
       </div>
     )

@@ -3,9 +3,12 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, ArrowDown, ArrowUp, Bell, CheckCircle2, Eye, EyeOff, Wallet } from 'lucide-react'
-import FinanceCard from '../FinanceCard'
 import { TabGroup, TabList, Tab, TabPanels, TabPanel } from '@headlessui/react'
+import { useTranslations } from 'next-intl'
+
+import FinanceCard from '../FinanceCard'
 import { useFixedAccounts } from '@/hooks/query/useFixedAccounts'
+import { formatCurrency } from '@/utils/formatter'
 
 type ReminderStatus = {
   variant: 'ok' | 'due' | 'overdue'
@@ -21,7 +24,6 @@ function getMonthKey(d = new Date()) {
   const m = String(d.getMonth() + 1).padStart(2, '0')
   return `${y}-${m}`
 }
-
 
 function parseDateOnly(value?: string | null): Date | null {
   if (!value) return null
@@ -137,8 +139,9 @@ export default function FinanceStatus({
   period,
   accumulated,
   isLoading,
-  periodLabel = 'periodo anterior',
+  periodLabel,
 }: FinanceStatusProps) {
+  const t = useTranslations('financeStatus')
   const { fixedAccountsQuery } = useFixedAccounts()
   const [showValues, setShowValues] = useState(true)
   const storageKey = 'flynance:finance-status:show-values'
@@ -162,11 +165,12 @@ export default function FinanceStatus({
 
   const fmt = (v?: number) =>
     typeof v === 'number' && Number.isFinite(v)
-      ? `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-      : 'R$ 0,00'
+      ? formatCurrency(v)
+      : formatCurrency(0)
 
-  const maskedValue = (v: number) => (showValues ? fmt(v) : 'R$ ••••')
-  const visibilityLabel = showValues ? 'Ocultar valores' : 'Mostrar valores'
+  const maskedTemplate = formatCurrency(0).replace(/[0-9]/g, '*')
+  const maskedValue = (v: number) => (showValues ? fmt(v) : maskedTemplate)
+  const visibilityLabel = showValues ? t('hideValues') : t('showValues')
   const visibilityIcon = showValues ? <EyeOff size={16} /> : <Eye size={16} />
 
   const reminder = useMemo<ReminderStatus | null>(() => {
@@ -230,41 +234,50 @@ export default function FinanceStatus({
   const incomeChange = Math.trunc(period.incomeChange || 0)
   const expenseChange = Math.trunc(period.expenseChange || 0)
   const hasBills = (fixedAccountsQuery.data?.length ?? 0) > 0
+  const safePeriodLabel = periodLabel || t('defaultPeriodLabel')
 
+  const suffixByCount = (count: number) => (count === 1 ? '' : 's')
   const reminderLabel =
     reminder?.variant === 'due'
       ? reminder?.nextInDays === 0
-        ? 'vence hoje'
-        : `vence em ${reminder?.nextInDays ?? 0} dia${(reminder?.nextInDays ?? 0) === 1 ? '' : 's'}`
+        ? t('dueToday')
+        : t('dueInDays', {
+            days: reminder?.nextInDays ?? 0,
+            suffix: (reminder?.nextInDays ?? 0) === 1 ? '' : 's',
+          })
       : reminder?.variant === 'overdue'
-      ? 'em atraso'
+      ? t('overdueShort')
       : ''
 
   const reminderTitle =
     reminder?.variant === 'overdue' ? (
-      <h2 className="text-red-600 font-medium flex justify-between items-center gap-1">
+      <h2 className="text-red-400 font-medium flex justify-between items-center gap-1">
         <span className="flex items-center gap-2">
-          <AlertTriangle /> Contas em atraso
+          <AlertTriangle /> {t('overdueTitle')}
         </span>
-        <span className="text-xs font-medium text-red-500">
-          {reminder.count} conta{reminder.count === 1 ? '' : 's'} pendente{reminder.count === 1 ? '' : 's'}
+        <span className="text-xs font-medium text-red-400">
+          {t('pendingCount', { count: reminder.count, suffix: suffixByCount(reminder.count) })}
         </span>
       </h2>
     ) : reminder?.variant === 'due' ? (
       <h2 className="text-amber-600 font-medium flex justify-between items-center gap-1">
         <span className="flex items-center gap-2">
-          <Bell /> Contas a vencer
+          <Bell /> {t('dueTitle')}
         </span>
         <span className="text-xs font-medium text-amber-600">
-          {reminder.count} conta{reminder.count === 1 ? '' : 's'} nos proximos {REMINDER_DAYS} dias
+          {t('dueCount', {
+            count: reminder.count,
+            suffix: suffixByCount(reminder.count),
+            days: REMINDER_DAYS,
+          })}
         </span>
       </h2>
     ) : (
       <h2 className=" text-emerald-600 font-medium flex justify-between items-center gap-1">
         <span className="flex items-center gap-2">
-          <CheckCircle2 /> Contas em dia
+          <CheckCircle2 /> {t('upToDateTitle')}
         </span>
-        <span className="text-xs font-medium text-emerald-600">Sem vencimento imediato</span>
+        <span className="text-xs font-medium text-emerald-600">{t('upToDateSubtitle')}</span>
       </h2>
     )
 
@@ -272,14 +285,17 @@ export default function FinanceStatus({
     <Link
       href="/dashboard/contas-fixas"
       className="block rounded-md focus:outline-none focus:ring-2 focus:ring-secondary/60"
-      aria-label="Ver contas fixas"
+      aria-label={t('viewFixedAccounts')}
     >
       <FinanceCard
         title={reminderTitle}
         value={
           reminder.variant === 'ok'
-            ? 'Nenhuma pendencia'
-            : `${reminder.count} conta${reminder.count === 1 ? '' : 's'}`
+            ? t('nonePending')
+            : t('accountCount', {
+                count: reminder.count,
+                suffix: suffixByCount(reminder.count),
+              })
         }
         periodLabel={reminderLabel}
         isLabel
@@ -292,7 +308,7 @@ export default function FinanceStatus({
       <div className="lg:hidden">
         <TabGroup>
           <TabList className="flex gap-2 overflow-x-auto no-scrollbar">
-            {['Saldo', 'Receita', 'Despesas', ...(hasBills && reminder ? ['Contas'] : [])].map((label) => (
+            {[t('tabs.balance'), t('tabs.income'), t('tabs.expenses'), ...(hasBills && reminder ? [t('tabs.accounts')] : [])].map((label) => (
               <Tab
                 key={label}
                 className={({ selected }) =>
@@ -316,7 +332,7 @@ export default function FinanceStatus({
                         balance < 0 ? 'text-[#F15959]' : 'text-[#41B46B]'
                       }`}
                     >
-                      <Wallet /> Saldo
+                      <Wallet /> {t('labels.balance')}
                     </h2>
                     <button
                       type="button"
@@ -338,11 +354,11 @@ export default function FinanceStatus({
             <TabPanel>
               <FinanceCard
                 percentage={incomeChange}
-                periodLabel={periodLabel}
+                periodLabel={safePeriodLabel}
                 title={
                   <div className="flex items-center justify-between gap-3">
                     <h2 className="text-[#41B46B] font-medium flex gap-2">
-                      <ArrowUp /> Receita
+                      <ArrowUp /> {t('labels.income')}
                     </h2>
                     <button
                       type="button"
@@ -363,11 +379,11 @@ export default function FinanceStatus({
             <TabPanel>
               <FinanceCard
                 percentage={expenseChange}
-                periodLabel={periodLabel}
+                periodLabel={safePeriodLabel}
                 title={
                   <div className="flex items-center justify-between gap-3">
                     <h2 className="text-[#F15959] font-medium flex gap-2">
-                      <ArrowDown /> Despesas
+                      <ArrowDown /> {t('labels.expenses')}
                     </h2>
                     <button
                       type="button"
@@ -400,7 +416,7 @@ export default function FinanceStatus({
                   balance < 0 ? 'text-[#F15959]' : 'text-[#41B46B]'
                 }`}
               >
-                <Wallet /> Saldo
+                <Wallet /> {t('labels.balance')}
               </h2>
               <button
                 type="button"
@@ -414,17 +430,17 @@ export default function FinanceStatus({
             </div>
           }
           value={maskedValue(balance)}
-          periodLabel={periodLabel}
+          periodLabel={safePeriodLabel}
           isLabel
           isBalance
         />
         <FinanceCard
           percentage={incomeChange}
-          periodLabel={periodLabel}
+          periodLabel={safePeriodLabel}
           title={
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-[#41B46B] font-medium flex gap-2">
-                <ArrowUp /> Receita
+                <ArrowUp /> {t('labels.income')}
               </h2>
               <button
                 type="button"
@@ -442,11 +458,11 @@ export default function FinanceStatus({
         />
         <FinanceCard
           percentage={expenseChange}
-          periodLabel={periodLabel}
+          periodLabel={safePeriodLabel}
           title={
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-[#F15959] font-medium flex gap-2">
-                <ArrowDown /> Despesas
+                <ArrowDown /> {t('labels.expenses')}
               </h2>
               <button
                 type="button"

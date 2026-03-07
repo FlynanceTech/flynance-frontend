@@ -1,12 +1,15 @@
 import { Info } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 export default function InfoTip({ text }: { text: string }) {
+  const t = useTranslations('reports.common')
+
   return (
-    <div className="relative group">
+    <div className="group relative">
       <button
         type="button"
         className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-gray-200 text-gray-400 hover:text-gray-600"
-        aria-label="Mais informações"
+        aria-label={t('moreInfoAria')}
       >
         <Info size={12} />
       </button>

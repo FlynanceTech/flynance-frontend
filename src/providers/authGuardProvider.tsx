@@ -4,7 +4,10 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useUserSession } from "@/stores/useUserSession";
 import { useAdvisorActing } from "@/stores/useAdvisorActing";
-import { canActAsClientRole } from "@/utils/roles";
+import { canActAsClientRole, isAdminRole } from "@/utils/roles";
+
+const DEV_RESTRICTED_HOST = "dev.flynance.tec.br";
+const PROD_DASHBOARD_URL = "https://flynance.tec.br/dashboard";
 
 type Props = {
   children: React.ReactNode;
@@ -17,6 +20,14 @@ export function AuthGuardProvider({ children }: Props) {
   const clearActingClient = useAdvisorActing((s) => s.clearActingClient);
 
   const isPublicRoute = pathname === "/login" || pathname === "/WinbackPage";
+
+  const isRestrictedDevHost = () =>
+    typeof window !== "undefined" && window.location.hostname === DEV_RESTRICTED_HOST;
+
+  const isDevAccessBlockedByRole = () =>
+    status === "authenticated" &&
+    isRestrictedDevHost() &&
+    !isAdminRole(user?.userData?.user?.role);
 
   const computeAccessFlags = () => {
     const role = user?.userData?.user?.role;
@@ -78,13 +89,19 @@ export function AuthGuardProvider({ children }: Props) {
       return;
     }
 
+    if (isDevAccessBlockedByRole()) {
+      clearActingClient();
+      window.location.replace(PROD_DASHBOARD_URL);
+      return;
+    }
+
     const { canAccessPlatform } = computeAccessFlags();
 
     if (!canAccessPlatform && pathname !== "/WinbackPage") {
       router.replace("/WinbackPage");
       return;
     }
-  }, [isPublicRoute, status, user, pathname, router]);
+  }, [isPublicRoute, status, user, pathname, router, clearActingClient]);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -109,6 +126,10 @@ export function AuthGuardProvider({ children }: Props) {
   }
 
   if (status === "unauthenticated") {
+    return Loader;
+  }
+
+  if (isDevAccessBlockedByRole()) {
     return Loader;
   }
 

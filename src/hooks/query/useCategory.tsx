@@ -13,31 +13,35 @@ export function useCategories() {
   const categoriesQuery = useQuery<CategoryResponse[]>({
     queryKey: ['categories', actingContextKey],
     queryFn: async () => {
-      const data = await getCategories()
+      const data = await getCategories({ actingClientId: activeClientId })
       setCategoryStore(data)
       return data
     },
   })
 
   const createMutation = useMutation({
-    mutationFn: createCategory,
+    mutationFn: (payload: CategoryDTO) =>
+      createCategory(payload, { actingClientId: activeClientId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] })
+      queryClient.invalidateQueries({ queryKey: ['categories-classification'] })
     },
   })
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: CategoryDTO }) =>
-      updateCategory(id, data),
+      updateCategory(id, data, { actingClientId: activeClientId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] })
+      queryClient.invalidateQueries({ queryKey: ['categories-classification'] })
     },
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteCategory(id),
+    mutationFn: (id: string) => deleteCategory(id, { actingClientId: activeClientId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] })
+      queryClient.invalidateQueries({ queryKey: ['categories-classification'] })
     },
   })
 

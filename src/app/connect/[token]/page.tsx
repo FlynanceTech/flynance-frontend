@@ -6,8 +6,10 @@ import { useParams, useRouter } from 'next/navigation'
 import { Toaster } from 'react-hot-toast'
 import { useUserSession } from '@/stores/useUserSession'
 import { useAcceptAdvisorClientConnection } from '@/hooks/query/useAdvisor'
+import { useTranslations } from 'next-intl'
 
 export default function ConnectAdvisorPage() {
+  const t = useTranslations('connectAdvisorPage')
   const router = useRouter()
   const params = useParams<{ token: string }>()
   const token = String(params?.token ?? '').trim()
@@ -46,23 +48,23 @@ export default function ConnectAdvisorPage() {
   return (
     <main className="min-h-screen bg-[#F7F8FA] px-4 py-8">
       <section className="mx-auto w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-6">
-        <h1 className="text-lg font-semibold text-[#333C4D]">Conectar com Advisor</h1>
+        <h1 className="text-lg font-semibold text-[#333C4D]">{t('title')}</h1>
         <p className="mt-2 text-sm text-slate-600">
-          Voce esta iniciando a conexao com um advisor na Flynance.
+          {t('subtitle')}
         </p>
 
         <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-          <p className="font-medium">Ao aceitar, o advisor podera:</p>
+          <p className="font-medium">{t('permissionsTitle')}</p>
           <ul className="mt-2 list-disc space-y-1 pl-5">
-            <li>visualizar seus relatorios e indicadores financeiros;</li>
-            <li>atuar no seu dashboard conforme o nivel de permissao concedido;</li>
-            <li>acompanhar evolucao e sugerir ajustes no planejamento.</li>
+            <li>{t('permissions.viewReports')}</li>
+            <li>{t('permissions.actOnDashboard')}</li>
+            <li>{t('permissions.followProgress')}</li>
           </ul>
         </div>
 
         {!isValidToken && (
           <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            Link de conexao invalido.
+            {t('invalidLink')}
           </div>
         )}
 
@@ -70,13 +72,13 @@ export default function ConnectAdvisorPage() {
           <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
             {acceptConnectionMutation.error instanceof Error
               ? acceptConnectionMutation.error.message
-              : 'Nao foi possivel concluir a conexao com o advisor.'}
+              : t('errors.acceptFailed')}
           </div>
         )}
 
         {acceptConnectionMutation.isSuccess && (
           <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
-            Conexao confirmada com sucesso. Redirecionando...
+            {t('successRedirecting')}
           </div>
         )}
 
@@ -92,7 +94,7 @@ export default function ConnectAdvisorPage() {
             }
             className="h-10 rounded-xl bg-[#4F98C2] px-4 text-sm font-semibold text-white hover:bg-[#3f86b0] disabled:opacity-60"
           >
-            {acceptConnectionMutation.isPending ? 'Confirmando...' : 'Aceitar conexao'}
+            {acceptConnectionMutation.isPending ? t('confirming') : t('acceptConnection')}
           </button>
 
           {status === 'unauthenticated' && (
@@ -100,7 +102,7 @@ export default function ConnectAdvisorPage() {
               href={nextToLogin}
               className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 inline-flex items-center"
             >
-              Fazer login
+              {t('login')}
             </Link>
           )}
 
@@ -108,7 +110,7 @@ export default function ConnectAdvisorPage() {
             href="/dashboard"
             className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 inline-flex items-center"
           >
-            Voltar
+            {t('back')}
           </Link>
         </div>
       </section>

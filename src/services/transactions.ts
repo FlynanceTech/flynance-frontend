@@ -24,6 +24,23 @@ export interface TransactionDTO {
   cardId?: string
 }
 
+const ADVISOR_READ_ONLY_BACKEND_MESSAGE = 'advisor has read-only permission for this client'
+export const ADVISOR_READ_ONLY_FRIENDLY_MESSAGE =
+  'Voce tem acesso somente leitura para este cliente.'
+
+export function mapTransactionWriteErrorMessage(message: string) {
+  const normalized = String(message ?? '').trim().toLowerCase()
+  if (normalized.includes(ADVISOR_READ_ONLY_BACKEND_MESSAGE)) {
+    return ADVISOR_READ_ONLY_FRIENDLY_MESSAGE
+  }
+  return message
+}
+
+function getTransactionWriteErrorMessage(error: unknown, fallback: string) {
+  const rawMessage = getErrorMessage(error, fallback)
+  return mapTransactionWriteErrorMessage(rawMessage)
+}
+
 type Primitive = string | number | boolean
 type FilterValue = Primitive | Primitive[] | undefined
 
@@ -131,7 +148,7 @@ export const createTransaction = async (data: TransactionDTO): Promise<Transacti
     return response.data
   } catch (e: unknown) {
     console.error("Erro bruto ao criar transações:", e) // ajuda a debugar
-    const msg = getErrorMessage(e, "Erro ao criar transações.")
+    const msg = getTransactionWriteErrorMessage(e, "Erro ao criar transações.")
     console.error("Erro ao criar transações:", msg)
     throw new Error(msg)
   }
@@ -142,7 +159,7 @@ export const updateTransaction = async (id: string, data: TransactionDTO): Promi
     const response = await api.put(`/transactions/${id}`, data)
     return response.data
   } catch (e: unknown) {
-    const msg = getErrorMessage(e, "Erro ao atualizar transações.");
+    const msg = getTransactionWriteErrorMessage(e, "Erro ao atualizar transações.");
     console.error("Erro ao atualizar transações:", msg);
     throw new Error(msg);
   }
@@ -153,7 +170,7 @@ export const deleteTransaction = async (id: string): Promise<{ message: string }
     const response = await api.delete(`/transactions/${id}`)
     return response.data
   }catch (e: unknown) {
-    const msg = getErrorMessage(e, "Erro ao deletar transações.");
+    const msg = getTransactionWriteErrorMessage(e, "Erro ao deletar transações.");
     console.error("Erro ao deletar transações:", msg);
     throw new Error(msg)
   }

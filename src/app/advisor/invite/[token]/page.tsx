@@ -6,8 +6,10 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { acceptAdvisorInvite } from '@/services/advisor'
 import { useUserSession } from '@/stores/useUserSession'
 import { canAccessAdvisorRole } from '@/utils/roles'
+import { useTranslations } from 'next-intl'
 
 export default function AdvisorInviteAcceptPage() {
+  const t = useTranslations('advisorInvitePage')
   const router = useRouter()
   const params = useParams<{ token: string }>()
   const searchParams = useSearchParams()
@@ -62,32 +64,32 @@ export default function AdvisorInviteAcceptPage() {
         router.replace('/dashboard')
       }
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Nao foi possivel aceitar o convite.')
+      setError(e instanceof Error ? e.message : t('errors.acceptFailed'))
     } finally {
       setIsSubmitting(false)
     }
   }
 
   return (
-    <main className="min-h-screen bg-[#F7F8FA] px-4 py-8">
+    <main className="min-h-screen bg-[hsl(var(--background))] px-4 py-8 text-[hsl(var(--foreground))] transition-colors">
       <section className="mx-auto w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-6">
-        <h1 className="text-lg font-semibold text-[#333C4D]">Convite para Advisor</h1>
+        <h1 className="text-lg font-semibold text-[#333C4D]">{t('title')}</h1>
         <p className="mt-2 text-sm text-slate-600">
-          Voce foi convidado para atuar como advisor na Flynance.
+          {t('subtitle')}
         </p>
 
         <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-          <p className="font-medium">Ao aceitar, voce confirma que:</p>
+          <p className="font-medium">{t('termsTitle')}</p>
           <ul className="mt-2 list-disc space-y-1 pl-5">
-            <li>vai agir em nome do cliente apenas dentro das permissoes concedidas;</li>
-            <li>respeita privacidade e boas praticas no uso da plataforma;</li>
-            <li>entende que suas acoes podem ser auditadas.</li>
+            <li>{t('terms.actWithinPermissions')}</li>
+            <li>{t('terms.respectPrivacy')}</li>
+            <li>{t('terms.auditAware')}</li>
           </ul>
         </div>
 
         {!canAccept && (
           <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            Token de convite invalido.
+            {t('invalidToken')}
           </div>
         )}
 
@@ -99,7 +101,7 @@ export default function AdvisorInviteAcceptPage() {
 
         {accepted && (
           <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
-            Convite aceito com sucesso. Redirecionando...
+            {t('acceptedRedirecting')}
           </div>
         )}
 
@@ -110,7 +112,7 @@ export default function AdvisorInviteAcceptPage() {
             disabled={!canAccept || isSubmitting || status === 'idle' || status === 'loading'}
             className="h-10 rounded-xl bg-[#4F98C2] px-4 text-sm font-semibold text-white hover:bg-[#3f86b0] disabled:opacity-60"
           >
-            {isSubmitting ? 'Aceitando...' : 'Aceitar convite'}
+            {isSubmitting ? t('accepting') : t('acceptInvite')}
           </button>
 
           {status === 'unauthenticated' && (
@@ -118,7 +120,7 @@ export default function AdvisorInviteAcceptPage() {
               href={nextToLogin}
               className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 inline-flex items-center"
             >
-              Fazer login
+              {t('login')}
             </Link>
           )}
 
@@ -126,7 +128,7 @@ export default function AdvisorInviteAcceptPage() {
             href="/dashboard"
             className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 inline-flex items-center"
           >
-            Voltar
+            {t('back')}
           </Link>
         </div>
       </section>

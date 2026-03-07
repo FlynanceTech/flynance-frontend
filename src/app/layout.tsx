@@ -7,6 +7,7 @@ import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import PWAInstallListener from "@/components/PWAInstallListener";
 import { Providers } from "@/providers/Providers";
+import { IntlProvider } from "@/providers/IntlProvider";
 
 
 const ubuntu = Ubuntu({
@@ -45,7 +46,7 @@ export default function RootLayout({
           <PWARegister/>
           <TrackingScripts />
           <Providers>
-            {children}
+            <IntlProvider>{children}</IntlProvider>
           </Providers>
           <Analytics />
           <SpeedInsights />

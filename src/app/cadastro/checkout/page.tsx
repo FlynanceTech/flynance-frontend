@@ -1,18 +1,16 @@
-// src/app/cadastro/checkout/page.tsx
+import { Suspense } from 'react'
+import { getTranslations } from 'next-intl/server'
+import { CheckoutPageClient } from './client'
 
-import { Suspense } from "react";
-import { CheckoutPageClient } from "./client";
-
-function CheckoutFallback() {
+function CheckoutFallback({ t }: { t: (key: string) => string }) {
   return (
     <div className="min-h-[70vh] w-full">
-      {/* topo / stepper */}
       <div className="bg-primary/10 border-b border-slate-200">
         <div className="mx-auto w-[min(1100px,92vw)] py-6">
           <div className="h-5 w-56 rounded bg-slate-200/70 animate-pulse" />
 
           <div className="mt-5 grid grid-cols-3 gap-3">
-            {["Informações", "Pagamento", "Finalização"].map((_, i) => (
+            {[t('steps.info'), t('steps.payment'), t('steps.finish')].map((_, i) => (
               <div
                 key={i}
                 className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3"
@@ -26,16 +24,12 @@ function CheckoutFallback() {
             ))}
           </div>
 
-          <p className="mt-4 text-xs text-slate-500">
-            Preparando seu checkout com segurança…
-          </p>
+          <p className="mt-4 text-xs text-slate-500">{t('loadingSecureCheckout')}</p>
         </div>
       </div>
 
-      {/* corpo */}
       <div className="mx-auto w-[min(1100px,92vw)] py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* coluna esquerda (form) */}
           <div className="lg:col-span-2 space-y-4">
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.10)]">
               <div className="h-5 w-60 rounded bg-slate-200 animate-pulse" />
@@ -59,14 +53,12 @@ function CheckoutFallback() {
                 <div className="md:col-span-1 h-11 rounded-lg bg-slate-100 animate-pulse" />
               </div>
 
-              {/* botão fake */}
               <div className="mt-6 flex justify-end">
                 <div className="h-11 w-44 rounded-lg bg-primary/30 animate-pulse" />
               </div>
             </div>
           </div>
 
-          {/* coluna direita (resumo do plano) */}
           <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-[0_20px_60px_rgba(15,23,42,0.10)]">
             <div className="flex">
               <div className="h-10 w-1/2 bg-primary/30 animate-pulse" />
@@ -104,16 +96,17 @@ function CheckoutFallback() {
         </div>
       </div>
     </div>
-  );
+  )
 }
 
-// 👇 Server Component (NÃO tem "use client")
-export default function CheckoutPage() {
+export default async function CheckoutPage() {
+  const t = await getTranslations('checkoutPage')
+
   return (
     <div className="bg-slate-100 flex flex-col">
-      <Suspense fallback={<CheckoutFallback />}>
+      <Suspense fallback={<CheckoutFallback t={t} />}>
         <CheckoutPageClient />
       </Suspense>
     </div>
-  );
+  )
 }

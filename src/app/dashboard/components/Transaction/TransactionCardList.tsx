@@ -3,9 +3,11 @@
 import clsx from 'clsx'
 import { Pencil, Trash2 } from 'lucide-react'
 import React, { useState } from 'react'
+import { useLocale, useTranslations } from 'next-intl'
 import { Transaction } from '@/types/Transaction'
 import { IconResolver } from '@/utils/IconResolver'
 import DeleteConfirmModal from '../DeleteConfirmModal'
+import { formatCurrency } from '@/utils/formatter'
 
 interface Props {
   transactions: Transaction[]
@@ -13,6 +15,7 @@ interface Props {
   onToggleSelectRow: (index: string) => void
   onEdit: (transaction: Transaction) => void
   onDelete: (index: string) => void
+  canWrite?: boolean
 }
 
 export function TransactionCardList({
@@ -21,60 +24,25 @@ export function TransactionCardList({
   onToggleSelectRow,
   onEdit,
   onDelete,
+  canWrite = true,
 }: Props) {
+  const t = useTranslations('transactionCard')
+  const locale = useLocale()
   const [open, setOpen] = useState(false)
-  
   const [targetId, setTargetId] = useState<string | null>(null)
 
   const paymentLabel = (value?: Transaction['paymentType']) => {
-    switch (value) {
-      case 'PIX':
-        return 'Pix'
-      case 'CREDIT_CARD':
-        return 'Crédito'
-      case 'DEBIT_CARD':
-        return 'Débito'
-      case 'BOLETO':
-        return 'Boleto'
-      case 'TED':
-        return 'TED'
-      case 'DOC':
-        return 'DOC'
-      case 'MONEY':
-        return 'Dinheiro'
-      case 'CASH':
-        return 'Espécie'
-      case 'OTHER':
-        return 'Outro'
-      default:
-        return 'Pagamento'
-    }
+    if (!value) return t('payment.DEFAULT')
+    const key = `payment.${value}`
+    return t.has(key) ? t(key) : t('payment.DEFAULT')
   }
 
   const originLabel = (value?: Transaction['origin']) => {
-    switch (value) {
-      case 'WHATSAPP':
-        return 'WhatsApp'
-      case 'TEXT':
-        return 'Texto'
-      case 'IMAGE':
-        return 'Imagem'
-      case 'AUDIO':
-        return 'Áudio'
-      case 'CHATBOT':
-        return 'Chatbot'
-      case 'DASHBOARD':
-        return 'Dashboard'
-      case 'IMPORT':
-        return 'Importação'
-      case 'MESSAGE':
-        return 'Mensagem'
-      default:
-        return 'Manual'
-    }
+    if (!value) return t('origin.DEFAULT')
+    const key = `origin.${value}`
+    return t.has(key) ? t(key) : t('origin.DEFAULT')
   }
 
-  
   function handleConfirmDelete() {
     if (targetId) onDelete(targetId)
   }
@@ -86,19 +54,21 @@ export function TransactionCardList({
         const categoryType = category?.type ?? item.type ?? 'EXPENSE'
         const isIncome = categoryType === 'INCOME'
         const iconName = category?.icon ?? 'circle'
-        const description = item.description ?? 'Sem descricao'
+        const description = item.description ?? t('noDescription')
         const value = Number(item.value ?? 0)
-        const categoryName = category?.name ?? 'Sem categoria'
+        const categoryName = category?.name ?? t('noCategory')
 
         return (
           <div key={item.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
             <div className="flex items-start gap-3">
-              <input
-                type="checkbox"
-                checked={selectedIds.has(item.id)}
-                onChange={() => onToggleSelectRow(item.id)}
-                className="mt-1"
-              />
+              {canWrite && (
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(item.id)}
+                  onChange={() => onToggleSelectRow(item.id)}
+                  className="mt-1"
+                />
+              )}
 
               <div className="flex-1 min-w-0 flex flex-col gap-4">
                 <div className="flex items-start justify-between gap-3">
@@ -107,10 +77,7 @@ export function TransactionCardList({
                       <IconResolver name={iconName} size={18} />
                     </div>
                     <div className="min-w-0">
-                      <h4 className="font-semibold text-gray-800 truncate">
-                        {description}
-                      </h4>
-                     
+                      <h4 className="font-semibold text-gray-800 truncate">{description}</h4>
                     </div>
                   </div>
                   <span
@@ -119,20 +86,19 @@ export function TransactionCardList({
                       isIncome ? 'bg-[#22C55E]' : 'bg-[#EF4444]'
                     )}
                   >
-                    {isIncome ? 'Receita' : 'Despesa'}
+                    {isIncome ? t('income') : t('expense')}
                   </span>
-                
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                   <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-slate-700">
-                    {new Intl.DateTimeFormat('pt-BR', {
+                    {new Intl.DateTimeFormat(locale, {
                       dateStyle: 'medium',
                       timeStyle: 'short',
                       timeZone: 'UTC',
                     }).format(new Date(item.date))}
                   </span>
-          
+
                   <span className="rounded-full border border-slate-200 bg-white px-2 py-1 text-slate-700">
                     {paymentLabel(item.paymentType)}
                   </span>
@@ -142,36 +108,39 @@ export function TransactionCardList({
                 </div>
 
                 <div className="flex justify-between gap-3">
-                  <p className="text-xs text-gray-500 mt-0.5 truncate">
-                    {categoryName}
-                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5 truncate">{categoryName}</p>
                   <span
                     className={clsx(
                       'shrink-0 text-sm font-semibold',
                       isIncome ? 'text-[#16A34A]' : 'text-[#DC2626]'
                     )}
                   >
-                    {isIncome ? `R$ ${value.toFixed(2)}` : `- R$ ${value.toFixed(2)}`}
+                    {isIncome ? formatCurrency(value) : `- ${formatCurrency(value)}`}
                   </span>
-                  <div className='flex gap-2'>
-                    <button 
-                      className="text-gray-500 hover:text-blue-400 cursor-pointer"
-                      onClick={() => onEdit(item)}
-                      aria-label="Editar transação"
-                    >
-                      <Pencil size={16} />
-                    </button>
-                    <button
-                      className="text-gray-500 hover:text-red-400 cursor-pointer"
-                      onClick={() => {
-                        setTargetId(item.id)
-                        setOpen(true)
-                      }}
-                      aria-label="Excluir transação"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
+
+                  {canWrite ? (
+                    <div className="flex gap-2">
+                      <button
+                        className="text-gray-500 hover:text-blue-400 cursor-pointer"
+                        onClick={() => onEdit(item)}
+                        aria-label={t('editAria')}
+                      >
+                        <Pencil size={16} />
+                      </button>
+                      <button
+                        className="text-gray-500 hover:text-red-400 cursor-pointer"
+                        onClick={() => {
+                          setTargetId(item.id)
+                          setOpen(true)
+                        }}
+                        aria-label={t('deleteAria')}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-slate-400">{t('readOnly')}</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -183,10 +152,9 @@ export function TransactionCardList({
         isOpen={open}
         onClose={() => setOpen(false)}
         onConfirm={handleConfirmDelete}
-        title="Excluir transação"
-        description="Tem certeza que deseja excluir esta transação?"
+        title={t('deleteTitle')}
+        description={t('deleteDescription')}
       />
-
     </div>
   )
 }

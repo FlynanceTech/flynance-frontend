@@ -41,7 +41,7 @@ export function MetaSlider({
           max={max}
           step={step}
           value={[value]}
-          onValueChange={(val) => onChange?.(val[0])} // 👈 Aqui emitimos a mudança
+          onValueChange={(val) => onChange?.(val[0])} 
         >
           <Slider.Track className="bg-gray-200 relative grow rounded-full h-2">
             <Slider.Range className="absolute bg-secondary rounded-full h-full" />

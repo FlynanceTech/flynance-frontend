@@ -32,10 +32,134 @@ export interface CategoryResponse {
   updatedAt?: string
 }
 
+export type CategoryClassification =
+  | 'INCOME'
+  | 'ESSENTIAL_EXPENSE'
+  | 'NON_ESSENTIAL_EXPENSE'
+  | 'NEUTRAL'
 
-export const createCategory = async (data: CategoryDTO): Promise<CategoryResponse> => {
+export interface CategoryClassificationItem extends CategoryResponse {
+  classification: CategoryClassification
+  classificationOrder: number
+  hasCustomClassification: boolean
+}
+
+export interface CategoryClassificationColumn {
+  classification: CategoryClassification
+  total: number
+  items: CategoryClassificationItem[]
+}
+
+export interface CategoryClassificationBoardResponse {
+  columns: CategoryClassificationColumn[]
+  skippedCategoryIds?: string[]
+}
+
+export interface CategoryClassificationUpdateItem {
+  categoryId: string
+  classification: CategoryClassification
+  order: number
+}
+
+export interface CategoryClassificationUpdatePayload {
+  items: CategoryClassificationUpdateItem[]
+}
+
+export interface CategoryClassificationPatchPayload {
+  classification: CategoryClassification
+  order: number
+}
+
+export type ClassificationRequestOptions = {
+  actingClientId?: string | null
+}
+
+const CLASSIFICATION_ITEM_PREFIX = 'classification-item:'
+
+function buildClassificationRequestConfig(options?: ClassificationRequestOptions) {
+  const actingClientId = options?.actingClientId?.trim()
+  if (!actingClientId) return undefined
+
+  return {
+    headers: {
+      'x-client-user-id': actingClientId,
+    },
+    params: {
+      userId: actingClientId,
+    },
+  }
+}
+
+export function normalizeClassificationCategoryId(raw: string): string | null {
+  let value = String(raw ?? '').trim()
+  if (!value) return null
+
+  while (value.startsWith(CLASSIFICATION_ITEM_PREFIX)) {
+    value = value.slice(CLASSIFICATION_ITEM_PREFIX.length)
+  }
+
+  const normalized = value.trim()
+  return normalized.length > 0 ? normalized : null
+}
+
+export function sanitizeClassificationBoardResponse(
+  board: CategoryClassificationBoardResponse
+): CategoryClassificationBoardResponse {
+  const normalizedSkippedIds = Array.from(
+    new Set(
+      (board.skippedCategoryIds ?? [])
+        .map((id) => normalizeClassificationCategoryId(id))
+        .filter((id): id is string => Boolean(id))
+    )
+  )
+  const skippedIdSet = new Set(normalizedSkippedIds)
+
+  const columns = (board.columns ?? []).map((column) => {
+    const seenIds = new Set<string>()
+
+    const items = [...(column.items ?? [])]
+      .sort((a, b) => (a.classificationOrder ?? 0) - (b.classificationOrder ?? 0))
+      .map((item) => {
+        const normalizedId = normalizeClassificationCategoryId(item.id)
+        if (!normalizedId) return null
+        if (skippedIdSet.has(normalizedId)) return null
+        if (seenIds.has(normalizedId)) return null
+        seenIds.add(normalizedId)
+
+        return {
+          ...item,
+          id: normalizedId,
+          classification: column.classification,
+        }
+      })
+      .filter((item): item is CategoryClassificationItem => Boolean(item))
+      .map((item, index) => ({
+        ...item,
+        classificationOrder: index + 1,
+        keywords: Array.isArray(item.keywords) ? item.keywords : [],
+        hasCustomClassification: Boolean(item.hasCustomClassification),
+      }))
+
+    return {
+      ...column,
+      total: items.length,
+      items,
+    }
+  })
+
+  return {
+    columns,
+    skippedCategoryIds: normalizedSkippedIds,
+  }
+}
+
+
+export const createCategory = async (
+  data: CategoryDTO,
+  options?: ClassificationRequestOptions
+): Promise<CategoryResponse> => {
   try {
-    const response = await api.post(`/category`, data)
+    const response = await api.post(`/category`, data, buildClassificationRequestConfig(options))
 
     return response.data
   } catch (e: unknown) {
@@ -45,9 +169,11 @@ export const createCategory = async (data: CategoryDTO): Promise<CategoryRespons
   }
 }
 
-export const getCategories = async (): Promise<CategoryResponse[]> => {
+export const getCategories = async (
+  options?: ClassificationRequestOptions
+): Promise<CategoryResponse[]> => {
   try {
-    const response = await api.get(`/categories`)
+    const response = await api.get(`/categories`, buildClassificationRequestConfig(options))
     return response.data
   } catch (e: unknown) {
     const msg = getErrorMessage(e, "Erro ao buscar categorias.");
@@ -56,9 +182,17 @@ export const getCategories = async (): Promise<CategoryResponse[]> => {
   }
 }
 
-export const updateCategory = async (id: string, data: CategoryDTO): Promise<CategoryResponse> => {
+export const updateCategory = async (
+  id: string,
+  data: CategoryDTO,
+  options?: ClassificationRequestOptions
+): Promise<CategoryResponse> => {
   try {
-    const response = await api.put(`/category/${id}`, data)
+    const response = await api.put(
+      `/category/${id}`,
+      data,
+      buildClassificationRequestConfig(options)
+    )
     return response.data
   } catch (e: unknown) {
     const msg = getErrorMessage(e, "Erro ao atualizar categoria.");
@@ -67,13 +201,69 @@ export const updateCategory = async (id: string, data: CategoryDTO): Promise<Cat
   }
 }
 
-export const deleteCategory = async (id: string): Promise<{ message: string }> => {
+export const deleteCategory = async (
+  id: string,
+  options?: ClassificationRequestOptions
+): Promise<{ message: string }> => {
   try {
-    const response = await api.delete(`/category/${id}`)
+    const response = await api.delete(`/category/${id}`, buildClassificationRequestConfig(options))
     return response.data
   } catch (e: unknown) {
     const msg = getErrorMessage(e, "Erro ao deletar categoria.");
     console.error("Erro ao deletar categoria:", msg);
     throw new Error(msg);
+  }
+}
+
+export const getCategoriesClassificationBoard = async (
+  options?: ClassificationRequestOptions
+): Promise<CategoryClassificationBoardResponse> => {
+  try {
+    const response = await api.get(
+      '/categories/classification',
+      buildClassificationRequestConfig(options)
+    )
+    return sanitizeClassificationBoardResponse(response.data)
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, 'Erro ao buscar classificacao de categorias.')
+    console.error('Erro ao buscar classificacao de categorias:', msg)
+    throw new Error(msg)
+  }
+}
+
+export const updateCategoriesClassificationBoard = async (
+  data: CategoryClassificationUpdatePayload,
+  options?: ClassificationRequestOptions
+): Promise<CategoryClassificationBoardResponse> => {
+  try {
+    const response = await api.put(
+      '/categories/classification',
+      data,
+      buildClassificationRequestConfig(options)
+    )
+    return sanitizeClassificationBoardResponse(response.data)
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, 'Erro ao salvar classificacao de categorias.')
+    console.error('Erro ao salvar classificacao de categorias:', msg)
+    throw new Error(msg)
+  }
+}
+
+export const updateCategoryClassification = async (
+  categoryId: string,
+  data: CategoryClassificationPatchPayload,
+  options?: ClassificationRequestOptions
+): Promise<CategoryClassificationBoardResponse> => {
+  try {
+    const response = await api.patch(
+      `/categories/${categoryId}/classification`,
+      data,
+      buildClassificationRequestConfig(options)
+    )
+    return sanitizeClassificationBoardResponse(response.data)
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, 'Erro ao salvar classificacao de categoria.')
+    console.error('Erro ao salvar classificacao de categoria:', msg)
+    throw new Error(msg)
   }
 }

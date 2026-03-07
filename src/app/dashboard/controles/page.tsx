@@ -7,18 +7,46 @@ import { StarIcon } from '@phosphor-icons/react'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
+import { useLocale, useTranslations } from 'next-intl'
 import DeleteConfirmModal from '../components/DeleteConfirmModal'
-
 import Header from '../components/Header'
+import { ActionTriggerButton } from '../components/Buttons'
 import SpendingControlDrawer from '../components/SpendingControlDrawer'
 import MonthSelector from '../components/MonthSelector'
-
+import PageOnboardingTour, { type PageOnboardingStep } from '@/components/onboarding/PageOnboardingTour'
+import { formatCurrency } from '@/utils/formatter'
 import { ControlWithProgress, useControls } from '@/hooks/query/useSpendingControl'
 import { useCategoryStore } from '@/stores/useCategoryStore'
 import { useSpendingControlStore } from '@/stores/useSpendingControlStore'
 
-const toBRL = (v: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
+type TranslatorFn = (key: string, values?: Record<string, string | number | Date>) => string
+type Tone = 'ok' | 'warning' | 'danger'
+
+const toBRL = (value: number) => formatCurrency(value)
+
+function buildControlsOnboardingSteps(t: TranslatorFn): ReadonlyArray<PageOnboardingStep> {
+  return [
+    {
+      id: 'header',
+      selector: '[data-onboarding-target="controles-header"]',
+      align: 'bottom',
+      title: t('onboarding.headerTitle'),
+      description: t('onboarding.headerDescription'),
+    },
+    {
+      id: 'top',
+      selector: '[data-onboarding-target="controles-topo"]',
+      title: t('onboarding.topTitle'),
+      description: t('onboarding.topDescription'),
+    },
+    {
+      id: 'list',
+      selector: '[data-onboarding-target="controles-lista"]',
+      title: t('onboarding.listTitle'),
+      description: t('onboarding.listDescription'),
+    },
+  ]
+}
 
 function clamp(n: number, min: number, max: number) {
   return Math.min(max, Math.max(min, n))
@@ -35,26 +63,24 @@ function getSafeUsagePct(c: Pick<ControlWithProgress, 'usagePctOfGoal' | 'goal' 
   return (spent / goal) * 100
 }
 
-function formatPeriodShort(startISO: string, endISO: string) {
+function formatPeriodShort(startISO: string, endISO: string, locale: string, t: TranslatorFn) {
   const start = new Date(startISO)
   const end = new Date(endISO)
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return '--'
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return t('common.empty')
   const fmt = (d: Date) =>
-    d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })
-  return `${fmt(start)} – ${fmt(end)}`
+    d.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })
+  return `${fmt(start)} - ${fmt(end)}`
 }
 
-function formatWeekdayShort(dateISO: string) {
-  if (!dateISO) return '--'
+function formatWeekdayShort(dateISO: string, locale: string, t: TranslatorFn) {
+  if (!dateISO) return t('common.empty')
   const d = new Date(dateISO)
-  if (Number.isNaN(d.getTime())) return '--'
+  if (Number.isNaN(d.getTime())) return t('common.empty')
   return d
-    .toLocaleDateString('pt-BR', { weekday: 'short', timeZone: 'America/Sao_Paulo' })
+    .toLocaleDateString(locale, { weekday: 'short', timeZone: 'America/Sao_Paulo' })
     .replace('.', '')
     .concat('.')
 }
-
-type Tone = 'ok' | 'warning' | 'danger'
 
 function getTone(c: ControlWithProgress): Tone {
   const usagePct = getSafeUsagePct(c)
@@ -64,30 +90,16 @@ function getTone(c: ControlWithProgress): Tone {
   return 'ok'
 }
 
-/**
- * Gradient “progressivo”:
- * - esquerda colorida
- * - direita branca
- * - transição suave (fade) em torno do % (via/to positions)
- *
- * Tailwind: bg-gradient-to-r from-* via-* to-white
- * e controlamos as posições via CSS vars:
- * --tw-gradient-via-position / --tw-gradient-to-position
- */
-function toneConfig(tone: Tone, usagePct: number) {
+function toneConfig(tone: Tone, usagePct: number, t: TranslatorFn) {
   const pct = clamp(Number.isFinite(usagePct) ? usagePct : 0, 0, 100)
-
-  // não deixa comer todo o header (pra sempre sobrar branco pro "Meta")
   const stop = Math.min(92, pct)
-
-  // largura da transição (em %)
   const fade = 8
   const viaPos = clamp(stop - fade, 0, 100)
   const toPos = clamp(stop + fade, 0, 100)
 
   if (tone === 'danger') {
     return {
-      statusLabel: 'Estourou a meta',
+      statusLabel: t('card.statusLabels.exceeded'),
       headerStops: 'from-red-400 via-red-400 to-white',
       headerTitle: 'text-gray-700',
       headerStyle: {
@@ -99,7 +111,7 @@ function toneConfig(tone: Tone, usagePct: number) {
 
   if (tone === 'warning') {
     return {
-      statusLabel: 'Próximo da meta',
+      statusLabel: t('card.statusLabels.nearLimit'),
       headerStops: 'from-yellow-400 via-yellow-400 to-white',
       headerTitle: 'text-gray-700',
       headerMeta: 'text-gray-700',
@@ -111,7 +123,7 @@ function toneConfig(tone: Tone, usagePct: number) {
   }
 
   return {
-    statusLabel: 'Dentro da meta',
+    statusLabel: t('card.statusLabels.withinLimit'),
     headerStops: 'from-emerald-400 via-emerald-400 to-white',
     headerTitle: 'text-gray-700',
     headerStyle: {
@@ -122,6 +134,10 @@ function toneConfig(tone: Tone, usagePct: number) {
 }
 
 export default function SpendingControlPage() {
+  const t = useTranslations('controlsPage')
+  const locale = useLocale()
+  const onboardingSteps = useMemo(() => buildControlsOnboardingSteps(t), [t])
+
   const [selectedDate, setSelectedDate] = useState(new Date())
   const { controlsQuery, deleteMutation, favoriteMutation } = useControls(undefined, selectedDate)
   const categoryStore = useCategoryStore((s) => s.categoryStore)
@@ -132,12 +148,10 @@ export default function SpendingControlPage() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
 
-  // ====== MODAL FAVORITOS ======
   const [favoriteModalOpen, setFavoriteModalOpen] = useState(false)
   const [pendingFavorite, setPendingFavorite] = useState<ControlWithProgress | null>(null)
   const [selectedToRemoveId, setSelectedToRemoveId] = useState<string | null>(null)
   const [swappingFavorite, setSwappingFavorite] = useState(false)
-  // ============================
 
   useEffect(() => {
     if (Array.isArray(controlsQuery.data)) {
@@ -150,7 +164,7 @@ export default function SpendingControlPage() {
           limite: c.goal,
           periodType: 'monthly',
           alert: false,
-        }),
+        })
       )
     }
   }, [controlsQuery.data, addControl, resetControls])
@@ -172,7 +186,7 @@ export default function SpendingControlPage() {
   }, [categoryStore])
 
   const getCategoryName = (c: ControlWithProgress) =>
-    c.categoryId ? categoryNameById.get(c.categoryId) ?? 'Categoria' : 'Geral'
+    c.categoryId ? categoryNameById.get(c.categoryId) ?? t('card.defaultCategory') : t('card.general')
 
   const idxLocalFor = (id: string): number => controls.findIndex((x) => x.id === id)
 
@@ -181,9 +195,9 @@ export default function SpendingControlPage() {
       await deleteMutation.mutateAsync(id)
       const i = idxLocalFor(id)
       if (i >= 0) removeControl(controls[i].categoryId)
-      toast.success('Controle removido')
+      toast.success(t('toasts.controlRemoved'))
     } catch {
-      toast.error('Erro ao remover controle')
+      toast.error(t('toasts.removeError'))
     }
   }
 
@@ -197,7 +211,6 @@ export default function SpendingControlPage() {
     setDrawerOpen(true)
   }
 
-  // ====== FAVORITO COM REGRA DOS 3 ======
   const openSwapModal = (controlToFavorite: ControlWithProgress) => {
     setPendingFavorite(controlToFavorite)
     setSelectedToRemoveId(favorites[0]?.id ?? null)
@@ -213,29 +226,27 @@ export default function SpendingControlPage() {
 
   const handleFavorite = async (control: ControlWithProgress) => {
     try {
-      // desfavoritar direto
       if (control.isFavorite) {
         await favoriteMutation.mutateAsync({ id: control.id, isFavorite: false })
-        toast.success('Removido dos favoritos')
+        toast.success(t('toasts.removedFromFavorites'))
         return
       }
 
-      // favoritar: se já tem 3, abre modal
       if (favorites.length >= 3) {
         openSwapModal(control)
         return
       }
 
       await favoriteMutation.mutateAsync({ id: control.id, isFavorite: true })
-      toast.success('Adicionado aos favoritos')
+      toast.success(t('toasts.addedToFavorites'))
     } catch {
-      toast.error('Erro ao atualizar favorito')
+      toast.error(t('toasts.favoriteUpdateError'))
     }
   }
 
   const confirmSwapFavorite = async () => {
     if (!pendingFavorite || !selectedToRemoveId) {
-      toast.error('Selecione qual favorito deve sair')
+      toast.error(t('toasts.selectFavoriteToRemove'))
       return
     }
 
@@ -243,19 +254,18 @@ export default function SpendingControlPage() {
       setSwappingFavorite(true)
       await favoriteMutation.mutateAsync({ id: selectedToRemoveId, isFavorite: false })
       await favoriteMutation.mutateAsync({ id: pendingFavorite.id, isFavorite: true })
-      toast.success('Favoritos atualizados')
+      toast.success(t('toasts.favoritesUpdated'))
       closeSwapModal()
     } catch {
-      toast.error('Não foi possível trocar o favorito')
+      toast.error(t('toasts.swapFavoriteError'))
       setSwappingFavorite(false)
     }
   }
-  // =====================================
 
   if (controlsQuery.isLoading) {
     return (
       <section className="w-full h-full pt-8 lg:px-8 px-4 pb-24 lg:pb-0 flex flex-col gap-6 overflow-auto">
-        <Header title="Controle de Metas" subtitle="" newTransation={false} />
+        <Header title={t('header.title')} subtitle="" newTransation={false} />
         <div className="grid lg:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="bg-white border border-gray-200 rounded-xl overflow-hidden animate-pulse">
@@ -275,23 +285,45 @@ export default function SpendingControlPage() {
 
   return (
     <section className="w-full h-full pt-8 lg:px-8 px-4 pb-24 lg:pb-0 flex flex-col gap-6 overflow-auto">
-      <Header title="Controle de Metas" subtitle="" newTransation={false} />
+      <div data-onboarding-target="controles-header">
+        <Header
+          title={t('header.title')}
+          subtitle=""
+          newTransation={false}
+          rightContent={
+            <div className="flex items-center gap-2">
+              <PageOnboardingTour
+                steps={onboardingSteps}
+                storageKeyBase="flynance:dashboard:onboarding:controles:v1"
+                triggerLabel={t('header.guideButton')}
+              />
+              <ActionTriggerButton
+                onClick={() => {
+                  setEditingControl(null)
+                  setDrawerOpen(true)
+                }}
+                label={t('top.newControl')}
+                icon={Plus}
+              />
+            </div>
+          }
+        />
+      </div>
 
-      {/* ====== MODAL TROCAR FAVORITO ====== */}
       <Dialog open={favoriteModalOpen} onClose={closeSwapModal} className="relative z-50">
         <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
           <DialogPanel className="w-full max-w-lg bg-white rounded-xl shadow-lg border border-gray-200">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
               <DialogTitle className="text-base font-semibold text-gray-800">
-                Limite de favoritos (3)
+                {t('favoriteModal.title')}
               </DialogTitle>
 
               <button
                 type="button"
                 onClick={closeSwapModal}
                 className="text-gray-500 hover:text-gray-700 cursor-pointer"
-                aria-label="Fechar"
+                aria-label={t('favoriteModal.closeAria')}
               >
                 <X size={18} />
               </button>
@@ -299,8 +331,9 @@ export default function SpendingControlPage() {
 
             <div className="px-5 py-4 space-y-3">
               <p className="text-sm text-gray-600">
-                Você já tem <strong>3 controles</strong> nos favoritos. Escolha qual deve sair para adicionar:
-                <strong className="ml-1">{pendingFavorite ? getCategoryName(pendingFavorite) : ''}</strong>
+                {t('favoriteModal.description', {
+                  category: pendingFavorite ? getCategoryName(pendingFavorite) : '',
+                })}
               </p>
 
               <div className="space-y-2">
@@ -313,17 +346,17 @@ export default function SpendingControlPage() {
                       onClick={() => setSelectedToRemoveId(f.id)}
                       className={clsx(
                         'w-full text-left rounded-lg border p-3 flex items-center justify-between transition',
-                        selected ? 'border-primary bg-secondary/20' : 'border-gray-200 hover:bg-gray-50',
+                        selected ? 'border-primary bg-secondary/20' : 'border-gray-200 hover:bg-gray-50'
                       )}
                     >
                       <div className="flex flex-col">
                         <span className="text-sm font-medium text-gray-800">{getCategoryName(f)}</span>
                         <span className="text-xs text-gray-500">
-                          Meta {toBRL(f.goal)} · {Math.round(getSafeUsagePct(f))}% usado
+                          {t('favoriteModal.goalUsed', { goal: toBRL(f.goal), percent: Math.round(getSafeUsagePct(f)) })}
                         </span>
                       </div>
                       <span className={clsx('text-xs font-semibold', selected ? 'text-primary' : 'text-gray-500')}>
-                        {selected ? 'Selecionado' : 'Selecionar'}
+                        {selected ? t('favoriteModal.selected') : t('favoriteModal.select')}
                       </span>
                     </button>
                   )
@@ -338,7 +371,7 @@ export default function SpendingControlPage() {
                 className="px-4 py-2 rounded-full text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 cursor-pointer"
                 disabled={swappingFavorite}
               >
-                Cancelar
+                {t('favoriteModal.cancel')}
               </button>
 
               <button
@@ -347,33 +380,20 @@ export default function SpendingControlPage() {
                 className="px-4 py-2 rounded-full text-sm font-semibold text-white bg-primary hover:bg-secondary cursor-pointer disabled:opacity-60"
                 disabled={swappingFavorite || !selectedToRemoveId || !pendingFavorite}
               >
-                {swappingFavorite ? 'Trocando...' : 'Trocar favorito'}
+                {swappingFavorite ? t('favoriteModal.swapping') : t('favoriteModal.swap')}
               </button>
             </div>
           </DialogPanel>
         </div>
       </Dialog>
-      {/* ================================== */}
 
-      <div className="w-full flex justify-between items-center gap-2">
+      <div className="w-full flex justify-between items-center gap-2" data-onboarding-target="controles-topo">
         <div className="flex flex-col gap-1">
-          <h2 className="text-lg font-semibold text-[#333C4D]">Todos os controles</h2>
+          <h2 className="text-lg font-semibold text-[#333C4D]">{t('top.title')}</h2>
           <span className="w-fit rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
-            {selectedDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+            {selectedDate.toLocaleDateString(locale, { month: 'long', year: 'numeric' })}
           </span>
         </div>
-
-        <button
-          type="button"
-          onClick={() => {
-            setEditingControl(null)
-            setDrawerOpen(true)
-          }}
-          className="w-44 inline-flex items-center justify-center gap-2 bg-primary hover:bg-secondary cursor-pointer text-white font-semibold px-4 py-2 rounded-full"
-        >
-          <Plus className="h-4 w-4" />
-          Novo controle
-        </button>
       </div>
 
       <div className="flex items-center justify-between gap-2">
@@ -382,87 +402,83 @@ export default function SpendingControlPage() {
 
       {sortedControls.length === 0 && (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-600">
-          Nenhum controle encontrado para o periodo selecionado.
+          {t('states.emptyForPeriod')}
         </div>
       )}
 
-      <ul className="lg:grid lg:grid-cols-3 flex flex-col gap-4">
+      <ul className="lg:grid lg:grid-cols-3 flex flex-col gap-4" data-onboarding-target="controles-lista">
         {sortedControls.map((c) => {
           const categoryName = getCategoryName(c)
-
           const restanteRaw = c.goal - c.spent
           const restante = Math.max(0, restanteRaw)
           const excedeu = Math.max(0, -restanteRaw)
           const usagePct = getSafeUsagePct(c)
-
           const tone = getTone(c)
-          const cfg = toneConfig(tone, usagePct)
-
-          const periodo = formatPeriodShort(c.periodStart, c.periodEnd)
-          const reinicia = formatWeekdayShort(c.nextResetAt)
+          const cfg = toneConfig(tone, usagePct, t)
+          const periodo = formatPeriodShort(c.periodStart, c.periodEnd, locale, t)
+          const reinicia = formatWeekdayShort(c.nextResetAt, locale, t)
 
           return (
             <li key={c.id}>
               <div className="relative bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow">
-                {/* overlay clicável (não engole clique dos botões pq eles ficam z-10) */}
-                <Link href={`/dashboard/controles/${c.id}`} className="absolute inset-0" aria-label="Abrir controle" />
+                <Link
+                  href={`/dashboard/controles/${c.id}`}
+                  className="absolute inset-0"
+                  aria-label={t('card.actions.open')}
+                />
 
-                {/* conteúdo */}
                 <div className="relative z-10">
-                  {/* Header */}
                   <div
                     className={clsx(
                       'px-5 py-3 flex items-center justify-between',
                       'bg-gradient-to-r',
-                      cfg.headerStops,
+                      cfg.headerStops
                     )}
                     style={cfg.headerStyle}
                   >
-                    <h3 className={`font-semibold ${cfg.headerTitle}`}>
-                      {categoryName}
-                    </h3>
+                    <h3 className={`font-semibold ${cfg.headerTitle}`}>{categoryName}</h3>
 
                     <div className={`text-lg ${cfg.headerMeta}`}>
-                      Meta: <span className="font-semibold">{toBRL(c.goal)}</span>
+                      {t('card.goalPrefix')} <span className="font-semibold">{toBRL(c.goal)}</span>
                     </div>
                   </div>
 
-                  {/* Corpo */}
                   <div className="p-5">
                     <div className="flex flex-col gap-2 text-sm text-gray-700 w-full">
                       <div className="flex flex-col lg:flex-row justify-between w-full">
                         <div className="flex gap-2">
-                          <span className="text-gray-500">Status:</span>
+                          <span className="text-gray-500">{t('card.labels.status')}</span>
                           <strong>{cfg.statusLabel}</strong>
                         </div>
 
                         <div className="flex justify-between lg:justify-end gap-2">
                           <div>
-                            <span className="text-gray-500">Período:</span> <strong>{periodo}</strong>
+                            <span className="text-gray-500">{t('card.labels.period')}</span> <strong>{periodo}</strong>
                           </div>
                           <div>
-                            <span className="text-gray-500">Reinicia:</span> <strong>{reinicia}</strong>
+                            <span className="text-gray-500">{t('card.labels.resetOn')}</span> <strong>{reinicia}</strong>
                           </div>
                         </div>
                       </div>
 
                       <div className="flex justify-between items-center w-full">
                         <div className="flex gap-2">
-                          <span className="text-gray-500">Gasto acumulado:</span>
+                          <span className="text-gray-500">{t('card.labels.spent')}</span>
                           <strong>{toBRL(c.spent)}</strong>
                         </div>
                         <div className="flex gap-2">
-                          <span className="text-gray-500">% da meta:</span>
+                          <span className="text-gray-500">{t('card.labels.goalPercent')}</span>
                           <strong>{Math.round(usagePct)}%</strong>
                         </div>
                       </div>
                     </div>
 
-                    {/* Restante + ações */}
                     <div className="mt-4 flex items-end justify-between gap-4">
                       <div className="text-gray-700 flex lg:flex-row flex-col gap-2 lg:items-end">
-                        <div className="text-lg text-gray-500">{excedeu > 0 ? 'Excedeu:' : 'Restante:'}</div>
-                        <div className={clsx('text-xl font-semibold', excedeu > 0 ? 'text-red-600' : 'text-gray-800')}>
+                        <div className="text-lg text-gray-500">
+                          {excedeu > 0 ? t('card.labels.exceeded') : t('card.labels.remaining')}
+                        </div>
+                        <div className={clsx('text-xl font-semibold', excedeu > 0 ? 'text-red-400' : 'text-gray-800')}>
                           {excedeu > 0 ? toBRL(excedeu) : toBRL(restante)}
                         </div>
                       </div>
@@ -472,8 +488,8 @@ export default function SpendingControlPage() {
                           type="button"
                           onClick={() => handleFavorite(c)}
                           className={clsx('cursor-pointer', c.isFavorite ? 'text-amber-400' : 'text-gray-400')}
-                          title={c.isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
-                          aria-label="Favorito"
+                          title={c.isFavorite ? t('card.actions.removeFavorite') : t('card.actions.addFavorite')}
+                          aria-label={t('card.actions.favorite')}
                         >
                           <StarIcon size={18} weight={c.isFavorite ? 'fill' : 'regular'} />
                         </button>
@@ -481,8 +497,8 @@ export default function SpendingControlPage() {
                         <Link
                           href={`/dashboard/controles/${c.id}`}
                           className="text-gray-500 hover:text-gray-700"
-                          title="Abrir"
-                          aria-label="Abrir"
+                          title={t('card.actions.open')}
+                          aria-label={t('card.actions.open')}
                         >
                           <ExternalLink size={18} />
                         </Link>
@@ -491,8 +507,8 @@ export default function SpendingControlPage() {
                           type="button"
                           onClick={() => handleEdit(c)}
                           className="text-gray-500 hover:text-blue-400 cursor-pointer"
-                          title="Editar"
-                          aria-label="Editar"
+                          title={t('card.actions.edit')}
+                          aria-label={t('card.actions.edit')}
                         >
                           <Pencil size={18} />
                         </button>
@@ -500,9 +516,9 @@ export default function SpendingControlPage() {
                         <button
                           type="button"
                           onClick={() => requestDelete(c.id)}
-                          className="text-gray-500 hover:text-red-500 cursor-pointer"
-                          title="Excluir"
-                          aria-label="Excluir"
+                          className="text-gray-500 hover:text-red-400 cursor-pointer"
+                          title={t('card.actions.delete')}
+                          aria-label={t('card.actions.delete')}
                         >
                           <Trash2 size={18} />
                         </button>
@@ -525,8 +541,8 @@ export default function SpendingControlPage() {
         onConfirm={() => {
           if (deleteTargetId) handleDelete(deleteTargetId)
         }}
-        title="Excluir controle"
-        description="Tem certeza que deseja excluir este controle?"
+        title={t('deleteConfirm.title')}
+        description={t('deleteConfirm.description')}
       />
 
       <SpendingControlDrawer

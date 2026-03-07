@@ -3,12 +3,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CalendarRange } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useTranslations } from 'next-intl'
+
 import { useUserCyclePreferences } from '@/hooks/query/useUserCyclePreferences'
 import type {
   AutonomousCycleKind,
   CycleMode,
   UpdateUserCyclePreferencesInput,
 } from '@/utils/cyclePreferences'
+import { Button } from '../ui/button'
 
 type Feedback = {
   type: 'success' | 'error'
@@ -46,6 +49,7 @@ function toFormState(input?: {
 }
 
 const CyclePreferencesCard = () => {
+  const t = useTranslations('profile.cyclePreferencesCard')
   const { preferencesQuery, updatePreferencesMutation } = useUserCyclePreferences()
   const [form, setForm] = useState<FormState>(() => toFormState())
   const [feedback, setFeedback] = useState<Feedback | null>(null)
@@ -60,10 +64,10 @@ const CyclePreferencesCard = () => {
   const isBusy = preferencesQuery.isLoading || updatePreferencesMutation.isPending
 
   const helperText = useMemo(() => {
-    if (isFixedPayday) return 'Periodo do dia de recebimento ate o dia anterior no mes seguinte.'
-    if (isCutoffDay) return 'Periodo do dia seguinte ao fechamento ate o dia de fechamento do mes seguinte.'
-    return 'Periodo alinhado ao mes calendario.'
-  }, [isFixedPayday, isCutoffDay])
+    if (isFixedPayday) return t('helper.fixedPayday')
+    if (isCutoffDay) return t('helper.cutoffDay')
+    return t('helper.calendarMonth')
+  }, [isCutoffDay, isFixedPayday, t])
 
   const handleSave = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -77,7 +81,7 @@ const CyclePreferencesCard = () => {
     if (form.cycleMode === 'fixed_payday') {
       const paydayDay = parseDay(form.paydayDay)
       if (!paydayDay) {
-        const message = 'Informe um dia de recebimento valido entre 1 e 31.'
+        const message = t('errors.invalidPaydayDay')
         setFeedback({ type: 'error', message })
         toast.error(message)
         return
@@ -88,7 +92,7 @@ const CyclePreferencesCard = () => {
       if (form.autonomousCycleKind === 'cutoff_day') {
         const cutoffDay = parseDay(form.cutoffDay)
         if (!cutoffDay) {
-          const message = 'Informe um dia de fechamento valido entre 1 e 31.'
+          const message = t('errors.invalidCutoffDay')
           setFeedback({ type: 'error', message })
           toast.error(message)
           return
@@ -99,37 +103,37 @@ const CyclePreferencesCard = () => {
 
     try {
       await updatePreferencesMutation.mutateAsync(payload)
-      const message = 'Preferencias de ciclo salvas com sucesso.'
+      const message = t('toasts.saved')
       setFeedback({ type: 'success', message })
       toast.success(message)
     } catch (error: any) {
-      const message = error?.message ?? 'Nao foi possivel salvar as preferencias de ciclo.'
+      const message = error?.message ?? t('errors.saveFallback')
       setFeedback({ type: 'error', message })
       toast.error(message)
     }
   }
 
   return (
-    <div className="bg-card rounded-2xl p-6 shadow-sm border border-border/15 animate-slide-up">
+    <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm animate-slide-up">
       <div className="flex items-center gap-3 mb-6">
         <div className="p-2 bg-primary/10 rounded-full">
           <CalendarRange className="h-5 w-5 text-primary" />
         </div>
         <div>
-          <h2 className="text-xl font-semibold text-foreground">Ciclo financeiro</h2>
-          <p className="text-sm text-muted-foreground">Defina como a competencia mensal deve ser calculada.</p>
+          <h2 className="text-xl font-semibold text-foreground">{t('title')}</h2>
+          <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
       </div>
 
       {preferencesQuery.isError && (
         <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          Erro ao carregar preferencias de ciclo.
+          {t('errors.load')}
         </div>
       )}
 
       <form onSubmit={handleSave} className="space-y-4">
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-foreground">Tipo de ciclo</label>
+          <label className="text-sm font-medium text-foreground">{t('fields.cycleType')}</label>
           <select
             value={form.cycleMode}
             onChange={(event) =>
@@ -141,14 +145,14 @@ const CyclePreferencesCard = () => {
             disabled={isBusy}
             className="w-full rounded-xl border border-border/25 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
           >
-            <option value="fixed_payday">Dia fixo de recebimento</option>
-            <option value="autonomous">Autonomo</option>
+            <option value="fixed_payday">{t('options.fixedPayday')}</option>
+            <option value="autonomous">{t('options.autonomous')}</option>
           </select>
         </div>
 
         {isFixedPayday && (
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-foreground">Dia fixo de recebimento (1-31)</label>
+            <label className="text-sm font-medium text-foreground">{t('fields.paydayDay')}</label>
             <input
               value={form.paydayDay}
               onChange={(event) =>
@@ -162,14 +166,14 @@ const CyclePreferencesCard = () => {
               max={31}
               disabled={isBusy}
               className="w-full rounded-xl border border-border/25 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
-              placeholder="25"
+              placeholder={t('placeholders.paydayDay')}
             />
           </div>
         )}
 
         {form.cycleMode === 'autonomous' && (
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-foreground">Tipo do ciclo autonomo</label>
+            <label className="text-sm font-medium text-foreground">{t('fields.autonomousType')}</label>
             <select
               value={form.autonomousCycleKind}
               onChange={(event) =>
@@ -181,15 +185,15 @@ const CyclePreferencesCard = () => {
               disabled={isBusy}
               className="w-full rounded-xl border border-border/25 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
             >
-              <option value="calendar_month">Mes calendario</option>
-              <option value="cutoff_day">Dia de fechamento</option>
+              <option value="calendar_month">{t('options.calendarMonth')}</option>
+              <option value="cutoff_day">{t('options.cutoffDay')}</option>
             </select>
           </div>
         )}
 
         {isCutoffDay && (
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-foreground">Dia de fechamento (1-31)</label>
+            <label className="text-sm font-medium text-foreground">{t('fields.cutoffDay')}</label>
             <input
               value={form.cutoffDay}
               onChange={(event) =>
@@ -203,13 +207,13 @@ const CyclePreferencesCard = () => {
               max={31}
               disabled={isBusy}
               className="w-full rounded-xl border border-border/25 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
-              placeholder="10"
+              placeholder={t('placeholders.cutoffDay')}
             />
           </div>
         )}
 
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-foreground">Fuso horario</label>
+          <label className="text-sm font-medium text-foreground">{t('fields.timezone')}</label>
           <input
             value={form.timezone}
             onChange={(event) =>
@@ -221,7 +225,7 @@ const CyclePreferencesCard = () => {
             type="text"
             disabled={isBusy}
             className="w-full rounded-xl border border-border/25 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
-            placeholder="America/Sao_Paulo"
+            placeholder={t('placeholders.timezone')}
           />
         </div>
 
@@ -239,13 +243,14 @@ const CyclePreferencesCard = () => {
           </div>
         )}
 
-        <button
+        <Button
           type="submit"
+          variant="default"
           disabled={isBusy}
-          className="w-full rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-secondary disabled:opacity-60 disabled:cursor-not-allowed"
+         
         >
-          {updatePreferencesMutation.isPending ? 'Salvando...' : 'Salvar preferencias'}
-        </button>
+          {updatePreferencesMutation.isPending ? t('actions.saving') : t('actions.save')}
+        </Button>
       </form>
     </div>
   )

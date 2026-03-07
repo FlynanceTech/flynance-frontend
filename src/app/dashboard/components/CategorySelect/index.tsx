@@ -3,12 +3,12 @@
 import React, { useMemo, useState } from 'react'
 import Select, { components, GroupBase, StylesConfig } from 'react-select'
 import CreatableSelect from 'react-select/creatable'
-import clsx from 'clsx'
 
 import { useCategories } from '@/hooks/query/useCategory'
 import { CategoryResponse } from '@/services/category'
 import { useTransactionFilter } from '@/stores/useFilter'
 import CreateCategoryModal, { CreateCategoryDraft } from '../Categories/createCategoryModal'
+import { useTranslations } from 'next-intl'
 
 type CategoryType = 'EXPENSE' | 'INCOME'
 
@@ -30,10 +30,6 @@ function normalizeStr(s: string) {
     .trim()
 }
 
-function defaultGroupLabel(type: CategoryType) {
-  return type === 'INCOME' ? 'Receitas' : 'Despesas'
-}
-
 function toOption(cat: CategoryResponse): CategoryOption {
   return {
     value: cat.id,
@@ -46,6 +42,7 @@ function toOption(cat: CategoryResponse): CategoryOption {
 
 function buildGroupedOptions(
   categories: CategoryResponse[],
+  labels: { income: string; expense: string },
   typeFilter?: CategoryType
 ): CategoryGroup[] {
   const filtered = typeFilter ? categories.filter((c) => c.type === typeFilter) : categories
@@ -61,8 +58,8 @@ function buildGroupedOptions(
   })
 
   const groups: CategoryGroup[] = []
-  if (byType.EXPENSE.length) groups.push({ label: defaultGroupLabel('EXPENSE'), options: byType.EXPENSE })
-  if (byType.INCOME.length) groups.push({ label: defaultGroupLabel('INCOME'), options: byType.INCOME })
+  if (byType.EXPENSE.length) groups.push({ label: labels.expense, options: byType.EXPENSE })
+  if (byType.INCOME.length) groups.push({ label: labels.income, options: byType.INCOME })
 
   return groups
 }
@@ -150,22 +147,64 @@ const selectStyles: StylesConfig<CategoryOption, boolean, CategoryGroup> = {
     ...base,
     minHeight: 40,
     borderRadius: 9999,
-    borderColor: state.isFocused ? '#CBD5E1' : '#E2E8F0',
-    boxShadow: state.isFocused ? '0 0 0 2px rgba(59,130,246,0.15)' : 'none',
-    ':hover': { borderColor: '#CBD5E1' },
+    backgroundColor: 'hsl(var(--input))',
+    borderColor: state.isFocused ? 'hsl(var(--ring) / 0.45)' : 'hsl(var(--border) / 0.24)',
+    boxShadow: state.isFocused ? '0 0 0 2px hsl(var(--ring) / 0.22)' : 'none',
+    ':hover': { borderColor: 'hsl(var(--border) / 0.4)' },
   }),
   valueContainer: (base: any) => ({ ...base, paddingLeft: 12, paddingRight: 8 }),
-  placeholder: (base: any) => ({ ...base, color: '#64748B' }),
-  menu: (base: any) => ({ ...base, borderRadius: 12, overflow: 'hidden' }),
-  menuPortal: (base: any) => ({ ...base, zIndex: 9999 }),
-  option: (base: any, state: { isFocused: any }) => ({
+  placeholder: (base: any) => ({ ...base, color: 'hsl(var(--muted-foreground))' }),
+  input: (base: any) => ({ ...base, color: 'hsl(var(--foreground))' }),
+  singleValue: (base: any) => ({ ...base, color: 'hsl(var(--foreground))' }),
+  indicatorSeparator: (base: any) => ({ ...base, backgroundColor: 'hsl(var(--border) / 0.3)' }),
+  dropdownIndicator: (base: any, state: { isFocused: any }) => ({
     ...base,
-    backgroundColor: state.isFocused ? '#F1F5F9' : 'white',
-    color: '#0F172A',
+    color: state.isFocused ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))',
+    ':hover': { color: 'hsl(var(--foreground))' },
   }),
-  multiValue: (base: any) => ({ ...base, borderRadius: 9999 }),
+  menu: (base: any) => ({
+    ...base,
+    borderRadius: 12,
+    backgroundColor: 'hsl(var(--card))',
+    border: '1px solid hsl(var(--border) / 0.22)',
+    boxShadow: '0 12px 30px rgba(0, 0, 0, 0.35)',
+    overflow: 'hidden',
+  }),
+  menuPortal: (base: any) => ({ ...base, zIndex: 9999 }),
+  option: (base: any, state: { isFocused: any; isSelected: any }) => ({
+    ...base,
+    backgroundColor: state.isSelected
+      ? 'hsl(var(--accent))'
+      : state.isFocused
+      ? 'hsl(var(--muted))'
+      : 'transparent',
+    color: 'hsl(var(--foreground))',
+    cursor: 'pointer',
+  }),
+  groupHeading: (base: any) => ({
+    ...base,
+    color: 'hsl(var(--muted-foreground))',
+    fontWeight: 700,
+    fontSize: 11,
+    letterSpacing: '0.04em',
+    textTransform: 'uppercase',
+  }),
+  multiValue: (base: any) => ({
+    ...base,
+    borderRadius: 9999,
+    backgroundColor: 'hsl(var(--muted))',
+    color: 'hsl(var(--foreground))',
+  }),
+  multiValueLabel: (base: any) => ({ ...base, color: 'hsl(var(--foreground))' }),
+  multiValueRemove: (base: any) => ({
+    ...base,
+    color: 'hsl(var(--muted-foreground))',
+    ':hover': {
+      backgroundColor: 'hsl(var(--accent))',
+      color: 'hsl(var(--accent-foreground))',
+    },
+  }),
 }
-
 export function CategorySelect({
   value,
   onChange,
@@ -175,15 +214,28 @@ export function CategorySelect({
   menuPortalTarget,
   allowCreate = true,
   onCreateCategory,
-  placeholder = 'Categoria',
+  placeholder = '',
   className,
   menuPlacement = 'auto',
 }: CategorySelectProps) {
+  const tFilters = useTranslations('filters')
+  const tType = useTranslations('quickTypeFilter')
   const {
     categoriesQuery: { data: categories = [] },
   } = useCategories()
 
-  const groupedOptions = useMemo(() => buildGroupedOptions(categories, typeFilter), [categories, typeFilter])
+  const groupedOptions = useMemo(
+    () =>
+      buildGroupedOptions(
+        categories,
+        {
+          income: tType('income'),
+          expense: tType('expense'),
+        },
+        typeFilter
+      ),
+    [categories, tType, typeFilter]
+  )
 
   const allOptionsFlat = useMemo(() => groupedOptions.flatMap((g) => g.options), [groupedOptions])
 
@@ -260,7 +312,7 @@ const confirmCreate = async (draft: CreateCategoryDraft) => {
         options={groupedOptions}
         value={selectedOption as any}
         onChange={handleSelectChange as any}
-        placeholder={placeholder}
+        placeholder={placeholder || tFilters('categoryPlaceholder')}
         isClearable
         isSearchable
         menuPlacement={menuPlacement}
@@ -278,10 +330,10 @@ const confirmCreate = async (draft: CreateCategoryDraft) => {
           SingleValue,
           MultiValueLabel,
         }}
-        formatCreateLabel={(inputValue: string) => `Criar categoria: “${inputValue}”`}
+        formatCreateLabel={(inputValue: string) => `Create category: "${inputValue}"`}
         onCreateOption={allowCreate ? handleCreateOption : undefined}
         noOptionsMessage={({ inputValue }: { inputValue: string }) =>
-          inputValue ? 'Nenhuma categoria encontrada' : 'Sem categorias'
+          inputValue ? 'No category found' : 'No categories'
         }
       />
 
@@ -305,6 +357,7 @@ export function CategoriesSelectWithCheck({
   closeMenuOnSelect?: boolean
   menuPortalTarget?: HTMLElement | null
 }) {
+  const tFilters = useTranslations('filters')
   const selectedCategories = useTransactionFilter((s) => s.selectedCategories)
   const setSelectedCategories = useTransactionFilter((s) => s.setSelectedCategories)
 
@@ -313,7 +366,7 @@ export function CategoriesSelectWithCheck({
       multiple
       value={selectedCategories as CategoryResponse[]}
       onChange={(v) => setSelectedCategories((v as CategoryResponse[]) ?? [])}
-      placeholder="Todas categorias"
+      placeholder={tFilters('categoryPlaceholder')}
       closeMenuOnSelect={closeMenuOnSelect}
       menuPortalTarget={menuPortalTarget}
       allowCreate

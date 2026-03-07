@@ -6,44 +6,49 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAdminLeads } from '@/hooks/query/useAdmin'
 import toast from 'react-hot-toast'
+import { useLocale, useTranslations } from 'next-intl'
 
-const leadFiltersSchema = z
-  .object({
-    search: z.string().optional(),
-    createdFrom: z.string().optional(),
-    createdTo: z.string().optional(),
-    status: z.string().optional(),
-  })
-  .refine(
-    (data) => {
-      if (!data.createdFrom || !data.createdTo) return true
-      return data.createdFrom <= data.createdTo
-    },
-    {
-      message: 'Data inicial nao pode ser maior que a final',
-      path: ['createdTo'],
-    }
-  )
+type TranslatorFn = (key: string, values?: Record<string, string | number | Date>) => string
 
-type LeadFiltersForm = z.infer<typeof leadFiltersSchema>
+function createLeadFiltersSchema(t: TranslatorFn) {
+  return z
+    .object({
+      search: z.string().optional(),
+      createdFrom: z.string().optional(),
+      createdTo: z.string().optional(),
+      status: z.string().optional(),
+    })
+    .refine(
+      (data) => {
+        if (!data.createdFrom || !data.createdTo) return true
+        return data.createdFrom <= data.createdTo
+      },
+      {
+        message: t('errors.invalidDateRange'),
+        path: ['createdTo'],
+      }
+    )
+}
 
-function formatDate(value?: string | null) {
-  if (!value) return '-'
+type LeadFiltersForm = z.infer<ReturnType<typeof createLeadFiltersSchema>>
+
+function formatDate(value: string | null | undefined, locale: string, t: TranslatorFn) {
+  if (!value) return t('common.empty')
   const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '-'
-  return `${date.toLocaleDateString('pt-BR')} ${date.toLocaleTimeString('pt-BR', {
+  if (Number.isNaN(date.getTime())) return t('common.empty')
+  return `${date.toLocaleDateString(locale)} ${date.toLocaleTimeString(locale, {
     hour: '2-digit',
     minute: '2-digit',
   })}`
 }
 
-function formatLeadStatusLabel(status?: string | null) {
+function formatLeadStatusLabel(status: string | null | undefined, t: TranslatorFn) {
   const normalized = String(status ?? '')
     .trim()
     .toLowerCase()
 
-  if (!normalized) return '-'
-  if (normalized === 'no_signature_id') return 'Sem assinatura'
+  if (!normalized) return t('common.empty')
+  if (normalized === 'no_signature_id') return t('status.noSignature')
 
   return normalized
     .split('_')
@@ -52,13 +57,15 @@ function formatLeadStatusLabel(status?: string | null) {
     .join(' ')
 }
 
-async function copyContact(name: string, email: string, phone?: string | null) {
+async function copyContact(name: string, email: string, phone: string | null | undefined, t: TranslatorFn) {
   const payload = phone ? `${name} <${email}> | ${phone}` : `${name} <${email}>`
   await navigator.clipboard.writeText(payload)
-  toast.success('Contato copiado.')
+  toast.success(t('toasts.contactCopied'))
 }
 
 export default function AdminLeadsPage() {
+  const t = useTranslations('adminLeadsPage')
+  const locale = useLocale()
   const [page, setPage] = useState(1)
   const [appliedFilters, setAppliedFilters] = useState<LeadFiltersForm>({
     search: '',
@@ -66,6 +73,7 @@ export default function AdminLeadsPage() {
     createdTo: '',
     status: '',
   })
+  const leadFiltersSchema = useMemo(() => createLeadFiltersSchema(t), [t])
 
   const form = useForm<LeadFiltersForm>({
     resolver: zodResolver(leadFiltersSchema),
@@ -103,21 +111,21 @@ export default function AdminLeadsPage() {
   return (
     <section className="space-y-4">
       <article className="rounded-2xl border border-slate-200 bg-white p-5">
-        <h3 className="text-base font-semibold text-[#333C4D]">Filtros de leads</h3>
+        <h3 className="text-base font-semibold text-[#333C4D]">{t('filters.title')}</h3>
 
         <form onSubmit={onSubmit} className="mt-4 grid gap-3 md:grid-cols-5">
           <label className="flex flex-col gap-1 text-sm md:col-span-2">
-            <span className="text-slate-600">Busca (nome/email)</span>
+            <span className="text-slate-600">{t('filters.searchLabel')}</span>
             <input
               type="text"
               className="h-10 rounded-xl border border-slate-200 px-3 outline-none focus:border-[#7CB8D8]"
-              placeholder="Digite nome ou email"
+              placeholder={t('filters.searchPlaceholder')}
               {...form.register('search')}
             />
           </label>
 
           <label className="flex flex-col gap-1 text-sm">
-            <span className="text-slate-600">Cadastro de</span>
+            <span className="text-slate-600">{t('filters.createdFromLabel')}</span>
             <input
               type="date"
               className="h-10 rounded-xl border border-slate-200 px-3 outline-none focus:border-[#7CB8D8]"
@@ -126,23 +134,23 @@ export default function AdminLeadsPage() {
           </label>
 
           <label className="flex flex-col gap-1 text-sm">
-            <span className="text-slate-600">Cadastro ate</span>
+            <span className="text-slate-600">{t('filters.createdToLabel')}</span>
             <input
               type="date"
               className="h-10 rounded-xl border border-slate-200 px-3 outline-none focus:border-[#7CB8D8]"
               {...form.register('createdTo')}
             />
-            <span className="text-xs text-red-600">{form.formState.errors.createdTo?.message}</span>
+            <span className="text-xs text-red-400">{form.formState.errors.createdTo?.message}</span>
           </label>
 
           <label className="flex flex-col gap-1 text-sm">
-            <span className="text-slate-600">Status</span>
+            <span className="text-slate-600">{t('filters.statusLabel')}</span>
             <select
               className="h-10 rounded-xl border border-slate-200 px-3 outline-none focus:border-[#7CB8D8]"
               {...form.register('status')}
             >
-              <option value="">Todos</option>
-              <option value="no_signature_id">Sem assinatura</option>
+              <option value="">{t('filters.statusAll')}</option>
+              <option value="no_signature_id">{t('filters.statusNoSignature')}</option>
             </select>
           </label>
 
@@ -156,43 +164,43 @@ export default function AdminLeadsPage() {
               }}
               className="h-10 rounded-xl border border-slate-200 px-4 text-sm text-slate-700 hover:bg-slate-50"
             >
-              Limpar
+              {t('filters.clear')}
             </button>
             <button
               type="submit"
               className="h-10 rounded-xl bg-[#4F98C2] px-4 text-sm font-semibold text-white hover:bg-[#3f86b0]"
             >
-              Filtrar
+              {t('filters.apply')}
             </button>
           </div>
         </form>
       </article>
 
       <article className="rounded-2xl border border-slate-200 bg-white p-5">
-        <h3 className="text-base font-semibold text-[#333C4D]">Leads</h3>
+        <h3 className="text-base font-semibold text-[#333C4D]">{t('title')}</h3>
 
         {leadsQuery.isLoading ? (
           <div className="mt-4 h-56 animate-pulse rounded-xl bg-slate-100" />
         ) : leadsQuery.isError ? (
           <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            Erro ao carregar leads.
+            {t('states.loadError')}
           </div>
         ) : leads.length === 0 ? (
           <div className="mt-4 rounded-xl border border-dashed border-slate-200 p-6 text-sm text-slate-500">
-            Nenhum lead encontrado para os filtros selecionados.
+            {t('states.empty')}
           </div>
         ) : (
           <div className="mt-4 overflow-x-auto">
             <table className="w-full min-w-[900px] text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-left text-slate-500">
-                  <th className="pb-2 font-medium">Nome</th>
-                  <th className="pb-2 font-medium">Email</th>
-                  <th className="pb-2 font-medium">Telefone</th>
-                  <th className="pb-2 font-medium">Cadastro</th>
-                  <th className="pb-2 font-medium">Status lead</th>
-                  <th className="pb-2 font-medium">Ult. atualizacao assinatura</th>
-                  <th className="pb-2 font-medium text-right">Acoes</th>
+                  <th className="pb-2 font-medium">{t('table.name')}</th>
+                  <th className="pb-2 font-medium">{t('table.email')}</th>
+                  <th className="pb-2 font-medium">{t('table.phone')}</th>
+                  <th className="pb-2 font-medium">{t('table.createdAt')}</th>
+                  <th className="pb-2 font-medium">{t('table.leadStatus')}</th>
+                  <th className="pb-2 font-medium">{t('table.latestSubscriptionUpdate')}</th>
+                  <th className="pb-2 font-medium text-right">{t('table.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -200,22 +208,22 @@ export default function AdminLeadsPage() {
                   <tr key={lead.id} className="border-b border-slate-100">
                     <td className="py-3">{lead.name}</td>
                     <td className="py-3">{lead.email}</td>
-                    <td className="py-3">{lead.phone || '-'}</td>
-                    <td className="py-3">{formatDate(lead.createdAt)}</td>
+                    <td className="py-3">{lead.phone || t('common.empty')}</td>
+                    <td className="py-3">{formatDate(lead.createdAt, locale, t)}</td>
                     <td className="py-3">
                       <span className="inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
-                        {formatLeadStatusLabel(lead.leadStatus)}
+                        {formatLeadStatusLabel(lead.leadStatus, t)}
                       </span>
                     </td>
-                    <td className="py-3">{formatDate(lead.latestSubscriptionUpdatedAt)}</td>
+                    <td className="py-3">{formatDate(lead.latestSubscriptionUpdatedAt, locale, t)}</td>
                     <td className="py-3">
                       <div className="flex justify-end">
                         <button
                           type="button"
-                          onClick={() => copyContact(lead.name, lead.email, lead.phone)}
+                          onClick={() => copyContact(lead.name, lead.email, lead.phone, t)}
                           className="rounded-lg border border-slate-200 px-2 py-1 text-xs hover:bg-slate-50"
                         >
-                          Copiar contato
+                          {t('table.copyContact')}
                         </button>
                       </div>
                     </td>
@@ -228,7 +236,7 @@ export default function AdminLeadsPage() {
 
         <div className="mt-4 flex items-center justify-between">
           <p className="text-xs text-slate-500">
-            Pagina {page} de {totalPages}
+            {t('pagination.pageOf', { page, totalPages })}
           </p>
           <div className="flex gap-2">
             <button
@@ -237,7 +245,7 @@ export default function AdminLeadsPage() {
               disabled={page <= 1}
               className="rounded-lg border border-slate-200 px-3 py-1 text-xs disabled:opacity-50"
             >
-              Anterior
+              {t('pagination.previous')}
             </button>
             <button
               type="button"
@@ -245,7 +253,7 @@ export default function AdminLeadsPage() {
               disabled={!meta?.hasNext || page >= totalPages}
               className="rounded-lg border border-slate-200 px-3 py-1 text-xs disabled:opacity-50"
             >
-              Proxima
+              {t('pagination.next')}
             </button>
           </div>
         </div>
