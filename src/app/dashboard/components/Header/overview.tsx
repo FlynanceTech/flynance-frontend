@@ -2,17 +2,19 @@
 
 import React, { useEffect, useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 import { NewTransactionButton } from '../Buttons'
 import { CategoriesSelectWithCheck } from '../CategorySelect'
 import SearchBar from '../SearchBar'
 import TransactionDrawer from '../TransactionDrawer'
-
 import DateRangeSelect from '../DateRangeSelect'
+
 import { useUserSession } from '@/stores/useUserSession'
 import { useTransactionFilter } from '@/stores/useFilter'
 import { toFutureRangeFromDays, toRangeFromDays } from '@/utils/transactionPeriod'
-
+import { useAdvisorActing } from '@/stores/useAdvisorActing'
+import { isAdvisorReadOnlyTransactionAccess } from '@/utils/transactionWriteAccess'
 import type { Category } from '@/types/Transaction'
 
 interface HeaderProps {
@@ -23,14 +25,10 @@ interface HeaderProps {
   newTransation?: boolean
   userId: string
   showFutureFilter?: boolean
+  canWriteTransactions?: boolean
+  rightContent?: React.ReactNode
 }
 
-/**
- * ✅ Aceita formatos diferentes do DateRangeSelect (pra não quebrar se você estiver usando days/month ou days/range)
- * - days: { mode: 'days', days: number }
- * - month: { mode: 'month', month: '05', year: '2025' }
- * - range: { mode: 'range', start: '2026-01-01', end: '2026-01-31' }
- */
 type AnyDateFilter =
   | { mode: 'days'; days: number }
   | { mode: 'month'; month: string; year: string }
@@ -85,15 +83,22 @@ export default function Header({
   dataToFilter,
   newTransation = true,
   showFutureFilter = false,
+  canWriteTransactions: canWriteTransactionsProp = true,
+  rightContent,
 }: HeaderProps) {
+  const t = useTranslations('dashboardHeader')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [isApplyingFilters, setIsApplyingFilters] = useState(false)
+  const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
+  const activePermission = useAdvisorActing((s) => s.activePermission ?? s.selectedPermission)
+  const isAdvisorReadOnly = isAdvisorReadOnlyTransactionAccess(activeClientId, activePermission)
+  const canWriteTransactions = canWriteTransactionsProp && !isAdvisorReadOnly
+  const canCreateTransactions = Boolean(newTransation && canWriteTransactions)
 
   const { user } = useUserSession()
   const firstName =
     user?.userData?.user?.name?.split(' ')[0]?.toLowerCase()?.replace(/^\w/, (c) => c.toUpperCase()) ?? ''
 
-  // ✅ zustand global filter
   const mode = useTransactionFilter((s) => s.mode)
   const dateRange = useTransactionFilter((s) => s.dateRange)
   const selectedMonth = useTransactionFilter((s) => s.selectedMonth)
@@ -119,7 +124,6 @@ export default function Header({
   const setIncludeFuture = useTransactionFilter((s) => s.setIncludeFuture)
   const applyFilters = useTransactionFilter((s) => s.applyFilters)
 
-  // ✅ valor do DateRangeSelect derivado do store (sem state local)
   const datePickerValue: AnyDateFilter = useMemo(() => {
     if (mode === 'range' && rangeStart && rangeEnd) {
       return {
@@ -144,7 +148,6 @@ export default function Header({
   }, [mode, dateRange, selectedMonth, selectedYear, rangeStart, rangeEnd])
 
   function handleDateChange(next: AnyDateFilter) {
-    // - Se for "days": grava no store
     if (next?.mode === 'days') {
       const safeDays = Number(next.days || 30)
       const range = includeFuture
@@ -159,7 +162,6 @@ export default function Header({
       return
     }
 
-    // - Se for "month": grava no store
     if (next?.mode === 'month') {
       const monthRange = monthToRange(next.month, next.year)
       setMode('month')
@@ -172,7 +174,6 @@ export default function Header({
       return
     }
 
-    // - Se for "range": converte para "days" (store atual não tem start/end)
     if (next?.mode === 'range') {
       const fullMonth = asFullMonthRange(next.start, next.end)
       if (fullMonth) {
@@ -217,93 +218,102 @@ export default function Header({
   }, [hasPendingFilters])
 
   const desktopFilterLabel = isApplyingFilters
-    ? 'Aplicando...'
+    ? t('applying')
     : hasPendingFilters
-    ? 'Aplicar'
-    : 'Filtrar'
+    ? t('apply')
+    : t('filter')
 
   const mobileFilterLabel = isApplyingFilters
-    ? 'Aplicando...'
+    ? t('applying')
     : hasPendingFilters
-    ? 'Aplicar'
-    : 'Aplicado'
+    ? t('apply')
+    : t('applied')
 
   return (
     <header className="flex flex-col px-6 pt-6">
       <div className="flex flex-col gap-2">
         <div className="grid grid-cols-3 items-center">
-          <h3 className="text-2xl font-bold text-[#333C4D] col-span-2">Olá, {firstName}!</h3>
-    
-          {/* Desktop */}
-          <div className="hidden lg:flex gap-4 items-center justify-end col-span-1">
-            {asFilter && (
-              <div className="flex gap-4 items-center">
-                {dataToFilter && (
-                  <div className="flex gap-4 items-center">
-                    <SearchBar />
-                    <CategoriesSelectWithCheck />
-                  </div>
-                )}
+          <h3 className="text-2xl font-bold text-[#333C4D] col-span-1">
+            {t('greeting', { name: firstName })}
+          </h3>
 
-                {/* ✅ DateRangeSelect agora alimenta o filtro global */}
-                <DateRangeSelect
-                  value={datePickerValue as any}
-                  onChange={handleDateChange as any}
-                  includeFuture={showFutureFilter ? includeFuture : undefined}
-                  onIncludeFutureChange={showFutureFilter ? setIncludeFuture : undefined}
-                  withDisplay
-                />
-                <button
-                  type="button"
-                  onClick={handleApplyFilters}
-                  disabled={!hasPendingFilters || isApplyingFilters}
-                  className="h-9 rounded-full bg-primary px-4 text-sm font-semibold text-white hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <span className="inline-flex items-center gap-2">
-                    {isApplyingFilters && (
-                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/70 border-t-transparent" />
-                    )}
-                    {desktopFilterLabel}
-                  </span>
-                </button>
-              </div>
-            )}
+          <div className="col-span-2 flex w-full items-center justify-end gap-2">
+            {rightContent}
 
-            {newTransation && <NewTransactionButton onClick={() => setDrawerOpen(true)} />}
-          </div>
+            <div className="hidden lg:flex gap-4 items-center justify-end">
+              {asFilter && (
+                <div className="flex gap-4 items-center">
+                  {dataToFilter && (
+                    <div className="flex gap-4 items-center">
+                      <SearchBar />
+                      <CategoriesSelectWithCheck />
+                    </div>
+                  )}
 
-          {/* Mobile */}
-          <div className="flex lg:hidden gap-4 items-center w-full justify-end col-span-1">
-            <DateRangeSelect
-              value={datePickerValue as any}
-              onChange={handleDateChange as any}
-              includeFuture={showFutureFilter ? includeFuture : undefined}
-              onIncludeFutureChange={showFutureFilter ? setIncludeFuture : undefined}
-            />
-            <button
-              type="button"
-              onClick={handleApplyFilters}
-              disabled={!hasPendingFilters || isApplyingFilters}
-              className="h-9 rounded-full bg-primary px-4 text-xs font-semibold text-white hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <span className="inline-flex items-center gap-2">
-                {isApplyingFilters && (
-                  <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/70 border-t-transparent" />
-                )}
-                {mobileFilterLabel}
-              </span>
-            </button>
+                  <DateRangeSelect
+                    value={datePickerValue as any}
+                    onChange={handleDateChange as any}
+                    includeFuture={showFutureFilter ? includeFuture : undefined}
+                    onIncludeFutureChange={showFutureFilter ? setIncludeFuture : undefined}
+                    withDisplay
+                  />
+                  <button
+                    type="button"
+                    onClick={handleApplyFilters}
+                    disabled={!hasPendingFilters || isApplyingFilters}
+                    className="h-9 rounded-full bg-primary px-4 text-sm font-semibold text-white hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      {isApplyingFilters && (
+                        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/70 border-t-transparent" />
+                      )}
+                      {desktopFilterLabel}
+                    </span>
+                  </button>
+                </div>
+              )}
+
+              {canCreateTransactions && <NewTransactionButton onClick={() => setDrawerOpen(true)} />}
+            </div>
+
+            <div className="flex lg:hidden gap-4 items-center justify-end">
+              <DateRangeSelect
+                value={datePickerValue as any}
+                onChange={handleDateChange as any}
+                includeFuture={showFutureFilter ? includeFuture : undefined}
+                onIncludeFutureChange={showFutureFilter ? setIncludeFuture : undefined}
+              />
+              <button
+                type="button"
+                onClick={handleApplyFilters}
+                disabled={!hasPendingFilters || isApplyingFilters}
+                className="h-9 rounded-full bg-primary px-4 text-xs font-semibold text-white hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <span className="inline-flex items-center gap-2">
+                  {isApplyingFilters && (
+                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/70 border-t-transparent" />
+                  )}
+                  {mobileFilterLabel}
+                </span>
+              </button>
+            </div>
           </div>
         </div>
 
-        <button
-          onClick={() => setDrawerOpen(true)}
-          className="fixed bottom-20 right-4 bg-secondary/30 text-black rounded-full w-12 h-12 flex items-center justify-center text-2xl shadow-lg z-40 sm:hidden"
-        >
-          <Plus />
-        </button>
+        {canCreateTransactions && (
+          <button
+            onClick={() => setDrawerOpen(true)}
+            className="fixed bottom-20 right-4 bg-secondary/30 text-black rounded-full w-12 h-12 flex items-center justify-center text-2xl shadow-lg z-40 sm:hidden"
+          >
+            <Plus />
+          </button>
+        )}
 
-        <TransactionDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+        <TransactionDrawer
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          readOnly={!canWriteTransactions}
+        />
       </div>
 
       <p className="text-sm font-light pt-2 md:pt-0">{subtitle}</p>

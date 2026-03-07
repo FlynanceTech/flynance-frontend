@@ -7,9 +7,11 @@ import { mapPlanToUi } from "@/components/planos/utils";
 import { usePlans } from "@/hooks/query/usePlan";
 import { useUserSession } from "@/stores/useUserSession";
 import { useEffect } from "react";
+import { useTranslations } from "next-intl";
 
 
 export default function PlanosPage() {
+  const t = useTranslations('winbackPlansPage')
   const { data, isLoading, isError } = usePlans();
   const {fetchAccount} = useUserSession()
   
@@ -24,13 +26,13 @@ export default function PlanosPage() {
   return (
     <div className="min-h-screen flex flex-col items-center ">
       <header className=" bg-gradient-to-r from-primary to-secondary w-full flex items-center justify-center ">
-        <PageHeader title="Planos da Flynance" showBack />
+        <PageHeader title={t('headerTitle')} showBack />
       </header>
       <section className="flex flex-col gap-16 pb-16">
         {/* HERO */}
         <div className="text-center px-4 pt-8">
           <h1 className="text-4xl font-semibold text-primary">
-            Escolha seu plano e comece a economizar
+            {t('heroTitle')}
           </h1>
         </div>
 
@@ -44,7 +46,7 @@ export default function PlanosPage() {
 
         {isError && !isLoading && (
           <div className="text-white/90 pb-20 text-center">
-            Ocorreu um erro ao carregar os planos. Tente novamente mais tarde.
+            {t('loadError')}
           </div>
         )}
 

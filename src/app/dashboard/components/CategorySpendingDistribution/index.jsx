@@ -9,8 +9,7 @@ import {
   Tooltip,
   Cell,
 } from 'recharts'
-import { useCategories } from '@/hooks/query/useCategory'
-import { useCategoryStore } from '@/stores/useCategoryStore'
+import { useLocale, useTranslations } from 'next-intl'
 import {
   ArrowDownUp,
   ArrowLeft,
@@ -19,11 +18,12 @@ import {
   ChartScatter,
 } from 'lucide-react'
 
-function toBRL(v) {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(v)
+import { useCategories } from '@/hooks/query/useCategory'
+import { useCategoryStore } from '@/stores/useCategoryStore'
+import { formatCurrency } from '@/utils/formatter'
+
+function toCurrency(v) {
+  return formatCurrency(Number(v || 0))
 }
 
 const CustomRect = (props) => {
@@ -61,9 +61,9 @@ const CustomRect = (props) => {
   )
 }
 
-
-export default function CategorySpendingDistribution({transactions, isLoading, periodTag}) {
-  
+export default function CategorySpendingDistribution({ transactions, isLoading, periodTag }) {
+  const t = useTranslations('categoryDistribution')
+  const locale = useLocale()
   const [sortDesc, setSortDesc] = useState(true)
   const [changeChart, setChangeChart] = useState(true)
   const [selectedCategoryId, setSelectedCategoryId] = useState(null)
@@ -77,70 +77,65 @@ export default function CategorySpendingDistribution({transactions, isLoading, p
     [categoryStore]
   )
 
-  const despesas = transactions.filter(t => t.type === 'EXPENSE')
+  const despesas = transactions.filter((tx) => tx.type === 'EXPENSE')
 
-  const map = despesas.reduce((acc, t) => {
-    const categoriaId = t.category?.id || 'outros'
+  const map = despesas.reduce((acc, tx) => {
+    const categoriaId = tx.category?.id || 'outros'
     const categoryFromStore = categoryMap.get(categoriaId)
-    const rawName = t.category?.name
+    const rawName = tx.category?.name
     const categoriaNome =
       (rawName && rawName !== categoriaId ? rawName : undefined) ||
       categoryFromStore?.name ||
-      (categoriaId === 'outros' ? 'Outros' : 'Sem categoria')
-    const color = t.category?.color || categoryFromStore?.color || '#CBD5E1'
+      (categoriaId === 'outros' ? t('otherCategory') : t('uncategorized'))
+    const color = tx.category?.color || categoryFromStore?.color || '#CBD5E1'
     if (!acc[categoriaId]) {
       acc[categoriaId] = { id: categoriaId, name: categoriaNome, value: 0, color }
     }
-    acc[categoriaId].value += t.value
+    acc[categoriaId].value += tx.value
     return acc
   }, {})
 
-  const categoriasAgrupadas = despesas.reduce((acc, d) => {
-    const id = d.category?.id || 'outros'
+  const categoriasAgrupadas = despesas.reduce((acc, tx) => {
+    const id = tx.category?.id || 'outros'
     const categoryFromStore = categoryMap.get(id)
-    const rawName = d.category?.name
+    const rawName = tx.category?.name
     const nome =
       (rawName && rawName !== id ? rawName : undefined) ||
       categoryFromStore?.name ||
-      (id === 'outros' ? 'Outros' : 'Sem categoria')
-    const cor = d.category?.color || categoryFromStore?.color || '#CBD5E1'
+      (id === 'outros' ? t('otherCategory') : t('uncategorized'))
+    const cor = tx.category?.color || categoryFromStore?.color || '#CBD5E1'
 
     if (!acc[id]) {
       acc[id] = { id, name: nome, size: 0, color: cor }
     }
 
-    acc[id].size += d.value
-
+    acc[id].size += tx.value
     return acc
   }, {})
-  
+
   const data = [
     {
       name: '',
       children: Object.values(categoriasAgrupadas),
     },
-  ];
+  ]
 
-  
-  console.log('[CategorySpendingDistribution] data', data)
-  const dataPae = Object.values(map).map(({ id, name, value, color }) => ({
+  const dataPie = Object.values(map).map(({ id, name, value, color }) => ({
     id,
     name,
     value,
     color,
   }))
-  console.log('[CategorySpendingDistribution] dataPae', dataPae)
 
   const total = data[0]?.children?.reduce((sum, item) => sum + item.size, 0) ?? 0
   const selectedTransactions = selectedCategoryId
-    ? despesas.filter((t) =>
+    ? despesas.filter((tx) =>
         selectedCategoryId === 'outros'
-          ? !t.category?.id
-          : t.category?.id === selectedCategoryId
+          ? !tx.category?.id
+          : tx.category?.id === selectedCategoryId
       )
     : []
   const disableAnimation = freezeAnimation
-
 
   if (isLoading) {
     return (
@@ -157,35 +152,34 @@ export default function CategorySpendingDistribution({transactions, isLoading, p
       <div className="w-full lg:w-1/2 flex flex-col gap-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2">
           <div className="flex flex-col">
-            <h2 className="text-lg font-semibold text-gray-800 mb-1">Gastos por Categoria</h2>
+            <h2 className="text-lg font-semibold text-gray-800 mb-1">{t('title')}</h2>
             {periodTag && (
               <span className="w-fit rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
                 {periodTag}
               </span>
             )}
           </div>
-          <div className='flex items-center gap-4 justify-between'>
-            <button  
-              className='border border-gray-300 rounded-full p-1 text-gray-500 w-9 h-9 flex items-center justify-center hover:bg-gray-50 cursor-pointer'
-              onClick={() => setChangeChart(prev => !prev)}
-              title='trocar leitura de grafico'  
+          <div className="flex items-center gap-4 justify-between">
+            <button
+              className="border border-gray-300 rounded-full p-1 text-gray-500 w-9 h-9 flex items-center justify-center hover:bg-gray-50 cursor-pointer"
+              onClick={() => setChangeChart((prev) => !prev)}
+              title={t('toggleChartTitle')}
             >
-              {changeChart ? <ChartPie size={18} />  : <ChartScatter size={18} /> }
+              {changeChart ? <ChartPie size={18} /> : <ChartScatter size={18} />}
             </button>
             <button
-              onClick={() => setSortDesc(prev => !prev)}
-              className='border border-gray-300 rounded-full p-1 text-gray-500 w-9 h-9 flex items-center justify-center hover:bg-gray-50 cursor-pointer'
-              title="Mudar Ordenação"
+              onClick={() => setSortDesc((prev) => !prev)}
+              className="border border-gray-300 rounded-full p-1 text-gray-500 w-9 h-9 flex items-center justify-center hover:bg-gray-50 cursor-pointer"
+              title={t('toggleSortTitle')}
             >
-              {sortDesc ?  <ArrowUpDown size={18} /> :  <ArrowDownUp size={18} />}
+              {sortDesc ? <ArrowUpDown size={18} /> : <ArrowDownUp size={18} />}
             </button>
           </div>
         </div>
 
         <ResponsiveContainer width="100%" height={350}>
-          {
-            changeChart ? 
-              <Treemap
+          {changeChart ? (
+            <Treemap
               width={400}
               height={200}
               data={data}
@@ -194,11 +188,11 @@ export default function CategorySpendingDistribution({transactions, isLoading, p
               stroke="#fff"
               animationDuration={disableAnimation ? 0 : 500}
               content={(props) => <CustomRect {...props} />}
-              />
-            :
-              <PieChart>
+            />
+          ) : (
+            <PieChart>
               <Pie
-                data={dataPae}
+                data={dataPie}
                 cx="50%"
                 cy="50%"
                 dataKey="value"
@@ -206,21 +200,21 @@ export default function CategorySpendingDistribution({transactions, isLoading, p
                 outerRadius={120}
                 isAnimationActive={!disableAnimation}
               >
-                {dataPae.map((entry, i) => (
+                {dataPie.map((entry, i) => (
                   <Cell key={i} fill={entry.color} />
                 ))}
               </Pie>
               <Tooltip
                 formatter={(value, _name, props) => [
-                  toBRL(value),
+                  toCurrency(value),
                   props?.payload?.name ?? '',
                 ]}
               />
-            </PieChart>   
-          }
+            </PieChart>
+          )}
         </ResponsiveContainer>
       </div>
-      <div className='flex flex-col gap-2 w-full lg:w-1/2 '>
+      <div className="flex flex-col gap-2 w-full lg:w-1/2 ">
         <div className="w-full space-y-4 overflow-auto pr-4 max-h-[420px]">
           {selectedCategoryId ? (
             <div className="space-y-4">
@@ -230,7 +224,7 @@ export default function CategorySpendingDistribution({transactions, isLoading, p
                     {selectedCategoryName}
                   </h3>
                   <p className="text-xs text-gray-500">
-                    {selectedTransactions.length} transações
+                    {t('transactionsCount', { count: selectedTransactions.length })}
                   </p>
                 </div>
                 <button
@@ -240,44 +234,44 @@ export default function CategorySpendingDistribution({transactions, isLoading, p
                     setSelectedCategoryName('')
                     setFreezeAnimation(true)
                   }}
-                  title="Voltar para categorias"
+                  title={t('backToCategories')}
                 >
                   <ArrowLeft size={16} />
                 </button>
               </div>
 
               <div className="space-y-3">
-                {selectedTransactions.map((t) => (
-                  <div key={t.id} className="flex items-center justify-between gap-3 text-sm">
+                {selectedTransactions.map((tx) => (
+                  <div key={tx.id} className="flex items-center justify-between gap-3 text-sm">
                     <div className="min-w-0">
                       <p className="truncate text-gray-800 font-medium">
-                        {t.description || 'Transação'}
+                        {tx.description || t('defaultTransaction')}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {new Date(t.date).toLocaleDateString('pt-BR')}
+                        {new Date(tx.date).toLocaleDateString(locale)}
                       </p>
                     </div>
                     <span className="text-gray-900 font-semibold">
-                      {toBRL(t.value)}
+                      {toCurrency(tx.value)}
                     </span>
                   </div>
                 ))}
                 {selectedTransactions.length === 0 && (
                   <div className="text-sm text-gray-500">
-                    Nenhuma transação nesta categoria.
+                    {t('noTransactionsInCategory')}
                   </div>
                 )}
               </div>
             </div>
           ) : (
             <>
-              {data[0]?.children?.sort((a, b) => sortDesc ? b.size - a.size : a.size - b.size)
+              {data[0]?.children?.sort((a, b) => (sortDesc ? b.size - a.size : a.size - b.size))
               .map((entry, i) => {
                 const percent = total > 0 ? (entry.size / total) * 100 : 0
                 return (
                   <button
                     key={i}
-                    className="w-full text-left space-y-1 rounded-lg p-2 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 cursor-pointer"
+                    className="w-full text-left space-y-1 rounded-lg p-2 hover:bg-gray-50 dark:hover:bg-primary-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 cursor-pointer"
                     onClick={() => {
                       setSelectedCategoryId(entry.id)
                       setSelectedCategoryName(entry.name)
@@ -289,9 +283,9 @@ export default function CategorySpendingDistribution({transactions, isLoading, p
                         <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
                         {entry.name}
                       </span>
-                      <span className="text-gray-900">{toBRL(entry.size)}</span>
+                      <span className="text-gray-900">{toCurrency(entry.size)}</span>
                     </div>
-                    <div className="text-xs text-gray-500">{percent.toFixed(0)}% do total de gastos</div>
+                    <div className="text-xs text-gray-500">{t('percentOfTotal', { percent: percent.toFixed(0) })}</div>
                     <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
                       <div
                         className="h-2 rounded-full"
@@ -302,7 +296,7 @@ export default function CategorySpendingDistribution({transactions, isLoading, p
                 )
               })}
               {data.length === 0 && (
-                <div className="text-sm text-gray-500">Não há despesas no período selecionado.</div>
+                <div className="text-sm text-gray-500">{t('noExpensesInPeriod')}</div>
               )}
             </>
           )}

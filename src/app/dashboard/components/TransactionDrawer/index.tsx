@@ -19,6 +19,7 @@ import { CategorySelect } from '../CategorySelect'
 import type { CategoryDTO, CategoryResponse } from '@/services/category'
 import { useCategories } from '@/hooks/query/useCategory'
 import type { CreateCategoryDraft } from '../Categories/createCategoryModal' // ajuste path se necessário
+import { Button } from '@/components/ui/button'
 
 type CategoryType = 'EXPENSE' | 'INCOME'
 
@@ -46,6 +47,7 @@ interface TransactionDrawerProps {
   open: boolean
   onClose: () => void
   initialData?: Transaction
+  readOnly?: boolean
 }
 
 /** ISO do backend -> value do datetime-local (YYYY-MM-DDTHH:mm) */
@@ -96,19 +98,42 @@ const typeSelectStyles: StylesConfig<TypeOption, false> = {
     ...base,
     minHeight: 40,
     borderRadius: 9999,
-    borderColor: state.isFocused ? '#CBD5E1' : '#E2E8F0',
-    boxShadow: state.isFocused ? '0 0 0 2px rgba(59, 130, 246, 0.15)' : 'none',
-    ':hover': { borderColor: '#CBD5E1' },
+    backgroundColor: 'hsl(var(--input))',
+    borderColor: state.isFocused ? 'hsl(var(--ring) / 0.45)' : 'hsl(var(--border) / 0.24)',
+    boxShadow: state.isFocused ? '0 0 0 2px hsl(var(--ring) / 0.22)' : 'none',
+    ':hover': { borderColor: 'hsl(var(--border) / 0.4)' },
   }),
   valueContainer: (base) => ({ ...base, paddingLeft: 12, paddingRight: 8 }),
-  placeholder: (base) => ({ ...base, color: '#64748B' }),
-  menu: (base) => ({ ...base, borderRadius: 12, overflow: 'hidden' }),
+  placeholder: (base) => ({ ...base, color: 'hsl(var(--muted-foreground))' }),
+  input: (base) => ({ ...base, color: 'hsl(var(--foreground))' }),
+  singleValue: (base) => ({ ...base, color: 'hsl(var(--foreground))' }),
+  indicatorSeparator: (base) => ({ ...base, backgroundColor: 'hsl(var(--border) / 0.3)' }),
+  dropdownIndicator: (base, state) => ({
+    ...base,
+    color: state.isFocused ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))',
+    ':hover': { color: 'hsl(var(--foreground))' },
+  }),
+  menu: (base) => ({
+    ...base,
+    borderRadius: 12,
+    backgroundColor: 'hsl(var(--card))',
+    border: '1px solid hsl(var(--border) / 0.22)',
+    boxShadow: '0 12px 30px rgba(0, 0, 0, 0.35)',
+    overflow: 'hidden',
+  }),
   menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+  menuList: (base) => ({ ...base, backgroundColor: 'hsl(var(--card))' }),
   option: (base, state) => ({
     ...base,
-    backgroundColor: state.isFocused ? '#F1F5F9' : 'white',
-    color: '#0F172A',
+    backgroundColor: state.isSelected
+      ? 'hsl(var(--accent))'
+      : state.isFocused
+      ? 'hsl(var(--muted))'
+      : 'transparent',
+    color: 'hsl(var(--foreground))',
+    cursor: 'pointer',
   }),
+  noOptionsMessage: (base) => ({ ...base, color: 'hsl(var(--muted-foreground))' }),
 }
 
 const paymentTypeSelectStyles: StylesConfig<PaymentTypeOption, false> = {
@@ -116,22 +141,50 @@ const paymentTypeSelectStyles: StylesConfig<PaymentTypeOption, false> = {
     ...base,
     minHeight: 40,
     borderRadius: 9999,
-    borderColor: state.isFocused ? '#CBD5E1' : '#E2E8F0',
-    boxShadow: state.isFocused ? '0 0 0 2px rgba(59, 130, 246, 0.15)' : 'none',
-    ':hover': { borderColor: '#CBD5E1' },
+    backgroundColor: 'hsl(var(--input))',
+    borderColor: state.isFocused ? 'hsl(var(--ring) / 0.45)' : 'hsl(var(--border) / 0.24)',
+    boxShadow: state.isFocused ? '0 0 0 2px hsl(var(--ring) / 0.22)' : 'none',
+    ':hover': { borderColor: 'hsl(var(--border) / 0.4)' },
   }),
   valueContainer: (base) => ({ ...base, paddingLeft: 12, paddingRight: 8 }),
-  placeholder: (base) => ({ ...base, color: '#64748B' }),
-  menu: (base) => ({ ...base, borderRadius: 12, overflow: 'hidden' }),
+  placeholder: (base) => ({ ...base, color: 'hsl(var(--muted-foreground))' }),
+  input: (base) => ({ ...base, color: 'hsl(var(--foreground))' }),
+  singleValue: (base) => ({ ...base, color: 'hsl(var(--foreground))' }),
+  indicatorSeparator: (base) => ({ ...base, backgroundColor: 'hsl(var(--border) / 0.3)' }),
+  dropdownIndicator: (base, state) => ({
+    ...base,
+    color: state.isFocused ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))',
+    ':hover': { color: 'hsl(var(--foreground))' },
+  }),
+  menu: (base) => ({
+    ...base,
+    borderRadius: 12,
+    backgroundColor: 'hsl(var(--card))',
+    border: '1px solid hsl(var(--border) / 0.22)',
+    boxShadow: '0 12px 30px rgba(0, 0, 0, 0.35)',
+    overflow: 'hidden',
+  }),
   menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+  menuList: (base) => ({ ...base, backgroundColor: 'hsl(var(--card))' }),
   option: (base, state) => ({
     ...base,
-    backgroundColor: state.isFocused ? '#F1F5F9' : 'white',
-    color: '#0F172A',
+    backgroundColor: state.isSelected
+      ? 'hsl(var(--accent))'
+      : state.isFocused
+      ? 'hsl(var(--muted))'
+      : 'transparent',
+    color: 'hsl(var(--foreground))',
+    cursor: 'pointer',
   }),
+  noOptionsMessage: (base) => ({ ...base, color: 'hsl(var(--muted-foreground))' }),
 }
 
-export default function TransactionDrawer({ open, onClose, initialData }: TransactionDrawerProps) {
+export default function TransactionDrawer({
+  open,
+  onClose,
+  initialData,
+  readOnly = false,
+}: TransactionDrawerProps) {
   const { createMutation, updateMutation } = useTranscation({})
   const [openCardDrawer, setOpenCardDrawer] = useState(false)
 
@@ -224,6 +277,8 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
   }
 
   const onSubmit = (data: FormData) => {
+    if (readOnly) return
+
     const payload = buildPayload(data)
 
     if (initialData?.id) {
@@ -261,6 +316,11 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
             </div>
 
             <form key={initialData?.id ?? 'new'} onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              {readOnly && (
+                <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                  Voce tem acesso somente leitura para este cliente.
+                </div>
+              )}
               {/* Descrição */}
               <div className="flex flex-col gap-2">
                 <label className="block text-sm text-gray-700 mb-1">Descrição</label>
@@ -269,7 +329,7 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
                   {...register('description')}
                   className="w-full border border-gray-300 rounded-full shadow px-4 py-2 text-sm"
                 />
-                {errors.description && <span className="text-red-500 text-xs">{errors.description.message}</span>}
+                {errors.description && <span className="text-red-400 text-xs">{errors.description.message}</span>}
               </div>
 
               {/* Tipo */}
@@ -298,7 +358,7 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
                   )}
                 />
 
-                {errors.type && <span className="text-red-500 text-xs">{errors.type.message}</span>}
+                {errors.type && <span className="text-red-400 text-xs">{errors.type.message}</span>}
               </div>
 
               {/* Categoria */}
@@ -321,7 +381,7 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
                   )}
                 />
 
-                {errors.categoryId && <span className="text-red-500 text-xs">{errors.categoryId.message}</span>}
+                {errors.categoryId && <span className="text-red-400 text-xs">{errors.categoryId.message}</span>}
               </div>
 
               {/* Forma de pagamento */}
@@ -344,7 +404,7 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
                   )}
                 />
 
-                {errors.paymentType && <span className="text-red-500 text-xs">{errors.paymentType.message}</span>}
+                {errors.paymentType && <span className="text-red-400 text-xs">{errors.paymentType.message}</span>}
               </div>
 
               {/* Valor */}
@@ -366,7 +426,7 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
                     />
                   )}
                 />
-                {errors.value && <span className="text-red-500 text-xs">{errors.value.message}</span>}
+                {errors.value && <span className="text-red-400 text-xs">{errors.value.message}</span>}
               </div>
 
               {/* Data */}
@@ -377,16 +437,16 @@ export default function TransactionDrawer({ open, onClose, initialData }: Transa
                   {...register('date')}
                   className="w-full border border-gray-300 rounded-full px-4 shadow py-2 text-sm"
                 />
-                {errors.date && <span className="text-red-500 text-xs">{errors.date.message}</span>}
+                {errors.date && <span className="text-red-400 text-xs">{errors.date.message}</span>}
               </div>
 
-              <button
+              <Button
                 type="submit"
-                disabled={createMutation.isPending || updateMutation.isPending}
-                className="w-full mt-4 bg-primary hover:bg-secondary text-white font-semibold py-2 px-4 rounded-full cursor-pointer disabled:opacity-60"
+                disabled={readOnly || createMutation.isPending || updateMutation.isPending}
+                variant="default"
               >
-                {initialData ? 'Salvar Alterações' : 'Adicionar Transação'}
-              </button>
+                {readOnly ? 'Somente leitura' : initialData ? 'Salvar Alterações' : 'Adicionar Transação'}
+              </Button>
             </form>
           </DialogPanel>
         </div>

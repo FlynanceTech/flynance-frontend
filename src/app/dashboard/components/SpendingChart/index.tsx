@@ -7,8 +7,9 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  ResponsiveContainer
+  ResponsiveContainer,
 } from 'recharts'
+import { formatCurrency } from '@/utils/formatter'
 
 type DataPoint = {
   date: string
@@ -28,14 +29,16 @@ type CustomTooltipProps = {
 
 function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   if (active && payload && payload.length > 0) {
-
     return (
-      <div className="rounded-lg border border-secondary bg-[#3ECC8980] text-white px-4 py-2 shadow text-sm">
-        <p>📅 <strong>Data:</strong> {label && format(new Date(label), 'dd/MM')}</p>
-        {payload[0].payload.valor && (
-          <p>💸 <strong>Gasto Diário:</strong> {payload[0].payload.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-        )}
-      
+      <div className="rounded-lg border border-secondary bg-[#3ECC8980] px-4 py-2 text-sm text-white shadow">
+        <p>
+          <strong>Data:</strong> {label && format(new Date(label), 'dd/MM')}
+        </p>
+        {payload[0].payload.valor ? (
+          <p>
+            <strong>Gasto diario:</strong> {formatCurrency(payload[0].payload.valor)}
+          </p>
+        ) : null}
       </div>
     )
   }
@@ -60,17 +63,16 @@ export function SpendingChart({
   }
 
   const chartData =
-  data.length === 1
-    ? [
-        data[0],
-        {
-          date: addDays(new Date(), 1).toISOString().split('T')[0],
-          valor: 0,
-          acumulado: data[0].acumulado
-        },
-      ]
-    : data
-
+    data.length === 1
+      ? [
+          data[0],
+          {
+            date: addDays(new Date(), 1).toISOString().split('T')[0],
+            valor: 0,
+            acumulado: data[0].acumulado,
+          },
+        ]
+      : data
 
   return (
     <ResponsiveContainer width="100%" height={260}>
@@ -90,15 +92,9 @@ export function SpendingChart({
           padding={{ left: 10, right: 10 }}
           tickFormatter={(date) => format(parseISO(date), 'dd/MM')}
         />
-        <YAxis
-          stroke="#666"
-          tickLine={false}
-          axisLine={false}
-          padding={{ bottom: 20, top: 20 }}
-        />
+        <YAxis stroke="#666" tickLine={false} axisLine={false} padding={{ bottom: 20, top: 20 }} />
         <Tooltip content={<CustomTooltip />} />
 
-        {/* Gasto Diário */}
         <Area
           type="monotone"
           dataKey="valor"

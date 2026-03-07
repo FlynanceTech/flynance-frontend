@@ -104,7 +104,7 @@ export default function CreditCardDrawer({ open, onClose }: Props) {
                 <div>
                   <label className="block text-sm text-gray-700">Nome no cartão</label>
                   <input className="mt-1 w-full rounded-md border px-3 py-2 text-sm" {...register('name')} />
-                  {errors.name && <p className="text-xs text-red-600 mt-1">{errors.name.message}</p>}
+                  {errors.name && <p className="text-xs text-red-400 mt-1">{errors.name.message}</p>}
                 </div>
 
                 <div>
@@ -126,7 +126,7 @@ export default function CreditCardDrawer({ open, onClose }: Props) {
                   <div className="col-span-2">
                     <label className="block text-sm text-gray-700">Limite (R$)</label>
                     <input type="number" step="0.01" className="mt-1 w-full rounded-md border px-3 py-2 text-sm" {...register('limit', { valueAsNumber: true })} />
-                    {errors.limit && <p className="text-xs text-red-600 mt-1">{errors.limit.message}</p>}
+                    {errors.limit && <p className="text-xs text-red-400 mt-1">{errors.limit.message}</p>}
                   </div>
                 </div>
 

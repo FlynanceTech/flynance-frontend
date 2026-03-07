@@ -1,16 +1,18 @@
 'use client'
 import clsx from 'clsx'
 import { useTransactionFilter } from '@/stores/useFilter'
+import { useTranslations } from 'next-intl'
 
 type TxTypeFilter = 'ALL' | 'INCOME' | 'EXPENSE'
 
-const options: { key: TxTypeFilter; label: string }[] = [
-  { key: 'ALL', label: 'Tudo' },
-  { key: 'INCOME', label: 'Receitas' },
-  { key: 'EXPENSE', label: 'Despesas' },
-]
-
 export default function QuickTypeFilter() {
+  const t = useTranslations('quickTypeFilter')
+  const options: { key: TxTypeFilter; label: string }[] = [
+    { key: 'ALL', label: t('all') },
+    { key: 'INCOME', label: t('income') },
+    { key: 'EXPENSE', label: t('expense') },
+  ]
+
   const typeFilter = useTransactionFilter((s) => s.typeFilter)
   const setTypeFilter = useTransactionFilter((s) => s.setTypeFilter)
 
@@ -27,7 +29,7 @@ export default function QuickTypeFilter() {
               'h-8 rounded-full px-3 text-sm transition',
               active
                 ? 'bg-secondary/30 text-[#333C4D] font-medium'
-                : 'text-slate-600 hover:bg-slate-50'
+                : 'text-slate-600 hover:bg-primary/20 hover:text-[#333C4D] cursor-pointer',
             )}
           >
             {opt.label}

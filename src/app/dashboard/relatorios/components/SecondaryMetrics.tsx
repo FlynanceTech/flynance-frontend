@@ -1,5 +1,6 @@
+import { useTranslations } from 'next-intl'
 import InfoTip from './InfoTip'
-import { pct, volatilityLabel } from './utils'
+import { pct, volatilityKey } from './utils'
 
 type Props = {
   debtRatio: number
@@ -14,38 +15,44 @@ export default function SecondaryMetrics({
   expenseVolatility,
   goalsAchievedRate,
 }: Props) {
+  const t = useTranslations('reports.secondaryMetrics')
+  const volatility = volatilityKey(expenseVolatility)
+  const volatilityLabel =
+    volatility === 'low' || volatility === 'medium' || volatility === 'high'
+      ? t(`volatilityValues.${volatility}`)
+      : expenseVolatility
+
   return (
     <div className="grid grid-cols-2 gap-4">
-      <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition">
-        <div className="flex items-center gap-2 text-sm text-gray-500 justify-between">
-          Comprometimento da renda
-          <InfoTip text="(Fixos + cartão) ÷ receita acumulada." />
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+        <div className="flex items-center justify-between gap-2 text-sm text-gray-500">
+          {t('debtRatio')}
+          <InfoTip text={t('debtRatioTip')} />
         </div>
-        <div className="text-lg  lg:text-3xl mt-2 font-semibold text-gray-900">{pct(debtRatio)}</div>
+        <div className="mt-2 text-lg font-semibold text-gray-900 lg:text-3xl">{pct(debtRatio)}</div>
       </div>
-      <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition">
-        <div className="text-sm text-gray-500"></div>
-         <div className="flex items-center gap-2 text-sm text-gray-500 justify-between">
-          Cartão no gasto total
-          <InfoTip text="Parte do gasto total que veio do cartão no período." />
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+        <div className="flex items-center justify-between gap-2 text-sm text-gray-500">
+          {t('creditCardRatio')}
+          <InfoTip text={t('creditCardRatioTip')} />
         </div>
-        <div className="text-lg  lg:text-3xl mt-2 font-semibold text-gray-900">{pct(creditCardRatio)}</div>
+        <div className="mt-2 text-lg font-semibold text-gray-900 lg:text-3xl">{pct(creditCardRatio)}</div>
       </div>
-      <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition">
-        <div className="flex items-center gap-2 text-sm text-gray-500 justify-between">
-          Volatilidade
-          <InfoTip text="Mede a variação mês a mês das despesas." />
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+        <div className="flex items-center justify-between gap-2 text-sm text-gray-500">
+          {t('volatility')}
+          <InfoTip text={t('volatilityTip')} />
         </div>
-        <div className="text-lg  lg:text-3xl mt-2 font-semibold text-gray-900">
-          {volatilityLabel(expenseVolatility)}
+        <div className="mt-2 text-lg font-semibold text-gray-900 lg:text-3xl">
+          {volatilityLabel}
         </div>
       </div>
-      <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition">
-        <div className="flex items-center gap-2 text-sm text-gray-500 justify-between">
-          Metas atingidas
-          <InfoTip text="Atingidas conforme os períodos já decorridos." />
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+        <div className="flex items-center justify-between gap-2 text-sm text-gray-500">
+          {t('goalsAchieved')}
+          <InfoTip text={t('goalsAchievedTip')} />
         </div>
-        <div className="text-lg  lg:text-3xl mt-2 font-semibold text-gray-900">{pct(goalsAchievedRate)}</div>
+        <div className="mt-2 text-lg font-semibold text-gray-900 lg:text-3xl">{pct(goalsAchievedRate)}</div>
       </div>
     </div>
   )

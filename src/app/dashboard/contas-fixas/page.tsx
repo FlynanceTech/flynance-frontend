@@ -7,6 +7,7 @@ import clsx from 'clsx'
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
 import toast from 'react-hot-toast'
 import DeleteConfirmModal from '../components/DeleteConfirmModal'
+import { ActionTriggerButton } from '../components/Buttons'
 import { useFixedAccounts } from '@/hooks/query/useFixedAccounts'
 import { useUserCyclePreferences } from '@/hooks/query/useUserCyclePreferences'
 import { CategorySelect } from '../components/CategorySelect'
@@ -14,6 +15,7 @@ import { useCategories } from '@/hooks/query/useCategory'
 import type { CategoryDTO, CategoryResponse } from '@/services/category'
 import type { CreateCategoryDraft } from '../components/Categories/createCategoryModal'
 import { useRouter } from 'next/navigation'
+import PageOnboardingTour, { type PageOnboardingStep } from '@/components/onboarding/PageOnboardingTour'
 import { toApiDate } from '@/utils/apiDate'
 import { resolveCompetenceRange } from '@/utils/resolveCompetenceRange'
 import {
@@ -23,7 +25,6 @@ import {
   toISODateOnlyFromDatePicker,
 } from '@/utils/fixedAccountEdit'
 import {
-  currentCycleStatusLabel,
   isPaidInCompetence,
   isOverdueCurrentCycle,
   isPaidCurrentCycle,
@@ -31,6 +32,9 @@ import {
   shouldDisplayOverdueTag,
 } from '@/utils/fixedAccountCycleStatus'
 import type { FixedAccountPayment, FixedAccountCycleStatus } from '@/services/fixedAccounts'
+import { formatCurrency } from '@/utils/formatter'
+import { useLocale, useTranslations } from 'next-intl'
+import { Button } from '@/components/ui/button'
 
 type FixedBill = {
   id: string
@@ -57,6 +61,31 @@ type FixedBill = {
 type FilterKey = 'all' | 'paid' | 'pending'
 const FILTER_STORAGE_KEY = 'flynance:fixed-accounts:filter'
 const MONTH_STORAGE_KEY = 'flynance:fixed-accounts:selected-month'
+function createFixedAccountsOnboardingSteps(
+  t: (key: string, values?: Record<string, string | number | Date>) => string
+): ReadonlyArray<PageOnboardingStep> {
+  return [
+    {
+      id: 'header',
+      selector: '[data-onboarding-target="contas-fixas-header"]',
+      align: 'bottom',
+      title: t('onboarding.headerTitle'),
+      description: t('onboarding.headerDescription'),
+    },
+    {
+      id: 'summary-filters',
+      selector: '[data-onboarding-target="contas-fixas-resumo"]',
+      title: t('onboarding.summaryTitle'),
+      description: t('onboarding.summaryDescription'),
+    },
+    {
+      id: 'list',
+      selector: '[data-onboarding-target="contas-fixas-lista"]',
+      title: t('onboarding.listTitle'),
+      description: t('onboarding.listDescription'),
+    },
+  ]
+}
 
 function pad2(value: number) {
   return String(value).padStart(2, '0')
@@ -68,7 +97,7 @@ function todayISODate() {
 }
 
 function toBRL(v: number) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0)
+  return formatCurrency(v || 0)
 }
 
 function parseDateOnly(value?: string | null): Date | null {
@@ -84,12 +113,6 @@ function parseDateOnly(value?: string | null): Date | null {
   const parsed = new Date(raw)
   if (Number.isNaN(parsed.getTime())) return null
   return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate())
-}
-
-function formatDateBR(iso?: string | null) {
-  const d = parseDateOnly(iso)
-  if (!d) return ''
-  return d.toLocaleDateString('pt-BR')
 }
 
 function parseAmountInput(value: string) {
@@ -156,12 +179,12 @@ function parseMonthKey(value?: string | null) {
   return { year, monthIndex }
 }
 
-function formatMonthKeyLabel(monthKey: string) {
+function formatMonthKeyLabel(monthKey: string, locale: string) {
   const parsed = parseMonthKey(monthKey)
   if (!parsed) return monthKey
 
   const date = new Date(parsed.year, parsed.monthIndex, 1)
-  const label = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+  const label = date.toLocaleDateString(locale, { month: 'long', year: 'numeric' })
   return label.charAt(0).toUpperCase() + label.slice(1)
 }
 
@@ -304,6 +327,10 @@ function resolveBillDisplayStatus(
 }
 
 export default function FixedBillsPage() {
+  const t = useTranslations('fixedAccounts')
+  const locale = useLocale()
+  const onboardingSteps = useMemo(() => createFixedAccountsOnboardingSteps(t), [t])
+
   const router = useRouter()
   const [filter, setFilter] = useState<FilterKey>('all')
   const [selectedMonthKey, setSelectedMonthKey] = useState(() => monthKeyFromDate(new Date()))
@@ -407,7 +434,8 @@ export default function FixedBillsPage() {
     }))
   }, [bills, competenceRange.periodEnd, competenceRange.periodStart, selectedMonthKey])
 
-  const selectedMonthLabel = useMemo(() => formatMonthKeyLabel(selectedMonthKey), [selectedMonthKey])
+  const selectedMonthLabel = useMemo(() => formatMonthKeyLabel(selectedMonthKey, locale), [selectedMonthKey, locale])
+  const amountPlaceholder = formatCurrency(0)
 
   const summary = useMemo(() => {
     const paid = billsWithDisplayStatus.filter((bill) => isPaidCurrentCycle(bill.displayStatus)).length
@@ -441,11 +469,11 @@ export default function FixedBillsPage() {
   }, [billsWithDisplayStatus, filter])
 
   const emptyStateMessage = useMemo(() => {
-    if (billsWithDisplayStatus.length === 0) return `Nenhuma conta fixa para ${selectedMonthLabel}.`
-    if (filter === 'paid') return `Nenhuma conta paga em ${selectedMonthLabel}.`
-    if (filter === 'pending') return `Nenhuma conta pendente em ${selectedMonthLabel}.`
-    return 'Nenhuma conta fixa cadastrada.'
-  }, [billsWithDisplayStatus.length, filter, selectedMonthLabel])
+    if (billsWithDisplayStatus.length === 0) return t('emptyForMonth', { month: selectedMonthLabel })
+    if (filter === 'paid') return t('emptyPaid', { month: selectedMonthLabel })
+    if (filter === 'pending') return t('emptyPending', { month: selectedMonthLabel })
+    return t('emptyDefault')
+  }, [billsWithDisplayStatus.length, filter, selectedMonthLabel, t])
 
   const selectedCategoryObj = useMemo<CategoryResponse | null>(() => {
     if (!categoryId) return null
@@ -493,7 +521,7 @@ export default function FixedBillsPage() {
     if (!trimmed || Number.isNaN(parsedAmount) || parsedAmount <= 0) return
 
     if (!isISODateOnly(firstDueDateISO)) {
-      setFormError('Use o formato de data YYYY-MM-DD para salvar.')
+      setFormError(t('errors.dateFormat'))
       return
     }
 
@@ -509,12 +537,12 @@ export default function FixedBillsPage() {
     })
 
     if (!payload) {
-      setFormError('Primeiro vencimento invalido. Use uma data valida no formato YYYY-MM-DD.')
+      setFormError(t('errors.firstDueInvalid'))
       return
     }
 
     if (!isDueDayMatchingStartDate(payload.startDate, payload.dueDay)) {
-      setFormError('Dia de vencimento invalido para a data selecionada.')
+      setFormError(t('errors.dueDayInvalid'))
       return
     }
 
@@ -532,11 +560,11 @@ export default function FixedBillsPage() {
     } catch (err: any) {
       const status = Number(err?.status ?? err?.response?.status)
       if (status === 400) {
-        setFormError('Dados invalidos. Confira o primeiro vencimento e tente novamente.')
+        setFormError(t('errors.invalidData'))
       } else {
-        setFormError(err?.message ?? 'Nao foi possivel salvar a conta fixa.')
+        setFormError(err?.message ?? t('errors.saveFailed'))
       }
-      toast.error(err?.message ?? 'Nao foi possivel salvar a conta fixa.')
+      toast.error(err?.message ?? t('errors.saveFailed'))
     }
   }
 
@@ -565,7 +593,7 @@ export default function FixedBillsPage() {
     if (!payTarget) return
     const parsedAmount = parseAmountInput(payAmount)
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      toast.error('Informe um valor valido para confirmar o pagamento.')
+      toast.error(t('errors.invalidPaymentAmount'))
       return
     }
 
@@ -591,17 +619,17 @@ export default function FixedBillsPage() {
         },
       })
       await fixedAccountsQuery.refetch()
-      toast.success('Pagamento confirmado com sucesso.')
+      toast.success(t('payments.markSuccess'))
       setPayConfirmOpen(false)
       setPayTarget(null)
       setPayDate(todayISODate())
       setPayAmount('')
     } catch (err: any) {
       if (String(err?.message ?? '').includes('fixedAccountCycleOutOfRange')) {
-        toast.error('Essa conta nao pertence ao ciclo selecionado. Atualize o mes e tente novamente.')
+        toast.error(t('errors.wrongCycle'))
         return
       }
-      toast.error(err?.message ?? 'Nao foi possivel confirmar o pagamento.')
+      toast.error(err?.message ?? t('errors.markPaymentFailed'))
     }
   }
 
@@ -622,9 +650,9 @@ export default function FixedBillsPage() {
     try {
       await unmarkPaidMutation.mutateAsync({ id, periodKey })
       await fixedAccountsQuery.refetch()
-      toast.success('Pagamento desmarcado com sucesso.')
+      toast.success(t('payments.unmarkSuccess'))
     } catch (err: any) {
-      toast.error(err?.message ?? 'Nao foi possivel desmarcar o pagamento.')
+      toast.error(err?.message ?? t('errors.unmarkPaymentFailed'))
     }
   }
 
@@ -639,81 +667,89 @@ export default function FixedBillsPage() {
 
   return (
     <section className="w-full h-full pt-8 lg:px-8 px-4 pb-24 lg:pb-0 flex flex-col gap-6 overflow-auto">
-      <Header
-        title="Minhas Contas"
-        subtitle="Lista de obrigacoes recorrentes do seu mes."
-        newTransation={false}
-        rightContent={
-          <button
-            type="button"
-            onClick={() => {
-              resetForm()
-              setDrawerOpen(true)
-            }}
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-white hover:bg-secondary"
-          >
-            <Plus className="h-4 w-4" />
-            Nova conta fixa
-          </button>
-        }
-      />
+      <div data-onboarding-target="contas-fixas-header">
+        <Header
+          title={t('pageTitle')}
+          subtitle={t('pageSubtitle')}
+          newTransation={false}
+          rightContent={
+            <div className="flex items-center gap-2">
+              <PageOnboardingTour
+                steps={onboardingSteps}
+                storageKeyBase="flynance:dashboard:onboarding:contas-fixas:v1"
+                triggerLabel={t('guideButton')}
+              />
+              <ActionTriggerButton
+                onClick={() => {
+                  resetForm()
+                  setDrawerOpen(true)
+                }}
+                label={t('newButton')}
+                icon={Plus}
+                size="sm"
+              />
+            </div>
+          }
+        />
+      </div>
 
 
 
-    <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="flex flex-wrap items-center justify-between gap-3" data-onboarding-target="contas-fixas-resumo">
       <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <div className="min-w-0 rounded-lg border border-gray-300 bg-white p-3 sm:p-4 flex flex-col gap-1">
           <span className="text-base sm:text-sm text-slate-500">
-            Pagas: <strong>{summary.paid}</strong>
+            {t('summary.paidCount')}: <strong>{summary.paid}</strong>
           </span>
           <span className="text-base sm:text-sm text-slate-500">
-            Pendentes: <strong>{summary.pending}</strong>
+            {t('summary.pendingCount')}: <strong>{summary.pending}</strong>
           </span>
         </div>
         <div className="min-w-0 rounded-lg border border-gray-300 bg-white p-3 sm:p-4 flex flex-col gap-1">
           <span className="text-sm sm:text-sm text-slate-500">
-            Total estimado: <strong>{toBRL(monthlyTotals.total)}</strong> 
+            {t('summary.estimatedTotal')}: <strong>{toBRL(monthlyTotals.total)}</strong> 
           </span>
           <span className="text-sm sm:text-sm text-slate-500">
-           Pago:{' '}
+           {t('summary.paidAmount')}:{' '}
           <strong>{toBRL(monthlyTotals.paid)}</strong>
           </span>
         </div>
         <div className="col-span-2 min-w-0 rounded-lg border border-gray-300 bg-white p-3 sm:p-4 flex flex-col gap-1 sm:col-span-2 xl:col-span-1">
           <span className="text-sm sm:text-sm text-slate-500">
-            Pendente:{' '}
+            {t('summary.pendingAmount')}:{' '}
           <strong>{toBRL(monthlyPendingAmount)}</strong>
           </span>
           <span className="text-sm sm:text-sm text-slate-500">
-            Competencia {competenceRange.label}
+            {t('summary.competence', { label: competenceRange.label })}
           </span>
         </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <div className="inline-flex items-center gap-1 rounded-full border bg-white border-gray-200 px-2 py-1">
+        <div className="inline-flex items-center gap-1 rounded-full  px-2 py-1">
           <button
             type="button"
             onClick={() => setSelectedMonthKey((prev) => shiftMonthKey(prev, -1))}
             className="rounded-full px-2 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-100"
-            aria-label="Mes anterior"
+            aria-label={t('monthPrevAria')}
           >
             {'<'}
           </button>
           <input
             type="month"
             value={selectedMonthKey}
+            lang={locale}
             onChange={(e) => {
               const next = e.target.value
               if (parseMonthKey(next)) setSelectedMonthKey(next)
             }}
-            className="rounded-full border border-transparent px-2 py-1 text-xs font-semibold text-gray-700 outline-none focus:border-secondary/50"
+            className="month-inline-picker rounded-full px-2 py-1 text-xs font-semibold text-gray-700 outline-none focus:border-transparent"
           />
           <button
             type="button"
             onClick={() => setSelectedMonthKey((prev) => shiftMonthKey(prev, 1))}
             className="rounded-full px-2 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-100"
-            aria-label="Proximo mes"
+            aria-label={t('monthNextAria')}
           >
             {'>'}
           </button>
@@ -728,10 +764,10 @@ export default function FixedBillsPage() {
                 'rounded-full px-3 py-1 text-xs font-semibold border',
                 filter === key
                   ? 'bg-secondary/30 border-secondary text-[#333C4D]'
-                  : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                  : 'border-gray-200 text-gray-500 hover:bg-gray-50 dark:hover:bg-primary/20'
               )}
             >
-              {key === 'all' ? 'Todas' : key === 'paid' ? 'Pagas' : 'Pendentes'}
+              {key === 'all' ? t('filters.all') : key === 'paid' ? t('filters.paid') : t('filters.pending')}
             </button>
           ))}
         </div>
@@ -739,19 +775,19 @@ export default function FixedBillsPage() {
     </div>
 
       <div className="flex flex-col gap-6">
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm flex flex-col gap-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm flex flex-col gap-4" data-onboarding-target="contas-fixas-lista">
  
 
           <div className="flex flex-col gap-3">
             {fixedAccountsQuery.isLoading && (
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-                Carregando contas fixas...
+                {t('loading')}
               </div>
             )}
 
             {fixedAccountsQuery.isError && (
               <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                Erro ao carregar contas fixas.
+                {t('loadingError')}
               </div>
             )}
 
@@ -764,14 +800,18 @@ export default function FixedBillsPage() {
             {visibleBills.map((bill) => {
               const paid = isPaidCurrentCycle(bill.displayStatus)
               const overdue = isOverdueCurrentCycle(bill.displayStatus)
-              const statusLabel = currentCycleStatusLabel(bill.displayStatus)
+              const statusLabel = paid
+                ? t('status.paid')
+                : overdue
+                ? t('status.overdue')
+                : t('status.pending')
 
               return (
                 <div
                   key={bill.id}
                   className={clsx(
                     'rounded-lg border border-gray-200 p-4 flex flex-col gap-3 cursor-pointer',
-                    paid ? 'bg-emerald-50/40' : 'bg-white'
+                    paid ? 'bg-emerald-500/20' : 'bg-white'
                   )}
                   role="button"
                   tabIndex={0}
@@ -796,12 +836,12 @@ export default function FixedBillsPage() {
                               e.stopPropagation()
                               handleEdit(bill)
                             }}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 md:h-auto md:w-auto md:gap-2 md:px-3 md:py-1 md:text-xs md:font-semibold cursor-pointer"
-                            title="Editar"
-                            aria-label="Editar"
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 md:h-auto md:w-auto md:gap-2 md:px-3 md:py-1 md:text-xs md:font-semibold cursor-pointer"
+                            title={t('edit')}
+                            aria-label={t('edit')}
                           >
                             <Pencil className="h-3 w-3" />
-                            <span className="hidden md:inline">Editar</span>
+                            <span className="hidden md:inline">{t('edit')}</span>
                           </button>
 
                           <button
@@ -811,19 +851,19 @@ export default function FixedBillsPage() {
                               requestDelete(bill.id)
                             }}
                             disabled={deleteMutation.isPending}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 text-red-600 hover:bg-red-50 disabled:opacity-60 md:h-auto md:w-auto md:gap-2 md:px-3 md:py-1 md:text-xs md:font-semibold cursor-pointer"
-                            title="Remover"
-                            aria-label="Remover"
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 text-red-400 hover:bg-red-100 disabled:opacity-60 md:h-auto md:w-auto md:gap-2 md:px-3 md:py-1 md:text-xs md:font-semibold cursor-pointer"
+                            title={t('remove')}
+                            aria-label={t('remove')}
                           >
                             <Trash2 className="h-3 w-3" />
                             <span className="hidden md:inline">
-                              {deleteMutation.isPending ? 'Removendo...' : 'Remover'}
+                              {deleteMutation.isPending ? t('removing') : t('remove')}
                             </span>
                           </button>
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                        <span>Vence todo dia {bill.dueDay}</span>
+                        <span>{t('dueEveryDay', { day: bill.dueDay })}</span>
                         <span>•</span>
                         <span>{toBRL(bill.amount)}</span>
                         {bill.currency && bill.currency !== 'BRL' && (
@@ -840,9 +880,9 @@ export default function FixedBillsPage() {
                         )}
                       </div>
                       <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-400">
-                        <span>Competencia: {competenceRange.label}</span>
+                        <span>{t('competenceLabel', { label: competenceRange.label })}</span>
                         <span>•</span>
-                        <span>Status: {statusLabel}</span>
+                        <span>{t('statusLabel', { status: statusLabel })}</span>
                        {/*  <span>•</span>
                         <span>Fim: {formatDateBR(bill.endDate) || 'Sem data fim'}</span> */}
                       </div>
@@ -854,10 +894,10 @@ export default function FixedBillsPage() {
                   </div>
 
                   <div className="flex w-full flex-col md:flex-row justify-between gap-2">
-                    <div className='flex'>
+                    <div className="flex flex-wrap items-center gap-2">
                       {overdue && (
                         <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-700">
-                          Atrasada
+                          {t('overdueBadge')}
                         </span>
                       )}
                       <span
@@ -866,7 +906,7 @@ export default function FixedBillsPage() {
                           paid ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
                         )}
                       >
-                        {paid ? 'Pago' : 'Pendente'}
+                        {paid ? t('paidBadge') : t('pendingBadge')}
                       </span>
                     </div>
                     <button
@@ -878,12 +918,12 @@ export default function FixedBillsPage() {
                       className={clsx(
                         'inline-flex w-full items-center justify-center cursor-pointer gap-2 rounded-full px-3 py-2 text-xs font-semibold border md:w-auto md:py-1',
                         paid
-                          ? 'border-emerald-300 text-emerald-700 hover:bg-emerald-50'
-                          : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                          ? 'border-emerald-300 text-white bg-emerald-500 hover:bg-emerald-600 dark:hover:bg-emerald-600/80'
+                          : 'border-gray-200 text-gray-700 hover:bg-gray-50 dark:hover:bg-primary/50'
                       )}
                     >
                       <Check className="h-3 w-3" />
-                      {paid ? 'Desmarcar pagamento' : 'Marcar como pago'}
+                      {paid ? t('unmarkPayment') : t('markAsPaid')}
                     </button>
                   </div>
                 </div>
@@ -903,8 +943,8 @@ export default function FixedBillsPage() {
         onConfirm={() => {
           if (deleteTargetId) removeBill(deleteTargetId)
         }}
-        title="Excluir conta fixa"
-        description="Tem certeza que deseja excluir esta conta fixa?"
+        title={t('deleteTitle')}
+        description={t('deleteDescription')}
       />
 
       <Dialog open={payConfirmOpen} onClose={closePayConfirm} className="relative z-50">
@@ -912,30 +952,31 @@ export default function FixedBillsPage() {
         <div className="fixed inset-0 flex items-center justify-center p-4">
           <DialogPanel className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
             <DialogTitle className="text-lg font-semibold text-gray-800">
-              Confirmar pagamento
+              {t('payDialog.title')}
             </DialogTitle>
             <p className="mt-2 text-sm text-gray-500">
-              Confira o valor pago para {payTarget?.name ?? 'esta conta fixa'}.
+              {t('payDialog.description', { name: payTarget?.name ?? t('pageTitle') })}
             </p>
 
             <div className="mt-4">
-              <label className="text-sm text-gray-600">Valor pago</label>
+              <label className="text-sm text-gray-600">{t('payDialog.valueLabel')}</label>
               <input
                 value={payAmount}
                 onChange={(e) => setPayAmount(formatAmountInput(e.target.value))}
                 type="text"
                 inputMode="decimal"
                 className="mt-2 w-full rounded-full border border-gray-200 px-4 py-2 text-sm"
-                placeholder="R$ 0,00"
+                placeholder={amountPlaceholder}
               />
             </div>
 
             <div className="mt-4">
-              <label className="text-sm text-gray-600">Data do pagamento</label>
+              <label className="text-sm text-gray-600">{t('payDialog.dateLabel')}</label>
               <input
                 value={payDate}
                 onChange={(e) => setPayDate(e.target.value)}
                 type="date"
+                lang={locale}
                 className="mt-2 w-full rounded-full border border-gray-200 px-4 py-2 text-sm"
               />
             </div>
@@ -946,7 +987,7 @@ export default function FixedBillsPage() {
                 className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 cursor-pointer"
                 onClick={closePayConfirm}
               >
-                Cancelar
+                {t('payDialog.cancel')}
               </button>
               <button
                 type="button"
@@ -954,7 +995,7 @@ export default function FixedBillsPage() {
                 onClick={handleConfirmPay}
                 disabled={markPaidMutation.isPending}
               >
-                {markPaidMutation.isPending ? 'Confirmando...' : 'Confirmar pagamento'}
+                {markPaidMutation.isPending ? t('payDialog.confirming') : t('payDialog.confirm')}
               </button>
             </div>
           </DialogPanel>
@@ -967,12 +1008,12 @@ export default function FixedBillsPage() {
           <DialogPanel className="bg-white w-4/5 max-w-md h-full rounded-l-xl shadow-lg p-6 space-y-6 overflow-y-auto">
             <div className="flex justify-between items-center">
               <DialogTitle className="text-lg font-semibold text-gray-800">
-                {editingBill ? 'Editar conta fixa' : 'Nova conta fixa'}
+                {editingBill ? t('drawer.editTitle') : t('drawer.newTitle')}
               </DialogTitle>
               <button
                 onClick={closeDrawer}
                 className="text-gray-500 hover:text-gray-700 cursor-pointer"
-                aria-label="Fechar"
+                aria-label={t('drawer.closeAria')}
               >
                 <X size={20} />
               </button>
@@ -980,7 +1021,7 @@ export default function FixedBillsPage() {
 
             <form onSubmit={handleAdd} className="space-y-4">
               <div className="flex flex-col gap-2">
-                <label className="text-sm text-gray-600">Nome</label>
+                <label className="text-sm text-gray-600">{t('drawer.name')}</label>
                 <input
                   value={name}
                   onChange={(e) => {
@@ -988,13 +1029,13 @@ export default function FixedBillsPage() {
                     setFormError(null)
                   }}
                   className="w-full rounded-full border border-gray-200 px-4 py-2 text-sm"
-                  placeholder="Ex: Internet, Aluguel"
+                  placeholder={t('drawer.namePlaceholder')}
                   required
                 />
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-sm text-gray-600">Categoria</label>
+                <label className="text-sm text-gray-600">{t('drawer.category')}</label>
                 <CategorySelect
                   value={selectedCategoryObj}
                   onChange={(cat) => {
@@ -1002,7 +1043,7 @@ export default function FixedBillsPage() {
                     setFormError(null)
                   }}
                   typeFilter="EXPENSE"
-                  placeholder="Selecione uma categoria"
+                  placeholder={t('drawer.categoryPlaceholder')}
                   allowCreate
                   onCreateCategory={handleCreateCategory}
                   className="w-full"
@@ -1011,10 +1052,11 @@ export default function FixedBillsPage() {
 
               {!editingBill && (
                 <div className="flex flex-col gap-2">
-                  <label className="text-sm text-gray-600">Mes de competencia inicial</label>
+                  <label className="text-sm text-gray-600">{t('drawer.initialCompetenceMonth')}</label>
                   <input
                     type="month"
                     value={firstCompetenceMonthKey}
+                    lang={locale}
                     onChange={(e) => {
                       const nextMonthKey = e.target.value
                       if (!parseMonthKey(nextMonthKey)) return
@@ -1028,14 +1070,14 @@ export default function FixedBillsPage() {
                     className="w-full rounded-full border border-gray-200 px-4 py-2 text-sm"
                   />
                   <span className="text-xs text-gray-500">
-                    Esta conta sera vinculada a partir de {formatMonthKeyLabel(firstCompetenceMonthKey)}.
+                    {t('drawer.linkedFrom', { month: formatMonthKeyLabel(firstCompetenceMonthKey, locale) })}
                   </span>
                 </div>
               )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-2">
-                  <label className="text-sm text-gray-600">Valor aproximado</label>
+                  <label className="text-sm text-gray-600">{t('drawer.amount')}</label>
                   <input
                     value={amount}
                     onChange={(e) => {
@@ -1045,12 +1087,12 @@ export default function FixedBillsPage() {
                     type="text"
                     inputMode="decimal"
                     className="w-full rounded-full border border-gray-200 px-4 py-2 text-sm"
-                    placeholder="R$ 0,00"
+                    placeholder={amountPlaceholder}
                     required
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-sm text-gray-600">Primeiro vencimento</label>
+                  <label className="text-sm text-gray-600">{t('drawer.firstDueDate')}</label>
                   <input
                     value={firstDueDateISO}
                     onChange={(e) => {
@@ -1062,7 +1104,7 @@ export default function FixedBillsPage() {
                       setFormError(null)
                     }}
                     type="date"
-                    lang="pt-BR"
+                    lang={locale}
                     className={clsx(
                       'w-full rounded-full border px-4 py-2 text-sm',
                       firstDueDateIsValid ? 'border-gray-200' : 'border-red-400'
@@ -1070,13 +1112,13 @@ export default function FixedBillsPage() {
                     required
                   />
                   {!firstDueDateIsValid && (
-                    <span className="text-xs text-red-600">Informe uma data valida.</span>
+                    <span className="text-xs text-red-400">{t('drawer.invalidDate')}</span>
                   )}
                 </div>
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-sm text-gray-600">Observacao</label>
+                <label className="text-sm text-gray-600">{t('drawer.observation')}</label>
                 <input
                   value={notes}
                   onChange={(e) => {
@@ -1084,7 +1126,7 @@ export default function FixedBillsPage() {
                     setFormError(null)
                   }}
                   className="w-full rounded-full border border-gray-200 px-4 py-2 text-sm"
-                  placeholder="Opcional"
+                  placeholder={t('drawer.optional')}
                 />
               </div>
               {formError && (
@@ -1093,19 +1135,20 @@ export default function FixedBillsPage() {
                 </div>
               )}
               <span className="text-xs text-gray-500">
-                * Contas fixas representam obrigacoes recorrentes. Marcar pagamento e opcional.
+                {t('drawer.footnote')}
               </span>
-              <button
+              <Button
                 type="submit"
-                className="w-full mt-4 bg-primary hover:bg-secondary text-white font-semibold py-2 px-4 rounded-full cursor-pointer disabled:opacity-60"
+                variant="default"
+                className='mt-4'
                 disabled={createMutation.isPending || updateMutation.isPending || !firstDueDateIsValid}
               >
                 {createMutation.isPending || updateMutation.isPending
-                  ? 'Salvando...'
+                  ? t('drawer.saving')
                   : editingBill
-                  ? 'Salvar alteracoes'
-                  : 'Adicionar conta fixa'}
-              </button>
+                  ? t('drawer.saveChanges')
+                  : t('drawer.add')}
+              </Button>
             </form>
           </DialogPanel>
         </div>

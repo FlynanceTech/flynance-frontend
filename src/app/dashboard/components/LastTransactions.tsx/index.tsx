@@ -9,9 +9,10 @@ import { useTranscation } from '@/hooks/query/useTransaction'
 import type { Transaction } from '@/types/Transaction'
 import DateRangeSelect, { DateFilter } from '../DateRangeSelect'
 import { IconResolver } from '@/utils/IconResolver'
+import { formatCurrency } from '@/utils/formatter'
 
 function toBRL(v: number): string {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
+  return formatCurrency(v)
 }
 
 const SkeletonRow: React.FC = () => (
@@ -111,12 +112,12 @@ export const LastTransactions: React.FC = () => {
         ) : filteredSortedTop7.length === 0 ? (
           <div className="text-sm text-gray-500 py-6 flex items-center gap-2">
             <CalendarDays className="w-4 h-4 text-gray-400" />
-            Nenhuma transacao no periodo selecionado.
+            Nenhuma transação no periodo selecionado.
           </div>
         ) : (
           filteredSortedTop7.map((t) => {
             const isIncome = t.type === 'INCOME'
-            const colorClass = isIncome ? 'text-primary' : 'text-red-500'
+            const colorClass = isIncome ? 'text-primary' : 'text-red-400'
             const Icon = isIncome ? ArrowUp : ArrowDown
             const categoryName = t.category?.name ?? 'Sem categoria'
 

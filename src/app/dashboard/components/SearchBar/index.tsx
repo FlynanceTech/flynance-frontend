@@ -1,7 +1,9 @@
 import { useTransactionFilter } from '@/stores/useFilter'
 import { Search } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 export default function SearchBar() {
+  const t = useTranslations('search')
   const searchTerm = useTransactionFilter((s) => s.searchTerm)
   const setSearchTerm = useTransactionFilter((s) => s.setSearchTerm)
 
@@ -10,7 +12,7 @@ export default function SearchBar() {
     border border-[#E2E8F0] bg-white text-[#1A202C] text-sm font-medium shadow-sm hover:bg-gray-50">
       <input
         type="text"
-        placeholder="Search"
+        placeholder={t('placeholder')}
         className="outline-none w-full bg-transparent"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}

@@ -45,7 +45,7 @@ export default function AdvisorClientInviteAcceptClient() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F7F8FA] px-4 py-8">
+    <main className="min-h-screen bg-[hsl(var(--background))] px-4 py-8 text-[hsl(var(--foreground))] transition-colors">
       <section className="mx-auto w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-6">
         <h1 className="text-lg font-semibold text-[#333C4D]">Convite de cliente</h1>
         <p className="mt-2 text-sm text-slate-600">

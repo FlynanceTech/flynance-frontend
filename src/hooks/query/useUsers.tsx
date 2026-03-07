@@ -3,17 +3,14 @@ import { getUsers, getUserById, createUser, updateUser, deleteUser } from '@/ser
 import { userResponse } from '@/types/Transaction'
 import { UserDTO } from '@/types/user'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { usePathname } from 'next/navigation'
 
-export function useUsers(userId?: string, fetchSingle = true) {
+export function useUsers(userId?: string, fetchSingle = true, fetchList = false) {
     const queryClient = useQueryClient()
-    const pathname = usePathname()
-    const shouldFetchList = pathname.includes('/dashboard')
 
     const usersQuery = useQuery<UserDTO[], Error>({
         queryKey: ['users'],
         queryFn: getUsers,
-        enabled: shouldFetchList
+        enabled: fetchList
     })
 
     const userQuery = useQuery<userResponse, Error>({

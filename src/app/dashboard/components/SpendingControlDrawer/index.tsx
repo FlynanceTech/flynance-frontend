@@ -125,7 +125,7 @@ export default function SpendingControlDrawer({ open, onClose, editing }: Props)
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>
-                {errors.categoryId && <span className="text-red-500 text-xs">{errors.categoryId.message}</span>}
+                {errors.categoryId && <span className="text-red-400 text-xs">{errors.categoryId.message}</span>}
               </div>
 
               <div  className='flex flex-col gap-2'>
@@ -146,7 +146,7 @@ export default function SpendingControlDrawer({ open, onClose, editing }: Props)
                     />
                   )}
                 />
-                {errors.goal && <span className="text-red-500 text-xs">{errors.goal.message}</span>}
+                {errors.goal && <span className="text-red-400 text-xs">{errors.goal.message}</span>}
               </div>
 
               <div className='flex flex-col gap-2'>

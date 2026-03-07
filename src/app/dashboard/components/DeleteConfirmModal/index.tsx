@@ -56,7 +56,7 @@ export default function DeleteConfirmModal({
 
               <div className="flex flex-col items-center text-center gap-4">
                 <div className="rounded-full bg-red-100 dark:bg-red-400/10 p-3">
-                  <Trash2 className="h-6 w-6 text-red-600 dark:text-red-400" />
+                  <Trash2 className="h-6 w-6 text-red-400 dark:text-red-400" />
                 </div>
                 <DialogTitle as="h3" className="text-lg font-semibold text-zinc-800 ">
                   {title}

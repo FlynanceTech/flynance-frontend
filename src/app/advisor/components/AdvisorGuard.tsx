@@ -35,7 +35,7 @@ export default function AdvisorGuard({ children }: { children: React.ReactNode }
 
   if (status === 'idle' || status === 'loading' || status === 'unauthenticated' || !canAccessAdvisor) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#F7F8FA]">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[hsl(var(--background))] text-[hsl(var(--foreground))] transition-colors">
         <div className="h-10 w-10 rounded-full border-4 border-[#4F98C2] border-t-transparent animate-spin" />
         <p className="mt-3 text-sm text-slate-600">Validando acesso do advisor...</p>
       </div>

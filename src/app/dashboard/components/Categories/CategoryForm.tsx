@@ -1,22 +1,22 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { Plus, Check, X, ChevronDown, ChevronUp, PlusCircle, PlusIcon } from 'lucide-react'
+import React, { useEffect, useMemo, useState } from 'react'
+import { Plus, Check, X, ChevronUp, PlusIcon } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { useTranslations } from 'next-intl'
 import IconSelector from '../IconSelector'
 import { IconName } from '@/utils/icon-map'
 import { CategoryDTO, CategoryResponse } from '@/services/category'
 import { UseMutationResult } from '@tanstack/react-query'
 import clsx from 'clsx'
+import { Button } from '@headlessui/react'
 
-const schema = z.object({
-  name: z.string().min(1, 'Nome de categoria é obrigatória'),
-  keywords: z.array(z.string().min(1)).min(1, 'Pelo menos uma palavra chave'),
-})
-
-type FormData = z.infer<typeof schema>
+type FormData = {
+  name: string
+  keywords: string[]
+}
 
 interface CategoryFormProps {
   type: 'EXPENSE' | 'INCOME'
@@ -39,20 +39,26 @@ export function CategoryForm({
   updateMutation,
   tab,
 }: CategoryFormProps) {
+  const t = useTranslations('categoryForm')
   const [color, setColor] = useState(editing?.color || '#22C55E')
   const [icon, setIcon] = useState<IconName>(editing?.icon || 'Wallet')
   const [keywordInput, setKeywordInput] = useState('')
   const [keywords, setKeywords] = useState<string[]>(
     editing?.keywords.map((k) => k.name) || [],
   )
-
-  // controla se o form aparece no mobile
   const [isMobileOpen, setIsMobileOpen] = useState<boolean>(!!editing)
 
+  const schema = useMemo(
+    () =>
+      z.object({
+        name: z.string().min(1, t('errors.nameRequired')),
+        keywords: z.array(z.string().min(1)).min(1, t('errors.keywordsRequired')),
+      }),
+    [t]
+  )
+
   useEffect(() => {
-    if (editing) {
-      setIsMobileOpen(true) // se entrou em modo edição, garante que abre no mobile
-    }
+    if (editing) setIsMobileOpen(true)
   }, [editing])
 
   const {
@@ -124,130 +130,113 @@ export function CategoryForm({
     onCancelEdit()
   }
 
-  const title =
-    editing
-      ? 'Editar Categoria'
-      : `Adicionar Categoria de ${tab === 0 ? 'Despesas' : 'Receitas'}`
+  const title = editing
+    ? t('editTitle')
+    : tab === 0
+      ? t('addExpenseTitle')
+      : t('addIncomeTitle')
+
+  const subtitle = type === 'EXPENSE' ? t('subtitleExpense') : t('subtitleIncome')
 
   return (
-    <div className="bg-white rounded-md border border-gray-200 p-4 sm:p-6">
-      {/* Cabeçalho + toggle mobile */}
-      <div className={clsx("flex items-start justify-between lg:mb-4", isMobileOpen && "mb-4" )}>
+    <div className="rounded-md border border-gray-200 bg-white p-4 sm:p-6">
+      <div className={clsx('flex items-start justify-between lg:mb-4', isMobileOpen && 'mb-4')}>
         <div className="flex flex-col gap-1">
-          <h2 className="text-base lg:text-lg font-semibold">{title}</h2>
-          <h3 className="text-xs sm:text-sm font-light text-gray-500">
-            Crie categorias personalizadas para classificar seus gastos
+          <h2 className="text-base font-semibold lg:text-lg">{title}</h2>
+          <h3 className="text-xs font-light text-gray-500 sm:text-sm">
+            {subtitle}
           </h3>
         </div>
 
         <button
           type="button"
-          className="inline-flex items-center gap-1 px-3 py-2 text-xs font-medium rounded-full border border-gray-300 text-gray-700 bg-white shadow-sm lg:hidden"
+          className="inline-flex items-center gap-1 rounded-full border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 shadow-sm lg:hidden"
           onClick={() => setIsMobileOpen((prev) => !prev)}
+          aria-label={isMobileOpen ? t('toggleCloseAria') : t('toggleOpenAria')}
         >
-          {isMobileOpen ? (
-            <>
-              <ChevronUp className="w-4 h-4" />
-            </>
-          ) : (
-            <>
-              <PlusIcon className="w-4 h-4" />
-            </>
-          )}
+          {isMobileOpen ? <ChevronUp className="h-4 w-4" /> : <PlusIcon className="h-4 w-4" />}
         </button>
       </div>
 
-      {/* Formulário – some no mobile quando fechado, sempre visível no desktop */}
       <form
         onSubmit={handleSubmit(internalSubmit)}
         className={clsx(
-          'flex flex-col gap-4 sm:gap-4 lg:flex-row lg:gap-4 lg:items-end',
+          'flex flex-col gap-4 sm:gap-4 lg:flex-row lg:items-end lg:gap-4',
           !isMobileOpen && 'hidden lg:flex',
         )}
       >
-        <div className="w-full flex flex-col items-start">
-          <label className="text-sm text-gray-600 mb-1 block">
-            Nome da Categoria
-          </label>
+        <div className="flex w-full flex-col items-start">
+          <label className="mb-1 block text-sm text-gray-600">{t('nameLabel')}</label>
           <input
             {...register('name')}
             className={clsx(
-              'w-full h-12 border rounded-full px-3 py-2 text-sm outline-none',
+              'h-12 w-full rounded-full border px-3 py-2 text-sm outline-none',
               errors.name
-                ? 'border-red-300 border-2 placeholder:text-red-400'
+                ? 'border-2 border-red-300 placeholder:text-red-400'
                 : 'border-gray-300',
             )}
-            placeholder={
-              errors.name
-                ? 'Nome de categoria é obrigatória'
-                : 'Nome da categoria'
-            }
+            placeholder={errors.name ? t('errors.nameRequired') : t('namePlaceholder')}
           />
         </div>
 
-        <div className="w-full flex flex-col items-start">
-          <label className="text-sm text-gray-600 mb-1 block">
-            Palavras-chave
-          </label>
+        <div className="flex w-full flex-col items-start">
+          <label className="mb-1 block text-sm text-gray-600">{t('keywordsLabel')}</label>
           <div
             className={clsx(
-              'flex items-center gap-2 w-full h-12 rounded-full text-sm outline-none',
-              errors.keywords ? 'border-red-300 border-2' : 'border border-gray-300',
+              'flex h-12 w-full items-center gap-2 rounded-full text-sm outline-none',
+              errors.keywords ? 'border-2 border-red-300' : 'border border-gray-300',
             )}
           >
             <input
               value={keywordInput}
               onChange={(e) => setKeywordInput(e.target.value)}
               className={clsx(
-                'w-full h-12 px-3 py-2 text-sm outline-none',
+                'h-12 w-full px-3 py-2 text-sm outline-none',
                 errors.keywords ? 'placeholder:text-red-400' : '',
               )}
-              placeholder={
-                errors.keywords
-                  ? 'Pelo menos uma palavra chave'
-                  : 'Digite uma palavra-chave'
-              }
+              placeholder={errors.keywords ? t('errors.keywordsRequired') : t('keywordsPlaceholder')}
             />
             <button
               type="button"
               onClick={handleAddKeyword}
-              className="h-12 min-w-12 flex items-center justify-center bg-secondary text-white rounded-full hover:bg-secondary/80 text-sm cursor-pointer"
+              className="flex h-12 min-w-12 cursor-pointer items-center justify-center rounded-full bg-secondary text-sm text-black hover:bg-secondary/80"
+              aria-label={t('addKeywordAria')}
             >
               <Plus />
             </button>
           </div>
         </div>
 
-        <div className="w-full flex lg:max-w-12 flex-col lg:items-center lg:justify-center">
-          <label className="text-sm text-gray-600 mb-1 block">Cor</label>
+        <div className="flex w-full flex-col lg:max-w-12 lg:items-center lg:justify-center">
+          <label className="mb-1 block text-sm text-gray-600">{t('colorLabel')}</label>
           <div className="relative w-full">
             <input
               type="color"
               value={color}
               onChange={(e) => setColor(e.target.value)}
-              className="absolute opacity-0 w-full lg:w-12 h-12 cursor-pointer"
+              className="absolute h-12 w-full cursor-pointer opacity-0 lg:w-12"
+              aria-label={t('colorPickerAria')}
             />
             <div
-              className="w-full lg:w-12 h-12 rounded-full border-4 cursor-pointer border-gray-200"
+              className="h-12 w-full cursor-pointer rounded-full border-4 border-gray-200 lg:w-12"
               style={{ backgroundColor: color }}
             />
           </div>
         </div>
 
-        <div className="w-full lg:max-w-56 flex flex-col items-center justify-end">
-          <IconSelector value={icon} onChange={setIcon} label="Ícone" />
+        <div className="flex w-full flex-col items-center justify-end lg:max-w-56">
+          <IconSelector value={icon} onChange={setIcon} label={t('iconLabel')} />
         </div>
 
-        <button
+        <Button
           type="submit"
-          className="h-12 flex items-center justify-center gap-2 bg-secondary rounded-full text-white px-4 py-2 hover:bg-secondary/80 w-full cursor-pointer lg:w-auto"
+          className="flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-secondary px-4 py-2 text-white hover:bg-secondary/80 lg:w-auto"
         >
           {editing ? <Check /> : <Plus />}
-          {editing ? 'Atualizar' : 'Adicionar'}
-        </button>
+          {editing ? t('updateButton') : t('addButton')}
+        </Button>
       </form>
 
-      {/* Chips de keywords – seguem mesma lógica de visibilidade do form */}
       {keywords.length > 0 && (
         <div
           className={clsx(
@@ -258,13 +247,14 @@ export function CategoryForm({
           {keywords.map((kw, idx) => (
             <span
               key={idx}
-              className="flex items-center text-xs px-3 py-1 bg-gray-200 rounded-full"
+              className="flex items-center rounded-full bg-gray-200 px-3 py-1 text-xs"
             >
               {kw}
               <X
                 onClick={() => handleRemoveKeyword(kw)}
                 className="ml-1 cursor-pointer"
                 size={14}
+                aria-label={t('removeKeywordAria')}
               />
             </span>
           ))}

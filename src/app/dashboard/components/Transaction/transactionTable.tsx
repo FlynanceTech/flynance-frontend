@@ -2,7 +2,9 @@
 
 import React, { useMemo } from 'react'
 import { Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { useLocale, useTranslations } from 'next-intl'
 import type { Transaction } from '@/types/Transaction'
+import { formatCurrency } from '@/utils/formatter'
 
 type SortField = 'date' | 'value' | null
 type SortDirection = 'asc' | 'desc'
@@ -15,44 +17,28 @@ type Props = {
   onToggleSelectRow: (id: string) => void
   onEdit: (t: Transaction) => void
   onDelete: (id: string) => void
-
+  canWrite?: boolean
   sortField: SortField
   sortDirection: SortDirection
   onSortChange: (field: 'date' | 'value') => void
 }
 
-function toBRL(v: number) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0)
+function toCurrency(v: number) {
+  return formatCurrency(v || 0)
 }
 
-function fmtDate(d: any) {
-  // suporta Date | string
-  const dt = d instanceof Date ? d : new Date(d)
+function fmtDate(d: unknown, locale: string) {
+  const dt = d instanceof Date ? d : new Date(String(d))
   if (Number.isNaN(dt.getTime())) return '-'
-  return dt.toLocaleDateString('pt-BR')
+  return dt.toLocaleDateString(locale)
 }
 
 function SortIcon({ active, direction }: { active: boolean; direction: SortDirection }) {
   if (!active) return <ArrowUpDown className="h-4 w-4 opacity-60" />
-  return direction === 'asc' ? (
-    <ArrowUp className="h-4 w-4" />
-  ) : (
-    <ArrowDown className="h-4 w-4" />
-  )
+  return direction === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
 }
 
-/**
- * Grid columns:
- *  - checkbox
- *  - data
- *  - descrição (flexível)
- *  - categoria (desktop)
- *  - tipo (desktop)
- *  - valor
- *  - ações
- */
-const GRID_COLS =
-  'grid-cols-[40px_110px_minmax(220px,1fr)_220px_110px_140px_92px]'
+const GRID_COLS = 'grid-cols-[40px_110px_minmax(220px,1fr)_220px_110px_140px_92px]'
 
 export function TransactionTable({
   transactions,
@@ -62,20 +48,19 @@ export function TransactionTable({
   onToggleSelectRow,
   onEdit,
   onDelete,
+  canWrite = true,
   sortField,
   sortDirection,
   onSortChange,
 }: Props) {
+  const t = useTranslations('transactionTable')
+  const locale = useLocale()
   const hasData = transactions?.length > 0
-
-  // pra não “piscar” o header quando não tiver dado
   const rows = useMemo(() => transactions ?? [], [transactions])
 
   return (
     <div className="w-full hidden md:block">
-      {/* Container */}
       <div className="rounded-xl border border-gray-200 bg-white shadow overflow-hidden">
-        {/* Header Sticky */}
         <div
           role="row"
           className={[
@@ -88,78 +73,71 @@ export function TransactionTable({
             'px-4 py-4',
           ].join(' ')}
         >
-          {/* Select all */}
           <div role="columnheader" className="flex items-center justify-center">
             <input
               type="checkbox"
               checked={selectAll}
               onChange={onToggleSelectAll}
-              className="h-4 w-4 accent-black"
-              aria-label="Selecionar todas as transações desta página"
+              disabled={!canWrite}
+              className="h-4 w-4 accent-black disabled:cursor-not-allowed disabled:opacity-60"
+              aria-label={t('selectAllAria')}
             />
           </div>
 
-          {/* Date */}
           <button
             type="button"
             role="columnheader"
             onClick={() => onSortChange('date')}
-            className="flex items-center gap-2 text-left text-sm font-semibold text-primary hover:text-gray-900 cursor-pointer"
-            title="Ordenar por data"
+            className="flex items-center gap-2 text-left text-sm font-semibold text-primary hover:text-foreground cursor-pointer"
+            title={t('sortByDate')}
           >
-            Data
+            {t('date')}
             <SortIcon active={sortField === 'date'} direction={sortDirection} />
           </button>
 
-          {/* Description */}
           <div role="columnheader" className="text-sm font-semibold text-primary">
-            Descrição
+            {t('description')}
           </div>
 
-          {/* Category (desktop) */}
           <div role="columnheader" className="hidden lg:block text-sm font-semibold text-primary">
-            Categoria
+            {t('category')}
           </div>
 
-          {/* Type (desktop) */}
           <div role="columnheader" className="hidden lg:block text-sm font-semibold text-primary">
-            Tipo
+            {t('type')}
           </div>
 
-          {/* Value */}
           <button
             type="button"
             role="columnheader"
             onClick={() => onSortChange('value')}
-            className="flex items-center justify-end gap-2 text-right text-sm font-semibold text-primary hover:text-gray-900 pr-8 cursor-pointer"
-            title="Ordenar por valor"
+            className="flex items-center justify-end gap-2 text-right text-sm font-semibold text-primary hover:text-foreground pr-8 cursor-pointer"
+            title={t('sortByValue')}
           >
-            Valor
+            {t('value')}
             <SortIcon active={sortField === 'value'} direction={sortDirection} />
           </button>
 
-          {/* Actions */}
           <div role="columnheader" className="text-right text-sm font-semibold text-primary pr-2">
-            Ações
+            {t('actions')}
           </div>
         </div>
 
-        {/* Body */}
         <div role="rowgroup" className="max-h-[580px] overflow-auto">
           {!hasData ? (
-            <div className="p-6 text-sm text-gray-500">Nenhuma transação encontrada.</div>
+            <div className="p-6 text-sm text-gray-500">{t('noData')}</div>
           ) : (
-            rows.map((t) => {
-              const checked = selectedIds.has(t.id)
-
-              const categoryName = t.category?.name ?? '—'
-              const categoryColor = t.category?.color ?? '#CBD5E1'
-              const isExpense = t.type === 'EXPENSE'
-              const value = Number(t.value ?? 0)
+            rows.map((tx) => {
+              const checked = selectedIds.has(tx.id)
+              const categoryName = tx.category?.name ?? '-'
+              const categoryColor = tx.category?.color ?? '#CBD5E1'
+              const isExpense = tx.type === 'EXPENSE'
+              const value = Number(tx.value ?? 0)
+              const description = tx.description || t('noDescription')
 
               return (
                 <div
-                  key={t.id}
+                  key={tx.id}
                   role="row"
                   className={[
                     'grid',
@@ -167,52 +145,42 @@ export function TransactionTable({
                     'items-center',
                     'px-4 py-2',
                     'border-b border-gray-100',
-                    'hover:bg-gray-50',
+                    'transition-colors hover:bg-muted/70',
                   ].join(' ')}
                 >
-                  {/* Checkbox */}
                   <div role="cell" className="flex items-center justify-center">
                     <input
                       type="checkbox"
                       checked={checked}
-                      onChange={() => onToggleSelectRow(t.id)}
-                      className="h-4 w-4 accent-black"
-                      aria-label={`Selecionar transação ${t.description ?? ''}`}
+                      onChange={() => onToggleSelectRow(tx.id)}
+                      disabled={!canWrite}
+                      className="h-4 w-4 accent-black disabled:cursor-not-allowed disabled:opacity-60"
+                      aria-label={t('selectRowAria', { description })}
                     />
                   </div>
 
-                  {/* Date */}
                   <div role="cell" className="text-sm text-gray-700">
-                    {fmtDate(t.date)}
+                    {fmtDate(tx.date, locale)}
                   </div>
 
-                  {/* Description */}
                   <div role="cell" className="min-w-0 pr-4">
-                    <div className="truncate text-sm font-medium text-gray-900">
-                      {t.description || 'Sem descrição'}
-                    </div>
+                    <div className="truncate text-sm font-medium text-gray-900">{description}</div>
 
-                    {/* Sub-info no mobile (categoria + tipo) */}
                     <div className="lg:hidden mt-0.5 flex items-center gap-2 text-xs text-gray-500 ">
                       <span className="inline-flex items-center gap-1">
-                        <span
-                          className="h-2.5 w-2.5 rounded-full"
-                          style={{ backgroundColor: categoryColor }}
-                        />
+                        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: categoryColor }} />
                         <span className="truncate max-w-[200px]">{categoryName}</span>
                       </span>
-                      <span className="opacity-60">•</span>
-                      <span>{isExpense ? 'Despesa' : 'Receita'}</span>
+                      <span className="opacity-60">.</span>
+                      <span>{isExpense ? t('expense') : t('income')}</span>
                     </div>
                   </div>
 
-                  {/* Category (desktop) */}
                   <div role="cell" className="hidden lg:flex items-center gap-2 text-sm text-gray-700 pr-4">
                     <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: categoryColor }} />
                     <span className="truncate">{categoryName}</span>
                   </div>
 
-                  {/* Type (desktop) */}
                   <div role="cell" className="hidden lg:block">
                     <span
                       className={[
@@ -220,36 +188,40 @@ export function TransactionTable({
                         isExpense ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700',
                       ].join(' ')}
                     >
-                      {isExpense ? 'Despesa' : 'Receita'}
+                      {isExpense ? t('expense') : t('income')}
                     </span>
                   </div>
 
-                  {/* Value */}
                   <div role="cell" className="text-right pr-8">
-                    <span className={['text-sm font-semibold', isExpense ? 'text-red-600' : 'text-green-600'].join(' ')}>
-                      {toBRL(value)}
+                    <span className={['text-sm font-semibold', isExpense ? 'text-red-400' : 'text-green-600'].join(' ')}>
+                      {toCurrency(value)}
                     </span>
                   </div>
 
-                  {/* Actions */}
                   <div role="cell" className="flex items-center justify-end gap-2">
-                    <button
-                      onClick={() => onEdit(t)}
-                      className="h-9 w-9 rounded-full border border-gray-200 hover:bg-gray-50 flex items-center justify-center cursor-pointer"
-                      title="Editar"
-                      aria-label="Editar transação"
-                    >
-                      <Pencil className="h-4 w-4 text-gray-600" />
-                    </button>
+                    {canWrite ? (
+                      <>
+                        <button
+                          onClick={() => onEdit(tx)}
+                          className="h-9 w-9 rounded-full border border-gray-200 hover:bg-muted/80 flex items-center justify-center cursor-pointer"
+                          title={t('edit')}
+                          aria-label={t('editAria')}
+                        >
+                          <Pencil className="h-4 w-4 text-gray-600" />
+                        </button>
 
-                    <button
-                      onClick={() => onDelete(t.id)}
-                      className="h-9 w-9 rounded-full border border-gray-200 hover:bg-red-50 flex items-center justify-center cursor-pointer"
-                      title="Excluir"
-                      aria-label="Excluir transação"
-                    >
-                      <Trash2 className="h-4 w-4 text-red-600" />
-                    </button>
+                        <button
+                          onClick={() => onDelete(tx.id)}
+                          className="h-9 w-9 rounded-full border border-gray-200 hover:bg-red-500/15 flex items-center justify-center cursor-pointer"
+                          title={t('delete')}
+                          aria-label={t('deleteAria')}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-400" />
+                        </button>
+                      </>
+                    ) : (
+                      <span className="text-xs text-slate-400">{t('readOnly')}</span>
+                    )}
                   </div>
                 </div>
               )
@@ -258,9 +230,8 @@ export function TransactionTable({
         </div>
       </div>
 
-      {/* Hint (opcional) */}
       <div className="mt-2 text-xs text-gray-500">
-        Dica: clique em <span className="font-medium">Data</span> ou <span className="font-medium">Valor</span> para ordenar.
+        {t('sortTip', { data: t('date'), value: t('value') })}
       </div>
     </div>
   )

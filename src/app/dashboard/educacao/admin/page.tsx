@@ -25,8 +25,10 @@ import {
   useRemoveLesson,
   useUpdateCourse,
 } from "@/hooks/query/useCourses";
+import { useTranslations } from "next-intl";
 
 export default function AdminPage(): JSX.Element {
+  const t = useTranslations('educationAdminPage')
   const { toast } = useToast();
 
   const { data: courses, isLoading: isListLoading } = useCourses();
@@ -77,7 +79,7 @@ export default function AdminPage(): JSX.Element {
     setCurrent(course);
     setEditing(true);
     setDrawerCourseOpen(true);
-    toast({ title: "Modo de edição", description: "Você está editando um curso existente" });
+    toast({ title: t('toasts.editModeTitle'), description: t('toasts.editModeDescription') });
   };
 
   const saveCourse = (data: CourseFormValues) => {
@@ -89,13 +91,13 @@ export default function AdminPage(): JSX.Element {
         {
           onSuccess: (updated) => {
             setCurrent(updated);
-            toast({ title: "Sucesso", description: "Curso atualizado com sucesso!" });
+            toast({ title: t('toasts.successTitle'), description: t('toasts.courseUpdated') });
             setDrawerCourseOpen(false);
             setEditing(false);
           },
           onError: (err) => {
             const message = err instanceof Error ? err.message : String(err);
-            toast({ title: "Erro ao atualizar curso", description: message, variant: "destructive" });
+            toast({ title: t('toasts.updateErrorTitle'), description: message, variant: "destructive" });
           },
         }
       );
@@ -113,11 +115,11 @@ export default function AdminPage(): JSX.Element {
             setCurrent(created);
             setDrawerCourseOpen(false);
             setEditing(false);
-            toast({ title: "Sucesso", description: "Curso criado com sucesso!" });
+            toast({ title: t('toasts.successTitle'), description: t('toasts.courseCreated') });
           },
           onError: (err) => {
             const message = err instanceof Error ? err.message : String(err);
-            toast({ title: "Erro ao criar curso", description: message, variant: "destructive" });
+            toast({ title: t('toasts.createErrorTitle'), description: message, variant: "destructive" });
           },
         }
       );
@@ -129,7 +131,7 @@ export default function AdminPage(): JSX.Element {
       { id },
       {
         onSuccess: () => {
-          toast({ title: "Sucesso", description: "Curso removido!" });
+          toast({ title: t('toasts.successTitle'), description: t('toasts.courseRemoved') });
           if (current.id === id) {
             setCurrent({
               title: "",
@@ -146,7 +148,7 @@ export default function AdminPage(): JSX.Element {
         },
         onError: (err) => {
           const message = err instanceof Error ? err.message : String(err);
-          toast({ title: "Erro ao remover curso", description: message, variant: "destructive" });
+          toast({ title: t('toasts.removeCourseErrorTitle'), description: message, variant: "destructive" });
         },
       }
     );
@@ -155,8 +157,8 @@ export default function AdminPage(): JSX.Element {
   const openLessonDrawer = () => {
     if (!current.title) {
       toast({
-        title: "Atenção",
-        description: "Primeiro preencha os dados do curso",
+        title: t('toasts.attentionTitle'),
+        description: t('toasts.fillCourseDataFirst'),
         variant: "destructive",
       });
       return;
@@ -177,7 +179,7 @@ export default function AdminPage(): JSX.Element {
       };
       setCurrent((prev) => ({ ...prev, lessons: [...(prev.lessons || []), lesson] }));
       setDrawerLessonOpen(false);
-      toast({ title: "Sucesso", description: "Aula adicionada localmente!" });
+      toast({ title: t('toasts.successTitle'), description: t('toasts.lessonAddedLocal') });
       return;
     }
 
@@ -193,11 +195,11 @@ export default function AdminPage(): JSX.Element {
         onSuccess: (updated) => {
           setCurrent(updated);
           setDrawerLessonOpen(false);
-          toast({ title: "Sucesso", description: "Aula adicionada ao curso!" });
+          toast({ title: t('toasts.successTitle'), description: t('toasts.lessonAddedToCourse') });
         },
         onError: (err) => {
           const message = err instanceof Error ? err.message : String(err);
-          toast({ title: "Erro ao adicionar aula", description: message, variant: "destructive" });
+          toast({ title: t('toasts.addLessonErrorTitle'), description: message, variant: "destructive" });
         },
       }
     );
@@ -218,7 +220,7 @@ export default function AdminPage(): JSX.Element {
         onSuccess: (updated) => setCurrent(updated),
         onError: (err) => {
           const message = err instanceof Error ? err.message : String(err);
-          toast({ title: "Erro ao remover aula", description: message, variant: "destructive" });
+          toast({ title: t('toasts.removeLessonErrorTitle'), description: message, variant: "destructive" });
         },
       }
     );
@@ -230,12 +232,12 @@ export default function AdminPage(): JSX.Element {
     <div className="w-full px-4 py-8">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Painel de Administrador</h1>
-          <p className="text-muted-foreground">Gerencie seus cursos e aulas</p>
+          <h1 className="text-3xl font-bold text-foreground mb-2">{t('title')}</h1>
+          <p className="text-muted-foreground">{t('subtitle')}</p>
         </div>
         <Button onClick={newCourse} size="lg" disabled={disableNewButton}>
           <Plus className="w-4 h-4 mr-2" />
-          Novo Curso
+          {t('newCourse')}
         </Button>
       </div>
 
