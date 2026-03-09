@@ -8,6 +8,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 import PWAInstallListener from "@/components/PWAInstallListener";
 import { Providers } from "@/providers/Providers";
 import { IntlProvider } from "@/providers/IntlProvider";
+import ThemeScopeController from "@/components/ThemeScopeController";
 
 
 const ubuntu = Ubuntu({
@@ -45,6 +46,7 @@ export default function RootLayout({
           <PWAInstallListener />
           <PWARegister/>
           <TrackingScripts />
+          <ThemeScopeController />
           <Providers>
             <IntlProvider>{children}</IntlProvider>
           </Providers>

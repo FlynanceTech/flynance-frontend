@@ -295,7 +295,7 @@ export default function PageOnboardingTour({
                 <button
                   type="button"
                   onClick={nextStep}
-                  className="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-secondary"
+                  className="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-secondary hover:text-secondary-foreground"
                 >
                   {isLastStep ? 'Concluir' : 'Proximo'}
                   {!isLastStep && <ChevronRight className="h-3.5 w-3.5" />}

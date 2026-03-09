@@ -37,7 +37,6 @@ export function useCreateAdvisorClientInvite() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['advisor', 'clients'] })
       qc.invalidateQueries({ queryKey: ['advisor', 'clients', 'invites'] })
-      toast.success('Convite do cliente gerado.')
     },
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : 'Erro ao gerar convite do cliente.')

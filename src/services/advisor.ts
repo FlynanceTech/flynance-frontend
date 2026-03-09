@@ -42,7 +42,9 @@ export type AdvisorClientsResponse = {
 }
 
 export type CreateAdvisorClientInvitePayload = {
+  quickLink?: boolean
   emailOptional?: string
+  emails?: string[]
   expiresAt?: string
   expiresInHours?: number
   expiresInDays?: number
@@ -51,22 +53,42 @@ export type CreateAdvisorClientInvitePayload = {
   defaultPermission?: AdvisorPermission
 }
 
-export type AdvisorClientInviteResponse = {
+export type AdvisorClientInviteEmailDelivery = {
+  sent?: boolean
+  error?: string | null
+}
+
+export type AdvisorClientInviteGenerated = {
   inviteId?: string
   inviteUrl: string
   token?: string | null
   expiresAt?: string | null
+  quickLink?: boolean
+  unlimitedUses?: boolean
   maxUses: number
   usedCount: number
   permission: AdvisorPermission
   emailOptional?: string | null
+  emailDelivery?: AdvisorClientInviteEmailDelivery
   emailDeliverySent?: boolean
+  emailDeliveryError?: string | null
+}
+
+export type AdvisorClientInviteResponse = AdvisorClientInviteGenerated & {
+  batch?: boolean
+  totalRequested?: number
+  totalCreated?: number
+  totalEmailSent?: number
+  totalEmailFailed?: number
+  invites?: AdvisorClientInviteGenerated[]
 }
 
 export type AdvisorClientInvite = {
   id: string
   emailOptional?: string | null
   expiresAt?: string | null
+  quickLink?: boolean
+  unlimitedUses?: boolean
   maxUses: number
   usedCount: number
   permission: AdvisorPermission
@@ -97,12 +119,14 @@ function toAdvisorErrorMessage(error: unknown, fallback: string): string {
   if (axios.isAxiosError(error)) {
     const status = error.response?.status
     const data = (error.response?.data ?? {}) as ApiErrorShape
-    if (status === 403) return 'Acesso restrito a advisors.'
     const apiMessage =
       (typeof data.message === 'string' && data.message.trim()) ||
       (typeof data.error === 'string' && data.error.trim())
-    if (apiMessage) return apiMessage
+
     if (status === 401) return 'Sua sessao expirou. Faca login novamente.'
+    if (status === 403) return 'Voce nao tem permissao para acessar este recurso.'
+    if (status === 400 && apiMessage) return apiMessage
+    if (apiMessage) return apiMessage
     if (status === 400) return 'Requisicao invalida. Revise os dados informados.'
     if (status && status >= 500) return 'Servidor indisponivel no momento. Tente novamente.'
   }
@@ -119,6 +143,50 @@ function toIsoDate(value: unknown): string | null {
 function toNumber(value: unknown, fallback = 0): number {
   const n = Number(value)
   return Number.isFinite(n) ? n : fallback
+}
+
+function toBoolean(value: unknown, fallback = false): boolean {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase()
+    if (normalized === 'true') return true
+    if (normalized === 'false') return false
+  }
+  if (typeof value === 'number') {
+    if (value === 1) return true
+    if (value === 0) return false
+  }
+  return fallback
+}
+
+function toInteger(value: unknown, fallback = 0): number {
+  const n = toNumber(value, fallback)
+  return Number.isFinite(n) ? Math.trunc(n) : fallback
+}
+
+function toOptionalString(value: unknown): string | null {
+  if (value == null) return null
+  const normalized = String(value).trim()
+  return normalized || null
+}
+
+function normalizeEmail(value: unknown): string | null {
+  const normalized = toOptionalString(value)
+  if (!normalized) return null
+  return normalized.toLowerCase()
+}
+
+function normalizeEmails(values: unknown): string[] {
+  if (!Array.isArray(values)) return []
+  const map = new Map<string, string>()
+  values.forEach((value) => {
+    const normalized = normalizeEmail(value)
+    if (!normalized) return
+    if (!map.has(normalized)) {
+      map.set(normalized, normalized)
+    }
+  })
+  return Array.from(map.values())
 }
 
 function toPermission(value: unknown): AdvisorPermission {
@@ -183,18 +251,75 @@ function toAdvisorClient(raw: any): AdvisorClient | null {
 function toAdvisorClientInvite(raw: any): AdvisorClientInvite | null {
   const id = String(raw?.id ?? raw?.inviteId ?? '').trim()
   if (!id) return null
+  const maxUses = toNumber(raw?.maxUses, 1)
+  const quickLink = toBoolean(raw?.quickLink, false)
+  const unlimitedUses = toBoolean(raw?.unlimitedUses, quickLink || maxUses >= 2_147_483_647)
 
   return {
     id,
     emailOptional:
       raw?.emailOptional == null ? null : String(raw?.emailOptional).trim() || null,
     expiresAt: toIsoDate(raw?.expiresAt),
-    maxUses: toNumber(raw?.maxUses, 1),
+    quickLink,
+    unlimitedUses,
+    maxUses,
     usedCount: toNumber(raw?.usedCount, 0),
     permission: toPermission(raw?.permission ?? raw?.defaultPermission),
     revokedAt: toIsoDate(raw?.revokedAt),
     status: toInviteStatus(raw?.status),
   }
+}
+
+function toEmailDelivery(raw: any): AdvisorClientInviteEmailDelivery | undefined {
+  const sentRaw = raw?.emailDelivery?.sent ?? raw?.emailSent
+  const errorRaw = raw?.emailDelivery?.error ?? raw?.emailDeliveryError ?? raw?.emailError
+  const hasSent = sentRaw !== undefined && sentRaw !== null
+  const error = toOptionalString(errorRaw)
+  if (!hasSent && !error) return undefined
+
+  return {
+    sent: hasSent ? Boolean(sentRaw) : undefined,
+    error,
+  }
+}
+
+function toGeneratedInvite(raw: any, defaults: Partial<AdvisorClientInviteGenerated>): AdvisorClientInviteGenerated {
+  const emailDelivery = toEmailDelivery(raw)
+  const maxUsesFallback = defaults.maxUses ?? (defaults.unlimitedUses ? 0 : 1)
+  const permissionFallback = defaults.permission ?? 'READ_WRITE'
+  const inviteId = toOptionalString(raw?.inviteId ?? raw?.id) ?? undefined
+  const inviteUrl =
+    toOptionalString(raw?.inviteLink ?? raw?.inviteUrl ?? raw?.url) ??
+    defaults.inviteUrl ??
+    ''
+  const token = toOptionalString(raw?.token)
+  const quickLink = toBoolean(raw?.quickLink, defaults.quickLink ?? false)
+  const unlimitedUses = toBoolean(raw?.unlimitedUses, defaults.unlimitedUses ?? quickLink)
+
+  return {
+    inviteId,
+    inviteUrl,
+    token: token ?? defaults.token ?? null,
+    expiresAt: toIsoDate(raw?.expiresAt ?? defaults.expiresAt),
+    quickLink,
+    unlimitedUses,
+    maxUses: toNumber(raw?.maxUses, maxUsesFallback),
+    usedCount: toNumber(raw?.usedCount, defaults.usedCount ?? 0),
+    permission: toPermission(raw?.permission ?? raw?.defaultPermission ?? permissionFallback),
+    emailOptional:
+      toOptionalString(raw?.emailOptional ?? raw?.email) ??
+      defaults.emailOptional ??
+      null,
+    emailDelivery,
+    emailDeliverySent:
+      emailDelivery?.sent ??
+      (defaults.emailDeliverySent == null ? undefined : Boolean(defaults.emailDeliverySent)),
+    emailDeliveryError: emailDelivery?.error ?? defaults.emailDeliveryError ?? null,
+  }
+}
+
+function hasAnyInviteData(invite: AdvisorClientInviteGenerated): boolean {
+  return Boolean(invite.inviteId || invite.inviteUrl || invite.token || invite.emailOptional)
 }
 
 function toMeta(raw: any, fallbackPage = 1, fallbackLimit = 20): AdvisorPaginationMeta {
@@ -248,7 +373,8 @@ async function requestWithFallback<T>(
       const shouldTryNext =
         status === 404 ||
         status === 405 ||
-        (status === 403 && /administrador/i.test(apiMessage))
+        status === 403 ||
+        (status === 400 && /rota|endpoint|nao encontrado|not found/i.test(apiMessage))
 
       if (shouldTryNext) {
         continue
@@ -331,17 +457,38 @@ export async function getAdvisorClientInvites(
 export async function createAdvisorClientInvite(
   payload: CreateAdvisorClientInvitePayload
 ): Promise<AdvisorClientInviteResponse> {
+  const isQuickLink = toBoolean(payload.quickLink, false)
+  const normalizedPayloadEmails = normalizeEmails(payload.emails)
+  const normalizedSingleEmail = normalizeEmail(payload.emailOptional)
+  const mergedEmails = normalizedPayloadEmails.length
+    ? normalizedPayloadEmails
+    : normalizedSingleEmail
+      ? [normalizedSingleEmail]
+      : []
+
   const expiresInHours =
     payload.expiresInHours ??
     (payload.expiresInDays ? Math.max(1, Math.round(payload.expiresInDays * 24)) : undefined)
 
-  const requestPayload = {
-    emailOptional: payload.emailOptional?.trim() || undefined,
-    expiresAt: payload.expiresAt,
-    expiresInHours,
-    expiresInDays: payload.expiresInDays,
-    maxUses: payload.maxUses ?? 1,
-    permission: payload.permission ?? payload.defaultPermission ?? 'READ_WRITE',
+  const requestPayload: Record<string, unknown> = isQuickLink
+    ? {
+        quickLink: true,
+        expiresInDays: payload.expiresInDays,
+        permission: payload.permission ?? payload.defaultPermission ?? 'READ_WRITE',
+      }
+    : {
+        expiresAt: payload.expiresAt,
+        expiresInHours,
+        expiresInDays: payload.expiresInDays,
+        maxUses: payload.maxUses ?? 1,
+        permission: payload.permission ?? payload.defaultPermission ?? 'READ_WRITE',
+      }
+  if (!isQuickLink) {
+    if (mergedEmails.length > 1) {
+      requestPayload.emails = mergedEmails
+    } else if (mergedEmails.length === 1) {
+      requestPayload.emailOptional = mergedEmails[0]
+    }
   }
 
   try {
@@ -355,19 +502,103 @@ export async function createAdvisorClientInvite(
     )
 
     const data = response.data ?? {}
-    const invite = data?.invite ?? data?.data ?? data
+    const requestMaxUses = isQuickLink ? 0 : toNumber(requestPayload.maxUses, 1)
+    const requestPermission = toPermission(requestPayload.permission)
+    const defaultEmail = !isQuickLink && mergedEmails.length === 1 ? mergedEmails[0] : null
+    const requestQuickLink = toBoolean(requestPayload.quickLink, isQuickLink)
+    const singleInviteRaw = {
+      ...(data && typeof data === 'object' ? data : {}),
+      ...(data?.data && typeof data.data === 'object' ? data.data : {}),
+      ...(data?.invite && typeof data.invite === 'object' ? data.invite : {}),
+    }
+    const defaultInvite = toGeneratedInvite(singleInviteRaw, {
+      maxUses: requestMaxUses,
+      permission: requestPermission,
+      emailOptional: defaultEmail,
+      inviteUrl: '',
+      usedCount: 0,
+      quickLink: requestQuickLink,
+      unlimitedUses: requestQuickLink,
+    })
+
+    const invitesRaw =
+      data?.invites ??
+      data?.batch?.invites ??
+      data?.data?.invites ??
+      data?.items ??
+      []
+    const parsedInvites = (Array.isArray(invitesRaw) ? invitesRaw : [])
+      .map((item) =>
+        toGeneratedInvite(item, {
+          maxUses: requestMaxUses,
+          permission: requestPermission,
+          quickLink: requestQuickLink,
+          unlimitedUses: requestQuickLink,
+        })
+      )
+      .filter((item) => hasAnyInviteData(item))
+    const invites = parsedInvites.length
+      ? parsedInvites
+      : hasAnyInviteData(defaultInvite)
+        ? [defaultInvite]
+        : []
+
+    const requestedCount = mergedEmails.length || 1
+    const totalRequested = Math.max(
+      1,
+      toInteger(data?.totalRequested ?? data?.batch?.totalRequested, requestedCount)
+    )
+    const totalCreated = Math.max(
+      0,
+      toInteger(data?.totalCreated ?? data?.batch?.totalCreated, invites.length || 1)
+    )
+    const totalEmailSent = Math.max(
+      0,
+      toInteger(
+        data?.totalEmailSent ?? data?.batch?.totalEmailSent,
+        invites.reduce((acc, item) => acc + (item.emailDeliverySent ? 1 : 0), 0)
+      )
+    )
+    const totalEmailFailed = Math.max(
+      0,
+      toInteger(
+        data?.totalEmailFailed ?? data?.batch?.totalEmailFailed,
+        invites.reduce(
+          (acc, item) =>
+            acc +
+            (item.emailDeliverySent === false || Boolean(item.emailDeliveryError) ? 1 : 0),
+          0
+        )
+      )
+    )
+    const batch =
+      Boolean(data?.batch) ||
+      totalRequested > 1 ||
+      mergedEmails.length > 1 ||
+      invites.length > 1
+    const firstInvite = invites[0] ?? defaultInvite
+    const quickLink = toBoolean(
+      data?.quickLink ?? data?.data?.quickLink ?? data?.invite?.quickLink ?? firstInvite.quickLink,
+      requestQuickLink
+    )
+    const unlimitedUses = toBoolean(
+      data?.unlimitedUses ??
+      data?.data?.unlimitedUses ??
+      data?.invite?.unlimitedUses ??
+      firstInvite.unlimitedUses,
+      quickLink
+    )
+
     return {
-      inviteId: String(data?.inviteId ?? invite?.id ?? '').trim() || undefined,
-      inviteUrl: String(data?.inviteLink ?? data?.inviteUrl ?? invite?.inviteUrl ?? '').trim(),
-      token: String(data?.token ?? invite?.token ?? '').trim() || null,
-      expiresAt: toIsoDate(data?.expiresAt ?? invite?.expiresAt),
-      maxUses: toNumber(data?.maxUses ?? invite?.maxUses ?? requestPayload.maxUses, requestPayload.maxUses ?? 1),
-      usedCount: toNumber(data?.usedCount ?? invite?.usedCount ?? 0, 0),
-      permission: toPermission(data?.permission ?? invite?.permission ?? requestPayload.permission),
-      emailOptional:
-        data?.emailOptional == null ? null : String(data?.emailOptional).trim() || null,
-      emailDeliverySent:
-        data?.emailDelivery?.sent == null ? undefined : Boolean(data?.emailDelivery?.sent),
+      ...firstInvite,
+      quickLink,
+      unlimitedUses,
+      batch,
+      totalRequested,
+      totalCreated,
+      totalEmailSent,
+      totalEmailFailed,
+      invites,
     }
   } catch (error: unknown) {
     throw new Error(toAdvisorErrorMessage(error, 'Erro ao gerar convite de cliente.'))

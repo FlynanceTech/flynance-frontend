@@ -35,7 +35,7 @@ const FaqSection = () => {
   return (
     <section
       id="faq"
-      className="max-w-full w-full md:w-[1280px] mt-16 px-8 xl:px-0 flex flex-col gap-8"
+      className="max-w-full w-full md:w-[1280px] mt-16 px-8 xl:px-0 flex flex-col gap-8 "
     >
       <h2 className="text-3xl md:text-4xl font-bold text-gray-700 text-center md:text-left">
         Perguntas Frequentes

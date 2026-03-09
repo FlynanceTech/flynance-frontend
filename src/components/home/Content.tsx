@@ -19,19 +19,22 @@ function Content() {
   }, []);
 
   return (
-    <main className="flex overflow-hidden flex-col items-center pb-8">
+    <main className="flex overflow-hidden flex-col items-center pb-8 ">
 
       <header className="w-full h-full ">
         <Header />
         <HeroSection />
       </header>
      {/*  <PainSection /> */}
+     <section className="w-full h-full bg-white flex flex-col items-center">
+
       <FeaturesSection />
       <PricingSection />
       <Testimonials />
       <FaqSection />
       <Footer />
       <ScrollToTopButton />
+      </section>
     </main>
   );
 }

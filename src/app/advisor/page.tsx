@@ -25,7 +25,13 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from '@/components/ui/drawer'
-import { AdvisorPermission } from '@/services/advisor'
+import {
+  AdvisorClientInvite,
+  AdvisorClientInviteGenerated,
+  AdvisorClientInviteResponse,
+  AdvisorPermission,
+} from '@/services/advisor'
+import PageOnboardingTour, { type PageOnboardingStep } from '@/components/onboarding/PageOnboardingTour'
 import { useAdvisorActing } from '@/stores/useAdvisorActing'
 import { formatCurrency as formatCurrencyByPreference } from '@/utils/formatter'
 import { useLocale, useTranslations } from 'next-intl'
@@ -34,7 +40,7 @@ type TranslatorFn = (key: string, values?: Record<string, string | number | Date
 
 function createInviteSchema(t: TranslatorFn) {
   return z.object({
-    emailOptional: z.union([z.literal(''), z.string().email(t('errors.invalidEmail'))]).optional(),
+    emailsInput: z.string().optional(),
     expiresInDays: z.coerce
       .number()
       .int()
@@ -49,7 +55,60 @@ function createInviteSchema(t: TranslatorFn) {
   })
 }
 
+function createAdvisorOnboardingSteps(t: TranslatorFn): ReadonlyArray<PageOnboardingStep> {
+  return [
+    {
+      id: 'advisor-header',
+      selector: '[data-onboarding-target="advisor-header"]',
+      align: 'bottom',
+      title: t('onboarding.headerTitle'),
+      description: t('onboarding.headerDescription'),
+    },
+    {
+      id: 'advisor-clients',
+      selector: '[data-onboarding-target="advisor-clients"]',
+      title: t('onboarding.clientsTitle'),
+      description: t('onboarding.clientsDescription'),
+    },
+    {
+      id: 'advisor-invites',
+      selector: '[data-onboarding-target="advisor-invites"]',
+      title: t('onboarding.invitesTitle'),
+      description: t('onboarding.invitesDescription'),
+    },
+  ]
+}
+
 type InviteFormValues = z.infer<ReturnType<typeof createInviteSchema>>
+
+const EMAIL_SPLIT_REGEX = /[\n,;]+/g
+const emailValidationSchema = z.string().email()
+
+function parseInviteEmails(inputValue: string) {
+  const values = String(inputValue ?? '')
+    .split(EMAIL_SPLIT_REGEX)
+    .map((item) => item.trim())
+    .filter(Boolean)
+
+  const deduped = new Map<string, string>()
+  const invalidSet = new Set<string>()
+  values.forEach((value) => {
+    const normalized = value.toLowerCase()
+    const valid = emailValidationSchema.safeParse(normalized).success
+    if (!valid) {
+      invalidSet.add(value)
+      return
+    }
+    if (!deduped.has(normalized)) {
+      deduped.set(normalized, normalized)
+    }
+  })
+
+  return {
+    emails: Array.from(deduped.values()),
+    invalidEmails: Array.from(invalidSet.values()),
+  }
+}
 
 function formatDate(value: string | null | undefined, locale: string, t: TranslatorFn) {
   if (!value) return t('common.empty')
@@ -84,29 +143,32 @@ function statusBadgeClass(value: string) {
   return 'bg-emerald-100 text-emerald-700'
 }
 
-function inviteStatusLabel(value: string, t: TranslatorFn) {
-  const normalized = String(value ?? '')
-    .trim()
-    .toUpperCase()
-  if (normalized === 'EXPIRED') return t('inviteStatus.expired')
-  if (normalized === 'EXHAUSTED') return t('inviteStatus.exhausted')
-  if (normalized === 'REVOKED') return t('inviteStatus.revoked')
-  return t('inviteStatus.active')
+function inviteTypeLabel(invite: AdvisorClientInvite, t: TranslatorFn) {
+  const looksUnlimited = invite.unlimitedUses || invite.maxUses >= 2_147_483_647
+  if (invite.quickLink || looksUnlimited) return t('invites.types.quickLink')
+  if (invite.emailOptional) return t('invites.types.emailTargeted')
+  return t('invites.types.standard')
 }
 
-function inviteStatusBadgeClass(value: string) {
-  const normalized = String(value ?? '')
-    .trim()
-    .toUpperCase()
-  if (normalized === 'EXPIRED') return 'bg-amber-100 text-amber-700'
-  if (normalized === 'EXHAUSTED') return 'bg-slate-200 text-slate-700'
-  if (normalized === 'REVOKED') return 'bg-red-100 text-red-700'
-  return 'bg-emerald-100 text-emerald-700'
+function inviteUsageTagLabel(invite: AdvisorClientInvite, t: TranslatorFn) {
+  return t('invites.usageTag', { usedCount: invite.usedCount })
 }
 
 async function copyToClipboard(text: string, t: TranslatorFn) {
   await navigator.clipboard.writeText(text)
   toast.success(t('toasts.linkCopied'))
+}
+
+function normalizeGeneratedInvites(
+  value: AdvisorClientInviteResponse | null
+): AdvisorClientInviteGenerated[] {
+  if (!value) return []
+  if (Array.isArray(value.invites) && value.invites.length > 0) return value.invites
+  return [value]
+}
+
+function inviteIdentity(invite: AdvisorClientInviteGenerated, index: number) {
+  return invite.inviteId || invite.token || invite.inviteUrl || `${invite.emailOptional || 'invite'}-${index}`
 }
 
 export default function AdvisorPage() {
@@ -115,7 +177,8 @@ export default function AdvisorPage() {
   const router = useRouter()
   const [clientsPage, setClientsPage] = useState(1)
   const [invitesPage, setInvitesPage] = useState(1)
-  const [generatedLink, setGeneratedLink] = useState('')
+  const [generatedInviteResult, setGeneratedInviteResult] = useState<AdvisorClientInviteResponse | null>(null)
+  const [quickLinkCopyFailed, setQuickLinkCopyFailed] = useState(false)
   const [inviteDrawerOpen, setInviteDrawerOpen] = useState(false)
 
   const setActingClient = useAdvisorActing((s) => s.setActingClient)
@@ -126,11 +189,12 @@ export default function AdvisorPage() {
   const revokeInviteMutation = useRevokeAdvisorClientInvite()
   const revokeClientMutation = useRevokeAdvisorClientLink()
   const inviteSchema = useMemo(() => createInviteSchema(t), [t])
+  const onboardingSteps = useMemo(() => createAdvisorOnboardingSteps(t), [t])
 
   const form = useForm<InviteFormValues>({
     resolver: zodResolver(inviteSchema),
     defaultValues: {
-      emailOptional: '',
+      emailsInput: '',
       expiresInDays: 7,
       maxUses: 1,
       permission: 'READ_WRITE',
@@ -141,6 +205,21 @@ export default function AdvisorPage() {
   const clientsMeta = clientsQuery.data?.meta
   const invites = invitesQuery.data?.invites ?? []
   const invitesMeta = invitesQuery.data?.meta
+  const generatedInvites = useMemo(
+    () => normalizeGeneratedInvites(generatedInviteResult),
+    [generatedInviteResult]
+  )
+  const generatedResultIsBatch = useMemo(() => {
+    if (!generatedInviteResult) return false
+    const requested = Number(generatedInviteResult.totalRequested ?? 0)
+    return Boolean(generatedInviteResult.batch) || requested > 1 || generatedInvites.length > 1
+  }, [generatedInviteResult, generatedInvites.length])
+  const generatedResultIsQuickLink = useMemo(() => {
+    if (!generatedInviteResult) return false
+    if (generatedInviteResult.quickLink || generatedInviteResult.unlimitedUses) return true
+    return generatedInvites.some((invite) => Boolean(invite.quickLink || invite.unlimitedUses))
+  }, [generatedInviteResult, generatedInvites])
+  const generatedQuickLinkInvite = generatedInvites[0] ?? null
   const clientsTotalPages = useMemo(() => {
     if (!clientsMeta) return 1
     return Math.max(1, clientsMeta.totalPages || Math.ceil(clientsMeta.total / Math.max(1, clientsMeta.limit)))
@@ -150,19 +229,55 @@ export default function AdvisorPage() {
     return Math.max(1, invitesMeta.totalPages || Math.ceil(invitesMeta.total / Math.max(1, invitesMeta.limit)))
   }, [invitesMeta])
 
+  const copyGeneratedQuickLink = async (link: string) => {
+    const safeLink = String(link ?? '').trim()
+    if (!safeLink) {
+      setQuickLinkCopyFailed(true)
+      toast.error(t('toasts.quickLinkCopyError'))
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(safeLink)
+      setQuickLinkCopyFailed(false)
+      toast.success(t('toasts.quickLinkCopied'))
+    } catch {
+      setQuickLinkCopyFailed(true)
+      toast.error(t('toasts.quickLinkCopyError'))
+    }
+  }
+
   const onSubmit = form.handleSubmit(async (values) => {
     try {
-      const response = await createInviteMutation.mutateAsync({
-        emailOptional: values.emailOptional || undefined,
+      const { emails, invalidEmails } = parseInviteEmails(values.emailsInput ?? '')
+      if (invalidEmails.length > 0) {
+        form.setError('emailsInput', {
+          type: 'validate',
+          message: t('errors.invalidEmails', {
+            emails: invalidEmails.join(', '),
+          }),
+        })
+        return
+      }
+      form.clearErrors('emailsInput')
+
+      const payload = {
         expiresInDays: values.expiresInDays,
         maxUses: values.maxUses,
         permission: values.permission,
+        ...(emails.length > 1 ? { emails } : {}),
+        ...(emails.length === 1 ? { emailOptional: emails[0] } : {}),
+      }
+      const response = await createInviteMutation.mutateAsync({
+        ...payload,
       })
-      setGeneratedLink(response.inviteUrl || '')
+      setGeneratedInviteResult(response)
+      setQuickLinkCopyFailed(false)
+      toast.success(t('toasts.inviteGenerated'))
       setInviteDrawerOpen(false)
       setInvitesPage(1)
       form.reset({
-        emailOptional: '',
+        emailsInput: '',
         expiresInDays: 7,
         maxUses: 1,
         permission: 'READ_WRITE',
@@ -171,6 +286,27 @@ export default function AdvisorPage() {
       // erro ja tratado no onError da mutation
     }
   })
+
+  const onGenerateQuickLink = async () => {
+    const valid = await form.trigger(['expiresInDays', 'permission'])
+    if (!valid) return
+
+    const values = form.getValues()
+
+    try {
+      const response = await createInviteMutation.mutateAsync({
+        quickLink: true,
+        expiresInDays: values.expiresInDays,
+        permission: values.permission,
+      })
+      setGeneratedInviteResult(response)
+      setInviteDrawerOpen(false)
+      setInvitesPage(1)
+      await copyGeneratedQuickLink(response.inviteUrl)
+    } catch {
+      // erro ja tratado no onError da mutation
+    }
+  }
 
   return (
     <AdvisorGuard>
@@ -186,7 +322,10 @@ export default function AdvisorPage() {
 
         <section className="w-full overflow-y-auto px-4 pb-28 pt-6 md:px-6 lg:pr-8 lg:pb-6 lg:pt-0">
           <div className="mx-auto w-full max-w-7xl space-y-4">
-          <article className="rounded-2xl border border-slate-200 bg-white p-5">
+          <article
+            className="rounded-2xl border border-slate-200 bg-white p-5"
+            data-onboarding-target="advisor-header"
+          >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h1 className="text-lg font-semibold text-[#333C4D]">{t('header.title')}</h1>
@@ -195,39 +334,200 @@ export default function AdvisorPage() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                <PageOnboardingTour
+                  steps={onboardingSteps}
+                  storageKeyBase="flynance:advisor:onboarding:page:v1"
+                  triggerLabel={t('header.guideButton')}
+                />
                 <button
                   type="button"
                   onClick={() => setInviteDrawerOpen(true)}
-                  className="rounded-full bg-[#4F98C2] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3f86b0]"
+                  className="rounded-full bg-primary text-white dark:text-black px-4 py-2 text-sm font-semibold hover:bg-[#3f86b0]"
                 >
                   {t('header.inviteClient')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => router.push('/dashboard')}
-                  className="rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                >
-                  {t('header.goToDashboard')}
                 </button>
               </div>
             </div>
           </article>
 
-          {generatedLink && (
-            <article className="rounded-2xl border border-[#D7EAF5] bg-[#F3FAFF] p-5">
-              <h2 className="text-base font-semibold text-[#333C4D]">{t('latestInvite.title')}</h2>
-              <p className="mt-2 break-all text-sm text-slate-700">{generatedLink}</p>
-              <button
-                type="button"
-                onClick={() => copyToClipboard(generatedLink, t)}
-                className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
-              >
-                {t('latestInvite.copyLink')}
-              </button>
-            </article>
+          {generatedInviteResult && (
+            generatedResultIsQuickLink ? (
+              <article className="rounded-2xl border border-[#D7EAF5] bg-[#F3FAFF] p-5">
+                <h2 className="text-base font-semibold text-[#333C4D]">{t('latestInvite.quickLinkTitle')}</h2>
+
+                <dl className="mt-3 grid gap-2 text-xs text-slate-700 sm:grid-cols-2">
+                  <div>
+                    <dt className="text-slate-500">{t('latestInvite.fields.expiresAt')}</dt>
+                    <dd className="font-medium">
+                      {formatDate(generatedQuickLinkInvite?.expiresAt, locale, t)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-500">{t('latestInvite.fields.permission')}</dt>
+                    <dd className="font-medium">
+                      {generatedQuickLinkInvite
+                        ? permissionLabel(generatedQuickLinkInvite.permission, t)
+                        : t('common.empty')}
+                    </dd>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <dt className="text-slate-500">{t('latestInvite.fields.link')}</dt>
+                    <dd className="break-all font-medium">
+                      {generatedQuickLinkInvite?.inviteUrl || t('common.empty')}
+                    </dd>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <dt className="text-slate-500">{t('latestInvite.fields.uses')}</dt>
+                    <dd className="font-medium">
+                      {generatedQuickLinkInvite?.unlimitedUses
+                        ? t('latestInvite.unlimitedUses')
+                        : t('common.empty')}
+                    </dd>
+                  </div>
+                </dl>
+
+                {quickLinkCopyFailed && generatedQuickLinkInvite?.inviteUrl && (
+                  <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                    <p>{t('latestInvite.quickLinkCopyErrorHint')}</p>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(generatedQuickLinkInvite.inviteUrl, t)}
+                      className="mt-2 rounded-lg border border-amber-300 bg-white px-3 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                    >
+                      {t('latestInvite.copyLink')}
+                    </button>
+                  </div>
+                )}
+              </article>
+            ) : (
+              <article className="rounded-2xl border border-[#D7EAF5] bg-[#F3FAFF] p-5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-base font-semibold text-[#333C4D]">{t('latestInvite.title')}</h2>
+                  {generatedResultIsBatch && (
+                    <span className="inline-flex rounded-full bg-[#E0EFF8] px-2 py-1 text-[11px] font-semibold text-[#2F6E91]">
+                      {t('latestInvite.batchLabel')}
+                    </span>
+                  )}
+                </div>
+
+                <div className="mt-3 grid gap-2 text-xs text-slate-700 sm:grid-cols-4">
+                  <div className="rounded-lg border border-[#D7EAF5] bg-white/70 px-3 py-2">
+                    <p className="text-[11px] text-slate-500">{t('latestInvite.summary.requested')}</p>
+                    <p className="text-sm font-semibold">{generatedInviteResult.totalRequested ?? generatedInvites.length}</p>
+                  </div>
+                  <div className="rounded-lg border border-[#D7EAF5] bg-white/70 px-3 py-2">
+                    <p className="text-[11px] text-slate-500">{t('latestInvite.summary.created')}</p>
+                    <p className="text-sm font-semibold">{generatedInviteResult.totalCreated ?? generatedInvites.length}</p>
+                  </div>
+                  <div className="rounded-lg border border-[#D7EAF5] bg-white/70 px-3 py-2">
+                    <p className="text-[11px] text-slate-500">{t('latestInvite.summary.emailSent')}</p>
+                    <p className="text-sm font-semibold">{generatedInviteResult.totalEmailSent ?? 0}</p>
+                  </div>
+                  <div className="rounded-lg border border-[#D7EAF5] bg-white/70 px-3 py-2">
+                    <p className="text-[11px] text-slate-500">{t('latestInvite.summary.emailFailed')}</p>
+                    <p className="text-sm font-semibold">{generatedInviteResult.totalEmailFailed ?? 0}</p>
+                  </div>
+                </div>
+
+                {generatedInvites.length > 0 && (
+                  <div className="mt-4 space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {t('latestInvite.listTitle')}
+                    </p>
+                    {generatedInvites.map((invite, index) => {
+                      const deliverySent = invite.emailDelivery?.sent ?? invite.emailDeliverySent
+                      const deliveryError = invite.emailDelivery?.error ?? invite.emailDeliveryError
+                      const deliveryLabel =
+                        deliverySent === true
+                          ? t('latestInvite.delivery.sent')
+                          : deliverySent === false
+                            ? t('latestInvite.delivery.failed')
+                            : t('latestInvite.delivery.unknown')
+
+                      return (
+                        <article
+                          key={inviteIdentity(invite, index)}
+                          className="rounded-xl border border-[#D7EAF5] bg-white p-4"
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div className="space-y-1">
+                              <p className="text-xs text-slate-500">{t('latestInvite.fields.email')}</p>
+                              <p className="text-sm font-medium text-slate-700">
+                                {invite.emailOptional || t('common.empty')}
+                              </p>
+                            </div>
+                            <span
+                              className={[
+                                'inline-flex rounded-full px-2 py-1 text-[11px] font-semibold',
+                                deliverySent === true
+                                  ? 'bg-emerald-100 text-emerald-700'
+                                  : deliverySent === false
+                                    ? 'bg-red-100 text-red-700'
+                                    : 'bg-slate-200 text-slate-700',
+                              ].join(' ')}
+                            >
+                              {deliveryLabel}
+                            </span>
+                          </div>
+
+                          <dl className="mt-3 grid gap-2 text-xs text-slate-700 sm:grid-cols-2">
+                            <div>
+                              <dt className="text-slate-500">{t('latestInvite.fields.permission')}</dt>
+                              <dd className="font-medium">{permissionLabel(invite.permission, t)}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-slate-500">{t('latestInvite.fields.expiresAt')}</dt>
+                              <dd className="font-medium">{formatDate(invite.expiresAt, locale, t)}</dd>
+                            </div>
+                            <div className="sm:col-span-2">
+                              <dt className="text-slate-500">{t('latestInvite.fields.link')}</dt>
+                              <dd className="break-all font-medium">{invite.inviteUrl || t('common.empty')}</dd>
+                            </div>
+                            <div className="sm:col-span-2">
+                              <dt className="text-slate-500">{t('latestInvite.fields.token')}</dt>
+                              <dd className="break-all font-medium">{invite.token || t('common.empty')}</dd>
+                            </div>
+                          </dl>
+
+                          {deliveryError && (
+                            <p className="mt-2 text-xs text-red-500">
+                              {t('latestInvite.delivery.error', { error: deliveryError })}
+                            </p>
+                          )}
+
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {invite.inviteUrl && (
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(invite.inviteUrl, t)}
+                                className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                              >
+                                {t('latestInvite.copyLink')}
+                              </button>
+                            )}
+                            {invite.token && (
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(invite.token || '', t)}
+                                className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                              >
+                                {t('latestInvite.copyToken')}
+                              </button>
+                            )}
+                          </div>
+                        </article>
+                      )
+                    })}
+                  </div>
+                )}
+              </article>
+            )
           )}
 
-          <article className="rounded-2xl border border-slate-200 bg-white p-5">
+          <article
+            className="rounded-2xl border border-slate-200 bg-white p-5"
+            data-onboarding-target="advisor-clients"
+          >
             <h2 className="text-base font-semibold text-[#333C4D]">{t('clients.title')}</h2>
 
             {clientsQuery.isLoading ? (
@@ -423,7 +723,10 @@ export default function AdvisorPage() {
             </div>
           </article>
 
-          <article className="rounded-2xl border border-slate-200 bg-white p-5">
+          <article
+            className="rounded-2xl border border-slate-200 bg-white p-5"
+            data-onboarding-target="advisor-invites"
+          >
             <h2 className="text-base font-semibold text-[#333C4D]">{t('invites.title')}</h2>
 
             {invitesQuery.isLoading ? (
@@ -443,17 +746,16 @@ export default function AdvisorPage() {
                 <div className="space-y-3 md:hidden">
                   {invites.map((invite) => (
                     <article key={invite.id} className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <p className="min-w-0 break-all text-sm font-medium text-[#333C4D]">
-                          {invite.emailOptional || t('common.empty')}
-                        </p>
+                      <div className="flex items-start justify-between gap-2">
                         <span
-                          className={[
-                            'inline-flex rounded-full px-2 py-1 text-[11px] font-semibold',
-                            inviteStatusBadgeClass(invite.status),
-                          ].join(' ')}
+                          className="inline-flex rounded-full border border-[#94C9E7] bg-[#EAF4FA] px-2 py-1 text-[11px] font-semibold text-[#2F6E91]"
                         >
-                          {inviteStatusLabel(invite.status, t)}
+                          {inviteTypeLabel(invite, t)}
+                        </span>
+                        <span
+                          className="inline-flex rounded-full border border-[#86EFAC] bg-[#DCFCE7] px-2 py-1 text-[11px] font-semibold text-[#166534]"
+                        >
+                          {inviteUsageTagLabel(invite, t)}
                         </span>
                       </div>
 
@@ -465,12 +767,6 @@ export default function AdvisorPage() {
                           </dd>
                         </div>
                         <div>
-                          <dt className="text-slate-500">{t('invites.fields.uses')}</dt>
-                          <dd className="font-medium text-slate-700">
-                            {invite.usedCount}/{invite.maxUses}
-                          </dd>
-                        </div>
-                        <div className="col-span-2">
                           <dt className="text-slate-500">{t('invites.fields.permission')}</dt>
                           <dd className="font-medium text-slate-700">
                             {permissionLabel(invite.permission, t)}
@@ -493,36 +789,31 @@ export default function AdvisorPage() {
                 </div>
 
                 <div className="hidden overflow-x-auto md:block">
-                  <table className="w-full min-w-[860px] text-sm">
+                  <table className="w-full min-w-[780px] text-sm">
                     <thead>
                       <tr className="border-b border-slate-200 text-left text-slate-500">
-                        <th className="pb-2 font-medium">{t('invites.table.email')}</th>
+                        <th className="pb-2 font-medium">{t('invites.table.type')}</th>
                         <th className="pb-2 font-medium">{t('invites.table.expiresAt')}</th>
-                        <th className="pb-2 font-medium">{t('invites.table.uses')}</th>
+                        <th className="pb-2 font-medium">{t('invites.table.usage')}</th>
                         <th className="pb-2 font-medium">{t('invites.table.permission')}</th>
-                        <th className="pb-2 font-medium">{t('invites.table.status')}</th>
                         <th className="pb-2 font-medium text-right">{t('invites.table.actions')}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {invites.map((invite) => (
                         <tr key={invite.id} className="border-b border-slate-100">
-                          <td className="py-3">{invite.emailOptional || t('common.empty')}</td>
-                          <td className="py-3">{formatDate(invite.expiresAt, locale, t)}</td>
                           <td className="py-3">
-                            {invite.usedCount}/{invite.maxUses}
-                          </td>
-                          <td className="py-3">{permissionLabel(invite.permission, t)}</td>
-                          <td className="py-3">
-                            <span
-                              className={[
-                                'inline-flex rounded-full px-2 py-1 text-xs font-semibold',
-                                inviteStatusBadgeClass(invite.status),
-                              ].join(' ')}
-                            >
-                              {inviteStatusLabel(invite.status, t)}
+                            <span className="inline-flex rounded-full border border-[#94C9E7] bg-[#EAF4FA] px-2 py-1 text-xs font-semibold text-[#2F6E91]">
+                              {inviteTypeLabel(invite, t)}
                             </span>
                           </td>
+                          <td className="py-3">{formatDate(invite.expiresAt, locale, t)}</td>
+                          <td className="py-3">
+                            <span className="inline-flex rounded-full border border-[#86EFAC] bg-[#DCFCE7] px-2 py-1 text-xs font-semibold text-[#166534]">
+                              {inviteUsageTagLabel(invite, t)}
+                            </span>
+                          </td>
+                          <td className="py-3">{permissionLabel(invite.permission, t)}</td>
                           <td className="py-3 text-right">
                             <button
                               type="button"
@@ -580,14 +871,15 @@ export default function AdvisorPage() {
 
           <form onSubmit={onSubmit} className="grid gap-3 px-5 pb-5 md:grid-cols-2">
             <label className="flex flex-col gap-1 text-sm md:col-span-2">
-              <span className="text-slate-600">{t('drawer.emailLabel')}</span>
-              <input
-                type="email"
-                className="h-10 rounded-xl border border-slate-200 px-3 outline-none focus:border-[#7CB8D8]"
-                placeholder={t('drawer.emailPlaceholder')}
-                {...form.register('emailOptional')}
+              <span className="text-slate-600">{t('drawer.emailsLabel')}</span>
+              <textarea
+                rows={4}
+                className="rounded-xl border border-slate-200 px-3 py-2 outline-none focus:border-[#7CB8D8]"
+                placeholder={t('drawer.emailsPlaceholder')}
+                {...form.register('emailsInput')}
               />
-              <span className="text-xs text-red-400">{form.formState.errors.emailOptional?.message}</span>
+              <span className="text-xs text-slate-500">{t('drawer.emailsHint')}</span>
+              <span className="text-xs text-red-400">{form.formState.errors.emailsInput?.message}</span>
             </label>
 
             <label className="flex flex-col gap-1 text-sm">
@@ -635,6 +927,14 @@ export default function AdvisorPage() {
                   {t('drawer.cancel')}
                 </button>
               </DrawerClose>
+              <button
+                type="button"
+                onClick={onGenerateQuickLink}
+                disabled={createInviteMutation.isPending}
+                className="h-10 rounded-xl border border-[#4F98C2] px-4 text-sm font-semibold text-[#4F98C2] hover:bg-[#EAF4FA] disabled:opacity-60"
+              >
+                {createInviteMutation.isPending ? t('drawer.generatingQuickLink') : t('drawer.generateQuickLink')}
+              </button>
               <button
                 type="submit"
                 disabled={createInviteMutation.isPending}
