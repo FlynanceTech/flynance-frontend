@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
-import { Check, CheckCircle, CreditCard, MoveLeft, MoveRight } from "lucide-react";
+import { Check, CheckCircle, CreditCard, MoveRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import axios from "axios";
@@ -12,7 +12,17 @@ import LegalDocsModal from "@/components/ui/LegalDocsModal";
 import whatsappIcon from "../../../public/icons/whatsapp.svg";
 
 import { useUsers } from "@/hooks/query/useUsers";
+import {
+  clearBillingCheckoutSession,
+  doesBillingCheckoutSessionMatchIdentity,
+} from "@/lib/authSession";
 import { readOriginAttribution } from "@/utils/originAttribution";
+import {
+  createBillingCheckoutSetupIntent,
+  createBillingCheckoutSubscription,
+  isBillingCheckoutTokenError,
+} from "@/services/billingCheckout";
+import { useSignupStore } from "@/stores/useSignupStore";
 import { useUserSession } from "@/stores/useUserSession";
 
 import { UserDTO } from "@/types/user";
@@ -68,8 +78,15 @@ const initialForm: FormDTO = {
 
 type LegalDocKey = "termos" | "privacidade" | "cookies";
 
-const normalizeDigits = (v?: string) => (v ?? "").replace(/\D/g, "");
-const normalizeEmail = (email?: string) => (email ?? "").trim().toLowerCase();
+const normalizeDigits = (v?: string | null) => (v ?? "").replace(/\D/g, "");
+const normalizeEmail = (email?: string | null) => (email ?? "").trim().toLowerCase();
+const normalizePhoneIdentity = (phone?: string | null) => {
+  const digits = normalizeDigits(phone);
+  if (digits.startsWith("55") && digits.length >= 12) {
+    return digits.slice(2);
+  }
+  return digits;
+};
 
 /** Normaliza para E.164 BR SEM + : 55 + DDD + número */
 const toE164BR = (phoneRaw?: string) => {
@@ -145,8 +162,46 @@ type AnnualBilling = "UPFRONT" | "INSTALLMENTS";
 type ViewState = "CHECKOUT" | "SUCCESS";
 
 const ANNUAL_COUPON_CODE = "FLY20" as const;
+const CHECKOUT_DRAFT_STORAGE_KEY = "flynance_checkout_draft_v1";
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
+
+function readCheckoutDraft(): Partial<FormDTO> | null {
+  if (typeof window === "undefined") return null;
+
+  const raw = window.sessionStorage.getItem(CHECKOUT_DRAFT_STORAGE_KEY);
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw) as Partial<FormDTO>;
+  } catch {
+    return null;
+  }
+}
+
+function writeCheckoutDraft(form: FormDTO) {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.setItem(CHECKOUT_DRAFT_STORAGE_KEY, JSON.stringify(form));
+}
+
+function clearCheckoutDraft() {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.removeItem(CHECKOUT_DRAFT_STORAGE_KEY);
+}
+
+function doesCheckoutFormMatchUser(
+  user: { id?: string | null; email?: string | null; phone?: string | null } | null | undefined,
+  snapshot: { emailNorm: string; phoneDigitsComparable: string }
+) {
+  if (!user?.id) return false;
+
+  const sameEmail = Boolean(snapshot.emailNorm) && normalizeEmail(user.email) === snapshot.emailNorm;
+  const samePhone =
+    Boolean(snapshot.phoneDigitsComparable) &&
+    normalizePhoneIdentity(user.phone) === snapshot.phoneDigitsComparable;
+
+  return sameEmail || samePhone;
+}
 
 export default function CheckoutStepper(props: CheckoutProps) {
   return (
@@ -189,6 +244,7 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
   const [cardError, setCardError] = useState<string | null>(null);
 
   const { createMutation, updateMutation } = useUsers();
+  const signupData = useSignupStore((state) => state.data);
   const { user, fetchAccount } = useUserSession();
 
   const [userFly, setUserFly] = useState<UserDTO | undefined>(undefined);
@@ -229,14 +285,68 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
   // 1) Hidrata com sessão
   // ---------------------------
   useEffect(() => {
+    const draft = readCheckoutDraft();
+    const hasSignupSeed = Boolean(signupData.name || signupData.email || signupData.phone);
+
+    if (!draft && !hasSignupSeed) return;
+
+    setForm((prev) => ({
+      ...prev,
+      ...draft,
+      name: draft?.name ?? signupData.name ?? prev.name,
+      email: normalizeEmail(draft?.email ?? signupData.email ?? prev.email),
+      phone: draft?.phone ?? signupData.phone ?? prev.phone,
+    }));
+  }, [signupData.email, signupData.name, signupData.phone]);
+
+  useEffect(() => {
+    writeCheckoutDraft(form);
+  }, [form]);
+
+  // ---------------------------
+  // Snapshot "limpo" do form
+  // ---------------------------
+  const formSnapshot = useMemo(() => {
+    const name = form.name?.trim() ?? "";
+    const email = form.email?.trim() ?? "";
+    const emailNorm = normalizeEmail(email);
+
+    const phoneE164 = toE164BR(form.phone);
+    const cpfDigits = normalizeDigits(form.cpf);
+
+    return {
+      name,
+      email,
+      emailNorm,
+      phoneE164,
+      phoneDigitsE164: normalizeDigits(phoneE164),
+      phoneDigitsComparable: normalizePhoneIdentity(phoneE164),
+      cpfDigits,
+    };
+  }, [form.name, form.email, form.phone, form.cpf]);
+
+  const isMinDataValid = useMemo(() => {
+    return (
+      !!formSnapshot.name &&
+      isValidEmail(formSnapshot.email) &&
+      isValidWhatsAppBR(formSnapshot.phoneE164)
+    );
+  }, [formSnapshot]);
+
+  useEffect(() => {
     if (!user?.userData?.user) return;
 
     const sessionUser = user.userData.user;
+    const hasCheckoutIdentity = Boolean(formSnapshot.emailNorm || formSnapshot.phoneDigitsComparable);
+
+    if (hasCheckoutIdentity && !doesCheckoutFormMatchUser(sessionUser, formSnapshot)) {
+      return;
+    }
 
     setForm((prev) => ({
       ...prev,
       name: sessionUser.name ?? prev.name,
-      email: (sessionUser as any).email ?? prev.email,
+      email: normalizeEmail((sessionUser as any).email ?? prev.email),
       phone: (sessionUser as any).phone ?? prev.phone,
       cpf: (sessionUser as any).cpfCnpj ?? prev.cpf,
       postalCode: (sessionUser as any).postalCode ?? prev.postalCode,
@@ -250,7 +360,7 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
 
     setUserFly(sessionUser);
     setLeadCreated(true);
-  }, [user]);
+  }, [user, formSnapshot.emailNorm, formSnapshot.phoneDigitsComparable]);
 
   const isAnnual = plan.slug?.toLowerCase().includes("anual");
   const rawPriceNumber = Number((plan.priceCents / 100).toFixed(2));
@@ -283,7 +393,8 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    const nextValue = name === "email" ? normalizeEmail(value) : value;
+    setForm((prev) => ({ ...prev, [name]: nextValue }));
   };
 
   const inputClasses =
@@ -302,34 +413,40 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
     return msg.includes("já cadastrado") || msg.includes("ja cadastrado");
   };
 
-  // ---------------------------
-  // Snapshot "limpo" do form
-  // ---------------------------
-  const formSnapshot = useMemo(() => {
-    const name = form.name?.trim() ?? "";
-    const email = form.email?.trim() ?? "";
-    const emailNorm = normalizeEmail(email);
+  useEffect(() => {
+    const hasCheckoutIdentity = Boolean(formSnapshot.emailNorm || formSnapshot.phoneDigitsComparable || userFly?.id);
+    if (!hasCheckoutIdentity) return;
 
-    const phoneE164 = toE164BR(form.phone);
-    const cpfDigits = normalizeDigits(form.cpf);
+    if (
+      doesBillingCheckoutSessionMatchIdentity({
+        userId: userFly?.id,
+        email: formSnapshot.emailNorm,
+        phone: formSnapshot.phoneE164,
+      })
+    ) {
+      return;
+    }
 
-    return {
-      name,
-      email,
-      emailNorm,
-      phoneE164,
-      phoneDigitsE164: normalizeDigits(phoneE164),
-      cpfDigits,
-    };
-  }, [form.name, form.email, form.phone, form.cpf]);
+    clearBillingCheckoutSession();
+  }, [userFly?.id, formSnapshot.emailNorm, formSnapshot.phoneDigitsComparable, formSnapshot.phoneE164]);
 
-  const isMinDataValid = useMemo(() => {
-    return (
-      !!formSnapshot.name &&
-      isValidEmail(formSnapshot.email) &&
-      isValidWhatsAppBR(formSnapshot.phoneE164)
-    );
-  }, [formSnapshot]);
+  useEffect(() => {
+    if (!userFly?.id) return;
+
+    const sameEmail =
+      Boolean(formSnapshot.emailNorm) &&
+      normalizeEmail((userFly as any).email) === formSnapshot.emailNorm;
+    const samePhone =
+      Boolean(formSnapshot.phoneDigitsComparable) &&
+      normalizePhoneIdentity((userFly as any).phone) === formSnapshot.phoneDigitsComparable;
+
+    if (sameEmail || samePhone) return;
+
+    setUserFly(undefined);
+    setLeadCreated(false);
+    lastLeadKeyRef.current = null;
+    lastSyncedKeyRef.current = null;
+  }, [userFly, formSnapshot.emailNorm, formSnapshot.phoneDigitsComparable]);
 
   // ---------------------------
   // 2) GET helper (tenta e retorna null em 404)
@@ -398,10 +515,10 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
 
     try {
       const list = await getUsers();
-      const phoneDigits = normalizeDigits(phoneE164);
+      const phoneDigits = normalizePhoneIdentity(phoneE164);
       const found =
         list.find((u) => normalizeEmail((u as any).email) === emailNorm) ??
-        list.find((u) => normalizeDigits((u as any).phone) === phoneDigits) ??
+        list.find((u) => normalizePhoneIdentity((u as any).phone) === phoneDigits) ??
         null;
 
       return (found as any) ?? null;
@@ -427,15 +544,15 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
 
     const currentName = (base as any).name ?? "";
     const currentEmail = normalizeEmail((base as any).email ?? "");
-    const currentPhoneDigits = normalizeDigits((base as any).phone ?? "");
+    const currentPhoneDigits = normalizePhoneIdentity((base as any).phone ?? "");
     const currentCpf = normalizeDigits((base as any).cpfCnpj ?? "");
 
     const patch: any = {};
 
     if (snap.name && snap.name !== currentName) patch.name = snap.name;
-    if (snap.email && snap.emailNorm !== currentEmail) patch.email = snap.email;
+    if (snap.emailNorm && snap.emailNorm !== currentEmail) patch.email = snap.emailNorm;
 
-    const snapPhoneDigits = normalizeDigits(snap.phoneE164);
+    const snapPhoneDigits = normalizePhoneIdentity(snap.phoneE164);
     if (snapPhoneDigits && snapPhoneDigits !== currentPhoneDigits) patch.phone = snap.phoneE164;
 
     if (snap.cpfDigits && snap.cpfDigits.length >= 11 && snap.cpfDigits !== currentCpf) {
@@ -452,7 +569,13 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
   // 5) Resolve user (create-or-get) + sync
   // ---------------------------
   async function resolveUserAndSync(): Promise<UserDTO> {
-    const sessionUser = user?.userData?.user;
+    const sessionUser =
+      doesCheckoutFormMatchUser(user?.userData?.user, {
+        emailNorm: formSnapshot.emailNorm,
+        phoneDigitsComparable: formSnapshot.phoneDigitsComparable,
+      })
+        ? user?.userData?.user
+        : null;
     const snap = {
       name: formSnapshot.name,
       email: formSnapshot.email,
@@ -465,7 +588,12 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
       throw new Error("Preencha nome, e-mail e WhatsApp válido para continuar.");
     }
 
-    if (userFly?.id) {
+    const canReuseUserFly =
+      userFly?.id &&
+      (normalizeEmail((userFly as any).email) === snap.emailNorm ||
+        normalizePhoneIdentity((userFly as any).phone) === normalizePhoneIdentity(snap.phoneE164));
+
+    if (canReuseUserFly && userFly?.id) {
       try {
         const synced = await syncUserWithFormIfNeeded(userFly, snap);
         setUserFly(synced);
@@ -519,7 +647,7 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
       const { origin, originRef } = readOriginAttribution();
       const created = await createMutation.mutateAsync({
         name: snap.name,
-        email: snap.email,
+        email: snap.emailNorm,
         phone: snap.phoneE164,
         origin,
         originRef: originRef || undefined,
@@ -562,7 +690,13 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
   useEffect(() => {
     if (leadCreated) return;
 
-    const sessionUser = user?.userData?.user;
+    const sessionUser =
+      doesCheckoutFormMatchUser(user?.userData?.user, {
+        emailNorm: formSnapshot.emailNorm,
+        phoneDigitsComparable: formSnapshot.phoneDigitsComparable,
+      })
+        ? user?.userData?.user
+        : null;
     if (sessionUser?.id) {
       setUserFly(sessionUser);
       setLeadCreated(true);
@@ -590,6 +724,7 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
     formSnapshot.name,
     formSnapshot.emailNorm,
     formSnapshot.phoneE164,
+    formSnapshot.phoneDigitsComparable,
   ]);
 
   // ---------------------------
@@ -652,24 +787,30 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
     router.push(`/cadastro/checkout?plano=${targetSlug}`);
   };
 
+  function redirectToCheckoutValidation(message?: string) {
+    clearBillingCheckoutSession();
+    setLoading(false);
+    setError(message ?? "Sua validacao de checkout expirou. Faca login novamente para continuar.");
+
+    const qs = new URLSearchParams();
+    if (plan.slug) qs.set("plano", plan.slug);
+    if (revalidate) qs.set("revalidate", revalidate);
+
+    const next = `/cadastro/checkout?${qs.toString()}`;
+    router.replace(`/login?next=${encodeURIComponent(next)}`);
+  }
+
   // ---------------------------
   // Stripe helpers
   // ---------------------------
   async function createSetupIntent(userId: string): Promise<{ clientSecret: string; customerId?: string | null }> {
-    const res = await api.post("/billing/setup-intent", { userId });
-    const data = res.data ?? {};
+    return createBillingCheckoutSetupIntent(userId); /*
 
-    const clientSecret =
-      data.clientSecret ??
-      data.client_secret ??
-      data?.setupIntent?.client_secret ??
-      data?.setup_intent?.client_secret;
 
-    if (!clientSecret || typeof clientSecret !== "string") {
       throw new Error("Não foi possível iniciar o pagamento (SetupIntent sem clientSecret).");
     }
 
-    return { clientSecret, customerId: data.customerId ?? data.customer_id ?? null };
+    return { clientSecret, customerId: data.customerId ?? data.customer_id ?? null }; */
   }
 
   async function confirmCardSetup(clientSecret: string) {
@@ -746,16 +887,32 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
 
       let ensuredUser = await resolveUserAndSync();
 
-      // 1) SetupIntent (backend cria/garante customer do Stripe)
+      // 1) SetupIntent (backend cria/garante customer para o userId informado)
       let clientSecret: string;
       try {
         ({ clientSecret } = await createSetupIntent(ensuredUser.id));
       } catch (err) {
+        if (isBillingCheckoutTokenError(err)) {
+          redirectToCheckoutValidation(
+            "Sua validacao de checkout expirou. Faca login novamente para continuar."
+          );
+          return;
+        }
+
         if (!isUserNotFoundError(err)) throw err;
 
-        const recoveredUser = await resolveUserAndSync();
-        ensuredUser = recoveredUser;
-        ({ clientSecret } = await createSetupIntent(ensuredUser.id));
+        ensuredUser = await resolveUserAndSync();
+        try {
+          ({ clientSecret } = await createSetupIntent(ensuredUser.id));
+        } catch (retryErr) {
+          if (isBillingCheckoutTokenError(retryErr)) {
+            redirectToCheckoutValidation(
+              "Sua validacao de checkout expirou. Faca login novamente para continuar."
+            );
+            return;
+          }
+          throw retryErr;
+        }
       }
 
       // 2) Confirmar cartão no Stripe (gera pm_...)
@@ -776,17 +933,35 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
       }
 
       try {
-        await api.post("/billing/subscription", payload);
+        await createBillingCheckoutSubscription(payload);
       } catch (err) {
+        if (isBillingCheckoutTokenError(err)) {
+          redirectToCheckoutValidation(
+            "Sua validacao de checkout expirou. Faca login novamente para continuar."
+          );
+          return;
+        }
+
         if (!isUserNotFoundError(err)) throw err;
 
-        const recoveredUser = await resolveUserAndSync();
-        payload.userId = recoveredUser.id;
-        await api.post("/billing/subscription", payload);
+        ensuredUser = await resolveUserAndSync();
+        payload.userId = ensuredUser.id;
+        try {
+          await createBillingCheckoutSubscription(payload);
+        } catch (retryErr) {
+          if (isBillingCheckoutTokenError(retryErr)) {
+            redirectToCheckoutValidation(
+              "Sua validacao de checkout expirou. Faca login novamente para continuar."
+            );
+            return;
+          }
+          throw retryErr;
+        }
       }
 
       setLoading(false);
       setView("SUCCESS");
+      clearCheckoutDraft();
 
       // remove step se houver (e garante URL limpa)
       const plano = searchParams.get("plano") ?? plan.slug ?? "";
@@ -1014,7 +1189,11 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
               {/* Botões */}
               <div className="flex justify-end">
                 <button
-                  disabled={loading || !stripe || !elements}
+                  disabled={
+                    loading ||
+                    !stripe ||
+                    !elements
+                  }
                   onClick={handleSubmit}
                   className={clsx(
                     "px-6 py-2 rounded-md font-medium cursor-pointer flex items-center justify-center gap-2",

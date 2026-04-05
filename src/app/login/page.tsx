@@ -14,6 +14,11 @@ import texture from '../../../assets/teture.svg'
 import instagram from '../../../assets/icons/instagram-fill-icon.png'
 import tiktop from '../../../assets/icons/tiktok-icon.png'
 
+import {
+  normalizeAuthEmail,
+  normalizeAuthPhone,
+  syncBillingCheckoutSessionIdentity,
+} from '@/lib/authSession'
 import { sendLoginCode, verifyCode } from '@/services/auth'
 import { CleaveInput, Input, OtpInput } from '@/components/ui/input'
 import { WhatsappIcon } from '@/components/icon/whatsapp'
@@ -34,7 +39,7 @@ function LoginContent() {
   const [loading, setLoading] = useState(false)
   const [message] = useState('')
   const [isPending, startTransition] = useTransition()
-  const { fetchAccount } = useUserSession()
+  const { fetchAccount, invalidateSession } = useUserSession()
 
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -61,6 +66,10 @@ function LoginContent() {
     }
   }, [])
 
+  useEffect(() => {
+    void invalidateSession()
+  }, [invalidateSession])
+
   function handleMethodChange(newMethod: LoginMethod) {
     setMethod(newMethod)
     if (typeof window !== 'undefined') {
@@ -86,6 +95,7 @@ function LoginContent() {
     setLoading(true)
     setError('')
     try {
+      await invalidateSession()
       const body = method === 'email' ? { email: identifier.trim() } : { whatsappPhone: identifier.trim() }
       await sendLoginCode(body)
       setStep('code')
@@ -106,12 +116,25 @@ function LoginContent() {
 
       await fetchAccount()
 
-      const { status } = useUserSession.getState()
-      if (status !== 'authenticated') {
+      const { status, user } = useUserSession.getState()
+      const sessionUser = user?.userData?.user
+      const identifierMatches =
+        method === 'email'
+          ? normalizeAuthEmail(sessionUser?.email) === normalizeAuthEmail(identifier)
+          : normalizeAuthPhone(sessionUser?.phone) === normalizeAuthPhone(identifier)
+
+      if (status !== 'authenticated' || !sessionUser?.id || !identifierMatches) {
+        await invalidateSession()
         setError(t('errors.sessionValidationFailed'))
         setLoading(false)
         return
       }
+
+      syncBillingCheckoutSessionIdentity({
+        userId: sessionUser.id,
+        email: sessionUser.email,
+        phone: sessionUser.phone,
+      })
 
       startTransition(() => {
         router.push(nextRoute)

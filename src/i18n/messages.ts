@@ -1,4 +1,4 @@
-export const SUPPORTED_APP_LOCALES = ['pt-BR', 'en-US', 'es-ES'] as const
+﻿export const SUPPORTED_APP_LOCALES = ['pt-BR', 'en-US', 'es-ES'] as const
 
 export type AppLocale = (typeof SUPPORTED_APP_LOCALES)[number]
 
@@ -1730,6 +1730,53 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         next: 'Proxima',
       },
     },
+    adminUsersPage: {
+      common: {
+        empty: '-',
+      },
+      hero: {
+        badge: 'Acesso dev',
+        title: 'Usuarios testers',
+        description:
+          'Usuarios testers podem acessar o ambiente restrito de desenvolvimento. Essa permissao e separada do role principal do usuario.',
+      },
+      filters: {
+        searchLabel: 'Busca',
+        searchPlaceholder: 'Nome, email, telefone, role ou ID',
+        apply: 'Filtrar',
+        clear: 'Limpar',
+      },
+      list: {
+        title: 'Usuarios',
+        summary: '{testers} testers em {total} usuarios',
+      },
+      states: {
+        loadError: 'Erro ao carregar usuarios.',
+        empty: 'Nenhum usuario encontrado.',
+        emptyFiltered: 'Nenhum usuario encontrado para a busca informada.',
+      },
+      table: {
+        user: 'Usuario',
+        email: 'Email',
+        role: 'Role',
+        tester: 'Tester',
+        testerEnabled: 'Ativo',
+        testerDisabled: 'Inativo',
+        devAccess: 'Acesso dev',
+        devAccessToggle: 'Permitir acesso de teste',
+        devAccessOn: 'Usuario liberado para o ambiente restrito.',
+        devAccessOff: 'Usuario comum sem acesso de teste.',
+        createdAt: 'Criado em',
+        toggleAria: 'Alterar permissao tester de {name}',
+        updating: 'Atualizando...',
+      },
+      pagination: {
+        pageOf: 'Pagina {page} de {totalPages}',
+        total: 'Total: {total}',
+        previous: 'Anterior',
+        next: 'Proxima',
+      },
+    },
     adminAdvisorsPage: {
       common: {
         empty: '-',
@@ -1800,6 +1847,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         empty: '-',
         yes: 'Sim',
         no: 'Nao',
+        notLinked: 'Nao vinculado',
       },
       errors: {
         featureLabelRequired: 'Label obrigatorio',
@@ -1833,10 +1881,13 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       },
       list: {
         title: 'Planos',
+        description:
+          'O produto Stripe passa a ser criado automaticamente ao salvar o plano. Os precos Stripe continuam sendo gerenciados separadamente.',
       },
       table: {
         name: 'Nome',
         slug: 'Slug',
+        stripeProductId: 'Produto Stripe',
         price: 'Preco',
         period: 'Periodo',
         active: 'Ativo',
@@ -1873,6 +1924,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         priceCents: 'Preco (centavos)',
         currency: 'Moeda',
         period: 'Periodo',
+        stripeProductId: 'Stripe product ID',
+        stripeProductName: 'Produto Stripe',
+        stripeProductStatus: 'Status do produto',
         priceId: 'priceId',
         installmentPriceId: 'installmentPriceId',
         yearlyPriceId: 'yearlyPriceId',
@@ -1897,6 +1951,16 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         weekly: 'Semanal',
         monthly: 'Mensal',
         yearly: 'Anual',
+      },
+      stripe: {
+        title: 'Produto Stripe',
+        createDescription:
+          'Ao criar o plano, o produto correspondente na Stripe sera criado automaticamente.',
+        editDescription:
+          'O produto Stripe vinculado aparece aqui. Os precos Stripe continuam sendo gerenciados separadamente.',
+        willBeGenerated: 'Sera gerado automaticamente ao salvar',
+        priceStepHint:
+          'Os precos Stripe continuam sendo um passo separado. Use os campos de priceId abaixo quando ja houver precos criados ou vinculados.',
       },
     },
     adminBillingCouponsPage: {
@@ -3747,6 +3811,53 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         next: 'Next',
       },
     },
+    adminUsersPage: {
+      common: {
+        empty: '-',
+      },
+      hero: {
+        badge: 'Dev access',
+        title: 'Tester users',
+        description:
+          'Tester users can access the restricted development environment. This permission is separate from the user main role.',
+      },
+      filters: {
+        searchLabel: 'Search',
+        searchPlaceholder: 'Name, email, phone, role or ID',
+        apply: 'Filter',
+        clear: 'Clear',
+      },
+      list: {
+        title: 'Users',
+        summary: '{testers} testers across {total} users',
+      },
+      states: {
+        loadError: 'Error loading users.',
+        empty: 'No users found.',
+        emptyFiltered: 'No users found for the current search.',
+      },
+      table: {
+        user: 'User',
+        email: 'Email',
+        role: 'Role',
+        tester: 'Tester',
+        testerEnabled: 'Enabled',
+        testerDisabled: 'Disabled',
+        devAccess: 'Dev access',
+        devAccessToggle: 'Allow test access',
+        devAccessOn: 'User can access the restricted environment.',
+        devAccessOff: 'Regular user without test access.',
+        createdAt: 'Created at',
+        toggleAria: 'Toggle tester permission for {name}',
+        updating: 'Updating...',
+      },
+      pagination: {
+        pageOf: 'Page {page} of {totalPages}',
+        total: 'Total: {total}',
+        previous: 'Previous',
+        next: 'Next',
+      },
+    },
     adminAdvisorsPage: {
       common: {
         empty: '-',
@@ -3815,6 +3926,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         empty: '-',
         yes: 'Yes',
         no: 'No',
+        notLinked: 'Not linked',
       },
       errors: {
         featureLabelRequired: 'Label is required',
@@ -3848,10 +3960,13 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       },
       list: {
         title: 'Plans',
+        description:
+          'The Stripe product is created automatically when the plan is saved. Stripe prices are still managed separately.',
       },
       table: {
         name: 'Name',
         slug: 'Slug',
+        stripeProductId: 'Stripe product',
         price: 'Price',
         period: 'Period',
         active: 'Active',
@@ -3888,6 +4003,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         priceCents: 'Price (cents)',
         currency: 'Currency',
         period: 'Period',
+        stripeProductId: 'Stripe product ID',
+        stripeProductName: 'Stripe product',
+        stripeProductStatus: 'Product status',
         priceId: 'priceId',
         installmentPriceId: 'installmentPriceId',
         yearlyPriceId: 'yearlyPriceId',
@@ -3912,6 +4030,16 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         weekly: 'Weekly',
         monthly: 'Monthly',
         yearly: 'Yearly',
+      },
+      stripe: {
+        title: 'Stripe product',
+        createDescription:
+          'When you create the plan, the corresponding Stripe product will be created automatically.',
+        editDescription:
+          'The linked Stripe product appears here. Stripe prices are still managed separately.',
+        willBeGenerated: 'Will be generated automatically on save',
+        priceStepHint:
+          'Stripe prices are still a separate step. Use the priceId fields below when prices have already been created or linked.',
       },
     },
     adminBillingCouponsPage: {
@@ -5767,6 +5895,53 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         next: 'Siguiente',
       },
     },
+    adminUsersPage: {
+      common: {
+        empty: '-',
+      },
+      hero: {
+        badge: 'Acceso dev',
+        title: 'Usuarios testers',
+        description:
+          'Los usuarios testers pueden acceder al entorno restringido de desarrollo. Este permiso es separado del role principal del usuario.',
+      },
+      filters: {
+        searchLabel: 'Busqueda',
+        searchPlaceholder: 'Nombre, email, telefono, role o ID',
+        apply: 'Filtrar',
+        clear: 'Limpiar',
+      },
+      list: {
+        title: 'Usuarios',
+        summary: '{testers} testers en {total} usuarios',
+      },
+      states: {
+        loadError: 'Error al cargar usuarios.',
+        empty: 'No se encontraron usuarios.',
+        emptyFiltered: 'No se encontraron usuarios para la busqueda actual.',
+      },
+      table: {
+        user: 'Usuario',
+        email: 'Email',
+        role: 'Role',
+        tester: 'Tester',
+        testerEnabled: 'Activo',
+        testerDisabled: 'Inactivo',
+        devAccess: 'Acceso dev',
+        devAccessToggle: 'Permitir acceso de prueba',
+        devAccessOn: 'Usuario liberado para el entorno restringido.',
+        devAccessOff: 'Usuario comun sin acceso de prueba.',
+        createdAt: 'Creado en',
+        toggleAria: 'Cambiar permiso tester de {name}',
+        updating: 'Actualizando...',
+      },
+      pagination: {
+        pageOf: 'Pagina {page} de {totalPages}',
+        total: 'Total: {total}',
+        previous: 'Anterior',
+        next: 'Siguiente',
+      },
+    },
     adminAdvisorsPage: {
       common: {
         empty: '-',
@@ -5836,6 +6011,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         empty: '-',
         yes: 'Si',
         no: 'No',
+        notLinked: 'No vinculado',
       },
       errors: {
         featureLabelRequired: 'Label obligatorio',
@@ -5869,10 +6045,13 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       },
       list: {
         title: 'Planes',
+        description:
+          'El producto de Stripe se crea automaticamente al guardar el plan. Los precios de Stripe siguen gestionandose por separado.',
       },
       table: {
         name: 'Nombre',
         slug: 'Slug',
+        stripeProductId: 'Producto Stripe',
         price: 'Precio',
         period: 'Periodo',
         active: 'Activo',
@@ -5909,6 +6088,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         priceCents: 'Precio (centavos)',
         currency: 'Moneda',
         period: 'Periodo',
+        stripeProductId: 'Stripe product ID',
+        stripeProductName: 'Producto Stripe',
+        stripeProductStatus: 'Estado del producto',
         priceId: 'priceId',
         installmentPriceId: 'installmentPriceId',
         yearlyPriceId: 'yearlyPriceId',
@@ -5933,6 +6115,16 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         weekly: 'Semanal',
         monthly: 'Mensual',
         yearly: 'Anual',
+      },
+      stripe: {
+        title: 'Producto Stripe',
+        createDescription:
+          'Al crear el plan, el producto correspondiente en Stripe se creara automaticamente.',
+        editDescription:
+          'El producto Stripe vinculado aparece aqui. Los precios Stripe siguen gestionandose por separado.',
+        willBeGenerated: 'Se generara automaticamente al guardar',
+        priceStepHint:
+          'Los precios Stripe siguen siendo un paso separado. Usa los campos de priceId abajo cuando los precios ya existan o esten vinculados.',
       },
     },
     adminBillingCouponsPage: {

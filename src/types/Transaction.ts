@@ -1,4 +1,5 @@
 import { Plan } from "@/app/WinbackPage/planos/plans"
+import type { HouseContext } from "@/types/house"
 import { PaymentType } from "@/services/transactions"
 import { IconName } from "@/utils/icon-map"
 
@@ -89,6 +90,7 @@ export interface Signature {
 }
 
 export interface SessionResponse {
+  houseContext?: HouseContext | null
   userData: {
     user: User,
     signature: Signature,
@@ -110,6 +112,7 @@ export interface UserSessionData {
 }
 
 export interface SessionResponse {
+  houseContext?: HouseContext | null
   userData: UserSessionData
 }
 

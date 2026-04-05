@@ -20,6 +20,7 @@ import {
   ClipboardList,
   BarChart3,
   Clock3,
+  House,
   ShieldCheck,
   Users,
 } from 'lucide-react'
@@ -58,6 +59,7 @@ export default function Sidebar() {
     { id: 'reports', label: t('reports'), icon: <BarChart3 />, path: '/dashboard/relatorios' },
     { id: 'categories', label: t('categories'), icon: <Tag />, path: '/dashboard/categorias' },
     { id: 'education', label: t('education'), icon: <BookOpenCheck />, path: '/dashboard/educacao' },
+    { id: 'coupleAccount', label: t('coupleAccount'), icon: <House />, path: '/dashboard/conta-casal' },
     ...(isAdvisor
       ? [{ id: 'clients', label: t('clients'), icon: <Users />, path: '/advisor' }]
       : []),

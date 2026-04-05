@@ -77,6 +77,18 @@ export type BillingSetupIntentResponse = {
   clientSecret: string
 }
 
+export type CreateBillingSubscriptionPayload = {
+  userId?: string
+  planId: string
+  paymentMethodId?: string
+  promoCode?: string
+  annualBilling?: 'UPFRONT' | 'INSTALLMENTS'
+}
+
+export type ChangeBillingSubscriptionPlanPayload = {
+  planId: string
+}
+
 export type UpdateBillingPaymentMethodPayload = {
   paymentMethodId: string
   subscriptionId?: string
@@ -243,6 +255,28 @@ export async function createBillingSetupIntentMe(): Promise<BillingSetupIntentRe
     return { clientSecret, customerId }
   } catch (error: unknown) {
     throw new Error(toBillingErrorMessage(error, 'Erro ao iniciar troca de cartao.'))
+  }
+}
+
+export async function createBillingSubscription(
+  payload: CreateBillingSubscriptionPayload
+): Promise<unknown> {
+  try {
+    const response = await api.post('/billing/subscription', payload)
+    return response.data ?? null
+  } catch (error: unknown) {
+    throw new Error(toBillingErrorMessage(error, 'Erro ao criar assinatura.'))
+  }
+}
+
+export async function changeBillingSubscriptionPlan(
+  payload: ChangeBillingSubscriptionPlanPayload
+): Promise<unknown> {
+  try {
+    const response = await api.post('/billing/subscription/change-plan', payload)
+    return response.data ?? null
+  } catch (error: unknown) {
+    throw new Error(toBillingErrorMessage(error, 'Erro ao trocar o plano da assinatura.'))
   }
 }
 

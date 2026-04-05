@@ -3,6 +3,8 @@ export interface UserDTO {
     name: string
     email: string
     phone: string
+    role?: string | null
+    isTester?: boolean
     createdAt?: string
     planId?: string | null
     origin?: 'ORGANIC' | 'CAMPAIGN' | 'INFLUENCER'
@@ -29,5 +31,6 @@ interface User {
 export interface UserResponse {
     user: User
     account: Account
+    billingCheckoutToken?: string | null
   }
   

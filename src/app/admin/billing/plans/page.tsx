@@ -129,6 +129,29 @@ function periodLabel(period: string, t: TranslatorFn) {
   return map[period] ?? period
 }
 
+function getStripeProductName(plan: AdminPlan) {
+  const localName = plan.stripeProductLocal?.name?.trim()
+  if (localName) return localName
+
+  const stripeName = plan.stripeProduct?.name?.trim()
+  return stripeName || null
+}
+
+function getStripeProductStatus(plan: AdminPlan, t: TranslatorFn) {
+  const localStatus = String(plan.stripeProductLocal?.status ?? '').trim()
+  if (localStatus) return localStatus
+
+  if (typeof plan.stripeProductLocal?.active === 'boolean') {
+    return plan.stripeProductLocal.active ? t('common.yes') : t('common.no')
+  }
+
+  if (typeof plan.stripeProduct?.active === 'boolean') {
+    return plan.stripeProduct.active ? t('common.yes') : t('common.no')
+  }
+
+  return null
+}
+
 export default function AdminBillingPlansPage() {
   const t = useTranslations('adminBillingPlansPage')
   const locale = useLocale()
@@ -165,6 +188,8 @@ export default function AdminBillingPlansPage() {
   const deletePlanMutation = useDeleteAdminPlan()
   const planDetailQuery = useAdminPlan(editingPlanId ?? undefined, isModalOpen && Boolean(editingPlanId))
   const planSchema = useMemo(() => createPlanSchema(t), [t])
+  const isEditing = Boolean(editingPlanId)
+  const isSaving = createPlanMutation.isPending || updatePlanMutation.isPending
 
   const form = useForm<PlanFormValues>({
     resolver: zodResolver(planSchema),
@@ -439,7 +464,10 @@ export default function AdminBillingPlansPage() {
       </article>
 
       <article className="rounded-2xl border border-slate-200 bg-white p-5">
-        <h3 className="text-base font-semibold text-[#333C4D]">{t('list.title')}</h3>
+        <div className="space-y-1">
+          <h3 className="text-base font-semibold text-[#333C4D]">{t('list.title')}</h3>
+          <p className="text-sm text-slate-500">{t('list.description')}</p>
+        </div>
 
         {plansQuery.isLoading ? (
           <div className="mt-4 h-56 animate-pulse rounded-xl bg-slate-100" />
@@ -458,11 +486,12 @@ export default function AdminBillingPlansPage() {
                 {t('states.showingCached')}
               </div>
             )}
-            <table className="w-full min-w-[1000px] text-sm">
+            <table className="w-full min-w-[1180px] text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-left text-slate-500">
                   <th className="pb-2 font-medium">{t('table.name')}</th>
                   <th className="pb-2 font-medium">{t('table.slug')}</th>
+                  <th className="pb-2 font-medium">{t('table.stripeProductId')}</th>
                   <th className="pb-2 font-medium">{t('table.price')}</th>
                   <th className="pb-2 font-medium">{t('table.period')}</th>
                   <th className="pb-2 font-medium">{t('table.active')}</th>
@@ -476,6 +505,15 @@ export default function AdminBillingPlansPage() {
                   <tr key={plan.id} className="border-b border-slate-100">
                     <td className="py-3">{plan.name}</td>
                     <td className="py-3 text-slate-600">{plan.slug}</td>
+                    <td className="py-3">
+                      {plan.stripeProductId ? (
+                        <code className="inline-flex max-w-[240px] break-all rounded-lg bg-slate-100 px-2 py-1 text-xs text-slate-700">
+                          {plan.stripeProductId}
+                        </code>
+                      ) : (
+                        <span className="text-slate-400">{t('common.notLinked')}</span>
+                      )}
+                    </td>
                     <td className="py-3">{formatCurrencyFromCents(plan.priceCents, plan.currency, locale)}</td>
                     <td className="py-3">{periodLabel(plan.period, t)}</td>
                     <td className="py-3">
@@ -614,6 +652,51 @@ export default function AdminBillingPlansPage() {
                     {...form.register('description')}
                   />
                 </label>
+
+                <div className="md:col-span-3 rounded-2xl border border-sky-100 bg-sky-50/70 p-4">
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-semibold text-[#333C4D]">{t('stripe.title')}</h4>
+                    <p className="text-xs text-slate-600">
+                      {isEditing ? t('stripe.editDescription') : t('stripe.createDescription')}
+                    </p>
+                  </div>
+
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                        {t('fields.stripeProductId')}
+                      </p>
+                      <p className="mt-1 break-all text-sm text-slate-800">
+                        {planDetailQuery.data?.stripeProductId ||
+                          (isEditing ? t('common.notLinked') : t('stripe.willBeGenerated'))}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                        {t('fields.stripeProductName')}
+                      </p>
+                      <p className="mt-1 text-sm text-slate-800">
+                        {planDetailQuery.data
+                          ? getStripeProductName(planDetailQuery.data) || t('common.empty')
+                          : t('common.empty')}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                        {t('fields.stripeProductStatus')}
+                      </p>
+                      <p className="mt-1 text-sm text-slate-800">
+                        {planDetailQuery.data
+                          ? getStripeProductStatus(planDetailQuery.data, t) || t('common.empty')
+                          : t('common.empty')}
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="mt-3 text-xs text-slate-600">{t('stripe.priceStepHint')}</p>
+                </div>
 
                 <label className="flex flex-col gap-1 text-sm">
                   <span className="text-slate-600">{t('fields.priceCents')}</span>
@@ -785,25 +868,31 @@ export default function AdminBillingPlansPage() {
                   )}
                 </div>
 
-                <div className="md:col-span-3 flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={closeModal}
-                    className="h-10 rounded-xl border border-slate-200 px-4 text-sm text-slate-700 hover:bg-slate-50"
-                  >
-                    {t('modal.cancel')}
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={createPlanMutation.isPending || updatePlanMutation.isPending}
-                    className="h-10 rounded-xl bg-[#4F98C2] px-4 text-sm font-semibold text-white hover:bg-[#3f86b0] disabled:opacity-60"
-                  >
-                    {createPlanMutation.isPending || updatePlanMutation.isPending
-                      ? t('modal.saving')
-                      : editingPlanId
-                        ? t('modal.saveChanges')
-                        : t('modal.create')}
-                  </button>
+                <div className="md:col-span-3 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="max-w-2xl text-xs text-slate-600">
+                    {isEditing ? t('stripe.priceStepHint') : t('stripe.createDescription')}
+                  </p>
+
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={closeModal}
+                      className="h-10 rounded-xl border border-slate-200 px-4 text-sm text-slate-700 hover:bg-slate-50"
+                    >
+                      {t('modal.cancel')}
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSaving}
+                      className="h-10 rounded-xl bg-[#4F98C2] px-4 text-sm font-semibold text-white hover:bg-[#3f86b0] disabled:opacity-60"
+                    >
+                      {isSaving
+                        ? t('modal.saving')
+                        : isEditing
+                          ? t('modal.saveChanges')
+                          : t('modal.create')}
+                    </button>
+                  </div>
                 </div>
               </form>
             )}
