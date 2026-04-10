@@ -12,9 +12,11 @@ test('UserPreferencesCard conecta carregamento, diff e persistencia por PATCH pa
 
   assert.match(source, /useTranslations\('preferences'\)/)
   assert.match(source, /useUserAppPreferences\(\)/)
+  assert.match(source, /usePushNotifications\(\)/)
   assert.match(source, /const sourcePreferences = preferencesQuery\.data \?\? storePreferences/)
   assert.match(source, /const patch = diffUserPreferences\(baseline, nextPreferences\)/)
   assert.match(source, /updatePreferencesMutation\.mutateAsync\(patch\)/)
+  assert.match(source, /pushNotifications\.syncWithPreferences\(\{\s*notificationsEnabled:/)
   assert.match(source, /if \(Object\.keys\(patch\)\.length === 0\)/)
   assert.match(source, /toast\.success\(t\('actions\.saveSuccess'\)\)/)
 })
@@ -26,6 +28,16 @@ test('UserPreferencesCard oferece acao de instalar PWA quando nao detectado', ()
   assert.match(source, /const canShowPwaInstallAction = Boolean\(sourcePreferences && !sourcePreferences\.pwaInstalled\)/)
   assert.match(source, /handleInstallPwa/)
   assert.match(source, /t\('pwa\.installButton'\)/)
+})
+
+test('UserPreferencesCard expõe status e CTA de push do navegador', () => {
+  const source = readSource('src/components/perfil/UserPreferencesCard.tsx')
+
+  assert.match(source, /t\('notifications\.permissionLabel'\)/)
+  assert.match(source, /t\('notifications\.subscriptionLabel'\)/)
+  assert.match(source, /handleActivatePushNotifications/)
+  assert.match(source, /t\('notifications\.activateAction'\)/)
+  assert.match(source, /t\('notifications\.pushHelp'\)/)
 })
 
 test('useUserSession faz bootstrap por /auth/me com fallback para /users/me/preferences', () => {

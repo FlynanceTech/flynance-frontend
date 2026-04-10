@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { updateUserAppPreferences } from '@/services/userAppPreferences'
+import { updateUserPreferences } from '@/services/pushApiClient'
 import { useUserSession } from '@/stores/useUserSession'
 import { useUserPreferencesStore } from '@/stores/useUserPreferences'
 
@@ -10,7 +10,7 @@ const PWA_PENDING_SYNC_KEY = 'flynance:pwa-installed:pending-sync'
 function isStandaloneMode() {
   if (typeof window === 'undefined') return false
   const mediaStandalone = window.matchMedia?.('(display-mode: standalone)')?.matches
-  const iosStandalone = Boolean((window.navigator as any)?.standalone)
+  const iosStandalone = Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone)
   return Boolean(mediaStandalone || iosStandalone)
 }
 
@@ -57,7 +57,7 @@ export default function PWAInstallListener() {
 
       syncing = true
       try {
-        const nextPreferences = await updateUserAppPreferences({
+        const nextPreferences = await updateUserPreferences({
           pwaInstalled: true,
           pwaInstalledAt: new Date().toISOString(),
         })

@@ -3,11 +3,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Bell, Download, Globe, Languages, LogIn, MonitorSmartphone, Moon, Sun } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { usePushNotifications } from '@/hooks/usePushNotifications'
 import { Switch } from '@/components/ui/switch'
 import { useUserAppPreferences } from '@/hooks/query/useUserAppPreferences'
 import { useUserPreferencesStore } from '@/stores/useUserPreferences'
 import { diffUserPreferences } from '@/services/userAppPreferences'
 import type { LoginPreference, UserPreferences } from '@/types/userPreferences'
+import { getErrorMessage } from '@/utils/getErrorMessage'
 import { useUserTheme } from '@/providers/UserThemeProvider'
 import { useTranslations } from 'next-intl'
 import { Button } from '../ui/button'
@@ -86,7 +88,7 @@ function syncLoginMethodStorage(loginPreference: LoginPreference) {
 function isStandaloneMode() {
   if (typeof window === 'undefined') return false
   const mediaStandalone = window.matchMedia?.('(display-mode: standalone)')?.matches
-  const iosStandalone = Boolean((window.navigator as any)?.standalone)
+  const iosStandalone = Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone)
   return Boolean(mediaStandalone || iosStandalone)
 }
 
@@ -128,11 +130,28 @@ function formatTimezoneOptionLabel(timezone: string, locale: string) {
   }
 }
 
+function resolvePermissionBadgeClasses(permission: NotificationPermission | 'unsupported') {
+  if (permission === 'granted') {
+    return 'border-emerald-200 bg-emerald-50 text-emerald-700'
+  }
+  if (permission === 'denied') {
+    return 'border-red-200 bg-red-50 text-red-700'
+  }
+  return 'border-amber-200 bg-amber-50 text-amber-700'
+}
+
+function resolveSubscriptionBadgeClasses(isActive: boolean) {
+  return isActive
+    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+    : 'border-slate-200 bg-slate-50 text-slate-700'
+}
+
 export default function UserPreferencesCard() {
   const t = useTranslations('preferences')
   const { preferencesQuery, updatePreferencesMutation } = useUserAppPreferences()
   const storePreferences = useUserPreferencesStore((s) => s.preferences)
   const { theme, saveTheme, isSavingTheme } = useUserTheme()
+  const pushNotifications = usePushNotifications()
   const sourcePreferences = preferencesQuery.data ?? storePreferences
 
   const [form, setForm] = useState<FormState | null>(null)
@@ -195,6 +214,17 @@ export default function UserPreferencesCard() {
   }, [form?.timezone, sourcePreferences?.timezone])
 
   const canShowPwaInstallAction = Boolean(sourcePreferences && !sourcePreferences.pwaInstalled)
+  const permissionLabel = t(`notifications.permission.${pushNotifications.permission}`)
+  const subscriptionLabel = pushNotifications.hasActiveSubscription
+    ? t('notifications.subscription.active')
+    : t('notifications.subscription.inactive')
+  const pushHint = !pushNotifications.support.isSupported
+    ? t('notifications.unsupportedHint')
+    : pushNotifications.permission === 'denied'
+      ? t('notifications.deniedHint')
+      : pushNotifications.hasActiveSubscription
+        ? t('notifications.activeHint')
+        : t('notifications.inactiveHint')
 
   const handleInstallPwa = async () => {
     if (isStandaloneMode() || sourcePreferences?.pwaInstalled) {
@@ -250,9 +280,21 @@ export default function UserPreferencesCard() {
       setBaseline(updated)
       setForm(toFormState(updated))
       syncLoginMethodStorage(updated.loginPreference)
+
+      try {
+        await pushNotifications.syncWithPreferences({
+          notificationsEnabled: updated.notificationsEnabled,
+          notificationPush: updated.notificationPush,
+        })
+      } catch (error: unknown) {
+        toast.success(t('actions.saveSuccess'))
+        toast.error(getErrorMessage(error, t('notifications.syncError')))
+        return
+      }
+
       toast.success(t('actions.saveSuccess'))
-    } catch (error: any) {
-      toast.error(error?.message ?? t('actions.saveFailed'))
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, t('actions.saveFailed')))
     }
   }
 
@@ -271,8 +313,57 @@ export default function UserPreferencesCard() {
     if (nextTheme === theme) return
     try {
       await saveTheme(nextTheme)
-    } catch (error: any) {
-      toast.error(error?.message ?? t('theme.saveFailed'))
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, t('theme.saveFailed')))
+    }
+  }
+
+  const handleActivatePushNotifications = async () => {
+    if (!baseline || !form) return
+
+    try {
+      const activationResult = await pushNotifications.activate()
+
+      if (activationResult.permission === 'denied') {
+        toast.error(t('notifications.activationDenied'))
+        return
+      }
+
+      if (activationResult.permission !== 'granted' || !activationResult.hasActiveSubscription) {
+        toast(t('notifications.activationPending'))
+        return
+      }
+
+      if (!baseline.notificationsEnabled || !baseline.notificationPush) {
+        const updated = await updatePreferencesMutation.mutateAsync({
+          notificationsEnabled: true,
+          notificationPush: true,
+        })
+        setBaseline(updated)
+        setForm((prev) =>
+          prev
+            ? {
+                ...prev,
+                notificationsEnabled: true,
+                notificationPush: true,
+              }
+            : toFormState(updated)
+        )
+      } else {
+        setForm((prev) =>
+          prev
+            ? {
+                ...prev,
+                notificationsEnabled: true,
+                notificationPush: true,
+              }
+            : prev
+        )
+      }
+
+      toast.success(t('notifications.activationSuccess'))
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, t('notifications.syncError')))
     }
   }
 
@@ -412,6 +503,7 @@ export default function UserPreferencesCard() {
               disabled={isBusy}
             />
           </div>
+          <p className="mt-1 text-xs text-muted-foreground">{t('notifications.description')}</p>
 
           <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <label className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm text-foreground">
@@ -434,6 +526,86 @@ export default function UserPreferencesCard() {
                 disabled={isBusy || !form.notificationsEnabled}
               />
             </label>
+            <label className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm text-foreground">
+              <span>{t('notifications.push')}</span>
+              <Switch
+                checked={form.notificationPush}
+                onCheckedChange={(checked) =>
+                  setForm((prev) => (prev ? { ...prev, notificationPush: checked } : prev))
+                }
+                disabled={
+                  isBusy || !form.notificationsEnabled || !pushNotifications.support.isSupported
+                }
+              />
+            </label>
+          </div>
+
+          <div className="mt-3 rounded-lg border border-border/80 bg-muted/20 px-3 py-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {t('notifications.permissionLabel')}
+                </p>
+                <span
+                  className={[
+                    'mt-2 inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold',
+                    resolvePermissionBadgeClasses(pushNotifications.permission),
+                  ].join(' ')}
+                >
+                  {permissionLabel}
+                </span>
+              </div>
+
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {t('notifications.subscriptionLabel')}
+                </p>
+                <span
+                  className={[
+                    'mt-2 inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold',
+                    resolveSubscriptionBadgeClasses(pushNotifications.hasActiveSubscription),
+                  ].join(' ')}
+                >
+                  {subscriptionLabel}
+                </span>
+              </div>
+            </div>
+
+            <p className="mt-3 text-xs text-muted-foreground">{t('notifications.pushHelp')}</p>
+            <p className="mt-2 text-[11px] text-muted-foreground">{pushHint}</p>
+
+            {pushNotifications.permission === 'default' && form.notificationPush && (
+              <p className="mt-2 text-[11px] text-amber-700">{t('notifications.pendingHint')}</p>
+            )}
+
+            {pushNotifications.status === 'loading' &&
+              pushNotifications.currentAction !== 'activate' && (
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                {t('notifications.statusSyncing')}
+              </p>
+            )}
+
+            {pushNotifications.error && (
+              <p className="mt-2 text-[11px] text-red-700">{pushNotifications.error}</p>
+            )}
+
+            <div className="mt-3 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-[11px] text-muted-foreground">{t('notifications.ctaHint')}</p>
+              <Button
+                type="button"
+                onClick={handleActivatePushNotifications}
+                disabled={
+                  isBusy ||
+                  pushNotifications.status === 'loading' ||
+                  !pushNotifications.support.isSupported
+                }
+                variant="outline"
+              >
+                {pushNotifications.currentAction === 'activate'
+                  ? t('notifications.activating')
+                  : t('notifications.activateAction')}
+              </Button>
+            </div>
           </div>
         </div>
 

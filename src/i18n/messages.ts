@@ -884,8 +884,42 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       },
       notifications: {
         title: 'Notificacoes',
+        description: 'Gerencie e-mail, WhatsApp e push nativo do navegador.',
         email: 'E-mail',
         whatsapp: 'WhatsApp',
+        push: 'Push no navegador',
+        pushHelp:
+          'O Web Push entrega alertas mesmo com a Flynance em segundo plano, quando o navegador suportar.',
+        permissionLabel: 'Permissao do navegador',
+        subscriptionLabel: 'Subscription ativa',
+        permission: {
+          default: 'Pendente',
+          granted: 'Permitida',
+          denied: 'Bloqueada',
+          unsupported: 'Sem suporte',
+        },
+        subscription: {
+          active: 'Ativa',
+          inactive: 'Inativa',
+        },
+        unsupportedHint:
+          'Este navegador nao suporta Push API ou Service Worker para notificacoes nativas.',
+        deniedHint:
+          'As notificacoes estao bloqueadas. Reative em Notificacoes nas permissoes do site e recarregue a pagina.',
+        pendingHint:
+          'Ative a permissao do navegador para concluir o Web Push neste dispositivo.',
+        activeHint: 'Ja existe uma subscription ativa neste navegador.',
+        inactiveHint: 'Nenhuma subscription ativa foi encontrada neste navegador.',
+        ctaHint:
+          'A ativacao cria ou reaproveita a subscription atual e sincroniza com o backend.',
+        activateAction: 'Ativar notificacoes',
+        activating: 'Ativando...',
+        statusSyncing: 'Sincronizando navegador...',
+        activationSuccess: 'Notificacoes push ativadas neste navegador.',
+        activationPending: 'A permissao do navegador ainda nao foi concedida.',
+        activationDenied: 'As notificacoes seguem bloqueadas neste navegador.',
+        syncError:
+          'As preferencias foram salvas, mas a sincronizacao do navegador falhou.',
       },
       login: {
         title: 'Preferencia de login',
@@ -2965,8 +2999,39 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       },
       notifications: {
         title: 'Notifications',
+        description: 'Manage email, WhatsApp and native browser push.',
         email: 'Email',
         whatsapp: 'WhatsApp',
+        push: 'Browser push',
+        pushHelp:
+          'Web Push can deliver alerts even while Flynance stays in the background, when the browser supports it.',
+        permissionLabel: 'Browser permission',
+        subscriptionLabel: 'Active subscription',
+        permission: {
+          default: 'Pending',
+          granted: 'Granted',
+          denied: 'Blocked',
+          unsupported: 'Unsupported',
+        },
+        subscription: {
+          active: 'Active',
+          inactive: 'Inactive',
+        },
+        unsupportedHint:
+          'This browser does not support Push API or Service Worker for native notifications.',
+        deniedHint:
+          'Notifications are blocked. Re-enable them in the site permissions and reload the page.',
+        pendingHint: 'Allow browser notifications to finish enabling Web Push on this device.',
+        activeHint: 'An active subscription already exists in this browser.',
+        inactiveHint: 'No active subscription was found in this browser.',
+        ctaHint: 'Activation creates or reuses the current subscription and syncs it with the backend.',
+        activateAction: 'Enable notifications',
+        activating: 'Enabling...',
+        statusSyncing: 'Syncing browser...',
+        activationSuccess: 'Push notifications enabled in this browser.',
+        activationPending: 'Browser permission has not been granted yet.',
+        activationDenied: 'Notifications are still blocked in this browser.',
+        syncError: 'Preferences were saved, but browser sync failed.',
       },
       login: {
         title: 'Login preference',
@@ -5049,8 +5114,42 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       },
       notifications: {
         title: 'Notificaciones',
+        description: 'Administra correo, WhatsApp y push nativo del navegador.',
         email: 'Correo',
         whatsapp: 'WhatsApp',
+        push: 'Push del navegador',
+        pushHelp:
+          'Web Push puede entregar alertas incluso con Flynance en segundo plano, cuando el navegador lo permite.',
+        permissionLabel: 'Permiso del navegador',
+        subscriptionLabel: 'Subscription activa',
+        permission: {
+          default: 'Pendiente',
+          granted: 'Permitida',
+          denied: 'Bloqueada',
+          unsupported: 'Sin soporte',
+        },
+        subscription: {
+          active: 'Activa',
+          inactive: 'Inactiva',
+        },
+        unsupportedHint:
+          'Este navegador no soporta Push API o Service Worker para notificaciones nativas.',
+        deniedHint:
+          'Las notificaciones estan bloqueadas. Reactivalas en los permisos del sitio y recarga la pagina.',
+        pendingHint:
+          'Activa el permiso del navegador para completar Web Push en este dispositivo.',
+        activeHint: 'Ya existe una subscription activa en este navegador.',
+        inactiveHint: 'No se encontro una subscription activa en este navegador.',
+        ctaHint:
+          'La activacion crea o reutiliza la subscription actual y la sincroniza con el backend.',
+        activateAction: 'Activar notificaciones',
+        activating: 'Activando...',
+        statusSyncing: 'Sincronizando navegador...',
+        activationSuccess: 'Notificaciones push activadas en este navegador.',
+        activationPending: 'El permiso del navegador todavia no fue concedido.',
+        activationDenied: 'Las notificaciones siguen bloqueadas en este navegador.',
+        syncError:
+          'Las preferencias fueron guardadas, pero la sincronizacion del navegador fallo.',
       },
       login: {
         title: 'Preferencia de acceso',

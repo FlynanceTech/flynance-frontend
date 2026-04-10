@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import {  Ubuntu } from "next/font/google";
 import "./globals.css";
+import PushNotificationBootstrap from "@/components/PushNotificationBootstrap";
 import TrackingScripts from "@/components/TrackingScripts";
 import PWARegister from "@/components/PWARegister";
 import { Analytics } from "@vercel/analytics/next"
@@ -45,6 +46,7 @@ export default function RootLayout({
         </noscript>
           <PWAInstallListener />
           <PWARegister/>
+          <PushNotificationBootstrap />
           <TrackingScripts />
           <ThemeScopeController />
           <Providers>

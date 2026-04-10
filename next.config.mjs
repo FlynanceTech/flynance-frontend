@@ -2,6 +2,7 @@ import withPWA from "next-pwa"
 import createNextIntlPlugin from "next-intl/plugin"
 
 const isDev = process.env.NODE_ENV !== "production"
+const enablePwaInDev = process.env.NEXT_PUBLIC_ENABLE_PWA_DEV === "true"
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts")
 
 const nextConfig = {
@@ -23,9 +24,10 @@ const nextConfig = {
 
 const withPWAConfig = withPWA({
   dest: "public",
-  register: true,
+  register: false,
   skipWaiting: true,
-  disable: isDev,
+  disable: isDev && !enablePwaInDev,
+  customWorkerDir: "worker",
 
   runtimeCaching: [
     {

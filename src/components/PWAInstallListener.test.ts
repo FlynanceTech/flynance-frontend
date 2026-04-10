@@ -10,6 +10,6 @@ test('PWAInstallListener sincroniza appinstalled para pwaInstalled=true via PATC
   )
 
   assert.match(source, /window\.addEventListener\('appinstalled'/)
-  assert.match(source, /updateUserAppPreferences\(\{\s*pwaInstalled:\s*true,/)
+  assert.match(source, /updateUserPreferences\(\{\s*pwaInstalled:\s*true,/)
   assert.match(source, /pwaInstalledAt:\s*new Date\(\)\.toISOString\(\)/)
 })
