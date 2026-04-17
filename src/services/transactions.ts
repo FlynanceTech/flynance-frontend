@@ -1,4 +1,5 @@
 import api from "@/lib/axios"
+import { appendFinancialScopeToSearchParams, FinancialDataScope } from "@/lib/financialScope"
 import { Transaction } from "@/types/Transaction"
 import { getErrorMessage } from "@/utils/getErrorMessage"
 
@@ -65,6 +66,7 @@ export type GetTransactionParams = {
   page?: number
   limit?: number
   filters?: TransactionFilters
+  scope?: FinancialDataScope
 }
 
 export type GetTransactionResponse<TTransaction = any> = {
@@ -85,10 +87,12 @@ export async function getTransaction({
   page = 1,
   limit = 10,
   filters,
+  scope,
 }: GetTransactionParams) {
   const params = new URLSearchParams()
   params.set('page', String(page))
   params.set('limit', String(limit))
+  appendFinancialScopeToSearchParams(params, scope)
   if (filters) {
     if (filters.mode && filters.mode !== 'range') params.set('mode', filters.mode)
 

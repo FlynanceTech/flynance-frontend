@@ -18,6 +18,7 @@ type Props = {
   onEdit: (t: Transaction) => void
   onDelete: (id: string) => void
   canWrite?: boolean
+  canWriteTransaction?: (transaction: Transaction) => boolean
   sortField: SortField
   sortDirection: SortDirection
   onSortChange: (field: 'date' | 'value') => void
@@ -49,6 +50,7 @@ export function TransactionTable({
   onEdit,
   onDelete,
   canWrite = true,
+  canWriteTransaction,
   sortField,
   sortDirection,
   onSortChange,
@@ -128,6 +130,7 @@ export function TransactionTable({
             <div className="p-6 text-sm text-gray-500">{t('noData')}</div>
           ) : (
             rows.map((tx) => {
+              const rowCanWrite = canWrite && (canWriteTransaction ? canWriteTransaction(tx) : true)
               const checked = selectedIds.has(tx.id)
               const categoryName = tx.category?.name ?? '-'
               const categoryColor = tx.category?.color ?? '#CBD5E1'
@@ -153,7 +156,7 @@ export function TransactionTable({
                       type="checkbox"
                       checked={checked}
                       onChange={() => onToggleSelectRow(tx.id)}
-                      disabled={!canWrite}
+                      disabled={!rowCanWrite}
                       className="h-4 w-4 accent-black disabled:cursor-not-allowed disabled:opacity-60"
                       aria-label={t('selectRowAria', { description })}
                     />
@@ -199,7 +202,7 @@ export function TransactionTable({
                   </div>
 
                   <div role="cell" className="flex items-center justify-end gap-2">
-                    {canWrite ? (
+                    {rowCanWrite ? (
                       <>
                         <button
                           onClick={() => onEdit(tx)}

@@ -18,9 +18,14 @@ import { formatCurrency } from '@/utils/formatter'
 import { ControlWithProgress, useControls } from '@/hooks/query/useSpendingControl'
 import { useCategoryStore } from '@/stores/useCategoryStore'
 import { useSpendingControlStore } from '@/stores/useSpendingControlStore'
+import { useUserSession } from '@/stores/useUserSession'
 
 type TranslatorFn = (key: string, values?: Record<string, string | number | Date>) => string
 type Tone = 'ok' | 'warning' | 'danger'
+type GradientStyle = React.CSSProperties & {
+  '--tw-gradient-via-position': string
+  '--tw-gradient-to-position': string
+}
 
 const toBRL = (value: number) => formatCurrency(value)
 
@@ -44,6 +49,12 @@ function buildControlsOnboardingSteps(t: TranslatorFn): ReadonlyArray<PageOnboar
       selector: '[data-onboarding-target="controles-lista"]',
       title: t('onboarding.listTitle'),
       description: t('onboarding.listDescription'),
+    },
+    {
+      id: 'favorites',
+      selector: '[data-onboarding-target="controles-lista"]',
+      title: t('onboarding.favoritesTitle'),
+      description: t('onboarding.favoritesDescription'),
     },
   ]
 }
@@ -97,15 +108,17 @@ function toneConfig(tone: Tone, usagePct: number, t: TranslatorFn) {
   const viaPos = clamp(stop - fade, 0, 100)
   const toPos = clamp(stop + fade, 0, 100)
 
+  const headerStyle: GradientStyle = {
+    '--tw-gradient-via-position': `${viaPos}%`,
+    '--tw-gradient-to-position': `${toPos}%`,
+  }
+
   if (tone === 'danger') {
     return {
       statusLabel: t('card.statusLabels.exceeded'),
       headerStops: 'from-red-400 via-red-400 to-white',
       headerTitle: 'text-gray-700',
-      headerStyle: {
-        ['--tw-gradient-via-position' as any]: `${viaPos}%`,
-        ['--tw-gradient-to-position' as any]: `${toPos}%`,
-      } as React.CSSProperties,
+      headerStyle,
     }
   }
 
@@ -115,10 +128,7 @@ function toneConfig(tone: Tone, usagePct: number, t: TranslatorFn) {
       headerStops: 'from-yellow-400 via-yellow-400 to-white',
       headerTitle: 'text-gray-700',
       headerMeta: 'text-gray-700',
-      headerStyle: {
-        ['--tw-gradient-via-position' as any]: `${viaPos}%`,
-        ['--tw-gradient-to-position' as any]: `${toPos}%`,
-      } as React.CSSProperties,
+      headerStyle,
     }
   }
 
@@ -126,10 +136,7 @@ function toneConfig(tone: Tone, usagePct: number, t: TranslatorFn) {
     statusLabel: t('card.statusLabels.withinLimit'),
     headerStops: 'from-emerald-400 via-emerald-400 to-white',
     headerTitle: 'text-gray-700',
-    headerStyle: {
-      ['--tw-gradient-via-position' as any]: `${viaPos}%`,
-      ['--tw-gradient-to-position' as any]: `${toPos}%`,
-    } as React.CSSProperties,
+    headerStyle,
   }
 }
 
@@ -137,6 +144,7 @@ export default function SpendingControlPage() {
   const t = useTranslations('controlsPage')
   const locale = useLocale()
   const onboardingSteps = useMemo(() => buildControlsOnboardingSteps(t), [t])
+  const currentUserId = useUserSession((state) => state.user?.userData?.user?.id ?? '')
 
   const [selectedDate, setSelectedDate] = useState(new Date())
   const { controlsQuery, deleteMutation, favoriteMutation } = useControls(undefined, selectedDate)
@@ -187,6 +195,8 @@ export default function SpendingControlPage() {
 
   const getCategoryName = (c: ControlWithProgress) =>
     c.categoryId ? categoryNameById.get(c.categoryId) ?? t('card.defaultCategory') : t('card.general')
+  const canWriteControl = (control: ControlWithProgress) =>
+    !control.userId || control.userId === currentUserId
 
   const idxLocalFor = (id: string): number => controls.findIndex((x) => x.id === id)
 
@@ -207,6 +217,7 @@ export default function SpendingControlPage() {
   }
 
   const handleEdit = (control: ControlWithProgress) => {
+    if (!canWriteControl(control)) return
     setEditingControl(control)
     setDrawerOpen(true)
   }
@@ -225,6 +236,10 @@ export default function SpendingControlPage() {
   }
 
   const handleFavorite = async (control: ControlWithProgress) => {
+    if (!canWriteControl(control)) {
+      toast.error(t('toasts.favoriteUpdateError'))
+      return
+    }
     try {
       if (control.isFavorite) {
         await favoriteMutation.mutateAsync({ id: control.id, isFavorite: false })
@@ -288,7 +303,7 @@ export default function SpendingControlPage() {
       <div data-onboarding-target="controles-header">
         <Header
           title={t('header.title')}
-          subtitle=""
+          subtitle={t('header.subtitle')}
           newTransation={false}
           rightContent={
             <div className="flex items-center gap-2">
@@ -387,17 +402,19 @@ export default function SpendingControlPage() {
         </div>
       </Dialog>
 
-      <div className="w-full flex justify-between items-center gap-2" data-onboarding-target="controles-topo">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-lg font-semibold text-[#333C4D]">{t('top.title')}</h2>
-          <span className="w-fit rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
-            {selectedDate.toLocaleDateString(locale, { month: 'long', year: 'numeric' })}
-          </span>
+      <div className="flex flex-col gap-3" data-onboarding-target="controles-topo">
+        <div className="w-full flex justify-between items-center gap-2">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-lg font-semibold text-[#333C4D]">{t('top.title')}</h2>
+            <span className="w-fit rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+              {selectedDate.toLocaleDateString(locale, { month: 'long', year: 'numeric' })}
+            </span>
+          </div>
         </div>
-      </div>
 
-      <div className="flex items-center justify-between gap-2">
-        <MonthSelector initialDate={selectedDate} onChange={setSelectedDate} />
+        <div className="flex items-center justify-between gap-2">
+          <MonthSelector initialDate={selectedDate} onChange={setSelectedDate} />
+        </div>
       </div>
 
       {sortedControls.length === 0 && (
@@ -487,6 +504,7 @@ export default function SpendingControlPage() {
                         <button
                           type="button"
                           onClick={() => handleFavorite(c)}
+                          disabled={!canWriteControl(c)}
                           className={clsx('cursor-pointer', c.isFavorite ? 'text-amber-400' : 'text-gray-400')}
                           title={c.isFavorite ? t('card.actions.removeFavorite') : t('card.actions.addFavorite')}
                           aria-label={t('card.actions.favorite')}
@@ -506,6 +524,7 @@ export default function SpendingControlPage() {
                         <button
                           type="button"
                           onClick={() => handleEdit(c)}
+                          disabled={!canWriteControl(c)}
                           className="text-gray-500 hover:text-blue-400 cursor-pointer"
                           title={t('card.actions.edit')}
                           aria-label={t('card.actions.edit')}
@@ -516,6 +535,7 @@ export default function SpendingControlPage() {
                         <button
                           type="button"
                           onClick={() => requestDelete(c.id)}
+                          disabled={!canWriteControl(c)}
                           className="text-gray-500 hover:text-red-400 cursor-pointer"
                           title={t('card.actions.delete')}
                           aria-label={t('card.actions.delete')}

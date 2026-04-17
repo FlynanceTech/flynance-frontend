@@ -19,6 +19,7 @@ import {
 import type { FixedAccountPayment } from '@/services/fixedAccounts'
 import { formatCurrency } from '@/utils/formatter'
 import { useLocale, useTranslations } from 'next-intl'
+import { useUserSession } from '@/stores/useUserSession'
 
 function toBRL(value: number) {
   return formatCurrency(value || 0)
@@ -76,12 +77,14 @@ function buildMonthlySeries(payments: FixedAccountPayment[]) {
 export default function FixedAccountHistoryPage() {
   const t = useTranslations('fixedAccountHistoryPage')
   const locale = useLocale()
+  const currentUserId = useUserSession((state) => state.user?.userData?.user?.id ?? '')
   const params = useParams<{ id: string }>()
   const id = params?.id ?? ''
   const fixedAccountQuery = useFixedAccount(id)
   const deletePaymentMutation = useDeleteFixedAccountPayment(id)
   const fixedAccount = fixedAccountQuery.data
   const payments = fixedAccount?.payments ?? []
+  const canWriteFixedAccount = !fixedAccount?.userId || fixedAccount.userId === currentUserId
   const chartData = buildMonthlySeries(payments)
   const categoryLabel = fixedAccount?.category?.name ?? t('uncategorized')
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -182,9 +185,11 @@ export default function FixedAccountHistoryPage() {
                   <button
                     type="button"
                     onClick={() => {
+                      if (!canWriteFixedAccount) return
                       setDeleteTargetId(payment.id)
                       setDeleteOpen(true)
                     }}
+                    disabled={!canWriteFixedAccount}
                     className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 text-red-400 hover:bg-red-50 cursor-pointer"
                     title={t('deletePayment')}
                     aria-label={t('deletePayment')}

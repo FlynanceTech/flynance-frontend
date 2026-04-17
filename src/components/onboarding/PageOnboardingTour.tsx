@@ -1,7 +1,8 @@
 'use client'
 
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Info, X } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { useUserSession } from '@/stores/useUserSession'
 
 export type PageOnboardingStep = {
@@ -32,6 +33,7 @@ export default function PageOnboardingTour({
   triggerLabel = 'Ver guia da tela',
   hideLabelOnMobile = true,
 }: Props) {
+  const t = useTranslations('pageOnboarding')
   const { user, status } = useUserSession()
   const userId = user?.userData?.user?.id ?? 'anonymous'
   const storageKey = `${storageKeyBase}:${userId}`
@@ -43,7 +45,13 @@ export default function PageOnboardingTour({
   const [tooltipHeight, setTooltipHeight] = useState(300)
   const tooltipRef = useRef<HTMLDivElement | null>(null)
 
-  useEffect(() => setHydrated(true), [])
+  useEffect(() => {
+    const frameId = window.requestAnimationFrame(() => {
+      setHydrated(true)
+    })
+
+    return () => window.cancelAnimationFrame(frameId)
+  }, [])
 
   useEffect(() => {
     if (!hydrated || !steps.length || typeof window === 'undefined') return
@@ -52,20 +60,24 @@ export default function PageOnboardingTour({
     const completed = window.localStorage.getItem(storageKey)
     if (completed === 'done') return
 
-    setStepIndex(0)
-    setIsOpen(true)
+    const frameId = window.requestAnimationFrame(() => {
+      setStepIndex(0)
+      setIsOpen(true)
+    })
+
+    return () => window.cancelAnimationFrame(frameId)
   }, [hydrated, steps.length, status, storageKey])
 
   const currentStep = steps[stepIndex]
   const isFirstStep = stepIndex === 0
   const isLastStep = stepIndex === steps.length - 1
 
-  const findTarget = (step = currentStep) => {
+  const findTarget = useCallback((step = currentStep) => {
     if (!step || typeof document === 'undefined') return null
     return document.querySelector<HTMLElement>(step.selector)
-  }
+  }, [currentStep])
 
-  const syncTargetRect = (targetElement?: HTMLElement | null) => {
+  const syncTargetRect = useCallback((targetElement?: HTMLElement | null) => {
     if (typeof window === 'undefined') return
     const target = targetElement ?? findTarget()
 
@@ -86,7 +98,7 @@ export default function PageOnboardingTour({
       width: paddedWidth,
       height: paddedHeight,
     })
-  }
+  }, [findTarget])
 
   const markAsDone = () => {
     if (typeof window === 'undefined') return
@@ -123,8 +135,11 @@ export default function PageOnboardingTour({
 
     const target = findTarget(currentStep)
     if (!target) {
-      setTargetRect(null)
-      return
+      const frameId = window.requestAnimationFrame(() => {
+        setTargetRect(null)
+      })
+
+      return () => window.cancelAnimationFrame(frameId)
     }
 
     target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
@@ -140,7 +155,7 @@ export default function PageOnboardingTour({
       window.removeEventListener('resize', syncPosition)
       window.removeEventListener('scroll', syncPosition, true)
     }
-  }, [isOpen, currentStep])
+  }, [currentStep, findTarget, isOpen, syncTargetRect])
 
   useEffect(() => {
     if (!isOpen || typeof window === 'undefined') return
@@ -223,7 +238,7 @@ export default function PageOnboardingTour({
             type="button"
             className={`absolute inset-0 ${targetRect ? 'bg-transparent' : 'bg-slate-950/60'}`}
             onClick={() => closeTour(true)}
-            aria-label="Fechar onboarding"
+            aria-label={t('closeOnboardingAria')}
           />
 
           {targetRect && (
@@ -250,13 +265,13 @@ export default function PageOnboardingTour({
               type="button"
               onClick={() => closeTour(true)}
               className="absolute right-4 top-4 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-              aria-label="Fechar guia"
+              aria-label={t('closeGuideAria')}
             >
               <X className="h-4 w-4" />
             </button>
 
             <div className="mb-4 inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
-              Passo {stepIndex + 1} de {steps.length}
+              {t('stepCounter', { current: stepIndex + 1, total: steps.length })}
             </div>
 
             <h2 id="page-onboarding-title" className="pr-8 text-lg font-bold text-gray-800">
@@ -279,7 +294,7 @@ export default function PageOnboardingTour({
                 onClick={() => closeTour(true)}
                 className="rounded-full border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
               >
-                Pular guia
+                {t('skipGuide')}
               </button>
 
               <div className="flex items-center gap-2">
@@ -290,14 +305,14 @@ export default function PageOnboardingTour({
                   className="inline-flex items-center gap-1 rounded-full border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <ChevronLeft className="h-3.5 w-3.5" />
-                  Anterior
+                  {t('previous')}
                 </button>
                 <button
                   type="button"
                   onClick={nextStep}
                   className="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-secondary hover:text-secondary-foreground"
                 >
-                  {isLastStep ? 'Concluir' : 'Proximo'}
+                  {isLastStep ? t('finish') : t('next')}
                   {!isLastStep && <ChevronRight className="h-3.5 w-3.5" />}
                 </button>
               </div>

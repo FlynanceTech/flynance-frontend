@@ -17,6 +17,7 @@ import { useTransactionFilter } from '@/stores/useFilter'
 import { useAdvisorActing } from '@/stores/useAdvisorActing'
 import { getBrowserTimezone, toFutureRangeFromDays } from '@/utils/transactionPeriod'
 import toast from 'react-hot-toast'
+import { useFinancialScope } from '@/hooks/useFinancialScope'
 
 type Primitive = string | number | boolean
 type FilterValue = Primitive | Primitive[] | undefined
@@ -46,6 +47,7 @@ export function useTranscation(params: UseTransactionParams) {
   const queryClient = useQueryClient()
   const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
   const actingContextKey = activeClientId ?? 'self'
+  const { scope, scopeKey } = useFinancialScope()
 
   const mode = useTransactionFilter((s) => s.appliedMode)
   const dateRange = useTransactionFilter((s) => s.appliedDateRange)
@@ -100,6 +102,7 @@ export function useTranscation(params: UseTransactionParams) {
       actingContextKey,
       params.page ?? 1,
       params.limit ?? 10,
+      scopeKey,
       mergedFilters,
     ],
     queryFn: () =>
@@ -108,6 +111,7 @@ export function useTranscation(params: UseTransactionParams) {
         page: params.page ?? 1,
         limit: params.limit ?? 10,
         filters: mergedFilters,
+        scope,
       }),
     enabled: Boolean(params.userId || activeClientId),
     staleTime: 30_000,
@@ -124,9 +128,9 @@ export function useTranscation(params: UseTransactionParams) {
 
       if (variables?.paymentType === 'CREDIT_CARD' && variables?.cardId) {
         queryClient.invalidateQueries({
-          queryKey: ['creditCard-summary', { cardId: variables.cardId }],
+          queryKey: ['cards', 'summary'],
         })
-        queryClient.invalidateQueries({ queryKey: cardKeys.card(variables.cardId) })
+        queryClient.invalidateQueries({ queryKey: cardKeys.card(variables.cardId, actingContextKey, scopeKey) })
       }
     },
     onError: (error) => {

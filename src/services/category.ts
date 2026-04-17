@@ -1,6 +1,7 @@
 // src/services/categories.ts
 
 import api from '@/lib/axios'
+import { FinancialDataScope } from '@/lib/financialScope'
 import { getErrorMessage } from '@/utils/getErrorMessage'
 
 import { IconName } from '@/utils/icon-map'
@@ -72,21 +73,32 @@ export interface CategoryClassificationPatchPayload {
 
 export type ClassificationRequestOptions = {
   actingClientId?: string | null
+  scope?: FinancialDataScope | null
 }
 
 const CLASSIFICATION_ITEM_PREFIX = 'classification-item:'
 
 function buildClassificationRequestConfig(options?: ClassificationRequestOptions) {
   const actingClientId = options?.actingClientId?.trim()
-  if (!actingClientId) return undefined
+  const params: Record<string, string> = {}
+  const headers: Record<string, string> = {}
+
+  if (actingClientId) {
+    headers['x-client-user-id'] = actingClientId
+    params.userId = actingClientId
+  }
+
+  if (options?.scope) {
+    params.scope = options.scope
+  }
+
+  if (Object.keys(headers).length === 0 && Object.keys(params).length === 0) {
+    return undefined
+  }
 
   return {
-    headers: {
-      'x-client-user-id': actingClientId,
-    },
-    params: {
-      userId: actingClientId,
-    },
+    headers: Object.keys(headers).length > 0 ? headers : undefined,
+    params: Object.keys(params).length > 0 ? params : undefined,
   }
 }
 

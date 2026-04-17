@@ -16,6 +16,7 @@ import { toFutureRangeFromDays, toRangeFromDays } from '@/utils/transactionPerio
 import { useAdvisorActing } from '@/stores/useAdvisorActing'
 import { isAdvisorReadOnlyTransactionAccess } from '@/utils/transactionWriteAccess'
 import type { Category } from '@/types/Transaction'
+import { useFinancialScope } from '@/hooks/useFinancialScope'
 
 interface HeaderProps {
   title?: string
@@ -87,8 +88,10 @@ export default function Header({
   rightContent,
 }: HeaderProps) {
   const t = useTranslations('dashboardHeader')
+  const tScope = useTranslations('financialScope')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [isApplyingFilters, setIsApplyingFilters] = useState(false)
+  const { canSelectScope, scope } = useFinancialScope()
   const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
   const activePermission = useAdvisorActing((s) => s.activePermission ?? s.selectedPermission)
   const isAdvisorReadOnly = isAdvisorReadOnlyTransactionAccess(activeClientId, activePermission)
@@ -316,7 +319,14 @@ export default function Header({
         />
       </div>
 
-      <p className="text-sm font-light pt-2 md:pt-0">{subtitle}</p>
+      <div className="flex flex-col gap-2 pt-2 md:pt-0">
+        <p className="text-sm font-light">{subtitle}</p>
+        {canSelectScope && (
+          <span className="inline-flex w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+            {scope === 'me' ? tScope('badge.me') : tScope('badge.house')}
+          </span>
+        )}
+      </div>
     </header>
   )
 }

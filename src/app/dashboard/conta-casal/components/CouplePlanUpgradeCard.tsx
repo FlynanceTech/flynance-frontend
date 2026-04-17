@@ -72,13 +72,21 @@ export function CouplePlanUpgradeCard({
           </div>
         ) : (
           <>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <p className="text-sm font-semibold text-[#333C4D]">{plan.name}</p>
-                  <p className="mt-1 text-sm text-slate-600">
-                    {formatPlanPrice(plan, locale)} · {t(`upgradeCard.periods.${plan.period}`)}
-                  </p>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold leading-5 text-[#333C4D]">{plan.name}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-lg font-semibold leading-none text-secondary">
+                      {formatPlanPrice(plan, locale)}
+                    </p>
+                    <Badge
+                      variant="outline"
+                      className="border-[#D7EAF5] bg-white text-xs font-medium text-[#2F6E91]"
+                    >
+                      {t(`upgradeCard.periods.${plan.period}`)}
+                    </Badge>
+                  </div>
                 </div>
 
                 {isCurrentCouplePlan && (
@@ -89,24 +97,24 @@ export function CouplePlanUpgradeCard({
               </div>
 
               {currentPlanName && (
-                <p className="mt-3 text-xs text-slate-500">
+                <p className="mt-4 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium leading-5 text-slate-600">
                   {t('upgradeCard.currentPlan', { planName: currentPlanName })}
                 </p>
               )}
             </div>
 
-            <div className="rounded-2xl border border-[#D7EAF5] bg-[#F3FAFF] p-4">
+            <div className="rounded-2xl border border-[#C9DFED] bg-[linear-gradient(135deg,#F8FCFF_0%,#EEF7FC_100%)] p-4">
               <div className="flex items-start gap-3">
-                <div className="rounded-full bg-white p-2 text-[#2F6E91]">
+                <div className="mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#2F4858] text-white shadow-sm">
                   <Sparkles className="h-4 w-4" />
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-[#333C4D]">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold leading-5 text-[#1E293B]">
                     {canManageUpgrade
                       ? t('upgradeCard.ownerNoteTitle')
                       : t('upgradeCard.partnerNoteTitle')}
                   </p>
-                  <p className="mt-1 text-xs text-slate-600">
+                  <p className="text-sm font-regular text-[#1E293B]">
                     {canManageUpgrade
                       ? t('upgradeCard.ownerNoteDescription')
                       : t('upgradeCard.partnerNoteDescription')}
@@ -117,7 +125,9 @@ export function CouplePlanUpgradeCard({
 
             {canManageUpgrade && !isCurrentCouplePlan && (
               <div className="space-y-3">
-                <p className="text-xs text-slate-500">{t('upgradeCard.prorationNote')}</p>
+                <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
+                  {t('upgradeCard.prorationNote')}
+                </p>
                 <Button
                   type="button"
                   className="w-full"

@@ -26,6 +26,7 @@ import { ADVISOR_READ_ONLY_FRIENDLY_MESSAGE } from '@/services/transactions'
 import { isAdvisorReadOnlyTransactionAccess } from '@/utils/transactionWriteAccess'
 import { formatCurrency } from '@/utils/formatter'
 import { useLocale, useTranslations } from 'next-intl'
+import { useFinancialScope } from '@/hooks/useFinancialScope'
 
 type TypeOption = { value: CategoryType; label: string }
 
@@ -101,6 +102,7 @@ export default function TransactionsPage() {
 
   const { user } = useUserSession()
   const userId = user?.userData?.user?.id ?? ''
+  const { scopeKey } = useFinancialScope()
   const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
   const activePermission = useAdvisorActing((s) => s.activePermission ?? s.selectedPermission)
   const isAdvisorReadOnly = isAdvisorReadOnlyTransactionAccess(activeClientId, activePermission)
@@ -190,6 +192,15 @@ export default function TransactionsPage() {
     setSelectedIds(new Set())
     setSelectAll(false)
   }, [isAdvisorReadOnly])
+
+  useEffect(() => {
+    setCurrentPage(1)
+    setSelectedIds(new Set())
+    setSelectAll(false)
+  }, [scopeKey])
+
+  const canWriteTransaction = (transaction: Transaction) =>
+    !isAdvisorReadOnly && transaction.userId === userId
 
   const handleImportClick = () => {
     if (!userId) return
@@ -407,7 +418,7 @@ const meta = useMemo(() => {
 
   const toggleSelectAll = () => {
     if (isAdvisorReadOnly) return
-    const currentIds = displayedTransactions.map((item) => item.id)
+    const currentIds = displayedTransactions.filter(canWriteTransaction).map((item) => item.id)
     setSelectedIds(selectAll ? new Set() : new Set(currentIds))
     setSelectAll(!selectAll)
   }
@@ -1036,6 +1047,7 @@ const meta = useMemo(() => {
           selectedIds={selectedIds}
           selectAll={selectAll}
           canWrite={!isAdvisorReadOnly}
+          canWriteTransaction={canWriteTransaction}
           onToggleSelectAll={toggleSelectAll}
           onToggleSelectRow={toggleSelectRow}
           onEdit={(t) => {
@@ -1056,6 +1068,7 @@ const meta = useMemo(() => {
           transactions={displayedTransactions}
           selectedIds={selectedIds}
           canWrite={!isAdvisorReadOnly}
+          canWriteTransaction={canWriteTransaction}
           onToggleSelectRow={toggleSelectRow}
           onEdit={(t) => {
             if (isAdvisorReadOnly) {

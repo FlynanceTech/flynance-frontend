@@ -1,4 +1,5 @@
 import api from '@/lib/axios'
+import { FinancialDataScope, withFinancialScope } from '@/lib/financialScope'
 import { getErrorMessage } from '@/utils/getErrorMessage'
 import axios from 'axios'
 
@@ -47,6 +48,7 @@ export interface FixedAccountDTO {
 
 export interface FixedAccountResponse {
   id: string
+  userId?: string
   name: string
   amount: number
   currency?: string
@@ -122,12 +124,12 @@ export async function getFixedAccounts(params?: {
   categoryId?: string
   periodStart?: string
   periodEnd?: string
-}): Promise<FixedAccountResponse[]> {
+}, scope?: FinancialDataScope): Promise<FixedAccountResponse[]> {
   try {
     if (typeof window !== 'undefined') {
       console.debug('[fixed-accounts] GET /fixed-accounts', params ?? {})
     }
-    const response = await api.get('/fixed-accounts', { params })
+    const response = await api.get('/fixed-accounts', { params: withFinancialScope(params, scope) })
     if (typeof window !== 'undefined') {
       console.debug('[fixed-accounts] response', response.status, response.data)
     }
@@ -142,9 +144,14 @@ export async function getFixedAccounts(params?: {
   }
 }
 
-export async function getFixedAccount(id: string): Promise<FixedAccountResponse> {
+export async function getFixedAccount(
+  id: string,
+  scope?: FinancialDataScope
+): Promise<FixedAccountResponse> {
   try {
-    const response = await api.get(`/fixed-accounts/${id}`)
+    const response = await api.get(`/fixed-accounts/${id}`, {
+      params: withFinancialScope(undefined, scope),
+    })
     return response.data
   } catch (e: unknown) {
     const serviceError = buildServiceError(e, 'Erro ao buscar conta fixa.')
@@ -215,9 +222,14 @@ export interface FixedAccountPaymentResponse {
   createdAt: string
 }
 
-export async function getFixedAccountPayments(id: string): Promise<FixedAccountPaymentResponse[]> {
+export async function getFixedAccountPayments(
+  id: string,
+  scope?: FinancialDataScope
+): Promise<FixedAccountPaymentResponse[]> {
   try {
-    const response = await api.get(`/fixed-accounts/${id}/payments`)
+    const response = await api.get(`/fixed-accounts/${id}/payments`, {
+      params: withFinancialScope(undefined, scope),
+    })
     return response.data
   } catch (e: unknown) {
     const msg = getErrorMessage(e, 'Erro ao buscar Histórico de pagamentos.')

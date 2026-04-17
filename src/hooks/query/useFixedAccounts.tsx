@@ -14,6 +14,8 @@ import {
 } from '@/services/fixedAccounts'
 import { useAdvisorActing } from '@/stores/useAdvisorActing'
 import { deleteFixedAccountPayment } from '@/services/fixedAccountPayments'
+import { FinancialScopeKey } from '@/lib/financialScope'
+import { useFinancialScope } from '@/hooks/useFinancialScope'
 
 function monthKeyFromISO(iso?: string) {
   const raw = String(iso ?? '').trim()
@@ -54,9 +56,10 @@ export type FixedAccountsQueryParams = {
 export async function refetchFixedAccountsMonth(
   qc: Pick<QueryClient, 'invalidateQueries' | 'refetchQueries'>,
   actingContextKey: string,
+  scopeKey: FinancialScopeKey,
   params?: FixedAccountsQueryParams
 ) {
-  const queryKey = ['fixed-accounts', actingContextKey, params ?? {}] as const
+  const queryKey = ['fixed-accounts', actingContextKey, scopeKey, params ?? {}] as const
   await qc.invalidateQueries({ queryKey })
   await qc.refetchQueries({ queryKey, type: 'active', exact: true })
 }
@@ -64,13 +67,14 @@ export async function refetchFixedAccountsMonth(
 export async function refetchFixedAccountDetail(
   qc: Pick<QueryClient, 'invalidateQueries' | 'refetchQueries'>,
   actingContextKey: string,
+  scopeKey: FinancialScopeKey,
   id?: string
 ) {
   if (!id) return
-  const detailQueryKey = ['fixed-account', actingContextKey, id] as const
+  const detailQueryKey = ['fixed-account', actingContextKey, scopeKey, id] as const
   await qc.invalidateQueries({ queryKey: detailQueryKey })
   await qc.refetchQueries({ queryKey: detailQueryKey, type: 'active', exact: true })
-  await qc.invalidateQueries({ queryKey: ['fixed-accounts', actingContextKey, id, 'payments'] })
+  await qc.invalidateQueries({ queryKey: ['fixed-accounts', actingContextKey, scopeKey, id, 'payments'] })
 }
 
 function restoreSnapshot(qc: ReturnType<typeof useQueryClient>, snapshot?: FixedAccountsSnapshot) {
@@ -96,10 +100,11 @@ export function useFixedAccounts(params?: FixedAccountsQueryParams) {
   const qc = useQueryClient()
   const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
   const actingContextKey = activeClientId ?? 'self'
+  const { scope, scopeKey } = useFinancialScope()
 
   const fixedAccountsQuery = useQuery<FixedAccountResponse[]>({
-    queryKey: ['fixed-accounts', actingContextKey, params ?? {}],
-    queryFn: () => getFixedAccounts(params),
+    queryKey: ['fixed-accounts', actingContextKey, scopeKey, params ?? {}],
+    queryFn: () => getFixedAccounts(params, scope),
     staleTime: 15_000,
   })
 
@@ -184,8 +189,8 @@ export function useFixedAccounts(params?: FixedAccountsQueryParams) {
       restoreSnapshot(qc, context?.previous)
     },
     onSettled: async (_data, _error, payload) => {
-      await refetchFixedAccountsMonth(qc, actingContextKey, params)
-      await refetchFixedAccountDetail(qc, actingContextKey, payload?.id)
+      await refetchFixedAccountsMonth(qc, actingContextKey, scopeKey, params)
+      await refetchFixedAccountDetail(qc, actingContextKey, scopeKey, payload?.id)
     },
   })
 
@@ -217,8 +222,8 @@ export function useFixedAccounts(params?: FixedAccountsQueryParams) {
       restoreSnapshot(qc, context?.previous)
     },
     onSettled: async (_data, _error, payload) => {
-      await refetchFixedAccountsMonth(qc, actingContextKey, params)
-      await refetchFixedAccountDetail(qc, actingContextKey, payload?.id)
+      await refetchFixedAccountsMonth(qc, actingContextKey, scopeKey, params)
+      await refetchFixedAccountDetail(qc, actingContextKey, scopeKey, payload?.id)
     },
   })
 
@@ -235,10 +240,11 @@ export function useFixedAccounts(params?: FixedAccountsQueryParams) {
 export function useFixedAccount(id?: string) {
   const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
   const actingContextKey = activeClientId ?? 'self'
+  const { scope, scopeKey } = useFinancialScope()
 
   return useQuery<FixedAccountResponse>({
-    queryKey: ['fixed-account', actingContextKey, id],
-    queryFn: () => getFixedAccount(id as string),
+    queryKey: ['fixed-account', actingContextKey, scopeKey, id],
+    queryFn: () => getFixedAccount(id as string, scope),
     enabled: Boolean(id),
     staleTime: 15_000,
   })
@@ -247,10 +253,11 @@ export function useFixedAccount(id?: string) {
 export function useFixedAccountPayments(id?: string) {
   const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
   const actingContextKey = activeClientId ?? 'self'
+  const { scope, scopeKey } = useFinancialScope()
 
   return useQuery<FixedAccountPaymentResponse[]>({
-    queryKey: ['fixed-accounts', actingContextKey, id, 'payments'],
-    queryFn: () => getFixedAccountPayments(id as string),
+    queryKey: ['fixed-accounts', actingContextKey, scopeKey, id, 'payments'],
+    queryFn: () => getFixedAccountPayments(id as string, scope),
     enabled: !!id,
   })
 }
@@ -259,6 +266,7 @@ export function useDeleteFixedAccountPayment(fixedAccountId?: string) {
   const qc = useQueryClient()
   const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
   const actingContextKey = activeClientId ?? 'self'
+  const { scopeKey } = useFinancialScope()
 
   return useMutation({
     mutationFn: (paymentId: string) => deleteFixedAccountPayment(paymentId),
@@ -266,10 +274,10 @@ export function useDeleteFixedAccountPayment(fixedAccountId?: string) {
       qc.invalidateQueries({ queryKey: ['fixed-accounts'] })
       if (fixedAccountId) {
         qc.invalidateQueries({
-          queryKey: ['fixed-account', actingContextKey, fixedAccountId],
+          queryKey: ['fixed-account', actingContextKey, scopeKey, fixedAccountId],
         })
         qc.invalidateQueries({
-          queryKey: ['fixed-accounts', actingContextKey, fixedAccountId, 'payments'],
+          queryKey: ['fixed-accounts', actingContextKey, scopeKey, fixedAccountId, 'payments'],
         })
       } else {
         qc.invalidateQueries({ queryKey: ['fixed-accounts'] })

@@ -2,6 +2,7 @@ import { CategoryResponse, getCategories, createCategory, CategoryDTO, updateCat
 import { useCategoryStore } from '@/stores/useCategoryStore'
 import { useAdvisorActing } from '@/stores/useAdvisorActing'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useFinancialScope } from '@/hooks/useFinancialScope'
 
 
 export function useCategories() {
@@ -9,11 +10,12 @@ export function useCategories() {
   const setCategoryStore = useCategoryStore((s) => s.setCategoryStore)
   const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
   const actingContextKey = activeClientId ?? 'self'
+  const { scope, scopeKey } = useFinancialScope()
 
   const categoriesQuery = useQuery<CategoryResponse[]>({
-    queryKey: ['categories', actingContextKey],
+    queryKey: ['categories', actingContextKey, scopeKey],
     queryFn: async () => {
-      const data = await getCategories({ actingClientId: activeClientId })
+      const data = await getCategories({ actingClientId: activeClientId, scope })
       setCategoryStore(data)
       return data
     },

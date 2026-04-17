@@ -16,6 +16,7 @@ interface Props {
   onEdit: (transaction: Transaction) => void
   onDelete: (index: string) => void
   canWrite?: boolean
+  canWriteTransaction?: (transaction: Transaction) => boolean
 }
 
 export function TransactionCardList({
@@ -25,6 +26,7 @@ export function TransactionCardList({
   onEdit,
   onDelete,
   canWrite = true,
+  canWriteTransaction,
 }: Props) {
   const t = useTranslations('transactionCard')
   const locale = useLocale()
@@ -50,6 +52,7 @@ export function TransactionCardList({
   return (
     <div className="lg:hidden flex flex-col gap-4">
       {transactions.map((item) => {
+        const itemCanWrite = canWrite && (canWriteTransaction ? canWriteTransaction(item) : true)
         const category = item.category
         const categoryType = category?.type ?? item.type ?? 'EXPENSE'
         const isIncome = categoryType === 'INCOME'
@@ -61,7 +64,7 @@ export function TransactionCardList({
         return (
           <div key={item.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
             <div className="flex items-start gap-3">
-              {canWrite && (
+              {itemCanWrite && (
                 <input
                   type="checkbox"
                   checked={selectedIds.has(item.id)}
@@ -118,7 +121,7 @@ export function TransactionCardList({
                     {isIncome ? formatCurrency(value) : `- ${formatCurrency(value)}`}
                   </span>
 
-                  {canWrite ? (
+                  {itemCanWrite ? (
                     <div className="flex gap-2">
                       <button
                         className="text-gray-500 hover:text-blue-400 cursor-pointer"

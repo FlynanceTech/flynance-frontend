@@ -16,7 +16,7 @@ import { Button } from '../ui/button'
 
 const LOGIN_METHOD_STORAGE_KEY = 'flynance_login_method'
 
-const CURRENCY_OPTIONS = ['BRL', 'USD', 'EUR'] as const
+const CURRENCY_OPTIONS = ['BRL', 'USD', 'EUR', 'GBP', 'ARS'] as const
 const LOCALE_OPTIONS = ['pt-BR', 'en-US', 'es-ES'] as const
 
 const FALLBACK_TIMEZONE_OPTIONS = [

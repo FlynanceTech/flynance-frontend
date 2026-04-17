@@ -23,6 +23,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       reports: 'Relatorios',
       categories: 'Categorias',
       education: 'Educacao',
+      coupleAccount: 'Conta de casal',
       clients: 'Clientes',
       profile: 'Perfil',
       admin: 'Admin',
@@ -52,39 +53,61 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       applying: 'Aplicando...',
       applied: 'Aplicado',
     },
+    financialScope: {
+      label: 'Contexto financeiro',
+      description: 'Escolha se quer ver a leitura compartilhada do casal ou apenas a sua.',
+      helper: 'Listas, dashboard, detalhes e resumos acompanham esse contexto.',
+      options: {
+        house: 'Casal',
+        me: 'So eu',
+      },
+      badge: {
+        house: 'Mostrando dados do casal',
+        me: 'Mostrando apenas seus dados',
+      },
+    },
     dashboard: {
-      title: 'Dashboard Financeiro',
-      subtitle: 'Veja um resumo da sua vida financeira.',
+      title: 'Seu panorama financeiro',
+      subtitle: 'Veja o que entrou, o que saiu e como esta o seu saldo hoje.',
       guideButton: 'Ver guia do dashboard',
       closeOnboardingAria: 'Fechar onboarding',
       closeGuideAria: 'Fechar guia',
       stepCounter: 'Passo {current} de {total}',
       skipGuide: 'Pular guia',
       previous: 'Anterior',
-      next: 'Proximo',
+      next: 'Próximo',
       finish: 'Concluir',
       period: {
         includeFutureSuffix: ' (incluindo futuros)',
-        nextDays: 'proximos {days} dias',
-        lastDays: 'ultimos {days} dias',
+        nextDays: 'próximos {days} dias',
+        lastDays: 'últimos {days} dias',
       },
       onboarding: {
-        filtersTitle: 'Filtros de periodo',
+        filtersTitle: 'Filtros do seu período',
         filtersDescription:
-          'Use os filtros do cabecalho para trocar janela de analise por dias, mes ou intervalo customizado.',
+          'Use os filtros do cabeçalho para olhar seus números por dias, mês ou intervalo personalizado.',
         summaryTitle: 'Resumo financeiro',
         summaryDescription:
-          'No topo voce acompanha entradas, saidas e saldo no periodo selecionado. Esse bloco resume sua situacao atual.',
-        comparisonTitle: 'Comparacao de receitas e despesas',
+          'No topo você acompanha entradas, saídas, saldo e também as contas em dia ou em atraso resumidas no cabeçalho.',
+        comparisonTitle: 'Receitas x despesas',
         comparisonDescription:
-          'O grafico de comparacao mostra a evolucao das movimentacoes e ajuda a identificar mudancas no padrao.',
-        controlsTitle: 'Controles de gastos',
+          'Compare o que entrou e saiu para perceber mudanças no seu ritmo financeiro.',
+        controlsTitle: 'Limites e metas',
         controlsDescription:
-          'Em Controles voce define metas e acompanha quanto falta para atingir cada limite no periodo.',
-        categoriesTitle: 'Distribuicao por categoria',
+          'Aqui você acompanha o quanto já gastou, o que ainda cabe no mês e onde precisa de atenção.',
+        categoriesTitle: 'Para onde seu dinheiro foi',
         categoriesDescription:
-          'Veja onde voce mais gasta por categoria e use essa visao para ajustar prioridades do mes.',
+          'Veja as categorias que mais pesaram no período e entre nos detalhes quando quiser.',
       },
+    },
+    pageOnboarding: {
+      closeOnboardingAria: 'Fechar onboarding',
+      closeGuideAria: 'Fechar guia',
+      stepCounter: 'Passo {current} de {total}',
+      skipGuide: 'Pular guia',
+      previous: 'Anterior',
+      next: 'Próximo',
+      finish: 'Concluir',
     },
     financeStatus: {
       defaultPeriodLabel: 'periodo anterior',
@@ -180,23 +203,23 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         '11': 'Novembro',
         '12': 'Dezembro',
       },
-      displayNextDays: 'Proximos {days} dias',
-      displayLastDays: 'Ultimos {days} dias',
-      displayMonth: 'Mes: {value}',
-      displayPeriod: 'Periodo: {value}',
-      selectPeriodAria: 'Selecionar periodo',
-      selectPeriodTitle: 'Selecionar periodo',
-      sectionSelectRange: 'Selecionar intervalo',
-      sectionSelectMonth: 'Selecionar mes especifico',
-      sectionFilterDays: 'Filtrar por periodo de',
-      start: 'Inicio',
+      displayNextDays: 'Próximos {days} dias',
+      displayLastDays: 'Últimos {days} dias',
+      displayMonth: 'Mês: {value}',
+      displayPeriod: 'Período: {value}',
+      selectPeriodAria: 'Selecionar período',
+      selectPeriodTitle: 'Selecionar período',
+      sectionSelectRange: 'Selecionar intervalo:',
+      sectionSelectMonth: 'Selecionar mês específico:',
+      sectionFilterDays: 'Filtrar por período de:',
+      start: 'Início',
       end: 'Fim',
-      month: 'Mes',
+      month: 'Mês',
       year: 'Ano',
-      invalidRange: 'O inicio nao pode ser depois do fim.',
+      invalidRange: 'O início não pode ser depois do fim.',
       apply: 'Aplicar',
-      applyMonth: 'Aplicar mes',
-      futurePeriod: 'Periodo futuro',
+      applyMonth: 'Aplicar mês',
+      futurePeriod: 'Período futuro',
       days: '{days} dias',
     },
     filters: {
@@ -212,8 +235,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       periodNextDays: 'Proximos {days} dias',
     },
     transactions: {
-      title: 'Transacoes Financeiras',
-      subtitle: 'Seus ultimos movimentos financeiros',
+      title: 'Suas movimentações',
+      subtitle: 'Veja, filtre e ajuste suas transações com mais clareza.',
       errorLoading: 'Erro ao carregar transacoes.',
       guideButton: 'Ver guia de transacoes',
       readOnlyBanner:
@@ -344,8 +367,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       },
     },
     fixedAccounts: {
-      pageTitle: 'Minhas Contas',
-      pageSubtitle: 'Lista de obrigacoes recorrentes do seu mes.',
+      pageTitle: 'As contas do seu mês',
+      pageSubtitle: 'Veja o que já foi pago, o que está pendente e o que vence em cada competência.',
       newButton: 'Nova conta fixa',
       guideButton: 'Ver guia de contas fixas',
       summary: {
@@ -449,8 +472,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     },
     reports: {
       page: {
-        title: 'Relatorios',
-        subtitle: 'Saude financeira, evolucao anual e recomendacoes personalizadas.',
+        title: 'Leitura da sua vida financeira',
+        subtitle: 'Entenda sua saúde financeira, acompanhe a evolução do ano e identifique os próximos ajustes.',
         year: 'Ano',
         recalc: 'Recalcular relatorio',
         recalculating: 'Recalculando...',
@@ -860,6 +883,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         BRL: 'Real brasileiro (BRL)',
         USD: 'Dolar americano (USD)',
         EUR: 'Euro (EUR)',
+        GBP: 'Libra esterlina (GBP)',
+        ARS: 'Peso argentino (ARS)',
       },
       languageOptions: {
         'pt-BR': 'Portugues (Brasil) - pt-BR',
@@ -1137,19 +1162,23 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         empty: '-',
       },
       header: {
-        title: 'Controle de Metas',
+        title: 'Metas e limites do seu mês',
+        subtitle: 'Acompanhe seus limites por categoria e veja rapidamente onde ainda cabe gastar.',
         guideButton: 'Ver guia de controles',
       },
       onboarding: {
-        headerTitle: 'Gestao de metas',
+        headerTitle: 'Como acompanhar suas metas',
         headerDescription:
-          'Use esta tela para controlar limites por categoria e acompanhar progresso mensal.',
-        topTitle: 'Periodo e criacao',
+          'Use esta tela para controlar limites por categoria e enxergar com clareza o andamento do seu mês.',
+        topTitle: 'Mês de referência',
         topDescription:
-          'Escolha o mes de referencia e adicione novos controles para acompanhar metas de gasto.',
-        listTitle: 'Cards de controle',
+          'Aqui você confere o mês em foco e também usa as setas para avançar ou voltar a competência.',
+        listTitle: 'Cada card é uma meta',
         listDescription:
-          'Cada card mostra status da meta, valor restante, favoritos e atalhos de edicao.',
+          'Cada card mostra o limite que você definiu, quanto já gastou, o que resta e atalhos para editar.',
+        favoritesTitle: 'Favoritos para acompanhar de perto',
+        favoritesDescription:
+          'Marque até 3 metas com a estrela para destacá-las no seu Dashboard e acompanhar tudo mais rápido.',
       },
       favoriteModal: {
         title: 'Limite de favoritos (3)',
@@ -1164,7 +1193,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         swap: 'Trocar favorito',
       },
       top: {
-        title: 'Todos os controles',
+        title: 'Visão do mês selecionado',
         newControl: 'Novo controle',
       },
       states: {
@@ -1495,8 +1524,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     },
     futurosPage: {
       header: {
-        title: 'Futuros',
-        subtitle: 'Gerencie transacoes futuras e acompanhe previsoes de despesas e receitas.',
+        title: 'Sua visão daqui pra frente',
+        subtitle: 'Acompanhe o que ainda vai entrar e sair para se planejar com mais clareza.',
         newFutureTransaction: 'Transação Futura',
       },
       filters: {
@@ -1997,6 +2026,167 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           'Os precos Stripe continuam sendo um passo separado. Use os campos de priceId abaixo quando ja houver precos criados ou vinculados.',
       },
     },
+    coupleAccountPage: {
+      title: 'Conta de casal',
+      subtitle:
+        'Conecte seu parceiro para acompanhar a vida financeira do casal no mesmo espaco.',
+      refresh: 'Atualizar',
+      refreshing: 'Atualizando...',
+      retry: 'Tentar novamente',
+      loadError: {
+        title: 'Nao foi possivel carregar a conta de casal',
+        description: 'Atualize a pagina e tente novamente em instantes.',
+      },
+      roles: {
+        OWNER: 'Titular',
+        PARTNER: 'Parceiro(a)',
+      },
+      statuses: {
+        SOLO: 'Aguardando conexao',
+        COUPLE: 'Casal conectado',
+      },
+      inviteStatuses: {
+        PENDING: 'Pendente',
+        ACCEPTED: 'Aceito',
+        REVOKED: 'Revogado',
+        EXPIRED: 'Expirado',
+        UNKNOWN: 'Desconhecido',
+      },
+      emptyState: {
+        title: 'Crie sua conta de casal',
+        description:
+          'Centralize convites, acompanhe o parceiro e compartilhe a mesma visao financeira.',
+        features: {
+          sharedTitle: 'Espaco compartilhado',
+          sharedDescription:
+            'Voces passam a acompanhar a conta do casal dentro do mesmo ambiente.',
+          historyTitle: 'Historico em conjunto',
+          historyDescription:
+            'Acompanhe a evolucao da conta e saiba quando o vinculo foi criado.',
+          notificationTitle: 'Convite simples',
+          notificationDescription:
+            'Gere um link de convite para conectar seu parceiro em poucos passos.',
+        },
+        form: {
+          nameLabel: 'Nome da conta de casal',
+          namePlaceholder: 'Ex: Casa da Ana e Joao',
+          helper: 'Escolha um nome facil de identificar para a conta compartilhada.',
+          notice: 'So e possivel ter uma conta de casal ativa por usuario.',
+          create: 'Criar conta de casal',
+          creating: 'Criando conta...',
+          nameMin: 'Informe pelo menos 2 caracteres.',
+          nameMax: 'Use no maximo 80 caracteres.',
+        },
+      },
+      upgradeCard: {
+        title: 'Plano casal',
+        description:
+          'Ative ou troque para o plano compativel com a conta de casal.',
+        loadingPlans: 'Carregando plano disponivel...',
+        noPlanTitle: 'Plano casal indisponivel',
+        noPlanDescription:
+          'Nao encontramos um plano elegivel para habilitar a conta de casal agora.',
+        noPlanHint:
+          'Se o problema persistir, atualize os planos cadastrados no admin.',
+        periods: {
+          WEEKLY: 'Semanal',
+          MONTHLY: 'Mensal',
+          YEARLY: 'Anual',
+        },
+        activeBadge: 'Plano atual',
+        currentPlan: 'Plano atual: {planName}',
+        ownerNoteTitle: 'Voce pode gerenciar a assinatura',
+        ownerNoteDescription:
+          'Como titular da conta de casal, voce pode iniciar a assinatura ou trocar de plano.',
+        partnerNoteTitle: 'Somente o titular pode alterar o plano',
+        partnerNoteDescription:
+          'Peca para o titular da conta de casal fazer a contratacao ou troca do plano.',
+        prorationNote:
+          'A mudanca de plano pode gerar ajuste proporcional na proxima cobranca.',
+        processing: 'Processando...',
+        actions: {
+          changePlan: 'Trocar para plano casal',
+          createSubscription: 'Assinar plano casal',
+        },
+      },
+      houseCard: {
+        title: 'Visao da conta',
+        description: 'Dados principais da sua conta de casal.',
+        fields: {
+          name: 'Nome',
+          owner: 'Titular',
+          createdAt: 'Criada em',
+          linkedAt: 'Parceiro vinculado em',
+        },
+        fallbacks: {
+          unnamedHouse: 'Conta sem nome',
+          ownerMissing: 'Titular nao identificado',
+          notLinkedYet: 'Ainda nao vinculado',
+        },
+        ownerNoteTitle: 'Voce administra a conta',
+        ownerNoteDescription:
+          'Voce pode convidar, copiar link e remover o parceiro quando necessario.',
+        partnerNoteTitle: 'Voce participa da conta',
+        partnerNoteDescription:
+          'Voce acompanha a conta compartilhada e acessa as informacoes ja conectadas.',
+      },
+      partnerCard: {
+        title: 'Parceiro conectado',
+        description: 'Veja quem esta vinculado a sua conta de casal.',
+        fallbacks: {
+          noName: 'Nome nao informado',
+          noEmail: 'E-mail nao informado',
+        },
+        ownerConnectedTitle: 'Titular conectado',
+        ownerConnectedDescription:
+          'Este usuario criou e administra a conta de casal.',
+        partnerConnectedTitle: 'Parceiro conectado',
+        partnerConnectedDescription:
+          'Este usuario aceitou o convite e ja faz parte da conta de casal.',
+        actions: {
+          remove: 'Remover parceiro',
+          removing: 'Removendo...',
+        },
+        emptyTitle: 'Nenhum parceiro conectado',
+        emptyOwnerDescription:
+          'Gere um convite para conectar seu parceiro a conta de casal.',
+        emptyPartnerDescription:
+          'Aguarde o titular concluir a conexao com o parceiro.',
+      },
+      invitesCard: {
+        title: 'Convites',
+        ownerDescription: 'Gere e copie links para convidar seu parceiro.',
+        partnerDescription:
+          'Acompanhe o status dos convites gerados pelo titular.',
+        actions: {
+          generating: 'Gerando...',
+          generate: 'Gerar convite',
+          copy: 'Copiar link',
+        },
+        fields: {
+          link: 'Link',
+          createdAt: 'Criado em',
+          expiresAt: 'Expira em',
+          token: 'Token',
+        },
+        emptyOwner: 'Nenhum convite gerado ate agora.',
+        emptyPartner: 'Nenhum convite disponivel no momento.',
+        linkUnavailable: 'Link indisponivel',
+        tokenUnavailable: 'Token indisponivel',
+        copyUnavailable: 'Nao foi possivel montar o link do convite.',
+        copySuccess: 'Link do convite copiado.',
+        copyError: 'Nao foi possivel copiar o link do convite.',
+      },
+      removePartnerDialog: {
+        title: 'Remover parceiro',
+        description:
+          'Tem certeza que deseja remover {partnerName} da conta de casal?',
+        defaultPartnerName: 'este parceiro',
+        cancel: 'Cancelar',
+        confirm: 'Remover',
+        confirming: 'Removendo...',
+      },
+    },
     adminBillingCouponsPage: {
       common: {
         empty: '-',
@@ -2143,6 +2333,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       reports: 'Reports',
       categories: 'Categories',
       education: 'Education',
+      coupleAccount: 'Couple account',
       clients: 'Clients',
       profile: 'Profile',
       admin: 'Admin',
@@ -2172,9 +2363,22 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       applying: 'Applying...',
       applied: 'Applied',
     },
+    financialScope: {
+      label: 'Financial context',
+      description: 'Choose between the shared couple view and your individual view.',
+      helper: 'Dashboard, lists, details and summaries follow this context.',
+      options: {
+        house: 'Couple',
+        me: 'Only me',
+      },
+      badge: {
+        house: 'Showing couple data',
+        me: 'Showing only your data',
+      },
+    },
     dashboard: {
-      title: 'Financial Dashboard',
-      subtitle: 'See a summary of your financial life.',
+      title: 'Your financial snapshot',
+      subtitle: 'See what came in, what went out and how your balance looks today.',
       guideButton: 'View dashboard guide',
       closeOnboardingAria: 'Close onboarding',
       closeGuideAria: 'Close guide',
@@ -2191,20 +2395,29 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       onboarding: {
         filtersTitle: 'Filters and period',
         filtersDescription:
-          'Use header filters to switch the analysis window by days, month or custom range.',
+          'Use the header filters to review your numbers by days, month or a custom range.',
         summaryTitle: 'Financial summary',
         summaryDescription:
-          'At the top you can track income, expenses and balance for the selected period.',
+          'At the top you can track income, expenses, balance and also bills that are due or overdue in the header summary.',
         comparisonTitle: 'Income and expense comparison',
         comparisonDescription:
-          'The comparison chart shows movement trends and helps identify behavior changes.',
+          'Compare what came in and what went out to spot changes in your money routine.',
         controlsTitle: 'Spending controls',
         controlsDescription:
-          'In Controls you set goals and track how much is left before each limit.',
+          'In Controls you track how much was already spent, what is still available and where attention is needed.',
         categoriesTitle: 'Category distribution',
         categoriesDescription:
-          'See where you spend the most by category and adjust your monthly priorities.',
+          'See which categories weighed the most in the period and dive into the details when needed.',
       },
+    },
+    pageOnboarding: {
+      closeOnboardingAria: 'Close onboarding',
+      closeGuideAria: 'Close guide',
+      stepCounter: 'Step {current} of {total}',
+      skipGuide: 'Skip guide',
+      previous: 'Previous',
+      next: 'Next',
+      finish: 'Finish',
     },
     financeStatus: {
       defaultPeriodLabel: 'previous period',
@@ -2305,9 +2518,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       displayPeriod: 'Period: {value}',
       selectPeriodAria: 'Select period',
       selectPeriodTitle: 'Select period',
-      sectionSelectRange: 'Select range',
-      sectionSelectMonth: 'Select specific month',
-      sectionFilterDays: 'Filter by period',
+      sectionSelectRange: 'Select range:',
+      sectionSelectMonth: 'Select specific month:',
+      sectionFilterDays: 'Filter by period length:',
       start: 'Start',
       end: 'End',
       month: 'Month',
@@ -2331,8 +2544,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       periodNextDays: 'Next {days} days',
     },
     transactions: {
-      title: 'Financial Transactions',
-      subtitle: 'Your latest financial moves',
+      title: 'Your money movements',
+      subtitle: 'View, filter and adjust your transactions with more clarity.',
       errorLoading: 'Could not load transactions.',
       guideButton: 'View transactions guide',
       readOnlyBanner: 'You currently have read-only access for this client.',
@@ -2461,8 +2674,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       },
     },
     fixedAccounts: {
-      pageTitle: 'My Bills',
-      pageSubtitle: 'List of recurring obligations for your month.',
+      pageTitle: 'Your monthly bills',
+      pageSubtitle: 'See what is paid, what is pending and what is due in each cycle.',
       newButton: 'New fixed bill',
       guideButton: 'View fixed bills guide',
       summary: {
@@ -2565,8 +2778,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     },
     reports: {
       page: {
-        title: 'Reports',
-        subtitle: 'Financial health, yearly trend and personalized recommendations.',
+        title: 'What your numbers say about you',
+        subtitle: 'Understand your financial health, follow the year and identify your next adjustments.',
         year: 'Year',
         recalc: 'Recalculate report',
         recalculating: 'Recalculating...',
@@ -2976,6 +3189,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         BRL: 'Brazilian real (BRL)',
         USD: 'US dollar (USD)',
         EUR: 'Euro (EUR)',
+        GBP: 'British pound (GBP)',
+        ARS: 'Argentine peso (ARS)',
       },
       languageOptions: {
         'pt-BR': 'Portuguese (Brazil) - pt-BR',
@@ -3249,19 +3464,23 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         empty: '-',
       },
       header: {
-        title: 'Goal Control',
+        title: 'Goals and limits for your month',
+        subtitle: 'Track your category limits and quickly see where you still have room to spend.',
         guideButton: 'View controls guide',
       },
       onboarding: {
-        headerTitle: 'Goals management',
+        headerTitle: 'How to follow your goals',
         headerDescription:
-          'Use this page to control category limits and track monthly progress.',
-        topTitle: 'Period and creation',
+          'Use this page to control category limits and clearly track how your month is progressing.',
+        topTitle: 'Reference month',
         topDescription:
-          'Choose the reference month and add new controls to track spending goals.',
+          'Here you can see the selected month and use the arrows to move between cycles without losing context.',
         listTitle: 'Control cards',
         listDescription:
-          'Each card shows goal status, remaining amount, favorites and edit shortcuts.',
+          'Each card shows the limit you defined, how much was already spent, what remains and quick edit actions.',
+        favoritesTitle: 'Favorites for closer follow-up',
+        favoritesDescription:
+          'Mark up to 3 goals with the star to highlight them on your Dashboard and follow them faster.',
       },
       favoriteModal: {
         title: 'Favorites limit (3)',
@@ -3276,7 +3495,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         swap: 'Swap favorite',
       },
       top: {
-        title: 'All controls',
+        title: 'Selected month overview',
         newControl: 'New control',
       },
       states: {
@@ -3607,8 +3826,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     },
     futurosPage: {
       header: {
-        title: 'Future',
-        subtitle: 'Manage future transactions and track expected expenses and income.',
+        title: 'Looking ahead',
+        subtitle: 'Track what is still expected to come in and go out so you can plan with more clarity.',
         newFutureTransaction: 'Future Transaction',
       },
       filters: {
@@ -4107,6 +4326,166 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           'Stripe prices are still a separate step. Use the priceId fields below when prices have already been created or linked.',
       },
     },
+    coupleAccountPage: {
+      title: 'Couple account',
+      subtitle:
+        'Connect your partner and manage your shared financial space in one place.',
+      refresh: 'Refresh',
+      refreshing: 'Refreshing...',
+      retry: 'Try again',
+      loadError: {
+        title: 'Could not load the couple account',
+        description: 'Refresh the page and try again in a moment.',
+      },
+      roles: {
+        OWNER: 'Owner',
+        PARTNER: 'Partner',
+      },
+      statuses: {
+        SOLO: 'Waiting for partner',
+        COUPLE: 'Couple connected',
+      },
+      inviteStatuses: {
+        PENDING: 'Pending',
+        ACCEPTED: 'Accepted',
+        REVOKED: 'Revoked',
+        EXPIRED: 'Expired',
+        UNKNOWN: 'Unknown',
+      },
+      emptyState: {
+        title: 'Create your couple account',
+        description:
+          'Centralize invites, track your partner and share the same financial view.',
+        features: {
+          sharedTitle: 'Shared space',
+          sharedDescription:
+            'Both of you can follow the couple account in the same environment.',
+          historyTitle: 'Shared history',
+          historyDescription:
+            'Track the account timeline and know when the connection was created.',
+          notificationTitle: 'Simple invite',
+          notificationDescription:
+            'Generate an invite link to connect your partner in just a few steps.',
+        },
+        form: {
+          nameLabel: 'Couple account name',
+          namePlaceholder: 'Example: Ana and John home',
+          helper: 'Choose a name that is easy to identify for the shared account.',
+          notice: 'Only one active couple account is allowed per user.',
+          create: 'Create couple account',
+          creating: 'Creating account...',
+          nameMin: 'Enter at least 2 characters.',
+          nameMax: 'Use at most 80 characters.',
+        },
+      },
+      upgradeCard: {
+        title: 'Couple plan',
+        description:
+          'Activate or switch to the plan that supports the couple account.',
+        loadingPlans: 'Loading available plan...',
+        noPlanTitle: 'Couple plan unavailable',
+        noPlanDescription:
+          'We could not find an eligible plan to enable the couple account right now.',
+        noPlanHint:
+          'If the problem persists, update the registered plans in admin.',
+        periods: {
+          WEEKLY: 'Weekly',
+          MONTHLY: 'Monthly',
+          YEARLY: 'Yearly',
+        },
+        activeBadge: 'Current plan',
+        currentPlan: 'Current plan: {planName}',
+        ownerNoteTitle: 'You can manage the subscription',
+        ownerNoteDescription:
+          'As the couple account owner, you can start the subscription or switch plans.',
+        partnerNoteTitle: 'Only the owner can change the plan',
+        partnerNoteDescription:
+          'Ask the couple account owner to purchase or switch the plan.',
+        prorationNote:
+          'Changing plans may create a prorated adjustment on the next billing cycle.',
+        processing: 'Processing...',
+        actions: {
+          changePlan: 'Switch to couple plan',
+          createSubscription: 'Subscribe to couple plan',
+        },
+      },
+      houseCard: {
+        title: 'Account overview',
+        description: 'Main details about your couple account.',
+        fields: {
+          name: 'Name',
+          owner: 'Owner',
+          createdAt: 'Created at',
+          linkedAt: 'Partner linked at',
+        },
+        fallbacks: {
+          unnamedHouse: 'Unnamed account',
+          ownerMissing: 'Owner not identified',
+          notLinkedYet: 'Not linked yet',
+        },
+        ownerNoteTitle: 'You manage the account',
+        ownerNoteDescription:
+          'You can invite, copy links and remove the partner when needed.',
+        partnerNoteTitle: 'You are part of the account',
+        partnerNoteDescription:
+          'You can follow the shared account and access the connected information.',
+      },
+      partnerCard: {
+        title: 'Connected partner',
+        description: 'See who is linked to your couple account.',
+        fallbacks: {
+          noName: 'Name not provided',
+          noEmail: 'Email not provided',
+        },
+        ownerConnectedTitle: 'Owner connected',
+        ownerConnectedDescription:
+          'This user created and manages the couple account.',
+        partnerConnectedTitle: 'Partner connected',
+        partnerConnectedDescription:
+          'This user accepted the invite and is already part of the couple account.',
+        actions: {
+          remove: 'Remove partner',
+          removing: 'Removing...',
+        },
+        emptyTitle: 'No partner connected',
+        emptyOwnerDescription:
+          'Generate an invite to connect your partner to the couple account.',
+        emptyPartnerDescription:
+          'Wait for the owner to finish connecting the partner.',
+      },
+      invitesCard: {
+        title: 'Invites',
+        ownerDescription: 'Generate and copy links to invite your partner.',
+        partnerDescription: 'Track the status of invites created by the owner.',
+        actions: {
+          generating: 'Generating...',
+          generate: 'Generate invite',
+          copy: 'Copy link',
+        },
+        fields: {
+          link: 'Link',
+          createdAt: 'Created at',
+          expiresAt: 'Expires at',
+          token: 'Token',
+        },
+        emptyOwner: 'No invites generated yet.',
+        emptyPartner: 'No invites available right now.',
+        linkUnavailable: 'Link unavailable',
+        tokenUnavailable: 'Token unavailable',
+        copyUnavailable: 'Could not build the invite link.',
+        copySuccess: 'Invite link copied.',
+        copyError: 'Could not copy the invite link.',
+      },
+      removePartnerDialog: {
+        title: 'Remove partner',
+        description:
+          'Are you sure you want to remove {partnerName} from the couple account?',
+        defaultPartnerName: 'this partner',
+        cancel: 'Cancel',
+        confirm: 'Remove',
+        confirming: 'Removing...',
+      },
+    },
     adminBillingCouponsPage: {
       common: {
         empty: '-',
@@ -4253,6 +4632,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       reports: 'Reportes',
       categories: 'Categorias',
       education: 'Educacion',
+      coupleAccount: 'Cuenta en pareja',
       clients: 'Clientes',
       profile: 'Perfil',
       admin: 'Admin',
@@ -4282,9 +4662,22 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       applying: 'Aplicando...',
       applied: 'Aplicado',
     },
+    financialScope: {
+      label: 'Contexto financiero',
+      description: 'Elige entre la vista compartida de la pareja y tu vista individual.',
+      helper: 'Dashboard, listas, detalles y resúmenes siguen este contexto.',
+      options: {
+        house: 'Pareja',
+        me: 'Solo yo',
+      },
+      badge: {
+        house: 'Mostrando datos de la pareja',
+        me: 'Mostrando solo tus datos',
+      },
+    },
     dashboard: {
-      title: 'Panel financiero',
-      subtitle: 'Mira un resumen de tu vida financiera.',
+      title: 'Tu panorama financiero',
+      subtitle: 'Mira lo que entro, lo que salio y como esta tu saldo hoy.',
       guideButton: 'Ver guia del dashboard',
       closeOnboardingAria: 'Cerrar onboarding',
       closeGuideAria: 'Cerrar guia',
@@ -4301,20 +4694,29 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       onboarding: {
         filtersTitle: 'Filtros y periodo',
         filtersDescription:
-          'Usa los filtros del encabezado para cambiar la ventana de analisis por dias, mes o rango personalizado.',
+          'Usa los filtros del encabezado para revisar tus numeros por dias, mes o un rango personalizado.',
         summaryTitle: 'Resumen financiero',
         summaryDescription:
-          'En la parte superior acompanas ingresos, gastos y saldo del periodo seleccionado.',
+          'En la parte superior acompanias ingresos, gastos, saldo y tambien las cuentas al dia o atrasadas resumidas en el encabezado.',
         comparisonTitle: 'Comparacion de ingresos y gastos',
         comparisonDescription:
-          'El grafico de comparacion muestra la evolucion de movimientos y ayuda a identificar cambios.',
+          'Compara lo que entro y lo que salio para detectar cambios en tu rutina financiera.',
         controlsTitle: 'Controles de gasto',
         controlsDescription:
-          'En Controles defines metas y acompanias cuanto falta para cada limite.',
+          'En Controles sigues cuanto ya gastaste, lo que todavia tienes disponible y donde necesitas atencion.',
         categoriesTitle: 'Distribucion por categoria',
         categoriesDescription:
-          'Mira donde gastas mas por categoria y ajusta tus prioridades del mes.',
+          'Mira que categorias pesaron mas en el periodo y entra en el detalle cuando lo necesites.',
       },
+    },
+    pageOnboarding: {
+      closeOnboardingAria: 'Cerrar onboarding',
+      closeGuideAria: 'Cerrar guia',
+      stepCounter: 'Paso {current} de {total}',
+      skipGuide: 'Saltar guia',
+      previous: 'Anterior',
+      next: 'Siguiente',
+      finish: 'Finalizar',
     },
     financeStatus: {
       defaultPeriodLabel: 'periodo anterior',
@@ -4415,9 +4817,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       displayPeriod: 'Periodo: {value}',
       selectPeriodAria: 'Seleccionar periodo',
       selectPeriodTitle: 'Seleccionar periodo',
-      sectionSelectRange: 'Seleccionar intervalo',
-      sectionSelectMonth: 'Seleccionar mes especifico',
-      sectionFilterDays: 'Filtrar por periodo',
+      sectionSelectRange: 'Seleccionar intervalo:',
+      sectionSelectMonth: 'Seleccionar mes especifico:',
+      sectionFilterDays: 'Filtrar por periodo de:',
       start: 'Inicio',
       end: 'Fin',
       month: 'Mes',
@@ -4441,8 +4843,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       periodNextDays: 'Proximos {days} dias',
     },
     transactions: {
-      title: 'Transacciones financieras',
-      subtitle: 'Tus ultimos movimientos financieros',
+      title: 'Tus movimientos de dinero',
+      subtitle: 'Mira, filtra y ajusta tus transacciones con mas claridad.',
       errorLoading: 'No se pudieron cargar las transacciones.',
       guideButton: 'Ver guia de transacciones',
       readOnlyBanner:
@@ -4574,8 +4976,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       },
     },
     fixedAccounts: {
-      pageTitle: 'Mis cuentas',
-      pageSubtitle: 'Lista de obligaciones recurrentes de tu mes.',
+      pageTitle: 'Las cuentas de tu mes',
+      pageSubtitle: 'Mira lo que ya se pago, lo que esta pendiente y lo que vence en cada competencia.',
       newButton: 'Nueva cuenta fija',
       guideButton: 'Ver guia de cuentas fijas',
       summary: {
@@ -4679,8 +5081,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     },
     reports: {
       page: {
-        title: 'Reportes',
-        subtitle: 'Salud financiera, evolucion anual y recomendaciones personalizadas.',
+        title: 'Lo que tus numeros dicen de ti',
+        subtitle: 'Entiende tu salud financiera, sigue la evolucion del ano e identifica tus proximos ajustes.',
         year: 'Ano',
         recalc: 'Recalcular reporte',
         recalculating: 'Recalculando...',
@@ -5090,6 +5492,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         BRL: 'Real brasileno (BRL)',
         USD: 'Dolar estadounidense (USD)',
         EUR: 'Euro (EUR)',
+        GBP: 'Libra esterlina (GBP)',
+        ARS: 'Peso argentino (ARS)',
       },
       languageOptions: {
         'pt-BR': 'Portugues (Brasil) - pt-BR',
@@ -5367,19 +5771,23 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         empty: '-',
       },
       header: {
-        title: 'Control de Metas',
+        title: 'Metas y limites de tu mes',
+        subtitle: 'Sigue tus limites por categoria y mira rapido donde todavia puedes gastar.',
         guideButton: 'Ver guia de controles',
       },
       onboarding: {
-        headerTitle: 'Gestion de metas',
+        headerTitle: 'Como seguir tus metas',
         headerDescription:
-          'Usa esta pantalla para controlar limites por categoria y seguir el progreso mensual.',
-        topTitle: 'Periodo y creacion',
+          'Usa esta pantalla para controlar limites por categoria y ver con claridad como avanza tu mes.',
+        topTitle: 'Mes de referencia',
         topDescription:
-          'Elige el mes de referencia y agrega nuevos controles para seguir metas de gasto.',
+          'Aqui ves el mes en foco y tambien usas las flechas para avanzar o volver entre competencias.',
         listTitle: 'Tarjetas de control',
         listDescription:
-          'Cada tarjeta muestra estado de la meta, valor restante, favoritos y atajos de edicion.',
+          'Cada tarjeta muestra el limite que definiste, cuanto ya gastaste, lo que resta y accesos rapidos para editar.',
+        favoritesTitle: 'Favoritos para seguir de cerca',
+        favoritesDescription:
+          'Marca hasta 3 metas con la estrella para destacarlas en tu Dashboard y seguirlas mas rapido.',
       },
       favoriteModal: {
         title: 'Limite de favoritos (3)',
@@ -5394,7 +5802,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         swap: 'Cambiar favorito',
       },
       top: {
-        title: 'Todos los controles',
+        title: 'Vista del mes seleccionado',
         newControl: 'Nuevo control',
       },
       states: {
@@ -5725,8 +6133,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     },
     futurosPage: {
       header: {
-        title: 'Futuros',
-        subtitle: 'Gestiona transacciones futuras y acompanha previsiones de gastos e ingresos.',
+        title: 'Tu vista de lo que viene',
+        subtitle: 'Sigue lo que todavia va a entrar y salir para planificar con mas claridad.',
         newFutureTransaction: 'Transaccion Futura',
       },
       filters: {
@@ -6224,6 +6632,167 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         willBeGenerated: 'Se generara automaticamente al guardar',
         priceStepHint:
           'Los precios Stripe siguen siendo un paso separado. Usa los campos de priceId abajo cuando los precios ya existan o esten vinculados.',
+      },
+    },
+    coupleAccountPage: {
+      title: 'Cuenta en pareja',
+      subtitle:
+        'Conecta a tu pareja y gestiona el espacio financiero compartido en un solo lugar.',
+      refresh: 'Actualizar',
+      refreshing: 'Actualizando...',
+      retry: 'Intentar de nuevo',
+      loadError: {
+        title: 'No se pudo cargar la cuenta en pareja',
+        description: 'Actualiza la pagina e intenta otra vez en unos instantes.',
+      },
+      roles: {
+        OWNER: 'Titular',
+        PARTNER: 'Pareja',
+      },
+      statuses: {
+        SOLO: 'Esperando conexion',
+        COUPLE: 'Pareja conectada',
+      },
+      inviteStatuses: {
+        PENDING: 'Pendiente',
+        ACCEPTED: 'Aceptado',
+        REVOKED: 'Revocado',
+        EXPIRED: 'Expirado',
+        UNKNOWN: 'Desconocido',
+      },
+      emptyState: {
+        title: 'Crea tu cuenta en pareja',
+        description:
+          'Centraliza invitaciones, acompana a tu pareja y comparte la misma vista financiera.',
+        features: {
+          sharedTitle: 'Espacio compartido',
+          sharedDescription:
+            'Los dos pueden seguir la cuenta en pareja dentro del mismo entorno.',
+          historyTitle: 'Historial conjunto',
+          historyDescription:
+            'Sigue la evolucion de la cuenta y sabe cuando se creo la conexion.',
+          notificationTitle: 'Invitacion simple',
+          notificationDescription:
+            'Genera un link de invitacion para conectar a tu pareja en pocos pasos.',
+        },
+        form: {
+          nameLabel: 'Nombre de la cuenta en pareja',
+          namePlaceholder: 'Ej: Casa de Ana y Juan',
+          helper: 'Elige un nombre facil de identificar para la cuenta compartida.',
+          notice: 'Solo se permite una cuenta en pareja activa por usuario.',
+          create: 'Crear cuenta en pareja',
+          creating: 'Creando cuenta...',
+          nameMin: 'Ingresa al menos 2 caracteres.',
+          nameMax: 'Usa como maximo 80 caracteres.',
+        },
+      },
+      upgradeCard: {
+        title: 'Plan en pareja',
+        description:
+          'Activa o cambia al plan compatible con la cuenta en pareja.',
+        loadingPlans: 'Cargando plan disponible...',
+        noPlanTitle: 'Plan en pareja no disponible',
+        noPlanDescription:
+          'No encontramos un plan elegible para habilitar la cuenta en pareja ahora.',
+        noPlanHint:
+          'Si el problema continua, actualiza los planes registrados en admin.',
+        periods: {
+          WEEKLY: 'Semanal',
+          MONTHLY: 'Mensual',
+          YEARLY: 'Anual',
+        },
+        activeBadge: 'Plan actual',
+        currentPlan: 'Plan actual: {planName}',
+        ownerNoteTitle: 'Puedes gestionar la suscripcion',
+        ownerNoteDescription:
+          'Como titular de la cuenta en pareja, puedes iniciar la suscripcion o cambiar de plan.',
+        partnerNoteTitle: 'Solo el titular puede cambiar el plan',
+        partnerNoteDescription:
+          'Pidele al titular de la cuenta en pareja que haga la contratacion o el cambio.',
+        prorationNote:
+          'El cambio de plan puede generar un ajuste prorrateado en el proximo cobro.',
+        processing: 'Procesando...',
+        actions: {
+          changePlan: 'Cambiar al plan en pareja',
+          createSubscription: 'Suscribirse al plan en pareja',
+        },
+      },
+      houseCard: {
+        title: 'Vista de la cuenta',
+        description: 'Datos principales de tu cuenta en pareja.',
+        fields: {
+          name: 'Nombre',
+          owner: 'Titular',
+          createdAt: 'Creada en',
+          linkedAt: 'Pareja vinculada en',
+        },
+        fallbacks: {
+          unnamedHouse: 'Cuenta sin nombre',
+          ownerMissing: 'Titular no identificado',
+          notLinkedYet: 'Aun no vinculada',
+        },
+        ownerNoteTitle: 'Tu administras la cuenta',
+        ownerNoteDescription:
+          'Puedes invitar, copiar links y remover a la pareja cuando sea necesario.',
+        partnerNoteTitle: 'Tu formas parte de la cuenta',
+        partnerNoteDescription:
+          'Puedes seguir la cuenta compartida y acceder a la informacion ya conectada.',
+      },
+      partnerCard: {
+        title: 'Pareja conectada',
+        description: 'Mira quien esta vinculado a tu cuenta en pareja.',
+        fallbacks: {
+          noName: 'Nombre no informado',
+          noEmail: 'Email no informado',
+        },
+        ownerConnectedTitle: 'Titular conectado',
+        ownerConnectedDescription:
+          'Este usuario creo y administra la cuenta en pareja.',
+        partnerConnectedTitle: 'Pareja conectada',
+        partnerConnectedDescription:
+          'Este usuario acepto la invitacion y ya forma parte de la cuenta en pareja.',
+        actions: {
+          remove: 'Remover pareja',
+          removing: 'Removiendo...',
+        },
+        emptyTitle: 'Ninguna pareja conectada',
+        emptyOwnerDescription:
+          'Genera una invitacion para conectar a tu pareja con la cuenta en pareja.',
+        emptyPartnerDescription:
+          'Espera a que el titular termine la conexion con la pareja.',
+      },
+      invitesCard: {
+        title: 'Invitaciones',
+        ownerDescription: 'Genera y copia links para invitar a tu pareja.',
+        partnerDescription:
+          'Sigue el estado de las invitaciones creadas por el titular.',
+        actions: {
+          generating: 'Generando...',
+          generate: 'Generar invitacion',
+          copy: 'Copiar link',
+        },
+        fields: {
+          link: 'Link',
+          createdAt: 'Creado en',
+          expiresAt: 'Expira en',
+          token: 'Token',
+        },
+        emptyOwner: 'Aun no se genero ninguna invitacion.',
+        emptyPartner: 'No hay invitaciones disponibles en este momento.',
+        linkUnavailable: 'Link no disponible',
+        tokenUnavailable: 'Token no disponible',
+        copyUnavailable: 'No se pudo montar el link de la invitacion.',
+        copySuccess: 'Link de la invitacion copiado.',
+        copyError: 'No se pudo copiar el link de la invitacion.',
+      },
+      removePartnerDialog: {
+        title: 'Remover pareja',
+        description:
+          'Estas seguro de que deseas remover a {partnerName} de la cuenta en pareja?',
+        defaultPartnerName: 'esta pareja',
+        cancel: 'Cancelar',
+        confirm: 'Remover',
+        confirming: 'Removiendo...',
       },
     },
     adminBillingCouponsPage: {

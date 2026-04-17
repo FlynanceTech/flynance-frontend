@@ -18,6 +18,7 @@ import { toFutureRangeFromDays, toRangeFromDays } from '@/utils/transactionPerio
 import { useAdvisorActing } from '@/stores/useAdvisorActing'
 import { isAdvisorReadOnlyTransactionAccess } from '@/utils/transactionWriteAccess'
 import { useTranslations } from 'next-intl'
+import { useFinancialScope } from '@/hooks/useFinancialScope'
 
 interface HeaderProps {
   title?: string
@@ -98,6 +99,8 @@ export default function Header({
 }: HeaderProps) {
   const tButtons = useTranslations('buttons')
   const tHeader = useTranslations('dashboardHeader')
+  const tScope = useTranslations('financialScope')
+  const { canSelectScope, scope } = useFinancialScope()
 
   const [drawerOpen, setDrawerOpen] = useState(false)
   const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
@@ -393,6 +396,13 @@ export default function Header({
         <div className="text-sm font-light md:pt-0">
           <ActiveFiltersChips fallbackText={subtitle} />
         </div>
+        {canSelectScope && (
+          <div className="pt-1">
+            <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+              {scope === 'me' ? tScope('badge.me') : tScope('badge.house')}
+            </span>
+          </div>
+        )}
       </div>
     </header>
   )

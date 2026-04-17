@@ -1,4 +1,5 @@
 import api from '@/lib/axios'
+import { FinancialDataScope, withFinancialScope } from '@/lib/financialScope'
 
 export type PeriodType = 'monthly'
 export type Channel = 'IN_APP' | 'EMAIL' | 'WHATSAPP'
@@ -43,18 +44,24 @@ export async function createControl(data: CreateControlDTO) {
 }
 
 // Listar (sem/ com progresso)
-export async function getAllControls(withProgress = false, date?: Date) {
+export async function getAllControls(
+  withProgress = false,
+  date?: Date,
+  scope?: FinancialDataScope
+) {
   const params: Record<string, unknown> = { withProgress }
   if (date) {
     params.date = date.toISOString().split('T')[0]
   }
-  const response = await api.get('/controls', { params })
+  const response = await api.get('/controls', { params: withFinancialScope(params, scope) })
   return response.data
 }
 
-export async function getControlsById(id: string, date?: Date) {
-  const params = date ? { date: date.toISOString().split('T')[0] } : {}
-  const response = await api.get(`/controls/${id}`, { params })
+export async function getControlsById(id: string, date?: Date, scope?: FinancialDataScope) {
+  const params = date ? { date: date.toISOString().split('T')[0] } : undefined
+  const response = await api.get(`/controls/${id}`, {
+    params: withFinancialScope(params, scope),
+  })
   return response.data
 }
 
@@ -84,7 +91,9 @@ export async function setControlFavorite(params: {
 }
 
 /** Lista top 3 favoritos (pra Home, etc.) */
-export async function getFavoriteControls() {
-  const res = await api.get<ControlResponse[]>('/controls/favorites')
+export async function getFavoriteControls(scope?: FinancialDataScope) {
+  const res = await api.get<ControlResponse[]>('/controls/favorites', {
+    params: withFinancialScope(undefined, scope),
+  })
   return res.data
 }

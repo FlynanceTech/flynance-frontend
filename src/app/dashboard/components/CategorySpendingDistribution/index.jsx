@@ -26,13 +26,29 @@ function toCurrency(v) {
   return formatCurrency(Number(v || 0))
 }
 
+function truncateLabel(value, maxChars) {
+  if (!value) return ''
+  if (value.length <= maxChars) return value
+  return `${value.slice(0, Math.max(0, maxChars - 3)).trim()}...`
+}
+
 const CustomRect = (props) => {
-  const { depth, x, y, width, height, name, color } = props
+  const { depth, x, y, width, height, id, name, color, size, showLabel, onSelect } = props
 
   const fillColor = depth === 2 ? color : 'transparent'
+  const canShowLabel =
+    depth === 2 && showLabel && width >= 84 && height >= 40
+  const labelMaxChars = Math.max(8, Math.floor(width / 7))
+  const titleLabel =
+    depth === 2 ? `${name} - ${toCurrency(size)}` : ''
+  const handleSelect = () => {
+    if (depth !== 2 || !id || typeof onSelect !== 'function') return
+    onSelect(id, name)
+  }
 
   return (
-    <g>
+    <g onClick={handleSelect} style={depth === 2 ? { cursor: 'pointer' } : undefined}>
+      {titleLabel ? <title>{titleLabel}</title> : null}
       <rect
         x={x}
         y={y}
@@ -45,16 +61,18 @@ const CustomRect = (props) => {
           strokeOpacity: 1 / (depth + 1e-10),
         }}
       />
-      {depth === 2 && (
+      {canShowLabel && (
         <text
           x={x + width / 2}
           y={y + height / 2}
           textAnchor="middle"
+          dominantBaseline="middle"
           fill="#fff"
-          fontSize={12}
+          fontSize={width >= 140 ? 13 : 11}
+          fontWeight={600}
           pointerEvents="none"
         >
-          {name}
+          {truncateLabel(name, labelMaxChars)}
         </text>
       )}
     </g>
@@ -113,10 +131,17 @@ export default function CategorySpendingDistribution({ transactions, isLoading, 
     return acc
   }, {})
 
+  const sortedTreemapChildren = Object.values(categoriasAgrupadas)
+    .sort((a, b) => b.size - a.size)
+    .map((entry, index) => ({
+      ...entry,
+      showLabel: index < 10,
+    }))
+
   const data = [
     {
       name: '',
-      children: Object.values(categoriasAgrupadas),
+      children: sortedTreemapChildren,
     },
   ]
 
@@ -128,6 +153,7 @@ export default function CategorySpendingDistribution({ transactions, isLoading, 
   }))
 
   const total = data[0]?.children?.reduce((sum, item) => sum + item.size, 0) ?? 0
+  const hasCategories = dataPie.length > 0
   const selectedTransactions = selectedCategoryId
     ? despesas.filter((tx) =>
         selectedCategoryId === 'outros'
@@ -145,6 +171,12 @@ export default function CategorySpendingDistribution({ transactions, isLoading, 
         <div className="w-full h-[350px] bg-gray-100 rounded" />
       </div>
     )
+  }
+
+  const handleSelectCategory = (categoryId, categoryName) => {
+    setSelectedCategoryId(categoryId)
+    setSelectedCategoryName(categoryName)
+    setFreezeAnimation(true)
   }
 
   return (
@@ -177,42 +209,53 @@ export default function CategorySpendingDistribution({ transactions, isLoading, 
           </div>
         </div>
 
-        <ResponsiveContainer width="100%" height={350}>
-          {changeChart ? (
-            <Treemap
-              width={400}
-              height={200}
-              data={data}
-              dataKey="size"
-              nameKey="name"
-              stroke="#fff"
-              animationDuration={disableAnimation ? 0 : 500}
-              content={(props) => <CustomRect {...props} />}
-            />
-          ) : (
-            <PieChart>
-              <Pie
-                data={dataPie}
-                cx="50%"
-                cy="50%"
-                dataKey="value"
+        {hasCategories ? (
+          <ResponsiveContainer width="100%" height={350}>
+            {changeChart ? (
+              <Treemap
+                width={400}
+                height={200}
+                data={data}
+                dataKey="size"
                 nameKey="name"
-                outerRadius={120}
-                isAnimationActive={!disableAnimation}
-              >
-                {dataPie.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip
-                formatter={(value, _name, props) => [
-                  toCurrency(value),
-                  props?.payload?.name ?? '',
-                ]}
+                stroke="#fff"
+                animationDuration={disableAnimation ? 0 : 500}
+                content={(props) => (
+                  <CustomRect
+                    {...props}
+                    onSelect={handleSelectCategory}
+                  />
+                )}
               />
-            </PieChart>
-          )}
-        </ResponsiveContainer>
+            ) : (
+              <PieChart>
+                <Pie
+                  data={dataPie}
+                  cx="50%"
+                  cy="50%"
+                  dataKey="value"
+                  nameKey="name"
+                  outerRadius={120}
+                  isAnimationActive={!disableAnimation}
+                >
+                  {dataPie.map((entry, i) => (
+                    <Cell key={i} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(value, _name, props) => [
+                    toCurrency(value),
+                    props?.payload?.name ?? '',
+                  ]}
+                />
+              </PieChart>
+            )}
+          </ResponsiveContainer>
+        ) : (
+          <div className="flex h-[350px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500">
+            {t('noExpensesInPeriod')}
+          </div>
+        )}
       </div>
       <div className="flex flex-col gap-2 w-full lg:w-1/2 ">
         <div className="w-full space-y-4 overflow-auto pr-4 max-h-[420px]">
@@ -265,17 +308,16 @@ export default function CategorySpendingDistribution({ transactions, isLoading, 
             </div>
           ) : (
             <>
-              {data[0]?.children?.sort((a, b) => (sortDesc ? b.size - a.size : a.size - b.size))
-              .map((entry, i) => {
+              {[...(data[0]?.children ?? [])]
+                .sort((a, b) => (sortDesc ? b.size - a.size : a.size - b.size))
+                .map((entry, i) => {
                 const percent = total > 0 ? (entry.size / total) * 100 : 0
                 return (
                   <button
                     key={i}
                     className="w-full text-left space-y-1 rounded-lg p-2 hover:bg-gray-50 dark:hover:bg-primary-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 cursor-pointer"
                     onClick={() => {
-                      setSelectedCategoryId(entry.id)
-                      setSelectedCategoryName(entry.name)
-                      setFreezeAnimation(true)
+                      handleSelectCategory(entry.id, entry.name)
                     }}
                   >
                     <div className="flex justify-between text-sm text-gray-700 font-medium">
@@ -295,7 +337,7 @@ export default function CategorySpendingDistribution({ transactions, isLoading, 
                   </button>
                 )
               })}
-              {data.length === 0 && (
+              {!hasCategories && (
                 <div className="text-sm text-gray-500">{t('noExpensesInPeriod')}</div>
               )}
             </>

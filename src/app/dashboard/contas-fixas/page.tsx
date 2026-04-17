@@ -35,9 +35,11 @@ import type { FixedAccountPayment, FixedAccountCycleStatus } from '@/services/fi
 import { formatCurrency } from '@/utils/formatter'
 import { useLocale, useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
+import { useUserSession } from '@/stores/useUserSession'
 
 type FixedBill = {
   id: string
+  userId?: string
   name: string
   amount: number
   dueDay: number
@@ -330,6 +332,7 @@ export default function FixedBillsPage() {
   const t = useTranslations('fixedAccounts')
   const locale = useLocale()
   const onboardingSteps = useMemo(() => createFixedAccountsOnboardingSteps(t), [t])
+  const currentUserId = useUserSession((state) => state.user?.userData?.user?.id ?? '')
 
   const router = useRouter()
   const [filter, setFilter] = useState<FilterKey>('all')
@@ -400,6 +403,7 @@ export default function FixedBillsPage() {
     return data
       .map((b) => ({
         id: b.id,
+        userId: b.userId,
         name: b.name,
         amount: b.amount,
         dueDay: b.dueDay,
@@ -479,6 +483,7 @@ export default function FixedBillsPage() {
     if (!categoryId) return null
     return categories.find((c) => c.id === categoryId) ?? null
   }, [categories, categoryId])
+  const canWriteBill = (bill: FixedBill) => !bill.userId || bill.userId === currentUserId
 
   const resetForm = () => {
     const baseMonth = selectedMonthKey
@@ -834,8 +839,10 @@ export default function FixedBillsPage() {
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation()
+                              if (!canWriteBill(bill)) return
                               handleEdit(bill)
                             }}
+                            disabled={!canWriteBill(bill)}
                             className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 md:h-auto md:w-auto md:gap-2 md:px-3 md:py-1 md:text-xs md:font-semibold cursor-pointer"
                             title={t('edit')}
                             aria-label={t('edit')}
@@ -848,9 +855,10 @@ export default function FixedBillsPage() {
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation()
+                              if (!canWriteBill(bill)) return
                               requestDelete(bill.id)
                             }}
-                            disabled={deleteMutation.isPending}
+                            disabled={deleteMutation.isPending || !canWriteBill(bill)}
                             className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 text-red-400 hover:bg-red-100 disabled:opacity-60 md:h-auto md:w-auto md:gap-2 md:px-3 md:py-1 md:text-xs md:font-semibold cursor-pointer"
                             title={t('remove')}
                             aria-label={t('remove')}
@@ -913,10 +921,12 @@ export default function FixedBillsPage() {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation()
+                        if (!canWriteBill(bill)) return
                         togglePaid(bill.id, bill, paid)
                       }}
+                      disabled={!canWriteBill(bill)}
                       className={clsx(
-                        'inline-flex w-full items-center justify-center cursor-pointer gap-2 rounded-full px-3 py-2 text-xs font-semibold border md:w-auto md:py-1',
+                        'inline-flex w-full items-center justify-center gap-2 rounded-full px-3 py-2 text-xs font-semibold border md:w-auto md:py-1 disabled:cursor-not-allowed disabled:opacity-50',
                         paid
                           ? 'border-emerald-300 text-white bg-emerald-500 hover:bg-emerald-600 dark:hover:bg-emerald-600/80'
                           : 'border-gray-200 text-gray-700 hover:bg-gray-50 dark:hover:bg-primary/50'

@@ -12,6 +12,7 @@ import { IconMap, IconName } from '@/utils/icon-map'
 import { SpendingChart } from '../../components/SpendingChart'
 import MonthSelector from '../../components/MonthSelector'
 import SpendingControlDrawer from '../../components/SpendingControlDrawer'
+import { useUserSession } from '@/stores/useUserSession'
 
 export interface Transaction {
   id: string
@@ -68,6 +69,7 @@ export default function ControlePage({
 }) {
   const t = useTranslations('controlDetailsPage')
   const locale = useLocale()
+  const currentUserId = useUserSession((state) => state.user?.userData?.user?.id ?? '')
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false)
   const { id } = use(params)
@@ -78,6 +80,7 @@ export default function ControlePage({
 
   const control = controlsByIdQuery.data as ControlWithTransactions
   const { spent, goal, categoryIconName, categoryName, transactions } = control
+  const canWriteControl = !control.userId || control.userId === currentUserId
 
   const chartDataMap = new Map<string, { date: string; valor: number; acumulado: number }>()
   let acumulado = 0
@@ -151,7 +154,11 @@ export default function ControlePage({
             <Undo2 />
           </Link>
           <h1 className="text-xl font-bold ">{t('title')}</h1>
-          <button onClick={() => setDrawerOpen(!drawerOpen)} aria-label={t('edit')}>
+          <button
+            onClick={() => canWriteControl && setDrawerOpen(!drawerOpen)}
+            aria-label={t('edit')}
+            disabled={!canWriteControl}
+          >
             <SquarePen />
           </button>
         </div>

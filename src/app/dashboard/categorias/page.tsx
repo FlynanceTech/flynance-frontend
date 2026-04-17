@@ -71,6 +71,7 @@ import {
 } from '@/services/category'
 import { useCategoryClassificationBoard } from '@/hooks/query/useCategoryClassification'
 import { useCategories } from '@/hooks/query/useCategory'
+import { useUserSession } from '@/stores/useUserSession'
 import { getErrorMessage } from '@/utils/getErrorMessage'
 import { IconMap, IconName } from '@/utils/icon-map'
 
@@ -497,6 +498,7 @@ function CategoryCard({
   draggable = false,
   dragHandleProps,
   dragging = false,
+  canManage = false,
 }: {
   item: CategoryClassificationItem
   labels: CardLabels
@@ -505,9 +507,9 @@ function CategoryCard({
   draggable?: boolean
   dragHandleProps?: Record<string, unknown>
   dragging?: boolean
+  canManage?: boolean
 }) {
   const Icon = IconMap[item.icon] ?? Tag
-  const canManage = Boolean(item.userId)
   const showActions = Boolean(onEdit || onDelete)
   const [expanded, setExpanded] = useState(false)
   const keywordNames = item.keywords?.map((keyword) => keyword.name).filter(Boolean) ?? []
@@ -526,7 +528,7 @@ function CategoryCard({
       tabIndex={0}
     >
       <div className="flex items-start gap-3">
-        {draggable ? (
+        {draggable && canManage ? (
           <button
             type="button"
             className="mt-1 cursor-grab touch-none text-slate-400"
@@ -636,12 +638,14 @@ function SortableExpenseCard({
   onEdit,
   onDelete,
   disabled,
+  canManage = false,
 }: {
   item: CategoryClassificationItem
   labels: CardLabels
   onEdit: (category: CategoryClassificationItem) => void
   onDelete: (category: CategoryClassificationItem) => void
   disabled?: boolean
+  canManage?: boolean
 }) {
   const { setNodeRef, attributes, listeners, transform, transition, isDragging } =
     useSortable({
@@ -661,8 +665,9 @@ function SortableExpenseCard({
         labels={labels}
         onEdit={onEdit}
         onDelete={onDelete}
-        draggable
+        draggable={canManage}
         dragging={isDragging}
+        canManage={canManage}
         dragHandleProps={{ ...attributes, ...listeners }}
       />
     </div>
@@ -681,6 +686,7 @@ function ExpenseClassificationColumn({
   activeItemType,
   disabled,
   emptyPlaceholder,
+  canManageItem,
 }: {
   classification: ExpenseClassification
   title: string
@@ -693,6 +699,7 @@ function ExpenseClassificationColumn({
   activeItemType: string | null
   disabled: boolean
   emptyPlaceholder: string
+  canManageItem: (item: CategoryClassificationItem) => boolean
 }) {
   const droppable = useDroppable({
     id: toColumnId(classification),
@@ -747,7 +754,8 @@ function ExpenseClassificationColumn({
               labels={labels}
               onEdit={onEdit}
               onDelete={onDelete}
-              disabled={disabled}
+              disabled={disabled || !canManageItem(item)}
+              canManage={canManageItem(item)}
             />
           ))}
           {items.length === 0 ? (
@@ -769,6 +777,7 @@ function IncomeSection({
   onEdit,
   onDelete,
   emptyText,
+  canManageItem,
 }: {
   title: string
   subtitle: string
@@ -777,6 +786,7 @@ function IncomeSection({
   onEdit: (category: CategoryClassificationItem) => void
   onDelete: (category: CategoryClassificationItem) => void
   emptyText: string
+  canManageItem: (item: CategoryClassificationItem) => boolean
 }) {
   return (
     <section className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
@@ -796,6 +806,7 @@ function IncomeSection({
             labels={labels}
             onEdit={onEdit}
             onDelete={onDelete}
+            canManage={canManageItem(item)}
           />
         ))}
 
@@ -813,6 +824,7 @@ export default function CategoriasPage() {
   const t = useTranslations('categoriesPage')
   const tForm = useTranslations('categoryForm')
   const tList = useTranslations('categoryList')
+  const currentUserId = useUserSession((state) => state.user?.userData?.user?.id ?? '')
   const {
     categoriesQuery: {
       data: categories = [],
@@ -964,6 +976,8 @@ export default function CategoriasPage() {
   const drawerSubmitting = createMutation.isPending || updateMutation.isPending
   const classificationSaving =
     saveBoardMutation.isPending || saveCategoryClassificationMutation.isPending
+  const canManageCategory = (category: Pick<CategoryResponse, 'userId'>) =>
+    Boolean(category.userId && category.userId === currentUserId)
   const boardLoading = isLoading || isLoadingCategories
   const boardError = isError || isCategoriesError
 
@@ -1057,7 +1071,7 @@ export default function CategoriasPage() {
   }
 
   const handleEditCategory = (category: CategoryClassificationItem | CategoryResponse) => {
-    if (!category.userId) {
+    if (!canManageCategory(category)) {
       toast.error(t('classification.defaultActionsLocked'))
       return
     }
@@ -1066,7 +1080,7 @@ export default function CategoriasPage() {
   }
 
   const handleAskDeleteCategory = (category: CategoryClassificationItem | CategoryResponse) => {
-    if (!category.userId) {
+    if (!canManageCategory(category)) {
       toast.error(t('classification.defaultActionsLocked'))
       return
     }
@@ -1151,6 +1165,10 @@ export default function CategoriasPage() {
 
     const source = findExpensePosition(board, activeId)
     if (!source) return
+    if (!canManageCategory(source.item)) {
+      toast.error(t('classification.defaultActionsLocked'))
+      return
+    }
 
     const overItemId = parseItemId(overRaw)
     const overColumn = parseExpenseColumnId(overRaw)
@@ -1363,6 +1381,7 @@ export default function CategoriasPage() {
                           activeItemType={activeItem?.type ?? null}
                           disabled={classificationSaving}
                           emptyPlaceholder={t('classification.emptyPlaceholder')}
+                          canManageItem={canManageCategory}
                         />
                       </div>
                     ))}
@@ -1415,6 +1434,7 @@ export default function CategoriasPage() {
                   onEdit={handleEditCategory}
                   onDelete={handleAskDeleteCategory}
                   emptyText={t('classification.emptyIncome')}
+                  canManageItem={canManageCategory}
                 />
               </div>
             ) : null}

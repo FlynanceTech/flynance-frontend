@@ -1,4 +1,5 @@
 import api from "@/lib/axios"
+import { FinancialDataScope, appendFinancialScopeToSearchParams, withFinancialScope } from "@/lib/financialScope"
 
 export interface FinancePeriodStatus {
   income: number
@@ -24,6 +25,7 @@ export interface FinanceStatusResponse {
 interface GetFinanceStatusParams {
   days?: number
   month?: string // 'YYYY-MM'
+  scope?: FinancialDataScope
 }
 export type PaymentType =
   | 'DEBIT_CARD'
@@ -56,9 +58,10 @@ export async function getPaymentTypeSummary(params?: {
   days?: number
   year?: number
   month?: number
+  scope?: FinancialDataScope
 }) {
   const { data } = await api.get<PaymentTypeSummary>('/dashboard/payment-summary', {
-    params: params ?? { mode: 'days', days: 30 },
+    params: withFinancialScope(params ?? { mode: 'days', days: 30 }, params?.scope),
   })
   return data
 }
@@ -67,6 +70,7 @@ export async function getFinanceStatus(params?: GetFinanceStatusParams): Promise
 
   if (params?.days) query.set("days", params.days.toString())
   if (params?.month) query.set("month", params.month)
+  appendFinancialScopeToSearchParams(query, params?.scope)
 
   const response = await api.get<FinanceStatusResponse>(`/dashboard/finance-status?${query.toString()}`)
   return response.data

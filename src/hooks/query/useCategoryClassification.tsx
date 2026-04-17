@@ -8,16 +8,18 @@ import {
 } from '@/services/category'
 import { useAdvisorActing } from '@/stores/useAdvisorActing'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useFinancialScope } from '@/hooks/useFinancialScope'
 
 export function useCategoryClassificationBoard() {
   const queryClient = useQueryClient()
   const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
   const actingContextKey = activeClientId ?? 'self'
-  const boardQueryKey = ['categories-classification', actingContextKey] as const
+  const { scope, scopeKey } = useFinancialScope()
+  const boardQueryKey = ['categories-classification', actingContextKey, scopeKey] as const
 
   const boardQuery = useQuery<CategoryClassificationBoardResponse>({
     queryKey: boardQueryKey,
-    queryFn: () => getCategoriesClassificationBoard({ actingClientId: activeClientId }),
+    queryFn: () => getCategoriesClassificationBoard({ actingClientId: activeClientId, scope }),
   })
 
   const saveBoardMutation = useMutation({

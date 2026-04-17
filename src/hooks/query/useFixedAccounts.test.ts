@@ -14,16 +14,16 @@ test('refetchFixedAccountsMonth: executa refetch do mes atual apos mark-paid', a
   }
 
   const params = { periodStart: '2026-02-01', periodEnd: '2026-02-28' }
-  await refetchFixedAccountsMonth(queryClient as any, 'self', params)
+  await refetchFixedAccountsMonth(queryClient as any, 'self', 'house', params)
 
   assert.equal(calls.length, 2)
   assert.deepEqual(calls[0], {
     method: 'invalidate',
-    payload: { queryKey: ['fixed-accounts', 'self', params] },
+    payload: { queryKey: ['fixed-accounts', 'self', 'house', params] },
   })
   assert.deepEqual(calls[1], {
     method: 'refetch',
-    payload: { queryKey: ['fixed-accounts', 'self', params], type: 'active', exact: true },
+    payload: { queryKey: ['fixed-accounts', 'self', 'house', params], type: 'active', exact: true },
   })
 })
 
@@ -39,7 +39,7 @@ test('refetchFixedAccountsMonth: executa refetch do mes atual apos unmark-paid',
   }
 
   const params = { periodStart: '2026-02-01', periodEnd: '2026-02-28' }
-  await refetchFixedAccountsMonth(queryClient as any, 'self', params)
+  await refetchFixedAccountsMonth(queryClient as any, 'self', 'house', params)
 
   assert.equal(calls.length, 2)
   assert.equal(calls[0].method, 'invalidate')
@@ -57,18 +57,18 @@ test('refetchFixedAccountDetail: recarrega detalhe e invalida historico da conta
     },
   }
 
-  await refetchFixedAccountDetail(queryClient as any, 'self', 'fa_1')
+  await refetchFixedAccountDetail(queryClient as any, 'self', 'house', 'fa_1')
 
   assert.deepEqual(calls[0], {
     method: 'invalidate',
-    payload: { queryKey: ['fixed-account', 'self', 'fa_1'] },
+    payload: { queryKey: ['fixed-account', 'self', 'house', 'fa_1'] },
   })
   assert.deepEqual(calls[1], {
     method: 'refetch',
-    payload: { queryKey: ['fixed-account', 'self', 'fa_1'], type: 'active', exact: true },
+    payload: { queryKey: ['fixed-account', 'self', 'house', 'fa_1'], type: 'active', exact: true },
   })
   assert.deepEqual(calls[2], {
     method: 'invalidate',
-    payload: { queryKey: ['fixed-accounts', 'self', 'fa_1', 'payments'] },
+    payload: { queryKey: ['fixed-accounts', 'self', 'house', 'fa_1', 'payments'] },
   })
 })
