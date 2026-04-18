@@ -4,10 +4,12 @@ import api from '@/lib/axios'
 import type { PlansResponse } from '@/types/plan'
 import type {
   CreateHousePayload,
+  HouseApiResponse,
   HouseContext,
   HouseInvite,
   HouseInviteStatus,
   HouseMember,
+  HouseMembership,
   HouseRole,
   HouseStatus,
 } from '@/types/house'
@@ -18,6 +20,28 @@ type ApiErrorShape = {
   error?: string
 }
 
+function normalizeApiMessage(value: string): string {
+  return value.trim().toLowerCase()
+}
+
+function translateHouseApiMessage(message: string): string | null {
+  const normalizedMessage = normalizeApiMessage(message)
+
+  if (normalizedMessage === 'authenticated user already belongs to an active house.') {
+    return 'Voce ja participa de uma conta de casal ativa.'
+  }
+
+  if (normalizedMessage === 'authenticated user already owns an active house.') {
+    return 'Voce ja possui uma conta de casal ativa.'
+  }
+
+  if (normalizedMessage === 'house invite is invalid or expired.') {
+    return 'Este convite e invalido ou expirou.'
+  }
+
+  return null
+}
+
 function toHouseErrorMessage(error: unknown, fallback: string): string {
   if (axios.isAxiosError(error)) {
     const status = error.response?.status
@@ -26,7 +50,9 @@ function toHouseErrorMessage(error: unknown, fallback: string): string {
       (typeof data.message === 'string' && data.message.trim()) ||
       (typeof data.error === 'string' && data.error.trim())
 
-    if (apiMessage) return apiMessage
+    if (apiMessage) {
+      return translateHouseApiMessage(apiMessage) ?? apiMessage
+    }
     if (status === 401) return 'Sua sessao expirou. Faca login novamente.'
     if (status === 403) return 'Voce nao tem permissao para acessar este recurso.'
     if (status === 400) return 'Requisicao invalida. Revise os dados informados.'
@@ -56,10 +82,7 @@ function toIsoDate(value: unknown): string | null {
   return Number.isNaN(date.getTime()) ? null : date.toISOString()
 }
 
-function normalizeRole(value: unknown, raw?: any): HouseRole {
-  if (raw?.isOwner === true) return 'OWNER'
-  if (raw?.isPartner === true) return 'PARTNER'
-
+function normalizeRole(value: unknown): HouseRole {
   const normalized = String(value ?? '')
     .trim()
     .toUpperCase()
@@ -96,17 +119,41 @@ function normalizeInviteStatus(value: unknown): HouseInviteStatus {
 function toHouseMember(raw: any): HouseMember | null {
   if (!raw) return null
 
-  const source = raw?.user ?? raw?.member ?? raw?.profile ?? raw
-  const id = toOptionalString(source?.id ?? source?.userId ?? raw?.id ?? raw?.userId)
-  const name = toOptionalString(source?.name ?? raw?.name)
+  const source = raw?.user ?? raw?.member ?? raw?.profile ?? raw?.accountUser ?? raw
+  const id = toOptionalString(raw?.id ?? raw?.membershipId ?? source?.membershipId)
+  const userId = toOptionalString(
+    source?.id ?? source?.userId ?? raw?.userId ?? raw?.memberId ?? raw?.accountUserId
+  )
+  const name = toOptionalString(source?.name ?? raw?.name ?? raw?.fullName)
   const email = toOptionalString(source?.email ?? raw?.email)
+  const role = raw?.role != null ? normalizeRole(raw.role) : null
+  const active = Boolean(raw?.active ?? raw?.isActive ?? raw?.membershipActive)
+  const joinedAt = toIsoDate(raw?.joinedAt ?? raw?.createdAt ?? raw?.linkedAt)
+  const leftAt = toIsoDate(raw?.leftAt)
 
-  if (!id && !name && !email) return null
+  if (!id && !userId && !name && !email) return null
 
   return {
     id,
+    userId,
     name,
     email,
+    role,
+    active,
+    joinedAt,
+    leftAt,
+  }
+}
+
+function toHouseMembership(raw: any, isOwner = false): HouseMembership | null {
+  if (!raw && !isOwner) return null
+
+  return {
+    id: toOptionalString(raw?.id ?? raw?.membershipId),
+    role: normalizeRole(raw?.role ?? (isOwner ? 'OWNER' : undefined)),
+    active: Boolean(raw?.active ?? raw?.isActive ?? isOwner),
+    joinedAt: toIsoDate(raw?.joinedAt ?? raw?.createdAt),
+    leftAt: toIsoDate(raw?.leftAt),
   }
 }
 
@@ -121,25 +168,23 @@ function toHouseInvite(raw: any): HouseInvite | null {
   return {
     id,
     token: toOptionalString(raw?.token),
-    inviteUrl: toOptionalString(raw?.inviteUrl ?? raw?.url ?? raw?.link),
+    inviteUrl: toOptionalString(raw?.inviteUrl ?? raw?.inviteLink ?? raw?.url ?? raw?.link),
     status: normalizeInviteStatus(raw?.status),
-    createdAt: toIsoDate(raw?.createdAt),
+    createdAt: toIsoDate(raw?.createdAt ?? raw?.generatedAt),
     expiresAt: toIsoDate(raw?.expiresAt),
   }
 }
 
-function extractHouseSource(raw: any): any {
-  if (!raw || typeof raw !== 'object') return raw
-  if (raw.houseContext) return raw.houseContext
-  if (raw.house) return raw.house
-  if (raw.data?.houseContext) return raw.data.houseContext
-  if (raw.data?.house) return raw.data.house
-  if (raw.data) return raw.data
+function extractHouseEnvelope(raw: any): any {
+  if (!raw || typeof raw !== 'object') return null
+  if (raw.house && typeof raw.house === 'object') return raw
+  if (raw.data && typeof raw.data === 'object') return extractHouseEnvelope(raw.data) ?? raw.data
+  if (raw.houseContext && typeof raw.houseContext === 'object') return raw.houseContext
   return raw
 }
 
 function toHouseInvites(raw: any): HouseInvite[] {
-  const source = extractHouseSource(raw)
+  const source = extractHouseEnvelope(raw) ?? raw
   const invitesRaw =
     source?.pendingInvites ??
     source?.invites ??
@@ -157,27 +202,126 @@ function toHouseInvites(raw: any): HouseInvite[] {
     .filter((invite): invite is HouseInvite => Boolean(invite))
 }
 
-export function toHouseContext(raw: unknown): HouseContext | null {
-  const source = extractHouseSource(raw as any)
+function toHouseMembers(raw: any): HouseMember[] {
+  const source = extractHouseEnvelope(raw) ?? raw
+  const membersRaw =
+    source?.members ??
+    source?.houseMembers ??
+    source?.participants ??
+    raw?.members ??
+    raw?.houseMembers ??
+    raw?.data?.members ??
+    []
+
+  if (!Array.isArray(membersRaw)) return []
+
+  return membersRaw
+    .map(toHouseMember)
+    .filter((member): member is HouseMember => Boolean(member))
+}
+
+function resolveHouseOwner(source: any, members: HouseMember[]): HouseMember | null {
+  const directOwner = toHouseMember(source?.owner ?? source?.ownerUser)
+  if (directOwner) return directOwner
+
+  const ownerUserId = toOptionalString(source?.house?.ownerUserId ?? source?.ownerUserId)
+  return (
+    members.find((member) => member.role === 'OWNER') ??
+    members.find((member) => member.userId && member.userId === ownerUserId) ??
+    null
+  )
+}
+
+function resolveHousePartner(
+  source: any,
+  members: HouseMember[],
+  owner: HouseMember | null
+): HouseMember | null {
+  const directPartner = toHouseMember(source?.partner ?? source?.partnerUser)
+  if (directPartner) return directPartner
+
+  const ownerId = owner?.id
+  const ownerUserId =
+    owner?.userId ?? toOptionalString(source?.house?.ownerUserId ?? source?.ownerUserId)
+
+  return (
+    members.find((member) => member.role === 'PARTNER' && member.active) ??
+    members.find(
+      (member) => member.active && member.id !== ownerId && member.userId !== ownerUserId
+    ) ??
+    null
+  )
+}
+
+function resolveLinkedAt(
+  membership: HouseMembership | null,
+  partner: HouseMember | null
+): string | null {
+  return (
+    partner?.joinedAt ??
+    (membership?.role === 'PARTNER' ? membership.joinedAt : null)
+  )
+}
+
+function toHouseApiResponse(raw: unknown): HouseApiResponse | null {
+  const source = extractHouseEnvelope(raw as any)
   if (!source || typeof source !== 'object') return null
 
-  const id = toOptionalString(source?.id ?? source?.houseId)
+  const houseSource =
+    source?.house && typeof source.house === 'object' ? source.house : source
+  const id = toOptionalString(houseSource?.id ?? houseSource?.houseId)
   if (!id) return null
 
-  const owner = toHouseMember(source?.owner ?? source?.ownerUser)
-  const partner = toHouseMember(source?.partner ?? source?.partnerUser)
-  const invites = toHouseInvites(source)
+  const members = toHouseMembers(source)
+  const owner = resolveHouseOwner(source, members)
+  const partner = resolveHousePartner(source, members, owner)
+  const membership = toHouseMembership(
+    source?.membership ?? source?.member ?? source?.currentMembership,
+    source?.isOwner === true
+  )
+  const pendingInvites = toHouseInvites(source)
+  const hasPartner = Boolean(partner?.userId ?? partner?.id)
 
   return {
-    id,
-    name: toOptionalString(source?.name ?? source?.houseName ?? source?.title),
-    role: normalizeRole(source?.role ?? source?.userRole ?? source?.currentUserRole, source),
-    status: normalizeStatus(source?.status, Boolean(partner)),
-    owner,
+    house: {
+      id,
+      name: toOptionalString(houseSource?.name ?? houseSource?.houseName ?? houseSource?.title),
+      status: normalizeStatus(houseSource?.status, hasPartner),
+      ownerUserId: toOptionalString(houseSource?.ownerUserId ?? source?.ownerUserId),
+      createdAt: toIsoDate(houseSource?.createdAt),
+      updatedAt: toIsoDate(houseSource?.updatedAt),
+    },
+    membership,
+    isOwner: source?.isOwner === true || membership?.role === 'OWNER',
     partner,
-    invites,
-    createdAt: toIsoDate(source?.createdAt),
-    linkedAt: toIsoDate(source?.linkedAt ?? source?.partnerLinkedAt ?? source?.coupleSince),
+    members,
+    pendingInvites,
+  }
+}
+
+export function toHouseContext(raw: unknown): HouseContext | null {
+  const parsed = toHouseApiResponse(raw)
+  if (!parsed) return null
+
+  const owner = resolveHouseOwner(parsed, parsed.members)
+  const role = parsed.membership?.role ?? (parsed.isOwner ? 'OWNER' : 'PARTNER')
+
+  return {
+    id: parsed.house.id,
+    name: parsed.house.name,
+    role,
+    membership: parsed.membership,
+    isOwner: parsed.isOwner,
+    status: parsed.house.status,
+    ownerUserId: parsed.house.ownerUserId,
+    owner,
+    partner: parsed.partner,
+    members: parsed.members,
+    pendingInvites: parsed.pendingInvites,
+    invites: parsed.pendingInvites,
+    createdAt: parsed.house.createdAt,
+    updatedAt: parsed.house.updatedAt,
+    linkedAt: resolveLinkedAt(parsed.membership, parsed.partner),
   }
 }
 
@@ -227,7 +371,7 @@ export async function createHouse(payload: CreateHousePayload): Promise<HouseCon
 
     const house = toHouseContext(response.data)
     if (!house) {
-      throw new Error('O backend nao retornou a house criada.')
+      throw new Error('Nao foi possivel interpretar a house criada.')
     }
 
     return house

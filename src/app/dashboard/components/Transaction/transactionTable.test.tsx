@@ -30,6 +30,7 @@ function renderTable(canWrite: boolean) {
     <NextIntlClientProvider locale="pt-BR" messages={APP_MESSAGES['pt-BR']}>
       <TransactionTable
         transactions={[tx]}
+        getActorLabel={() => 'Voce'}
         selectedIds={new Set<string>()}
         selectAll={false}
         onToggleSelectAll={() => undefined}

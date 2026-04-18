@@ -11,6 +11,7 @@ import { formatCurrency } from '@/utils/formatter'
 
 interface Props {
   transactions: Transaction[]
+  getActorLabel: (transaction: Transaction) => string
   selectedIds: Set<string>
   onToggleSelectRow: (index: string) => void
   onEdit: (transaction: Transaction) => void
@@ -21,6 +22,7 @@ interface Props {
 
 export function TransactionCardList({
   transactions,
+  getActorLabel,
   selectedIds,
   onToggleSelectRow,
   onEdit,
@@ -60,6 +62,7 @@ export function TransactionCardList({
         const description = item.description ?? t('noDescription')
         const value = Number(item.value ?? 0)
         const categoryName = category?.name ?? t('noCategory')
+        const actorLabel = getActorLabel(item)
 
         return (
           <div key={item.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
@@ -107,6 +110,9 @@ export function TransactionCardList({
                   </span>
                   <span className="rounded-full border border-slate-200 bg-white px-2 py-1 text-slate-700">
                     {originLabel(item.origin)}
+                  </span>
+                  <span className="rounded-full border border-slate-200 bg-white px-2 py-1 text-slate-700">
+                    {actorLabel}
                   </span>
                 </div>
 

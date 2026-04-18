@@ -27,8 +27,10 @@ import { isAdvisorReadOnlyTransactionAccess } from '@/utils/transactionWriteAcce
 import { formatCurrency } from '@/utils/formatter'
 import { useLocale, useTranslations } from 'next-intl'
 import { useFinancialScope } from '@/hooks/useFinancialScope'
+import type { HouseMember } from '@/types/house'
 
 type TypeOption = { value: CategoryType; label: string }
+type AuthorOption = { value: string; label: string }
 
 const typeSelectStyles: StylesConfig<TypeOption, false> = {
   control: (base, state) => ({
@@ -88,6 +90,10 @@ function SkeletonSection() {
   )
 }
 
+function getHouseMemberLabel(member: HouseMember | null | undefined, fallback: string) {
+  return member?.name || member?.email || fallback
+}
+
 export default function TransactionsPage() {
   const tr = useTranslations('transactions')
   const locale = useLocale()
@@ -102,6 +108,7 @@ export default function TransactionsPage() {
 
   const { user } = useUserSession()
   const userId = user?.userData?.user?.id ?? ''
+  const houseContext = user?.houseContext ?? null
   const { scopeKey } = useFinancialScope()
   const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
   const activePermission = useAdvisorActing((s) => s.activePermission ?? s.selectedPermission)
@@ -112,6 +119,7 @@ export default function TransactionsPage() {
   }
 
   const [currentPage, setCurrentPage] = useState(1)
+  const [selectedAuthorId, setSelectedAuthorId] = useState<string>('ALL')
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
 
@@ -144,6 +152,9 @@ export default function TransactionsPage() {
   userId,
   page: currentPage,
   limit: PAGE_SIZE,
+  filters: {
+    userIds: selectedAuthorId !== 'ALL' ? [selectedAuthorId] : undefined,
+  },
 })
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -198,6 +209,65 @@ export default function TransactionsPage() {
     setSelectedIds(new Set())
     setSelectAll(false)
   }, [scopeKey])
+
+  useEffect(() => {
+    setCurrentPage(1)
+    setSelectedIds(new Set())
+    setSelectAll(false)
+  }, [selectedAuthorId])
+
+  const authorOptions = useMemo<AuthorOption[]>(() => {
+    const currentUser = user?.userData?.user
+    const currentUserName =
+      currentUser?.name?.trim() || currentUser?.email?.trim() || tr('authorFilter.currentUser')
+    const activeMembers = (houseContext?.members ?? []).filter((member) => member.active)
+    const memberOptions = activeMembers
+      .map((member) => ({
+        value: member.userId ?? member.id ?? '',
+        label:
+          member.userId === currentUser?.id
+            ? currentUserName
+            : getHouseMemberLabel(member, tr('authorFilter.unknownMember')),
+      }))
+      .filter((option) => option.value)
+
+    const fallbackCurrentUserOption =
+      currentUser?.id && !memberOptions.some((option) => option.value === currentUser.id)
+        ? [
+            {
+              value: currentUser.id,
+              label: currentUserName,
+            },
+          ]
+        : []
+
+    return [
+      { value: 'ALL', label: tr('authorFilter.all') },
+      ...fallbackCurrentUserOption,
+      ...memberOptions.filter(
+        (option, index, options) => options.findIndex((item) => item.value === option.value) === index
+      ),
+    ]
+  }, [houseContext?.members, tr, user?.userData?.user])
+
+  const authorLabelById = useMemo(() => {
+    return new Map(authorOptions.map((option) => [option.value, option.label]))
+  }, [authorOptions])
+
+  const getTransactionActorLabel = React.useCallback(
+    (transaction: Transaction) => {
+      if (transaction.createdByUser?.name?.trim()) return transaction.createdByUser.name.trim()
+      if (transaction.createdByUser?.email?.trim()) return transaction.createdByUser.email.trim()
+      if (transaction.user?.name?.trim()) return transaction.user.name.trim()
+      const actorId = transaction.createdByUserId ?? transaction.userId
+      if (actorId && authorLabelById.has(actorId)) {
+        return authorLabelById.get(actorId) ?? tr('authorFilter.unknownMember')
+      }
+      if (transaction.user?.email?.trim()) return transaction.user.email.trim()
+      return tr('authorFilter.unknownMember')
+    },
+    [authorLabelById, tr]
+  )
 
   const canWriteTransaction = (transaction: Transaction) =>
     !isAdvisorReadOnly && transaction.userId === userId
@@ -359,6 +429,12 @@ const meta = useMemo(() => {
   const displayedTransactions = useMemo(() => {
     let result = apiTransactions
 
+    if (selectedAuthorId !== 'ALL') {
+      result = result.filter(
+        (transaction) => (transaction.createdByUserId ?? transaction.userId) === selectedAuthorId
+      )
+    }
+
     if (sortField) {
       result = [...result].sort((a, b) => {
         let compare = 0
@@ -380,8 +456,9 @@ const meta = useMemo(() => {
 
   // ✅ totalPages agora vem do backend
   const totalPages = meta?.totalPages ?? 1
-  const totalAll = meta?.total ?? displayedTransactions.length
-  const totalFiltered = meta?.total ?? displayedTransactions.length
+  const totalAll = meta?.total ?? apiTransactions.length
+  const totalFiltered =
+    selectedAuthorId === 'ALL' ? meta?.total ?? displayedTransactions.length : displayedTransactions.length
 
   const startIndex =
     totalFiltered === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1
@@ -1013,6 +1090,27 @@ const meta = useMemo(() => {
           {tr('readOnlyBanner')}
         </div>
       )}
+      {authorOptions.length > 2 && (
+        <div className="flex flex-col gap-2 rounded-md border border-slate-200 bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-[#333C4D]">{tr('authorFilter.label')}</p>
+            <p className="text-xs text-slate-500">{tr('authorFilter.helper')}</p>
+          </div>
+          <div className="w-full md:max-w-xs">
+            <select
+              value={selectedAuthorId}
+              onChange={(event) => setSelectedAuthorId(event.target.value)}
+              className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-slate-300"
+            >
+              {authorOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
       {showCsvTip && (
         <div className="w-full rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
           <div className="flex items-start justify-between gap-3">
@@ -1044,6 +1142,7 @@ const meta = useMemo(() => {
       <section className="flex flex-col gap-4 lg:gap-0 overflow-auto" data-onboarding-target="transacoes-lista">
         <TransactionTable
           transactions={displayedTransactions}
+          getActorLabel={getTransactionActorLabel}
           selectedIds={selectedIds}
           selectAll={selectAll}
           canWrite={!isAdvisorReadOnly}
@@ -1066,6 +1165,7 @@ const meta = useMemo(() => {
 
         <TransactionCardList
           transactions={displayedTransactions}
+          getActorLabel={getTransactionActorLabel}
           selectedIds={selectedIds}
           canWrite={!isAdvisorReadOnly}
           canWriteTransaction={canWriteTransaction}

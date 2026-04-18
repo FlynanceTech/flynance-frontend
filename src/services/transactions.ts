@@ -58,6 +58,7 @@ export type TransactionFilters = {
   timezone?: string
   search?: string
   categoryIds?: string[] // no request vira "a,b,c"
+  userIds?: string[]
   type?: 'ALL' | 'INCOME' | 'EXPENSE'
 }
 
@@ -120,6 +121,10 @@ export async function getTransaction({
 
     if (filters.categoryIds?.length) {
       params.set('categoryIds', filters.categoryIds.join(','))
+    }
+
+    if (filters.userIds?.length) {
+      params.set('userIds', filters.userIds.join(','))
     }
 
     if (filters.type && filters.type !== 'ALL') {

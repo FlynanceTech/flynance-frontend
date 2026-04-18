@@ -20,7 +20,7 @@ import {
   removeHousePartner,
 } from '@/services/houses'
 import { useUserSession } from '@/stores/useUserSession'
-import type { CreateHousePayload, HouseInvite } from '@/types/house'
+import type { CreateHousePayload, HouseContext, HouseInvite } from '@/types/house'
 
 export const houseKeys = {
   me: ['house', 'me'] as const,
@@ -40,6 +40,24 @@ async function refreshHouseQueries(
     queryKey: ['billing', 'subscription', 'summary'],
     refetchType: 'active',
   })
+}
+
+function upsertInviteInHouseContext(
+  currentHouse: HouseContext | null | undefined,
+  invite: HouseInvite | null
+): HouseContext | null | undefined {
+  if (!currentHouse || !invite) return currentHouse
+
+  const remainingInvites = currentHouse.pendingInvites.filter(
+    (currentInvite) => currentInvite.id !== invite.id
+  )
+  const nextInvites = [invite, ...remainingInvites]
+
+  return {
+    ...currentHouse,
+    pendingInvites: nextInvites,
+    invites: nextInvites,
+  }
 }
 
 export function useHouseContext(enabled = true) {
@@ -67,7 +85,8 @@ export function useCreateHouse() {
 
   return useMutation({
     mutationFn: (payload: CreateHousePayload) => createHouse(payload),
-    onSuccess: async () => {
+    onSuccess: async (house) => {
+      queryClient.setQueryData(houseKeys.me, house)
       await refreshHouseQueries(fetchAccount, queryClient)
       toast.success('House criada com sucesso.')
     },
@@ -79,12 +98,13 @@ export function useCreateHouse() {
 
 export function useCreateHouseInvite() {
   const queryClient = useQueryClient()
-  const fetchAccount = useUserSession((state) => state.fetchAccount)
 
   return useMutation({
     mutationFn: (): Promise<HouseInvite | null> => createHouseInvite(),
-    onSuccess: async () => {
-      await refreshHouseQueries(fetchAccount, queryClient)
+    onSuccess: async (invite) => {
+      queryClient.setQueryData<HouseContext | null>(houseKeys.me, (currentHouse) =>
+        upsertInviteInHouseContext(currentHouse, invite)
+      )
       toast.success('Convite gerado com sucesso.')
     },
     onError: (error) => {
@@ -99,7 +119,8 @@ export function useAcceptHouseInvite() {
 
   return useMutation({
     mutationFn: (token: string) => acceptHouseInvite(token),
-    onSuccess: async () => {
+    onSuccess: async (house) => {
+      queryClient.setQueryData(houseKeys.me, house ?? null)
       await refreshHouseQueries(fetchAccount, queryClient)
       toast.success('Convite aceito com sucesso.')
     },
@@ -115,7 +136,8 @@ export function useRemoveHousePartner() {
 
   return useMutation({
     mutationFn: removeHousePartner,
-    onSuccess: async () => {
+    onSuccess: async (house) => {
+      queryClient.setQueryData(houseKeys.me, house ?? null)
       await refreshHouseQueries(fetchAccount, queryClient)
       toast.success('Parceiro removido com sucesso.')
     },

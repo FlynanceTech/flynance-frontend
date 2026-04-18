@@ -17,6 +17,23 @@ export interface Category {
 export interface Transaction {
   id: string
   userId: string
+  createdByUserId?: string | null
+  updatedByUserId?: string | null
+  user?: {
+    id?: string
+    name?: string | null
+    email?: string | null
+  } | null
+  createdByUser?: {
+    id?: string
+    name?: string | null
+    email?: string | null
+  } | null
+  updatedByUser?: {
+    id?: string
+    name?: string | null
+    email?: string | null
+  } | null
   value: number
   description: string
   categoryId: string

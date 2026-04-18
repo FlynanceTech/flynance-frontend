@@ -90,7 +90,7 @@ export default function Sidebar() {
   return (
     <aside
       className={
-        'bg-white py-6 px-4 rounded-2xl border border-[#E2E8F0] flex flex-col justify-center items-center transition-all duration-300 ' +
+        'h-full bg-white py-6 px-4 rounded-2xl border border-[#E2E8F0] flex flex-col justify-start items-center transition-all duration-300 ' +
         (collapsed ? 'w-20 items-center' : 'min-w-44')
       }
     >
@@ -127,7 +127,7 @@ export default function Sidebar() {
         )}
       </div>
 
-      <nav className="flex flex-col justify-between h-full">
+      <nav className="flex h-full w-full flex-col justify-between gap-6">
         <ul className="flex flex-col gap-6">
           {navItems.map(({ id, label, icon, path }) => (
             <SidebarItem

@@ -308,6 +308,13 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         summaryDescription:
           'Acompanhe o intervalo exibido, paginacao e acoes em lote quando houver itens selecionados.',
       },
+      authorFilter: {
+        label: 'Quem realizou',
+        helper: 'Filtre as transacoes por membro da conta de casal.',
+        all: 'Todos da house',
+        currentUser: 'Voce',
+        unknownMember: 'Membro nao identificado',
+      },
     },
     transactionTable: {
       selectAllAria: 'Selecionar todas as transacoes desta pagina',
@@ -316,6 +323,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       sortByValue: 'Ordenar por valor',
       date: 'Data',
       description: 'Descricao',
+      actor: 'Quem realizou',
       category: 'Categoria',
       type: 'Tipo',
       value: 'Valor',
@@ -335,6 +343,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     transactionCard: {
       income: 'Receita',
       expense: 'Despesa',
+      actor: 'Quem realizou',
       noDescription: 'Sem descricao',
       noCategory: 'Sem categoria',
       readOnly: 'Somente leitura',
@@ -993,6 +1002,25 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         acceptFailed: 'Nao foi possivel aceitar o convite.',
       },
       acceptedRedirecting: 'Convite aceito com sucesso. Redirecionando...',
+      accepting: 'Aceitando...',
+      acceptInvite: 'Aceitar convite',
+      login: 'Fazer login',
+      back: 'Voltar',
+    },
+    coupleInvitePage: {
+      title: 'Convite para conta de casal',
+      subtitle: 'Voce foi convidado para participar de uma conta de casal na Flynance.',
+      whatChangesTitle: 'Ao aceitar este convite:',
+      whatChanges: {
+        sharedAccess: 'voces passam a acompanhar a visao financeira compartilhada do casal;',
+        historyRule: 'as leituras financeiras podem considerar os dois membros da casa;',
+        ownerBilling: 'a assinatura e o billing continuam sob responsabilidade do titular.',
+      },
+      invalidToken: 'Token de convite invalido.',
+      errors: {
+        acceptFailed: 'Nao foi possivel aceitar o convite da conta de casal.',
+      },
+      successRedirecting: 'Convite aceito com sucesso. Redirecionando...',
       accepting: 'Aceitando...',
       acceptInvite: 'Aceitar convite',
       login: 'Fazer login',
@@ -2615,6 +2643,13 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         summaryDescription:
           'Track displayed range, pagination and bulk actions when items are selected.',
       },
+      authorFilter: {
+        label: 'Who made it',
+        helper: 'Filter transactions by household member.',
+        all: 'Everyone in the house',
+        currentUser: 'You',
+        unknownMember: 'Unknown member',
+      },
     },
     transactionTable: {
       selectAllAria: 'Select all transactions on this page',
@@ -2623,6 +2658,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       sortByValue: 'Sort by value',
       date: 'Date',
       description: 'Description',
+      actor: 'Who made it',
       category: 'Category',
       type: 'Type',
       value: 'Value',
@@ -2642,6 +2678,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     transactionCard: {
       income: 'Income',
       expense: 'Expense',
+      actor: 'Who made it',
       noDescription: 'No description',
       noCategory: 'No category',
       readOnly: 'Read only',
@@ -3295,6 +3332,25 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         acceptFailed: 'Could not accept the invitation.',
       },
       acceptedRedirecting: 'Invitation accepted successfully. Redirecting...',
+      accepting: 'Accepting...',
+      acceptInvite: 'Accept invitation',
+      login: 'Log in',
+      back: 'Back',
+    },
+    coupleInvitePage: {
+      title: 'Couple account invitation',
+      subtitle: 'You were invited to join a couple account on Flynance.',
+      whatChangesTitle: 'By accepting this invitation:',
+      whatChanges: {
+        sharedAccess: 'you will both see the shared financial view of the household;',
+        historyRule: 'financial reads may consider both active household members;',
+        ownerBilling: 'subscription and billing remain under the owner responsibility.',
+      },
+      invalidToken: 'Invalid invite token.',
+      errors: {
+        acceptFailed: 'Could not accept the couple account invitation.',
+      },
+      successRedirecting: 'Invitation accepted successfully. Redirecting...',
       accepting: 'Accepting...',
       acceptInvite: 'Accept invitation',
       login: 'Log in',
@@ -4917,6 +4973,13 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         summaryDescription:
           'Acompana el intervalo mostrado, paginacion y acciones masivas.',
       },
+      authorFilter: {
+        label: 'Quien la hizo',
+        helper: 'Filtra las transacciones por miembro de la casa.',
+        all: 'Todos de la casa',
+        currentUser: 'Tu',
+        unknownMember: 'Miembro no identificado',
+      },
     },
     transactionTable: {
       selectAllAria: 'Seleccionar todas las transacciones de esta pagina',
@@ -4925,6 +4988,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       sortByValue: 'Ordenar por valor',
       date: 'Fecha',
       description: 'Descripcion',
+      actor: 'Quien la hizo',
       category: 'Categoria',
       type: 'Tipo',
       value: 'Valor',
@@ -4944,6 +5008,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     transactionCard: {
       income: 'Ingreso',
       expense: 'Gasto',
+      actor: 'Quien la hizo',
       noDescription: 'Sin descripcion',
       noCategory: 'Sin categoria',
       readOnly: 'Solo lectura',
@@ -5602,6 +5667,25 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         acceptFailed: 'No se pudo aceptar la invitacion.',
       },
       acceptedRedirecting: 'Invitacion aceptada con exito. Redirigiendo...',
+      accepting: 'Aceptando...',
+      acceptInvite: 'Aceptar invitacion',
+      login: 'Iniciar sesion',
+      back: 'Volver',
+    },
+    coupleInvitePage: {
+      title: 'Invitacion para cuenta de pareja',
+      subtitle: 'Fuiste invitado para unirte a una cuenta de pareja en Flynance.',
+      whatChangesTitle: 'Al aceptar esta invitacion:',
+      whatChanges: {
+        sharedAccess: 'ambos pasaran a ver la vista financiera compartida del hogar;',
+        historyRule: 'las lecturas financieras pueden considerar a los dos miembros activos;',
+        ownerBilling: 'la suscripcion y el billing siguen bajo responsabilidad del titular.',
+      },
+      invalidToken: 'Token de invitacion invalido.',
+      errors: {
+        acceptFailed: 'No se pudo aceptar la invitacion de la cuenta de pareja.',
+      },
+      successRedirecting: 'Invitacion aceptada con exito. Redirigiendo...',
       accepting: 'Aceptando...',
       acceptInvite: 'Aceptar invitacion',
       login: 'Iniciar sesion',

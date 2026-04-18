@@ -21,7 +21,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <AuthGuardProvider>
         <UserThemeProvider>
           <DashboardShell>
-            <aside className="hidden lg:flex">
+            <aside className="hidden lg:flex max-h-screen sticky top-0 self-start">
               <Sidebar />
             </aside>
 
@@ -43,10 +43,13 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const limparFiltros = useTransactionFilter((s) => s.limparFiltros);
   const lastPathnameRef = useRef(pathname);
+  const contentRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (lastPathnameRef.current !== pathname) {
       limparFiltros();
+      contentRef.current?.scrollTo({ top: 0, behavior: "auto" });
+      window.scrollTo({ top: 0, behavior: "auto" });
       lastPathnameRef.current = pathname;
     }
   }, [pathname, limparFiltros]);
@@ -56,11 +59,14 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       className="lg:py-8 lg:pl-8 h-screen min-h-0 w-full lg:flex gap-8 relative overflow-x-hidden lg:overflow-hidden bg-[hsl(var(--background))] text-[hsl(var(--foreground))] transition-colors"
     >
       <AdvisorActingPill />
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
+      <div
+        ref={contentRef}
+        className="flex min-h-0 max-h-screen flex-1 flex-col overflow-y-auto overflow-x-hidden"
+      >
         <div className="px-4 pt-4 lg:px-0 lg:pr-8 lg:pt-0">
           <FinancialScopeSwitcher />
         </div>
-        <div className="min-h-0 flex-1">
+        <div className="flex align-center justify-center px-4 lg:px-0 gap-4">
           {children}
         </div>
       </div>

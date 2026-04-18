@@ -78,7 +78,7 @@ export function ImportTransactionsButton({ onClick, disabled, label }: ButtonPro
     <button
       onClick={onClick}
       disabled={disabled}
-      className="flex items-center gap-1 border border-yellow-fly dark:border-yellow-fly text-white dark:hover:text-black font-bold px-4 py-2 cursor-pointer rounded-full text-sm hover:bg-primary/90 transition disabled:cursor-not-allowed disabled:opacity-60"
+      className="flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-bold text-amber-700 transition hover:border-amber-400 hover:bg-amber-100 disabled:cursor-not-allowed disabled:border-amber-200 disabled:bg-amber-50/60 disabled:text-amber-400 disabled:opacity-100"
     >
       <ImportIcon size={16} />
       {label ?? t('importTransaction')}

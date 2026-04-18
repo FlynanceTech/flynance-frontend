@@ -42,6 +42,21 @@ function CoupleAccountSkeleton() {
   )
 }
 
+function mergeHouseInvites(
+  currentInvites: HouseInvite[],
+  nextInvite: HouseInvite | null
+): HouseInvite[] {
+  if (!nextInvite) return currentInvites
+
+  const remainingInvites = currentInvites.filter((invite) => invite.id !== nextInvite.id)
+  return [nextInvite, ...remainingInvites]
+}
+
+function getHouseInviteStorageKey(houseId?: string | null) {
+  const safeHouseId = String(houseId ?? '').trim()
+  return safeHouseId ? `house-pending-invites:${safeHouseId}` : null
+}
+
 export default function CoupleAccountPage() {
   const t = useTranslations('coupleAccountPage')
   const user = useUserSession((state) => state.user)
@@ -54,6 +69,7 @@ export default function CoupleAccountPage() {
 
   const [baseUrl, setBaseUrl] = useState<string>('')
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false)
+  const [generatedInvites, setGeneratedInvites] = useState<HouseInvite[]>([])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -61,6 +77,66 @@ export default function CoupleAccountPage() {
   }, [])
 
   const house = houseQuery.data
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const storageKey = getHouseInviteStorageKey(house?.id)
+    if (!storageKey) {
+      setGeneratedInvites([])
+      return
+    }
+
+    try {
+      const rawValue = window.sessionStorage.getItem(storageKey)
+      if (!rawValue) return
+
+      const parsedInvites = JSON.parse(rawValue)
+      if (!Array.isArray(parsedInvites)) return
+
+      setGeneratedInvites(
+        parsedInvites.filter((invite): invite is HouseInvite => {
+          return Boolean(invite && typeof invite === 'object' && typeof invite.id === 'string')
+        })
+      )
+    } catch {
+      window.sessionStorage.removeItem(storageKey)
+    }
+  }, [house?.id])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const storageKey = getHouseInviteStorageKey(house?.id)
+    if (!storageKey) return
+
+    if (!house?.invites?.length) {
+      if (generatedInvites.length > 0) {
+        window.sessionStorage.setItem(storageKey, JSON.stringify(generatedInvites))
+      }
+      return
+    }
+
+    setGeneratedInvites((currentInvites) => {
+      const remainingInvites = currentInvites.filter(
+        (generatedInvite) => !house.invites.some((houseInvite) => houseInvite.id === generatedInvite.id)
+      )
+
+      if (remainingInvites.length === 0) {
+        window.sessionStorage.removeItem(storageKey)
+      } else {
+        window.sessionStorage.setItem(storageKey, JSON.stringify(remainingInvites))
+      }
+
+      return remainingInvites
+    })
+  }, [generatedInvites, house?.id, house?.invites])
+  const visibleInvites = useMemo(() => {
+    return generatedInvites.reduce(
+      (accumulator, invite) => mergeHouseInvites(accumulator, invite),
+      house?.invites ?? []
+    )
+  }, [generatedInvites, house?.invites])
   const couplePlan = couplePlanQuery.couplePlan
   const currentPlanId = user?.userData?.signature?.planId ?? null
   const currentPlanName =
@@ -90,7 +166,29 @@ export default function CoupleAccountPage() {
   }
 
   const handleGenerateInvite = async () => {
-    await createInviteMutation.mutateAsync()
+    const invite = await createInviteMutation.mutateAsync()
+    if (!invite) return
+
+    setGeneratedInvites((currentInvites) => {
+      const nextInvites = mergeHouseInvites(currentInvites, invite)
+      const storageKey = getHouseInviteStorageKey(house?.id)
+
+      if (typeof window !== 'undefined' && storageKey) {
+        window.sessionStorage.setItem(storageKey, JSON.stringify(nextInvites))
+      }
+
+      return nextInvites
+    })
+
+    const link = resolveHouseInviteLink(invite, baseUrl)
+    if (!link) return
+
+    try {
+      await navigator.clipboard.writeText(link)
+      toast.success(t('invitesCard.copySuccess'))
+    } catch {
+      toast.error(t('invitesCard.copyError'))
+    }
   }
 
   const handleCopyInvite = async (invite: HouseInvite) => {
@@ -234,7 +332,7 @@ export default function CoupleAccountPage() {
               />
 
               <PendingInviteCard
-                invites={house.invites}
+                invites={visibleInvites}
                 canManageInvites={canManageHouse}
                 isGenerating={createInviteMutation.isPending}
                 baseUrl={baseUrl}

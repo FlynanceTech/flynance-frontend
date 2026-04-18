@@ -23,6 +23,6 @@ export function resolveHouseInviteLink(
   invite: HouseInvite,
   baseUrl?: string | null
 ): string | null {
-  if (invite.inviteUrl) return invite.inviteUrl
-  return buildHouseInviteUrl(invite.token ?? '', baseUrl)
+  const appInviteUrl = buildHouseInviteUrl(invite.token ?? '', baseUrl)
+  return appInviteUrl || invite.inviteUrl
 }
