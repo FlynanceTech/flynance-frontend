@@ -17,7 +17,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
   'pt-BR': {
     nav: {
       dashboard: 'Dashboard',
-      transactions: 'Transacoes',
+      transactions: 'Transações',
       accounts: 'Contas',
       future: 'Futuros',
       reports: 'Relatorios',
@@ -171,15 +171,15 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         'Para ver demais metas cadastradas, clique em "Meus Controles".',
       status: {
         ok: 'OK',
-        warning: 'Atencao',
+        warning: 'Atenção',
         danger: 'Estourou',
       },
     },
     categoryDistribution: {
       title: 'Gastos por Categoria',
-      toggleChartTitle: 'Trocar leitura de grafico',
+      toggleChartTitle: 'Trocar leitura de gráfico',
       toggleSortTitle: 'Mudar ordenacao',
-      transactionsCount: '{count} transacoes',
+      transactionsCount: '{count} transações',
       backToCategories: 'Voltar para categorias',
       noTransactionsInCategory: 'Nenhuma transação nesta categoria.',
       defaultTransaction: 'Transação',
@@ -470,13 +470,13 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       onboarding: {
         headerTitle: 'Visao geral de contas fixas',
         headerDescription:
-          'Aqui voce cria novas contas fixas e acessa os filtros gerais da tela.',
+          'Nessa seção você cadastra as suas contas fixas.',
         summaryTitle: 'Resumo mensal e filtros',
         summaryDescription:
           'Acompanhe totais do mes, altere competencia e filtre por status para focar no que importa.',
         listTitle: 'Lista de contas',
         listDescription:
-          'Cada card mostra status da competencia e permite editar, remover e marcar pagamento.',
+          'Cada card mostra o status da conta fixa vigente e permite editar, remover, ou marcar pagamento. Além disso, se você clicar no card, ele te leva ao histórico de pagamento - te permitindo acompanhar a evolução de cada competência.',
       },
     },
     reports: {
@@ -512,7 +512,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       scoreCard: {
         levels: {
           critical: 'Critico',
-          attention: 'Atencao',
+          attention: 'Atenção',
           healthy: 'Saudavel',
         },
         scoreInfo:
@@ -527,7 +527,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         critical:
           'Critico: score baixo indica risco financeiro maior. Foque em aumentar poupanca e reduzir dividas.',
         attention:
-          'Atencao: ha espaco para melhorar. Reduza despesas variaveis e aumente reserva.',
+          'Atenção: há espaço para melhorar. Reduza despesas variáveis e aumente a reserva.',
         healthy: 'Saudavel: continue mantendo bons habitos e metas consistentes.',
       },
       summaryCards: {
@@ -1177,12 +1177,12 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       currentSpent: 'Gasto atual',
       status: {
         ok: 'OK',
-        warning: 'Atencao',
+        warning: 'Atenção',
         danger: 'Estourou',
       },
       percentOfGoal: '{percent}% da meta',
-      chartCaption: 'O grafico representa o gasto diario dentro do periodo selecionado',
-      transactions: 'Transacoes',
+      chartCaption: 'O gráfico representa o gasto diário dentro do período selecionado.',
+      transactions: 'Transações',
       emptyTransactions: 'Nenhuma transação neste periodo.',
     },
     controlsPage: {
@@ -1767,7 +1767,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         createErrorTitle: 'Erro ao criar curso',
         courseRemoved: 'Curso removido!',
         removeCourseErrorTitle: 'Erro ao remover curso',
-        attentionTitle: 'Atencao',
+        attentionTitle: 'Atenção',
         fillCourseDataFirst: 'Primeiro preencha os dados do curso',
         lessonAddedLocal: 'Aula adicionada localmente!',
         lessonAddedToCourse: 'Aula adicionada ao curso!',

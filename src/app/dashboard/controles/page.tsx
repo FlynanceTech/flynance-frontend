@@ -8,6 +8,7 @@ import toast from 'react-hot-toast'
 import clsx from 'clsx'
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
 import { useLocale, useTranslations } from 'next-intl'
+import { useRouter } from 'next/navigation'
 import DeleteConfirmModal from '../components/DeleteConfirmModal'
 import Header from '../components/Header'
 import { ActionTriggerButton } from '../components/Buttons'
@@ -143,6 +144,7 @@ function toneConfig(tone: Tone, usagePct: number, t: TranslatorFn) {
 export default function SpendingControlPage() {
   const t = useTranslations('controlsPage')
   const locale = useLocale()
+  const router = useRouter()
   const onboardingSteps = useMemo(() => buildControlsOnboardingSteps(t), [t])
   const currentUserId = useUserSession((state) => state.user?.userData?.user?.id ?? '')
 
@@ -437,14 +439,19 @@ export default function SpendingControlPage() {
 
           return (
             <li key={c.id}>
-              <div className="relative bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow">
-                <Link
-                  href={`/dashboard/controles/${c.id}`}
-                  className="absolute inset-0"
-                  aria-label={t('card.actions.open')}
-                />
-
-                <div className="relative z-10">
+              <div
+                className="relative cursor-pointer rounded-xl border border-gray-200 bg-white overflow-hidden transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-primary/30"
+                role="link"
+                tabIndex={0}
+                onClick={() => router.push(`/dashboard/controles/${c.id}`)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    router.push(`/dashboard/controles/${c.id}`)
+                  }
+                }}
+              >
+                <div>
                   <div
                     className={clsx(
                       'px-5 py-3 flex items-center justify-between',
@@ -503,7 +510,10 @@ export default function SpendingControlPage() {
                       <div className="flex items-center gap-4">
                         <button
                           type="button"
-                          onClick={() => handleFavorite(c)}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            handleFavorite(c)
+                          }}
                           disabled={!canWriteControl(c)}
                           className={clsx('cursor-pointer', c.isFavorite ? 'text-amber-400' : 'text-gray-400')}
                           title={c.isFavorite ? t('card.actions.removeFavorite') : t('card.actions.addFavorite')}
@@ -514,6 +524,7 @@ export default function SpendingControlPage() {
 
                         <Link
                           href={`/dashboard/controles/${c.id}`}
+                          onClick={(event) => event.stopPropagation()}
                           className="text-gray-500 hover:text-gray-700"
                           title={t('card.actions.open')}
                           aria-label={t('card.actions.open')}
@@ -523,7 +534,10 @@ export default function SpendingControlPage() {
 
                         <button
                           type="button"
-                          onClick={() => handleEdit(c)}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            handleEdit(c)
+                          }}
                           disabled={!canWriteControl(c)}
                           className="text-gray-500 hover:text-blue-400 cursor-pointer"
                           title={t('card.actions.edit')}
@@ -534,7 +548,10 @@ export default function SpendingControlPage() {
 
                         <button
                           type="button"
-                          onClick={() => requestDelete(c.id)}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            requestDelete(c.id)
+                          }}
                           disabled={!canWriteControl(c)}
                           className="text-gray-500 hover:text-red-400 cursor-pointer"
                           title={t('card.actions.delete')}

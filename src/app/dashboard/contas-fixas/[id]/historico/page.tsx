@@ -61,6 +61,22 @@ function formatMonthLabel(key: string, locale: string = 'pt-BR') {
   return dt.toLocaleDateString(locale, { month: 'short', year: '2-digit' })
 }
 
+function formatAxisCurrency(value: number, locale: string) {
+  const amount = Number(value)
+  if (!Number.isFinite(amount)) return ''
+
+  if (Math.abs(amount) >= 1000) {
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: 'BRL',
+      notation: 'compact',
+      maximumFractionDigits: 1,
+    }).format(amount)
+  }
+
+  return formatCurrency(amount)
+}
+
 function buildMonthlySeries(payments: FixedAccountPayment[]) {
   const monthlyTotalByKey = new Map<string, number>()
   payments.forEach((payment) => {
@@ -139,19 +155,26 @@ export default function FixedAccountHistoryPage() {
               {chartData.length === 0 ? (
                 <div className="text-sm text-gray-500">{t('chart.noData')}</div>
               ) : (
-                <ResponsiveContainer width="100%" height={240}>
-                  <LineChart data={chartData}>
+                <ResponsiveContainer width="100%" height={280}>
+                  <LineChart data={chartData} margin={{ top: 12, right: 12, bottom: 4, left: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                     <XAxis
                       dataKey="month"
                       tickFormatter={(value) => formatMonthLabel(String(value), locale)}
                       tickLine={false}
                       axisLine={false}
+                      tick={{ fontSize: 12, fill: '#64748B' }}
+                      interval="preserveStartEnd"
+                      minTickGap={24}
+                      tickMargin={10}
                     />
                     <YAxis
                       tickLine={false}
                       axisLine={false}
-                      tickFormatter={(value) => formatCurrency(Number(value))}
+                      width={76}
+                      tick={{ fontSize: 12, fill: '#64748B' }}
+                      tickMargin={8}
+                      tickFormatter={(value) => formatAxisCurrency(Number(value), locale)}
                     />
                     <Tooltip
                       formatter={(value: number) => formatCurrency(Number(value))}

@@ -46,6 +46,7 @@ import { ActionTriggerButton } from '../components/Buttons'
 import { Skeleton } from '../components/skeleton'
 import DeleteConfirmModal from '../components/DeleteConfirmModal'
 import IconSelector from '../components/IconSelector'
+import PageOnboardingTour, { type PageOnboardingStep } from '@/components/onboarding/PageOnboardingTour'
 import {
   Drawer,
   DrawerClose,
@@ -101,6 +102,32 @@ type CategoryType = 'EXPENSE' | 'INCOME'
 type CategoryFormValues = {
   name: string
   keywords: string[]
+}
+
+type TranslatorFn = (key: string, values?: Record<string, string | number | Date>) => string
+
+function createCategoriesOnboardingSteps(t: TranslatorFn): ReadonlyArray<PageOnboardingStep> {
+  return [
+    {
+      id: 'header',
+      selector: '[data-onboarding-target="categorias-header"]',
+      align: 'bottom',
+      title: t('onboarding.headerTitle'),
+      description: t('onboarding.headerDescription'),
+    },
+    {
+      id: 'tabs',
+      selector: '[data-onboarding-target="categorias-tabs"]',
+      title: t('onboarding.tabsTitle'),
+      description: t('onboarding.tabsDescription'),
+    },
+    {
+      id: 'content',
+      selector: '[data-onboarding-target="categorias-conteudo"]',
+      title: t('onboarding.formListTitle'),
+      description: t('onboarding.formListDescription'),
+    },
+  ]
 }
 
 function createEmptyBoardState(): BoardState {
@@ -824,6 +851,7 @@ export default function CategoriasPage() {
   const t = useTranslations('categoriesPage')
   const tForm = useTranslations('categoryForm')
   const tList = useTranslations('categoryList')
+  const onboardingSteps = useMemo(() => createCategoriesOnboardingSteps(t), [t])
   const currentUserId = useUserSession((state) => state.user?.userData?.user?.id ?? '')
   const {
     categoriesQuery: {
@@ -1255,18 +1283,38 @@ export default function CategoriasPage() {
 
   return (
     <section className="flex h-full min-h-0 w-full flex-col gap-4 px-4 pb-28 pt-8 lg:px-8 lg:pb-0">
-      <Header
-        title={t('classification.title')}
-        subtitle={t('classification.subtitle')}
-        newTransation={false}
-        rightContent={
-          <ActionTriggerButton
-            onClick={openCreateDrawer}
-            label={t('classification.createButton')}
-            icon={Plus}
+      <div
+        className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"
+        data-onboarding-target="categorias-header"
+      >
+        <Header
+          title={t('classification.title')}
+          subtitle={t('classification.subtitle')}
+          newTransation={false}
+          rightContent={
+            <ActionTriggerButton
+              onClick={openCreateDrawer}
+              label={t('classification.createButton')}
+              icon={Plus}
+            />
+          }
+        />
+        <div className="hidden lg:flex lg:shrink-0">
+          <PageOnboardingTour
+            steps={onboardingSteps}
+            storageKeyBase="flynance:dashboard:onboarding:categorias:v1"
+            triggerLabel={t('guideButton')}
           />
-        }
-      />
+        </div>
+      </div>
+      <div className="flex lg:hidden">
+        <PageOnboardingTour
+          steps={onboardingSteps}
+          storageKeyBase="flynance:dashboard:onboarding:categorias:v1"
+          triggerLabel={t('guideButton')}
+          hideLabelOnMobile={false}
+        />
+      </div>
       <div className="flex lg:hidden">
         <ActionTriggerButton
           onClick={openCreateDrawer}
@@ -1284,6 +1332,7 @@ export default function CategoriasPage() {
           setEditingCategory(null)
           if (drawerOpen) closeDrawer()
         }}
+        data-onboarding-target="categorias-tabs"
       >
         <TabList className="mb-2 flex items-center gap-2 overflow-x-auto pb-1">
           <Tab
@@ -1312,7 +1361,7 @@ export default function CategoriasPage() {
           </Tab>
         </TabList>
 
-        <TabPanels>
+        <TabPanels data-onboarding-target="categorias-conteudo">
           <TabPanel className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center gap-3 text-sm">
               <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">
@@ -1449,8 +1498,8 @@ export default function CategoriasPage() {
           else setDrawerOpen(true)
         }}
       >
-        <DrawerContent className="mx-auto w-full max-w-2xl rounded-t-2xl border-slate-200 bg-white">
-          <DrawerHeader className="px-5 pt-5">
+        <DrawerContent className="mx-auto flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl border-slate-200 bg-white sm:my-auto sm:rounded-2xl">
+          <DrawerHeader className="shrink-0 px-5 pt-5">
             <DrawerTitle className="text-[#333C4D]">
               {editingCategory
                 ? tForm('editTitle')
@@ -1465,7 +1514,7 @@ export default function CategoriasPage() {
             </DrawerDescription>
           </DrawerHeader>
 
-          <form onSubmit={handleDrawerSubmit} className="grid gap-4 px-5 pb-5 sm:grid-cols-2">
+          <form onSubmit={handleDrawerSubmit} className="grid flex-1 gap-4 overflow-y-auto px-5 pb-5 sm:grid-cols-2">
             <label className="flex flex-col gap-1 text-sm sm:col-span-2">
               <span className="text-slate-600">{tForm('nameLabel')}</span>
               <input
