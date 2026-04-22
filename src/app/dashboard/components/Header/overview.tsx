@@ -236,7 +236,7 @@ export default function Header({
     <header className="flex flex-col px-6 pt-6">
       <div className="flex flex-col gap-2">
         <div className="grid grid-cols-3 items-center">
-          <h3 className="text-2xl font-bold text-[#333C4D] col-span-1">
+          <h3 className="col-span-1 text-[1.7rem] font-bold text-[#333C4D] lg:text-[2rem]">
             {t('greeting', { name: firstName })}
           </h3>
 

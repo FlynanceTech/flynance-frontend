@@ -64,7 +64,7 @@ export function TransactionTable({
 
   return (
     <div className="w-full hidden md:block">
-      <div className="rounded-xl border border-gray-200 bg-white shadow overflow-hidden">
+      <div className="rounded-xl border border-gray-200 bg-white shadow overflow-hidden dark:border-white/10 dark:bg-[#121212]">
         <div
           role="row"
           className={[
@@ -73,7 +73,7 @@ export function TransactionTable({
             GRID_COLS,
             'items-center gap-0',
             'border-b border-gray-200 ',
-            'bg-secondary/30 backdrop-blur',
+            'bg-secondary/30 backdrop-blur dark:border-white/10 dark:bg-[#1a1a1a]',
             'px-4 py-4',
           ].join(' ')}
         >
@@ -92,26 +92,26 @@ export function TransactionTable({
             type="button"
             role="columnheader"
             onClick={() => onSortChange('date')}
-            className="flex items-center gap-2 text-left text-sm font-semibold text-primary hover:text-foreground cursor-pointer"
+            className="flex items-center gap-2 text-left text-sm font-semibold text-primary hover:text-foreground cursor-pointer dark:text-white dark:hover:text-[#F4C542]"
             title={t('sortByDate')}
           >
             {t('date')}
             <SortIcon active={sortField === 'date'} direction={sortDirection} />
           </button>
 
-          <div role="columnheader" className="text-sm font-semibold text-primary">
+          <div role="columnheader" className="text-sm font-semibold text-primary dark:text-white">
             {t('description')}
           </div>
 
-          <div role="columnheader" className="text-sm font-semibold text-primary">
+          <div role="columnheader" className="text-sm font-semibold text-primary dark:text-white">
             {t('actor')}
           </div>
 
-          <div role="columnheader" className="hidden lg:block text-sm font-semibold text-primary">
+          <div role="columnheader" className="hidden lg:block text-sm font-semibold text-primary dark:text-white">
             {t('category')}
           </div>
 
-          <div role="columnheader" className="hidden lg:block text-sm font-semibold text-primary">
+          <div role="columnheader" className="hidden lg:block text-sm font-semibold text-primary dark:text-white">
             {t('type')}
           </div>
 
@@ -119,14 +119,14 @@ export function TransactionTable({
             type="button"
             role="columnheader"
             onClick={() => onSortChange('value')}
-            className="flex items-center justify-end gap-2 text-right text-sm font-semibold text-primary hover:text-foreground pr-8 cursor-pointer"
+            className="flex items-center justify-end gap-2 text-right text-sm font-semibold text-primary hover:text-foreground pr-8 cursor-pointer dark:text-white dark:hover:text-[#F4C542]"
             title={t('sortByValue')}
           >
             {t('value')}
             <SortIcon active={sortField === 'value'} direction={sortDirection} />
           </button>
 
-          <div role="columnheader" className="text-right text-sm font-semibold text-primary pr-2">
+          <div role="columnheader" className="text-right text-sm font-semibold text-primary pr-2 dark:text-white">
             {t('actions')}
           </div>
         </div>
@@ -154,8 +154,8 @@ export function TransactionTable({
                     GRID_COLS,
                     'items-center',
                     'px-4 py-2',
-                    'border-b border-gray-100',
-                    'transition-colors hover:bg-muted/70',
+                    'border-b border-gray-100 dark:border-white/5',
+                    'transition-colors hover:bg-muted/70 dark:hover:bg-white/5',
                   ].join(' ')}
                 >
                   <div role="cell" className="flex items-center justify-center">
@@ -169,14 +169,14 @@ export function TransactionTable({
                     />
                   </div>
 
-                  <div role="cell" className="text-sm text-gray-700">
+                  <div role="cell" className="text-sm text-gray-700 dark:text-zinc-200">
                     {fmtDate(tx.date, locale)}
                   </div>
 
                   <div role="cell" className="min-w-0 pr-4">
-                    <div className="truncate text-sm font-medium text-gray-900">{description}</div>
+                    <div className="truncate text-sm font-medium text-gray-900 dark:text-white">{description}</div>
 
-                    <div className="lg:hidden mt-0.5 flex items-center gap-2 text-xs text-gray-500 ">
+                    <div className="lg:hidden mt-0.5 flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400 ">
                       <span className="truncate max-w-[140px]">{actorLabel}</span>
                       <span className="opacity-60">.</span>
                       <span className="inline-flex items-center gap-1">
@@ -188,11 +188,11 @@ export function TransactionTable({
                     </div>
                   </div>
 
-                  <div role="cell" className="min-w-0 pr-4 text-sm text-gray-700">
+                  <div role="cell" className="min-w-0 pr-4 text-sm text-gray-700 dark:text-zinc-200">
                     <span className="block truncate">{actorLabel}</span>
                   </div>
 
-                  <div role="cell" className="hidden lg:flex items-center gap-2 text-sm text-gray-700 pr-4">
+                  <div role="cell" className="hidden lg:flex items-center gap-2 text-sm text-gray-700 pr-4 dark:text-zinc-200">
                     <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: categoryColor }} />
                     <span className="truncate">{categoryName}</span>
                   </div>
@@ -201,7 +201,9 @@ export function TransactionTable({
                     <span
                       className={[
                         'inline-flex rounded-full px-2 py-1 text-xs font-medium',
-                        isExpense ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700',
+                        isExpense
+                          ? 'bg-red-600 text-white dark:bg-red-500'
+                          : 'bg-emerald-600 text-white dark:bg-emerald-500',
                       ].join(' ')}
                     >
                       {isExpense ? t('expense') : t('income')}
@@ -209,7 +211,7 @@ export function TransactionTable({
                   </div>
 
                   <div role="cell" className="text-right pr-8">
-                    <span className={['text-sm font-semibold', isExpense ? 'text-red-400' : 'text-green-600'].join(' ')}>
+                    <span className={['text-sm font-semibold', isExpense ? 'text-red-500 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400'].join(' ')}>
                       {toCurrency(value)}
                     </span>
                   </div>
@@ -219,16 +221,16 @@ export function TransactionTable({
                       <>
                         <button
                           onClick={() => onEdit(tx)}
-                          className="h-9 w-9 rounded-full border border-gray-200 hover:bg-muted/80 flex items-center justify-center cursor-pointer"
+                          className="h-9 w-9 rounded-full border border-gray-200 hover:bg-muted/80 flex items-center justify-center cursor-pointer dark:border-white/10 dark:hover:bg-white/5"
                           title={t('edit')}
                           aria-label={t('editAria')}
                         >
-                          <Pencil className="h-4 w-4 text-gray-600" />
+                          <Pencil className="h-4 w-4 text-gray-600 dark:text-white" />
                         </button>
 
                         <button
                           onClick={() => onDelete(tx.id)}
-                          className="h-9 w-9 rounded-full border border-gray-200 hover:bg-red-500/15 flex items-center justify-center cursor-pointer"
+                          className="h-9 w-9 rounded-full border border-gray-200 hover:bg-red-500/15 flex items-center justify-center cursor-pointer dark:border-white/10"
                           title={t('delete')}
                           aria-label={t('deleteAria')}
                         >
@@ -246,7 +248,7 @@ export function TransactionTable({
         </div>
       </div>
 
-      <div className="mt-2 text-xs text-gray-500">
+      <div className="mt-2 text-xs text-gray-500 dark:text-zinc-400">
         {t('sortTip', { data: t('date'), value: t('value') })}
       </div>
     </div>

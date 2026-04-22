@@ -23,7 +23,7 @@ export function useCategories() {
 
   const createMutation = useMutation({
     mutationFn: (payload: CategoryDTO) =>
-      createCategory(payload, { actingClientId: activeClientId }),
+      createCategory(payload, { actingClientId: activeClientId, scope }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] })
       queryClient.invalidateQueries({ queryKey: ['categories-classification'] })
@@ -32,7 +32,7 @@ export function useCategories() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: CategoryDTO }) =>
-      updateCategory(id, data, { actingClientId: activeClientId }),
+      updateCategory(id, data, { actingClientId: activeClientId, scope }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] })
       queryClient.invalidateQueries({ queryKey: ['categories-classification'] })
@@ -40,7 +40,8 @@ export function useCategories() {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteCategory(id, { actingClientId: activeClientId }),
+    mutationFn: (id: string) =>
+      deleteCategory(id, { actingClientId: activeClientId, scope }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] })
       queryClient.invalidateQueries({ queryKey: ['categories-classification'] })

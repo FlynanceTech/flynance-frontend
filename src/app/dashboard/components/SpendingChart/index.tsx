@@ -1,6 +1,7 @@
 'use client'
 
 import { addDays, format, parseISO } from 'date-fns'
+import { useLocale, useTranslations } from 'next-intl'
 import {
   AreaChart,
   Area,
@@ -54,7 +55,19 @@ export function SpendingChart({
   spent: number
   goal: number
 }) {
+  const t = useTranslations('controlDetailsPage')
+  const locale = useLocale()
   const percent = spent / goal
+  const currencyPrefix = formatCurrency(0).replace(/[\d\s.,-]/g, '').trim() || 'R$'
+
+  function formatYAxisTick(value: number) {
+    const safeValue = Number.isFinite(Number(value)) ? Number(value) : 0
+    const formattedValue = new Intl.NumberFormat(locale, {
+      maximumFractionDigits: 0,
+    }).format(safeValue)
+
+    return `${currencyPrefix} ${formattedValue}`
+  }
 
   function getStrokeColor(p: number) {
     if (p > 0.9) return '#FF4D4F'
@@ -89,10 +102,24 @@ export function SpendingChart({
           stroke="#666"
           tickLine={false}
           axisLine={false}
+          tickMargin={10}
           padding={{ left: 10, right: 10 }}
           tickFormatter={(date) => format(parseISO(date), 'dd/MM')}
+          label={{
+            value: t('xAxisLabel'),
+            position: 'insideBottom',
+            offset: -8,
+            style: { fill: '#6B7280', fontSize: 12 },
+          }}
         />
-        <YAxis stroke="#666" tickLine={false} axisLine={false} padding={{ bottom: 20, top: 20 }} />
+        <YAxis
+          stroke="#666"
+          tickLine={false}
+          axisLine={false}
+          width={72}
+          padding={{ bottom: 20, top: 20 }}
+          tickFormatter={formatYAxisTick}
+        />
         <Tooltip content={<CustomTooltip />} />
 
         <Area

@@ -49,7 +49,7 @@ export default function ProfilePage() {
       <div data-onboarding-target="perfil-header">
         <Header
           title={t('title')}
-          subtitle=""
+          subtitle={t('subtitle')}
           rightContent={
             <PageOnboardingTour
               steps={profileOnboardingSteps}

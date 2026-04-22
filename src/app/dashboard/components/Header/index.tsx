@@ -248,7 +248,7 @@ export default function Header({
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between lg:pb-2 sm:px-0">
         <div className="w-full grid grid-cols-3 md:items-center gap-2 mb-4">
-          <h1 className="lg:text-xl text-base font-semibold text-[#333C4D] col-span-1">{title}</h1>
+          <h1 className="col-span-1 text-lg font-semibold text-[#333C4D] lg:text-2xl">{title}</h1>
   
           <div className='col-span-2 flex w-full items-center justify-end gap-2'>
             <div className="hidden lg:flex gap-4 items-center justify-end">

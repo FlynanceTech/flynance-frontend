@@ -389,7 +389,7 @@ export default function Dashboard() {
       <div data-onboarding-target="header-filters">
         <Header
           title={t('title')}
-          subtitle={t('subtitle')}
+          subtitle={t('subtitle', { period: periodLabel })}
           asFilter
           showFutureFilter
           userId={userId}

@@ -47,7 +47,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       expense: 'Despesas',
     },
     dashboardHeader: {
-      greeting: 'Ola, {name}!',
+      greeting: 'Olá, {name}!',
       filter: 'Filtrar',
       apply: 'Aplicar',
       applying: 'Aplicando...',
@@ -68,7 +68,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     },
     dashboard: {
       title: 'Seu panorama financeiro',
-      subtitle: 'Veja o que entrou, o que saiu e como esta o seu saldo hoje.',
+      subtitle:
+        'Bem-vindo ao seu painel personalizado! Aqui você pode ver tudo relacionado ao seu orçamento nos {period}. Organizei tudo do jeito que você pediu!',
       guideButton: 'Ver guia do dashboard',
       closeOnboardingAria: 'Fechar onboarding',
       closeGuideAria: 'Fechar guia',
@@ -236,7 +237,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     },
     transactions: {
       title: 'Suas movimentações',
-      subtitle: 'Veja, filtre e ajuste suas transações com mais clareza.',
+      subtitle:
+        'O que entrou e o que saiu da sua conta corrente, organizado conforme você preencheu no WhatsApp.',
       errorLoading: 'Erro ao carregar transacoes.',
       guideButton: 'Ver guia de transacoes',
       readOnlyBanner:
@@ -377,7 +379,10 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     },
     fixedAccounts: {
       pageTitle: 'As contas do seu mês',
-      pageSubtitle: 'Veja o que já foi pago, o que está pendente e o que vence em cada competência.',
+      pageSubtitle:
+        'Aqui você pode cadastrar e acompanhar a evolução dos seus gastos fixos recorrentes. Fique de olho no que já foi pago, no que está pendente em cada competência, e deixa comigo que eu te notifico quando estiver atrasado.',
+      pageHelper:
+        'Cadastre nesta tela as suas contas de luz, água, gás, telefone, internet e afins, com as datas de vencimento para cada competência.',
       newButton: 'Nova conta fixa',
       guideButton: 'Ver guia de contas fixas',
       summary: {
@@ -473,7 +478,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           'Nessa seção você cadastra as suas contas fixas.',
         summaryTitle: 'Resumo mensal e filtros',
         summaryDescription:
-          'Acompanhe totais do mes, altere competencia e filtre por status para focar no que importa.',
+          'Acompanhe um resumo das suas contas fixas no mês. As opções permitem alterar o mês de observação, e filtrar por status para focar no que importa.',
         listTitle: 'Lista de contas',
         listDescription:
           'Cada card mostra o status da conta fixa vigente e permite editar, remover, ou marcar pagamento. Além disso, se você clicar no card, ele te leva ao histórico de pagamento - te permitindo acompanhar a evolução de cada competência.',
@@ -586,8 +591,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       },
     },
     categoriesPage: {
-      title: 'Gerenciar Categorias',
-      subtitle: 'Personalize as categorias para melhor organizar suas financas',
+      title: 'As suas categorias',
+      subtitle:
+        'Veja todas as categorias de receitas e despesas cadastradas. Edite como quiser e organize suas prioridades movendo os cards.',
       guideButton: 'Ver guia de categorias',
       expenseTab: 'Despesas',
       incomeTab: 'Receitas',
@@ -603,8 +609,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           'Cadastre novas categorias, edite existentes e remova o que nao faz mais sentido para seu fluxo.',
       },
       classification: {
-        title: 'Classificacao de Categorias',
-        subtitle: 'Organize suas categorias por impacto financeiro com arrastar e soltar.',
+        title: 'As suas categorias',
+        subtitle:
+          'Veja todas as categorias de receitas e despesas cadastradas. Edite como quiser e organize suas prioridades movendo os cards.',
         tip: 'Arraste categorias entre colunas e reordene dentro da mesma coluna.',
         createButton: 'Criar nova categoria',
         saving: 'Salvando...',
@@ -693,6 +700,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     },
     profile: {
       title: 'Meu Perfil',
+      subtitle: 'Ajuste seus dados, preferências e configurações da sua conta em um só lugar.',
       guideButton: 'Ver guia de perfil',
       logout: 'Sair',
       onboarding: {
@@ -1009,13 +1017,18 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     },
     coupleInvitePage: {
       title: 'Convite para conta de casal',
-      subtitle: 'Voce foi convidado para participar de uma conta de casal na Flynance.',
+      subtitle: 'Oi! Voce recebeu um convite para participar de uma conta de casal na Flynance.',
+      intro: 'Voce vai ter acesso a IA da Fly no seu WhatsApp e a um painel personalizado para acompanharem a evolucao das financas.',
+      ctaText: 'E ai, vamos atualizar receitas e despesas juntos?',
       whatChangesTitle: 'Ao aceitar este convite:',
       whatChanges: {
         sharedAccess: 'voces passam a acompanhar a visao financeira compartilhada do casal;',
         historyRule: 'as leituras financeiras podem considerar os dois membros da casa;',
         ownerBilling: 'a assinatura e o billing continuam sob responsabilidade do titular.',
       },
+      termsPrefix: 'Clicando em "aceitar convite", voce concorda com os',
+      termsLinkLabel: 'Termos de Uso',
+      termsSuffix: 'e criara o seu login.',
       invalidToken: 'Token de convite invalido.',
       errors: {
         acceptFailed: 'Nao foi possivel aceitar o convite da conta de casal.',
@@ -1181,6 +1194,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         danger: 'Estourou',
       },
       percentOfGoal: '{percent}% da meta',
+      xAxisLabel: 'Data',
       chartCaption: 'O gráfico representa o gasto diário dentro do período selecionado.',
       transactions: 'Transações',
       emptyTransactions: 'Nenhuma transação neste periodo.',
@@ -1552,8 +1566,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     },
     futurosPage: {
       header: {
-        title: 'Sua visão daqui pra frente',
-        subtitle: 'Acompanhe o que ainda vai entrar e sair para se planejar com mais clareza.',
+        title: 'A sua situação daqui pra frente',
+        subtitle:
+          'Aqui você acompanha receitas e despesas futuras. Controle seus parcelamentos, gastos no crédito, fechamentos de fatura e pagamentos por cartão, e organize a sua vida para não se enrolar no futuro!',
         newFutureTransaction: 'Transação Futura',
       },
       filters: {
@@ -2057,7 +2072,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     coupleAccountPage: {
       title: 'Conta de casal',
       subtitle:
-        'Conecte seu parceiro para acompanhar a vida financeira do casal no mesmo espaco.',
+        'Conecte seu parceiro para acompanhar a vida financeira do casal no mesmo espaço.',
       refresh: 'Atualizar',
       refreshing: 'Atualizando...',
       retry: 'Tentar novamente',
@@ -2406,7 +2421,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     },
     dashboard: {
       title: 'Your financial snapshot',
-      subtitle: 'See what came in, what went out and how your balance looks today.',
+      subtitle:
+        'Welcome to your personalized dashboard! Here you can see everything related to your budget for {period}. I organized everything the way you asked.',
       guideButton: 'View dashboard guide',
       closeOnboardingAria: 'Close onboarding',
       closeGuideAria: 'Close guide',
@@ -2573,7 +2589,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     },
     transactions: {
       title: 'Your money movements',
-      subtitle: 'View, filter and adjust your transactions with more clarity.',
+      subtitle:
+        'What came in and what went out of your checking account, organized the way you filled it out on WhatsApp.',
       errorLoading: 'Could not load transactions.',
       guideButton: 'View transactions guide',
       readOnlyBanner: 'You currently have read-only access for this client.',
@@ -2712,7 +2729,10 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     },
     fixedAccounts: {
       pageTitle: 'Your monthly bills',
-      pageSubtitle: 'See what is paid, what is pending and what is due in each cycle.',
+      pageSubtitle:
+        'Here you can register and track the progress of your recurring fixed expenses. Keep an eye on what has already been paid and what is pending in each cycle, and I will notify you when something is overdue.',
+      pageHelper:
+        'Register bills such as electricity, water, gas, phone, internet and similar expenses here, with due dates for each cycle.',
       newButton: 'New fixed bill',
       guideButton: 'View fixed bills guide',
       summary: {
@@ -2920,8 +2940,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       },
     },
     categoriesPage: {
-      title: 'Manage Categories',
-      subtitle: 'Customize categories to better organize your finances',
+      title: 'Your categories',
+      subtitle:
+        'See all registered income and expense categories. Edit them however you want and organize your priorities by moving the cards.',
       guideButton: 'View categories guide',
       expenseTab: 'Expenses',
       incomeTab: 'Income',
@@ -2937,8 +2958,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           'Create new categories, edit existing ones and remove what no longer fits your flow.',
       },
       classification: {
-        title: 'Category Classification',
-        subtitle: 'Organize categories by financial impact using drag and drop.',
+        title: 'Your categories',
+        subtitle:
+          'See all registered income and expense categories. Edit them however you want and organize your priorities by moving the cards.',
         tip: 'Drag categories across columns and reorder them inside each column.',
         createButton: 'Create new category',
         saving: 'Saving...',
@@ -3027,6 +3049,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     },
     profile: {
       title: 'My Profile',
+      subtitle: 'Adjust your data, preferences and account settings in one place.',
       guideButton: 'View profile guide',
       logout: 'Sign out',
       onboarding: {
@@ -3339,13 +3362,18 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     },
     coupleInvitePage: {
       title: 'Couple account invitation',
-      subtitle: 'You were invited to join a couple account on Flynance.',
+      subtitle: 'Hi! You received an invitation to join a couple account on Flynance.',
+      intro: 'You will get access to Fly AI on WhatsApp and to a personalized dashboard to follow your finances together.',
+      ctaText: 'So, shall we update income and expenses together?',
       whatChangesTitle: 'By accepting this invitation:',
       whatChanges: {
         sharedAccess: 'you will both see the shared financial view of the household;',
         historyRule: 'financial reads may consider both active household members;',
         ownerBilling: 'subscription and billing remain under the owner responsibility.',
       },
+      termsPrefix: 'By clicking "accept invitation", you agree to the',
+      termsLinkLabel: 'Terms of Use',
+      termsSuffix: 'and you will create your login.',
       invalidToken: 'Invalid invite token.',
       errors: {
         acceptFailed: 'Could not accept the couple account invitation.',
@@ -3511,6 +3539,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         danger: 'Exceeded',
       },
       percentOfGoal: '{percent}% of goal',
+      xAxisLabel: 'Date',
       chartCaption: 'Chart represents daily spending within selected period',
       transactions: 'Transactions',
       emptyTransactions: 'No transactions in this period.',
@@ -3883,7 +3912,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     futurosPage: {
       header: {
         title: 'Looking ahead',
-        subtitle: 'Track what is still expected to come in and go out so you can plan with more clarity.',
+        subtitle:
+          'Track future income and expenses here. Manage installments, credit spending, statement closing dates and card payments so your future stays organized.',
         newFutureTransaction: 'Future Transaction',
       },
       filters: {
@@ -4712,7 +4742,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       expense: 'Gastos',
     },
     dashboardHeader: {
-      greeting: 'Hola, {name}!',
+      greeting: '¡Hola, {name}!',
       filter: 'Filtrar',
       apply: 'Aplicar',
       applying: 'Aplicando...',
@@ -4733,7 +4763,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     },
     dashboard: {
       title: 'Tu panorama financiero',
-      subtitle: 'Mira lo que entro, lo que salio y como esta tu saldo hoy.',
+      subtitle:
+        'Bienvenido a tu panel personalizado. Aquí puedes ver todo lo relacionado con tu presupuesto en {period}. Organicé todo tal como lo pediste.',
       guideButton: 'Ver guia del dashboard',
       closeOnboardingAria: 'Cerrar onboarding',
       closeGuideAria: 'Cerrar guia',
@@ -4899,8 +4930,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       periodNextDays: 'Proximos {days} dias',
     },
     transactions: {
-      title: 'Tus movimientos de dinero',
-      subtitle: 'Mira, filtra y ajusta tus transacciones con mas claridad.',
+      title: 'Tus movimientos',
+      subtitle:
+        'Lo que entró y lo que salió de tu cuenta corriente, organizado tal como lo completaste en WhatsApp.',
       errorLoading: 'No se pudieron cargar las transacciones.',
       guideButton: 'Ver guia de transacciones',
       readOnlyBanner:
@@ -5042,7 +5074,10 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     },
     fixedAccounts: {
       pageTitle: 'Las cuentas de tu mes',
-      pageSubtitle: 'Mira lo que ya se pago, lo que esta pendiente y lo que vence en cada competencia.',
+      pageSubtitle:
+        'Aquí puedes registrar y seguir la evolución de tus gastos fijos recurrentes. Mira lo que ya fue pagado y lo que está pendiente en cada período, y yo te avisaré cuando algo quede atrasado.',
+      pageHelper:
+        'Registra aquí tus cuentas de luz, agua, gas, teléfono, internet y similares, con las fechas de vencimiento para cada período.',
       newButton: 'Nueva cuenta fija',
       guideButton: 'Ver guia de cuentas fijas',
       summary: {
@@ -5251,8 +5286,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       },
     },
     categoriesPage: {
-      title: 'Gestionar categorias',
-      subtitle: 'Personaliza categorias para organizar mejor tus finanzas',
+      title: 'Tus categorías',
+      subtitle:
+        'Mira todas las categorías de ingresos y gastos registradas. Edítalas como quieras y organiza tus prioridades moviendo las tarjetas.',
       guideButton: 'Ver guia de categorias',
       expenseTab: 'Gastos',
       incomeTab: 'Ingresos',
@@ -5268,8 +5304,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           'Crea nuevas categorias, edita las existentes y elimina lo que ya no tiene sentido para tu flujo.',
       },
       classification: {
-        title: 'Clasificacion de Categorias',
-        subtitle: 'Organiza tus categorias por impacto financiero con arrastrar y soltar.',
+        title: 'Tus categorías',
+        subtitle:
+          'Mira todas las categorías de ingresos y gastos registradas. Edítalas como quieras y organiza tus prioridades moviendo las tarjetas.',
         tip: 'Arrastra categorias entre columnas y reordena dentro de la misma columna.',
         createButton: 'Crear nueva categoria',
         saving: 'Guardando...',
@@ -5358,6 +5395,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     },
     profile: {
       title: 'Mi Perfil',
+      subtitle: 'Ajusta tus datos, preferencias y configuraciones de tu cuenta en un solo lugar.',
       guideButton: 'Ver guia del perfil',
       logout: 'Salir',
       onboarding: {
@@ -5674,13 +5712,18 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     },
     coupleInvitePage: {
       title: 'Invitacion para cuenta de pareja',
-      subtitle: 'Fuiste invitado para unirte a una cuenta de pareja en Flynance.',
+      subtitle: 'Hola! Recibiste una invitacion para unirte a una cuenta de pareja en Flynance.',
+      intro: 'Tendras acceso a la IA de Fly en WhatsApp y a un panel personalizado para seguir juntos la evolucion de sus finanzas.',
+      ctaText: 'Entonces, actualizamos ingresos y gastos juntos?',
       whatChangesTitle: 'Al aceptar esta invitacion:',
       whatChanges: {
         sharedAccess: 'ambos pasaran a ver la vista financiera compartida del hogar;',
         historyRule: 'las lecturas financieras pueden considerar a los dos miembros activos;',
         ownerBilling: 'la suscripcion y el billing siguen bajo responsabilidad del titular.',
       },
+      termsPrefix: 'Al hacer clic en "aceptar invitacion", aceptas los',
+      termsLinkLabel: 'Terminos de Uso',
+      termsSuffix: 'y crearas tu acceso.',
       invalidToken: 'Token de invitacion invalido.',
       errors: {
         acceptFailed: 'No se pudo aceptar la invitacion de la cuenta de pareja.',
@@ -5846,6 +5889,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         danger: 'Excedido',
       },
       percentOfGoal: '{percent}% de la meta',
+      xAxisLabel: 'Fecha',
       chartCaption: 'El grafico representa el gasto diario dentro del periodo seleccionado',
       transactions: 'Transacciones',
       emptyTransactions: 'Ninguna transaccion en este periodo.',
@@ -6217,8 +6261,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     },
     futurosPage: {
       header: {
-        title: 'Tu vista de lo que viene',
-        subtitle: 'Sigue lo que todavia va a entrar y salir para planificar con mas claridad.',
+        title: 'Tu situación de aquí en adelante',
+        subtitle:
+          'Aquí acompañas ingresos y gastos futuros. Controla cuotas, gastos con crédito, cierres de tarjeta y pagos para organizar tu vida y no enredarte más adelante.',
         newFutureTransaction: 'Transaccion Futura',
       },
       filters: {

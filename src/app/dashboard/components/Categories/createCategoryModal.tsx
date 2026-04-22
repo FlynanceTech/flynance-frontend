@@ -1,6 +1,7 @@
 'use client'
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import clsx from 'clsx'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -29,29 +30,21 @@ type FormData = z.infer<typeof schema>
 export type CreateCategoryModalProps = {
   open: boolean
   loading?: boolean
-
-  /** texto sugerido (do "Criar “xxx”") */
   initialName?: string
-
-  /** tipo sugerido (normalmente do filtro atual) */
   initialType?: CategoryType
-
-  /** se true: não mostra select de tipo (tipo fica travado no initialType) */
   typeLocked?: boolean
-
   onClose: () => void
   onConfirm: (draft: CreateCategoryDraft) => void
 }
 
-export default function CreateCategoryModal({
-  open,
+function CreateCategoryModalContent({
   loading = false,
   initialName = '',
   initialType = 'EXPENSE',
   typeLocked = false,
   onClose,
   onConfirm,
-}: CreateCategoryModalProps) {
+}: Omit<CreateCategoryModalProps, 'open'>) {
   const [color, setColor] = useState<string>('#22C55E')
   const [icon, setIcon] = useState<IconName>('Wallet')
   const [keywordInput, setKeywordInput] = useState('')
@@ -61,7 +54,6 @@ export default function CreateCategoryModal({
   const {
     register,
     handleSubmit,
-    reset,
     setValue,
     formState: { errors },
   } = useForm<FormData>({
@@ -69,18 +61,6 @@ export default function CreateCategoryModal({
     defaultValues: { name: initialName, keywords: [] },
   })
 
-  // re-hidrata quando abrir / mudar sugestões
-  useEffect(() => {
-    if (!open) return
-    reset({ name: initialName, keywords: [] })
-    setKeywords([])
-    setKeywordInput('')
-    setColor('#22C55E')
-    setIcon('Wallet')
-    setType(initialType)
-  }, [open, initialName, initialType, reset])
-
-  // mantém RHF sincronizado com keywords
   useEffect(() => {
     setValue('keywords', keywords)
   }, [keywords, setValue])
@@ -101,21 +81,17 @@ export default function CreateCategoryModal({
   }
 
   const submit = handleSubmit((data) => {
-    const draft: CreateCategoryDraft = {
+    onConfirm({
       name: data.name.trim(),
       keywords,
       color,
       icon,
       type: typeLocked ? initialType : type,
-    }
-
-    onConfirm(draft)
+    })
   })
 
-  if (!open) return null
-
   return (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center">
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
       <button
         className="absolute inset-0 bg-black/40"
         onClick={onClose}
@@ -123,11 +99,11 @@ export default function CreateCategoryModal({
         disabled={loading}
       />
 
-      <div className="relative w-[92vw] max-w-xl rounded-2xl bg-white p-4 sm:p-6 shadow-xl">
+      <div className="relative w-[92vw] max-w-xl rounded-2xl bg-white p-4 shadow-xl sm:p-6">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-1">
-            <h3 className="text-base sm:text-lg font-semibold text-slate-900">Criar categoria</h3>
-            <p className="text-xs sm:text-sm text-slate-500">
+            <h3 className="text-base font-semibold text-slate-900 sm:text-lg">Criar categoria</h3>
+            <p className="text-xs text-slate-500 sm:text-sm">
               Adicione uma categoria personalizada para classificar suas transações.
             </p>
           </div>
@@ -145,27 +121,24 @@ export default function CreateCategoryModal({
         <div
           className="mt-4 flex flex-col gap-4"
           onKeyDown={(e) => {
-            // ✅ evita o Enter submeter o FORM pai (TransactionDrawer)
-            if (e.key === 'Enter') {
-              // não atrapalhar o campo de keywords (ele já tem lógica própria)
-              const el = e.target as HTMLElement | null
-              const isKeywordInput = el?.getAttribute?.('data-keyword-input') === 'true'
-              if (!isKeywordInput) {
-                e.preventDefault()
-                e.stopPropagation()
-                submit()
-              }
-            }
+            if (e.key !== 'Enter') return
+
+            const el = e.target as HTMLElement | null
+            const isKeywordInput = el?.getAttribute?.('data-keyword-input') === 'true'
+            if (isKeywordInput) return
+
+            e.preventDefault()
+            e.stopPropagation()
+            submit()
           }}
-          >
-          {/* Tipo (opcional) */}
+        >
           {!typeLocked && (
-            <div className="w-full flex flex-col items-start">
-              <label className="text-sm text-gray-600 mb-1 block">Tipo</label>
+            <div className="flex w-full flex-col items-start">
+              <label className="mb-1 block text-sm text-gray-600">Tipo</label>
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value as CategoryType)}
-                className="w-full h-12 border border-gray-300 rounded-full px-3 py-2 text-sm outline-none"
+                className="h-12 w-full rounded-full border border-gray-300 px-3 py-2 text-sm outline-none"
                 disabled={loading}
               >
                 <option value="EXPENSE">Despesa</option>
@@ -174,52 +147,50 @@ export default function CreateCategoryModal({
             </div>
           )}
 
-          {/* Nome */}
-          <div className="w-full flex flex-col items-start">
-            <label className="text-sm text-gray-600 mb-1 block">Nome da Categoria</label>
+          <div className="flex w-full flex-col items-start">
+            <label className="mb-1 block text-sm text-gray-600">Nome da Categoria</label>
             <input
               {...register('name')}
               className={clsx(
-                'w-full h-12 border rounded-full px-3 py-2 text-sm outline-none',
-                errors.name ? 'border-red-300 border-2 placeholder:text-red-400' : 'border-gray-300'
+                'h-12 w-full rounded-full border px-3 py-2 text-sm outline-none',
+                errors.name ? 'border-2 border-red-300 placeholder:text-red-400' : 'border-gray-300'
               )}
               placeholder={errors.name ? 'Nome de categoria é obrigatória' : 'Nome da categoria'}
               disabled={loading}
             />
           </div>
 
-          {/* Keywords */}
-          <div className="w-full flex flex-col items-start">
-            <label className="text-sm text-gray-600 mb-1 block">Palavras-chave</label>
+          <div className="flex w-full flex-col items-start">
+            <label className="mb-1 block text-sm text-gray-600">Palavras-chave</label>
 
             <div
               className={clsx(
-                'flex items-center gap-2 w-full h-12 rounded-full text-sm outline-none',
-                errors.keywords ? 'border-red-300 border-2' : 'border border-gray-300'
+                'flex h-12 w-full items-center gap-2 rounded-full text-sm outline-none',
+                errors.keywords ? 'border-2 border-red-300' : 'border border-gray-300'
               )}
             >
               <input
                 value={keywordInput}
                 onChange={(e) => setKeywordInput(e.target.value)}
                 className={clsx(
-                  'w-full h-12 px-3 py-2 text-sm outline-none',
+                  'h-12 w-full px-3 py-2 text-sm outline-none',
                   errors.keywords ? 'placeholder:text-red-400' : ''
                 )}
                 placeholder={errors.keywords ? 'Pelo menos uma palavra chave' : 'Digite uma palavra-chave'}
                 disabled={loading}
+                data-keyword-input="true"
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    handleAddKeyword()
-                  }
+                  if (e.key !== 'Enter') return
+                  e.preventDefault()
+                  e.stopPropagation()
+                  handleAddKeyword()
                 }}
               />
 
               <button
                 type="button"
                 onClick={handleAddKeyword}
-                className="h-12 min-w-12 flex items-center justify-center bg-secondary text-white rounded-full hover:bg-secondary/80 text-sm cursor-pointer disabled:opacity-60"
+                className="flex h-12 min-w-12 cursor-pointer items-center justify-center rounded-full bg-secondary text-sm text-white hover:bg-secondary/80 disabled:opacity-60"
                 disabled={loading}
               >
                 +
@@ -229,7 +200,7 @@ export default function CreateCategoryModal({
             {keywords.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-2">
                 {keywords.map((kw) => (
-                  <span key={kw} className="flex items-center text-xs px-3 py-1 bg-gray-200 rounded-full">
+                  <span key={kw} className="flex items-center rounded-full bg-gray-200 px-3 py-1 text-xs">
                     {kw}
                     <button
                       type="button"
@@ -246,31 +217,29 @@ export default function CreateCategoryModal({
             )}
           </div>
 
-          {/* Cor + Ícone */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
-            <div className="w-full flex flex-col items-start">
-              <label className="text-sm text-gray-600 mb-1 block">Cor</label>
+          <div className="grid grid-cols-1 items-end gap-4 sm:grid-cols-2">
+            <div className="flex w-full flex-col items-start">
+              <label className="mb-1 block text-sm text-gray-600">Cor</label>
               <div className="relative w-full">
                 <input
                   type="color"
                   value={color}
                   onChange={(e) => setColor(e.target.value)}
-                  className="absolute opacity-0 w-full h-12 cursor-pointer"
+                  className="absolute h-12 w-full cursor-pointer opacity-0"
                   disabled={loading}
                 />
                 <div
-                  className="w-full h-12 rounded-full border-4 cursor-pointer border-gray-200"
+                  className="h-12 w-full cursor-pointer rounded-full border-4 border-gray-200"
                   style={{ backgroundColor: color }}
                 />
               </div>
             </div>
 
-            <div className="w-full flex flex-col items-start">
+            <div className="flex w-full flex-col items-start">
               <IconSelector value={icon} onChange={setIcon} label="Ícone" />
             </div>
           </div>
 
-          {/* Ações */}
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
@@ -281,24 +250,49 @@ export default function CreateCategoryModal({
               Cancelar
             </button>
 
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  submit()
-                }}
-                className={clsx(
-                  'rounded-full px-4 py-2 text-sm text-white',
-                  loading ? 'bg-slate-400' : 'bg-secondary hover:bg-secondary/80'
-                )}
-                disabled={loading}
-              >
-                {loading ? 'Criando...' : 'Criar'}
-              </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                submit()
+              }}
+              className={clsx(
+                'rounded-full px-4 py-2 text-sm text-white',
+                loading ? 'bg-slate-400' : 'bg-secondary hover:bg-secondary/80'
+              )}
+              disabled={loading}
+            >
+              {loading ? 'Criando...' : 'Criar'}
+            </button>
           </div>
         </div>
       </div>
     </div>
+  )
+}
+
+export default function CreateCategoryModal({
+  open,
+  loading = false,
+  initialName = '',
+  initialType = 'EXPENSE',
+  typeLocked = false,
+  onClose,
+  onConfirm,
+}: CreateCategoryModalProps) {
+  if (!open || typeof document === 'undefined') return null
+
+  return createPortal(
+    <CreateCategoryModalContent
+      key={`${initialType}:${initialName}`}
+      loading={loading}
+      initialName={initialName}
+      initialType={initialType}
+      typeLocked={typeLocked}
+      onClose={onClose}
+      onConfirm={onConfirm}
+    />,
+    document.body
   )
 }

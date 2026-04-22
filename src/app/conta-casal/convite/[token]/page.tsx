@@ -49,18 +49,28 @@ export default function CoupleInviteAcceptPage() {
 
   return (
     <main className="min-h-screen bg-[hsl(var(--background))] px-4 py-8 text-[hsl(var(--foreground))] transition-colors">
-      <section className="mx-auto w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-lg font-semibold text-[#333C4D]">{t('title')}</h1>
-        <p className="mt-2 text-sm text-slate-600">{t('subtitle')}</p>
+      <section className="mx-auto w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#121212]">
+        <h1 className="text-lg font-semibold text-[#333C4D] dark:text-white">{t('title')}</h1>
+        <p className="mt-2 text-sm text-slate-600 dark:text-zinc-300">{t('subtitle')}</p>
+        <p className="mt-3 text-sm text-slate-600 dark:text-zinc-300">{t('intro')}</p>
+        <p className="mt-3 text-sm font-medium text-[#333C4D] dark:text-white">{t('ctaText')}</p>
 
-        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-sm text-slate-700">
-          <p className="font-semibold text-[#333C4D]">{t('whatChangesTitle')}</p>
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-sm text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-zinc-200">
+          <p className="font-semibold text-[#333C4D] dark:text-white">{t('whatChangesTitle')}</p>
           <ul className="mt-2 list-disc space-y-1 pl-5">
             <li>{t('whatChanges.sharedAccess')}</li>
             <li>{t('whatChanges.historyRule')}</li>
             <li>{t('whatChanges.ownerBilling')}</li>
           </ul>
         </div>
+
+        <p className="mt-4 text-sm text-slate-600 dark:text-zinc-300">
+          {t('termsPrefix')}{' '}
+          <Link href="/termos" target="_blank" rel="noreferrer" className="font-semibold text-primary underline underline-offset-2">
+            {t('termsLinkLabel')}
+          </Link>{' '}
+          {t('termsSuffix')}
+        </p>
 
         {!isValidToken && (
           <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
@@ -87,7 +97,7 @@ export default function CoupleInviteAcceptPage() {
             type="button"
             onClick={handleAcceptInvite}
             disabled={!isValidToken || acceptInviteMutation.isPending || status === 'idle' || status === 'loading'}
-            className="inline-flex h-10 items-center justify-center rounded-xl bg-[#4F98C2] px-4 text-sm font-semibold text-white hover:bg-[#3f86b0] disabled:opacity-60"
+            className="inline-flex h-10 items-center justify-center rounded-xl bg-[#F4C542] px-4 text-sm font-semibold text-black hover:bg-[#ffd34f] disabled:opacity-60"
           >
             {acceptInviteMutation.isPending ? t('accepting') : t('acceptInvite')}
           </button>
@@ -95,7 +105,7 @@ export default function CoupleInviteAcceptPage() {
           {status === 'unauthenticated' && (
             <Link
               href={nextToLogin}
-              className="inline-flex h-10 items-center rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              className="inline-flex h-10 items-center rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-white dark:hover:bg-white/5"
             >
               {t('login')}
             </Link>
@@ -103,7 +113,7 @@ export default function CoupleInviteAcceptPage() {
 
           <Link
             href="/dashboard/conta-casal"
-            className="inline-flex h-10 items-center rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            className="inline-flex h-10 items-center rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-white dark:hover:bg-white/5"
           >
             {t('back')}
           </Link>

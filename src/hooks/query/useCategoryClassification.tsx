@@ -24,7 +24,10 @@ export function useCategoryClassificationBoard() {
 
   const saveBoardMutation = useMutation({
     mutationFn: (payload: CategoryClassificationUpdatePayload) =>
-      updateCategoriesClassificationBoard(payload, { actingClientId: activeClientId }),
+      updateCategoriesClassificationBoard(payload, {
+        actingClientId: activeClientId,
+        scope,
+      }),
     onSuccess: (board) => {
       queryClient.setQueryData(boardQueryKey, board)
       queryClient.invalidateQueries({ queryKey: ['categories'] })
@@ -38,7 +41,11 @@ export function useCategoryClassificationBoard() {
     }: {
       categoryId: string
       payload: CategoryClassificationPatchPayload
-    }) => updateCategoryClassification(categoryId, payload, { actingClientId: activeClientId }),
+    }) =>
+      updateCategoryClassification(categoryId, payload, {
+        actingClientId: activeClientId,
+        scope,
+      }),
     onSuccess: (board) => {
       queryClient.setQueryData(boardQueryKey, board)
       queryClient.invalidateQueries({ queryKey: ['categories'] })

@@ -21,7 +21,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <AuthGuardProvider>
         <UserThemeProvider>
           <DashboardShell>
-            <aside className="hidden lg:flex max-h-screen sticky top-0 self-start">
+            <aside className="hidden lg:flex max-h-screen sticky left-0 top-0 self-start">
               <Sidebar />
             </aside>
 

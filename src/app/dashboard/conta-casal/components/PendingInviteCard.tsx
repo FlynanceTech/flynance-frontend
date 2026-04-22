@@ -48,16 +48,16 @@ export function PendingInviteCard({
   )
 
   return (
-    <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#121212]">
       <CardHeader className="pb-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="rounded-full bg-primary/10 p-2">
-              <Link2 className="h-5 w-5 text-primary" />
+            <div className="rounded-full bg-primary/10 p-2 dark:bg-[#F4C542]/15">
+              <Link2 className="h-5 w-5 text-primary dark:text-[#F4C542]" />
             </div>
             <div>
-              <CardTitle className="text-xl text-[#333C4D]">{t('invitesCard.title')}</CardTitle>
-              <p className="mt-1 text-sm text-slate-600">
+              <CardTitle className="text-xl text-[#333C4D] dark:text-white">{t('invitesCard.title')}</CardTitle>
+              <p className="mt-1 text-sm text-slate-600 dark:text-zinc-300">
                 {canManageInvites
                   ? t('invitesCard.ownerDescription')
                   : t('invitesCard.partnerDescription')}
@@ -81,7 +81,7 @@ export function PendingInviteCard({
 
       <CardContent>
         {sortedInvites.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-6 text-sm text-slate-600">
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-6 text-sm text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-zinc-300">
             {canManageInvites ? t('invitesCard.emptyOwner') : t('invitesCard.emptyPartner')}
           </div>
         ) : (
@@ -89,7 +89,7 @@ export function PendingInviteCard({
             {sortedInvites.map((invite) => {
               const inviteLink = resolveHouseInviteLink(invite, baseUrl)
               return (
-                <article key={invite.id} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                <article key={invite.id} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-white/10 dark:bg-white/5">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <Badge variant="outline" className={statusClass(invite.status)}>
                       {t(`inviteStatuses.${invite.status}`)}
@@ -111,34 +111,34 @@ export function PendingInviteCard({
 
                   <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
                     <div className="sm:col-span-3">
-                      <dt className="text-xs uppercase tracking-wide text-slate-500">
+                      <dt className="text-xs uppercase tracking-wide text-slate-500 dark:text-zinc-400">
                         {t('invitesCard.fields.link')}
                       </dt>
-                      <dd className="mt-1 break-all font-medium text-[#333C4D]">
+                      <dd className="mt-1 break-all font-medium text-[#333C4D] dark:text-white">
                         {inviteLink || t('invitesCard.linkUnavailable')}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-xs uppercase tracking-wide text-slate-500">
+                      <dt className="text-xs uppercase tracking-wide text-slate-500 dark:text-zinc-400">
                         {t('invitesCard.fields.createdAt')}
                       </dt>
-                      <dd className="mt-1 font-medium text-[#333C4D]">
+                      <dd className="mt-1 font-medium text-[#333C4D] dark:text-white">
                         {formatHouseDate(invite.createdAt, locale)}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-xs uppercase tracking-wide text-slate-500">
+                      <dt className="text-xs uppercase tracking-wide text-slate-500 dark:text-zinc-400">
                         {t('invitesCard.fields.expiresAt')}
                       </dt>
-                      <dd className="mt-1 font-medium text-[#333C4D]">
+                      <dd className="mt-1 font-medium text-[#333C4D] dark:text-white">
                         {formatHouseDate(invite.expiresAt, locale)}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-xs uppercase tracking-wide text-slate-500">
+                      <dt className="text-xs uppercase tracking-wide text-slate-500 dark:text-zinc-400">
                         {t('invitesCard.fields.token')}
                       </dt>
-                      <dd className="mt-1 font-medium text-[#333C4D]">
+                      <dd className="mt-1 font-medium text-[#333C4D] dark:text-white">
                         {invite.token || t('invitesCard.tokenUnavailable')}
                       </dd>
                     </div>

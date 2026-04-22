@@ -540,9 +540,12 @@ function CategoryCard({
   const showActions = Boolean(onEdit || onDelete)
   const [expanded, setExpanded] = useState(false)
   const keywordNames = item.keywords?.map((keyword) => keyword.name).filter(Boolean) ?? []
+  const dragInteractionProps =
+    draggable && dragHandleProps ? (dragHandleProps as Record<string, unknown>) : {}
 
   return (
     <article
+      {...dragInteractionProps}
       className={`rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition ${dragging ? 'opacity-50' : ''}`}
       onClick={() => setExpanded((current) => !current)}
       onKeyDown={(event) => {
@@ -555,12 +558,11 @@ function CategoryCard({
       tabIndex={0}
     >
       <div className="flex items-start gap-3">
-        {draggable && canManage ? (
+        {draggable ? (
           <button
             type="button"
             className="mt-1 cursor-grab touch-none text-slate-400"
             onClick={(event) => event.stopPropagation()}
-            {...(dragHandleProps as Record<string, unknown>)}
           >
             <GripVertical size={16} />
           </button>
@@ -615,7 +617,7 @@ function CategoryCard({
                 className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                   item.type === 'INCOME'
                     ? 'bg-emerald-100 text-emerald-700'
-                    : 'bg-amber-100 text-amber-700'
+                    : 'bg-red-600 text-white dark:bg-red-500'
                 }`}
               >
                 {item.type === 'INCOME' ? labels.incomeTypeLabel : labels.expenseTypeLabel}
@@ -665,6 +667,7 @@ function SortableExpenseCard({
   onEdit,
   onDelete,
   disabled,
+  canDrag = true,
   canManage = false,
 }: {
   item: CategoryClassificationItem
@@ -672,6 +675,7 @@ function SortableExpenseCard({
   onEdit: (category: CategoryClassificationItem) => void
   onDelete: (category: CategoryClassificationItem) => void
   disabled?: boolean
+  canDrag?: boolean
   canManage?: boolean
 }) {
   const { setNodeRef, attributes, listeners, transform, transition, isDragging } =
@@ -692,7 +696,7 @@ function SortableExpenseCard({
         labels={labels}
         onEdit={onEdit}
         onDelete={onDelete}
-        draggable={canManage}
+        draggable={canDrag}
         dragging={isDragging}
         canManage={canManage}
         dragHandleProps={{ ...attributes, ...listeners }}
@@ -714,6 +718,7 @@ function ExpenseClassificationColumn({
   disabled,
   emptyPlaceholder,
   canManageItem,
+  canDragItem,
 }: {
   classification: ExpenseClassification
   title: string
@@ -727,6 +732,7 @@ function ExpenseClassificationColumn({
   disabled: boolean
   emptyPlaceholder: string
   canManageItem: (item: CategoryClassificationItem) => boolean
+  canDragItem: (item: CategoryClassificationItem) => boolean
 }) {
   const droppable = useDroppable({
     id: toColumnId(classification),
@@ -781,7 +787,8 @@ function ExpenseClassificationColumn({
               labels={labels}
               onEdit={onEdit}
               onDelete={onDelete}
-              disabled={disabled || !canManageItem(item)}
+              disabled={disabled || !canDragItem(item)}
+              canDrag={canDragItem(item)}
               canManage={canManageItem(item)}
             />
           ))}
@@ -898,7 +905,7 @@ export default function CategoriasPage() {
     handleSubmit,
     setValue,
     reset,
-    formState: { errors },
+    formState: { errors, isSubmitted },
   } = useForm<CategoryFormValues>({
     resolver: zodResolver(drawerSchema),
     defaultValues: {
@@ -929,8 +936,8 @@ export default function CategoriasPage() {
   }, [categories, data])
 
   useEffect(() => {
-    setValue('keywords', keywords, { shouldValidate: drawerOpen })
-  }, [drawerOpen, keywords, setValue])
+    setValue('keywords', keywords, { shouldValidate: isSubmitted })
+  }, [isSubmitted, keywords, setValue])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -1006,6 +1013,8 @@ export default function CategoriasPage() {
     saveBoardMutation.isPending || saveCategoryClassificationMutation.isPending
   const canManageCategory = (category: Pick<CategoryResponse, 'userId'>) =>
     Boolean(category.userId && category.userId === currentUserId)
+  const canDragCategory = (category: Pick<CategoryResponse, 'type'>) =>
+    category.type === 'EXPENSE'
   const boardLoading = isLoading || isLoadingCategories
   const boardError = isError || isCategoriesError
 
@@ -1193,10 +1202,6 @@ export default function CategoriasPage() {
 
     const source = findExpensePosition(board, activeId)
     if (!source) return
-    if (!canManageCategory(source.item)) {
-      toast.error(t('classification.defaultActionsLocked'))
-      return
-    }
 
     const overItemId = parseItemId(overRaw)
     const overColumn = parseExpenseColumnId(overRaw)
@@ -1284,26 +1289,28 @@ export default function CategoriasPage() {
   return (
     <section className="flex h-full min-h-0 w-full flex-col gap-4 px-4 pb-28 pt-8 lg:px-8 lg:pb-0">
       <div
-        className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"
+        className="flex w-full flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"
         data-onboarding-target="categorias-header"
       >
-        <Header
-          title={t('classification.title')}
-          subtitle={t('classification.subtitle')}
-          newTransation={false}
-          rightContent={
-            <ActionTriggerButton
-              onClick={openCreateDrawer}
-              label={t('classification.createButton')}
-              icon={Plus}
-            />
-          }
-        />
-        <div className="hidden lg:flex lg:shrink-0">
-          <PageOnboardingTour
-            steps={onboardingSteps}
-            storageKeyBase="flynance:dashboard:onboarding:categorias:v1"
-            triggerLabel={t('guideButton')}
+        <div className="w-full">
+          <Header
+            title={t('classification.title')}
+            subtitle={t('classification.subtitle')}
+            newTransation={false}
+            rightContent={
+              <div className="hidden lg:flex lg:items-center lg:gap-3">
+                <PageOnboardingTour
+                  steps={onboardingSteps}
+                  storageKeyBase="flynance:dashboard:onboarding:categorias:v1"
+                  triggerLabel={t('guideButton')}
+                />
+                <ActionTriggerButton
+                  onClick={openCreateDrawer}
+                  label={t('classification.createButton')}
+                  icon={Plus}
+                />
+              </div>
+            }
           />
         </div>
       </div>
@@ -1431,6 +1438,7 @@ export default function CategoriasPage() {
                           disabled={classificationSaving}
                           emptyPlaceholder={t('classification.emptyPlaceholder')}
                           canManageItem={canManageCategory}
+                          canDragItem={canDragCategory}
                         />
                       </div>
                     ))}
@@ -1498,140 +1506,142 @@ export default function CategoriasPage() {
           else setDrawerOpen(true)
         }}
       >
-        <DrawerContent className="mx-auto flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl border-slate-200 bg-white sm:my-auto sm:rounded-2xl">
-          <DrawerHeader className="shrink-0 px-5 pt-5">
-            <DrawerTitle className="text-[#333C4D]">
-              {editingCategory
-                ? tForm('editTitle')
-                : effectiveDrawerType === 'EXPENSE'
-                ? tForm('addExpenseTitle')
-                : tForm('addIncomeTitle')}
-            </DrawerTitle>
-            <DrawerDescription>
-              {effectiveDrawerType === 'EXPENSE'
-                ? tForm('subtitleExpense')
-                : tForm('subtitleIncome')}
-            </DrawerDescription>
-          </DrawerHeader>
+        <DrawerContent className="mx-auto flex max-h-[90vh] w-full max-w-2xl flex-col overflow-visible border-transparent bg-transparent shadow-none sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:mt-0 sm:w-[min(92vw,44rem)] sm:-translate-x-1/2 sm:-translate-y-1/2">
+          <div className="overflow-visible rounded-t-2xl bg-white sm:rounded-2xl sm:border sm:border-slate-200 sm:shadow-xl">
+            <DrawerHeader className="shrink-0 px-5 pt-5">
+              <DrawerTitle className="text-[#333C4D]">
+                {editingCategory
+                  ? tForm('editTitle')
+                  : effectiveDrawerType === 'EXPENSE'
+                  ? tForm('addExpenseTitle')
+                  : tForm('addIncomeTitle')}
+              </DrawerTitle>
+              <DrawerDescription>
+                {effectiveDrawerType === 'EXPENSE'
+                  ? tForm('subtitleExpense')
+                  : tForm('subtitleIncome')}
+              </DrawerDescription>
+            </DrawerHeader>
 
-          <form onSubmit={handleDrawerSubmit} className="grid flex-1 gap-4 overflow-y-auto px-5 pb-5 sm:grid-cols-2">
-            <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-              <span className="text-slate-600">{tForm('nameLabel')}</span>
-              <input
-                {...register('name')}
-                className={clsx(
-                  'h-12 rounded-xl border px-3 outline-none focus:border-[#7CB8D8]',
-                  errors.name ? 'border-red-300' : 'border-slate-200'
-                )}
-                placeholder={tForm('namePlaceholder')}
-              />
-              <span className="text-xs text-red-400">{errors.name?.message}</span>
-            </label>
-
-            <div className="flex flex-col gap-1 text-sm sm:col-span-2">
-              <span className="text-slate-600">{tForm('keywordsLabel')}</span>
-              <div
-                className={clsx(
-                  'flex items-center gap-2 rounded-xl border px-2',
-                  errors.keywords ? 'border-red-300' : 'border-slate-200'
-                )}
-              >
+            <form onSubmit={handleDrawerSubmit} className="grid flex-1 gap-4 px-5 pb-5 sm:grid-cols-2">
+              <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+                <span className="text-slate-600">{tForm('nameLabel')}</span>
                 <input
-                  value={keywordInput}
-                  onChange={(event) => setKeywordInput(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      event.preventDefault()
-                      handleAddKeyword()
-                    }
-                  }}
-                  className="h-12 w-full border-none px-1 text-sm outline-none"
-                  placeholder={tForm('keywordsPlaceholder')}
+                  {...register('name')}
+                  className={clsx(
+                    'h-12 rounded-xl border px-3 outline-none focus:border-[#7CB8D8]',
+                    errors.name ? 'border-red-300' : 'border-slate-200'
+                  )}
+                  placeholder={tForm('namePlaceholder')}
                 />
-                <button
-                  type="button"
-                  onClick={handleAddKeyword}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-white dark:text-black transition hover:bg-secondary/80"
-                  aria-label={tForm('addKeywordAria')}
-                >
-                  <Plus size={14} />
-                </button>
-              </div>
-              <span className="text-xs text-red-400">{errors.keywords?.message}</span>
-              {keywords.length > 0 ? (
-                <div className="mt-1 flex flex-wrap gap-2">
-                  {keywords.map((keyword) => (
-                    <span
-                      key={keyword}
-                      className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-700"
-                    >
-                      {keyword}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveKeyword(keyword)}
-                        aria-label={tForm('removeKeywordAria')}
-                        className="rounded p-0.5 text-slate-500 transition hover:bg-slate-200"
-                      >
-                        <X size={12} />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-            </div>
+                <span className="text-xs text-red-400">{errors.name?.message}</span>
+              </label>
 
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="text-slate-600">{tForm('colorLabel')}</span>
-              <div className="relative">
-                <input
-                  type="color"
-                  value={color}
-                  onChange={(event) => setColor(event.target.value)}
-                  className="absolute h-12 w-full cursor-pointer opacity-0"
-                  aria-label={tForm('colorPickerAria')}
-                />
+              <div className="flex flex-col gap-1 text-sm sm:col-span-2">
+                <span className="text-slate-600">{tForm('keywordsLabel')}</span>
                 <div
-                  className="h-12 w-full rounded-xl border border-slate-200"
-                  style={{ backgroundColor: color }}
-                />
-              </div>
-            </label>
-
-            <div className="flex flex-col gap-1 text-sm">
-              <span className="text-slate-600">{tForm('iconLabel')}</span>
-              <IconSelector value={icon} onChange={setIcon} />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2 sm:col-span-2">
-              <DrawerClose asChild>
-                <button
-                  type="button"
-                  className="h-10 rounded-xl border border-slate-200 px-4 text-sm text-slate-700 transition hover:bg-slate-50"
+                  className={clsx(
+                    'flex items-center gap-2 rounded-xl border px-2',
+                    errors.keywords ? 'border-red-300' : 'border-slate-200'
+                  )}
                 >
-                  {t('classification.cancel')}
+                  <input
+                    value={keywordInput}
+                    onChange={(event) => setKeywordInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault()
+                        handleAddKeyword()
+                      }
+                    }}
+                    className="h-12 w-full border-none px-1 text-sm outline-none"
+                    placeholder={tForm('keywordsPlaceholder')}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddKeyword}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-white dark:text-black transition hover:bg-secondary/80"
+                    aria-label={tForm('addKeywordAria')}
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+                <span className="text-xs text-red-400">{errors.keywords?.message}</span>
+                {keywords.length > 0 ? (
+                  <div className="mt-1 flex flex-wrap gap-2">
+                    {keywords.map((keyword) => (
+                      <span
+                        key={keyword}
+                        className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-700"
+                      >
+                        {keyword}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveKeyword(keyword)}
+                          aria-label={tForm('removeKeywordAria')}
+                          className="rounded p-0.5 text-slate-500 transition hover:bg-slate-200"
+                        >
+                          <X size={12} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="text-slate-600">{tForm('colorLabel')}</span>
+                <div className="relative">
+                  <input
+                    type="color"
+                    value={color}
+                    onChange={(event) => setColor(event.target.value)}
+                    className="absolute h-12 w-full cursor-pointer opacity-0"
+                    aria-label={tForm('colorPickerAria')}
+                  />
+                  <div
+                    className="h-12 w-full rounded-xl border border-slate-200"
+                    style={{ backgroundColor: color }}
+                  />
+                </div>
+              </label>
+
+              <div className="flex flex-col gap-1 text-sm">
+                <span className="text-slate-600">{tForm('iconLabel')}</span>
+                <IconSelector value={icon} onChange={setIcon} />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 sm:col-span-2">
+                <DrawerClose asChild>
+                  <button
+                    type="button"
+                    className="h-10 rounded-xl border border-slate-200 px-4 text-sm text-slate-700 transition hover:bg-slate-50"
+                  >
+                    {t('classification.cancel')}
+                  </button>
+                </DrawerClose>
+                <button
+                  type="submit"
+                  disabled={drawerSubmitting}
+                  className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white dark:text-black  transition hover:bg-secondary/80 disabled:opacity-60"
+                >
+                  {drawerSubmitting ? (
+                    t('classification.saving')
+                  ) : editingCategory ? (
+                    <>
+                      <Check size={16} />
+                      {tForm('updateButton')}
+                    </>
+                  ) : (
+                    <>
+                      <Plus size={16} />
+                      {tForm('addButton')}
+                    </>
+                  )}
                 </button>
-              </DrawerClose>
-              <button
-                type="submit"
-                disabled={drawerSubmitting}
-                className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white dark:text-black  transition hover:bg-secondary/80 disabled:opacity-60"
-              >
-                {drawerSubmitting ? (
-                  t('classification.saving')
-                ) : editingCategory ? (
-                  <>
-                    <Check size={16} />
-                    {tForm('updateButton')}
-                  </>
-                ) : (
-                  <>
-                    <Plus size={16} />
-                    {tForm('addButton')}
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
+              </div>
+            </form>
+          </div>
         </DrawerContent>
       </Drawer>
 

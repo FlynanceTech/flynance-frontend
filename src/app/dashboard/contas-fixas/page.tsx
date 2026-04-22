@@ -696,6 +696,7 @@ export default function FixedBillsPage() {
             </div>
           }
         />
+        <p className="pt-1 text-xs text-slate-500 lg:text-sm">{t('pageHelper')}</p>
       </div>
 
 
@@ -768,8 +769,8 @@ export default function FixedBillsPage() {
               className={clsx(
                 'rounded-full px-3 py-1 text-xs font-semibold border',
                 filter === key
-                  ? 'bg-secondary/30 border-secondary text-[#333C4D]'
-                  : 'border-gray-200 text-gray-500 hover:bg-gray-50 dark:hover:bg-primary/20'
+                  ? 'bg-secondary/30 border-secondary text-[#333C4D] dark:bg-[#F4C542] dark:border-[#F4C542] dark:text-black'
+                  : 'border-gray-200 text-gray-500 hover:bg-gray-50 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-white/5'
               )}
             >
               {key === 'all' ? t('filters.all') : key === 'paid' ? t('filters.paid') : t('filters.pending')}
@@ -816,7 +817,9 @@ export default function FixedBillsPage() {
                   key={bill.id}
                   className={clsx(
                     'rounded-lg border border-gray-200 p-4 flex flex-col gap-3 cursor-pointer',
-                    paid ? 'bg-emerald-500/20' : 'bg-white'
+                    paid
+                      ? 'border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-emerald-100/70 dark:border-emerald-400/25 dark:bg-emerald-500/10'
+                      : 'bg-white dark:border-white/10'
                   )}
                   role="button"
                   tabIndex={0}
@@ -904,14 +907,14 @@ export default function FixedBillsPage() {
                   <div className="flex w-full flex-col md:flex-row justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-2">
                       {overdue && (
-                        <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-700">
+                        <span className="inline-flex items-center rounded-full bg-red-600 px-2 py-1 text-xs font-semibold text-white">
                           {t('overdueBadge')}
                         </span>
                       )}
                       <span
                         className={clsx(
                           'inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold',
-                          paid ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                          paid ? 'bg-emerald-600 text-white' : 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300'
                         )}
                       >
                         {paid ? t('paidBadge') : t('pendingBadge')}
@@ -928,8 +931,8 @@ export default function FixedBillsPage() {
                       className={clsx(
                         'inline-flex w-full items-center justify-center gap-2 rounded-full px-3 py-2 text-xs font-semibold border md:w-auto md:py-1 disabled:cursor-not-allowed disabled:opacity-50',
                         paid
-                          ? 'border-emerald-300 text-white bg-emerald-500 hover:bg-emerald-600 dark:hover:bg-emerald-600/80'
-                          : 'border-gray-200 text-gray-700 hover:bg-gray-50 dark:hover:bg-primary/50'
+                          ? 'border-emerald-300 text-white bg-emerald-600 hover:bg-emerald-700 dark:border-emerald-400/30'
+                          : 'border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-white/5'
                       )}
                     >
                       <Check className="h-3 w-3" />

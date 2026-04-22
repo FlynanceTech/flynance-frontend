@@ -12,7 +12,9 @@ import {
   Landmark,
   LayoutDashboard,
   LogOut,
+  Moon,
   Tag,
+  Sun,
   User,
   PanelLeftClose,
   PanelLeftOpen,
@@ -42,8 +44,9 @@ export default function Sidebar() {
   const router = useRouter()
   const pathname = usePathname()
   const t = useTranslations('nav')
+  const tPreferences = useTranslations('preferences')
   const { logout, user } = useUserSession()
-  const { theme } = useUserTheme()
+  const { theme, saveTheme, isSavingTheme } = useUserTheme()
   const role = user?.userData?.user?.role
   const isAdmin = isAdminRole(role)
   const isAdvisor = canAccessAdvisorRole(role)
@@ -85,6 +88,15 @@ export default function Sidebar() {
   const handleLogout = async () => {
     await logout()
     router.push('/login')
+  }
+
+  const handleThemeToggle = async () => {
+    if (isSavingTheme) return
+    try {
+      await saveTheme(isDarkTheme ? 'LIGHT' : 'DARK')
+    } catch {
+      // feedback ja tratado na camada de preferencia
+    }
   }
 
   return (
@@ -147,6 +159,40 @@ export default function Sidebar() {
             (collapsed ? 'justify-center' : 'px-2 flex-col gap-4')
           }
         >
+          <button
+            type="button"
+            onClick={() => {
+              void handleThemeToggle()
+            }}
+            disabled={isSavingTheme}
+            className={clsx(
+              'flex items-center rounded-full border border-gray-200 bg-white px-3 py-2 text-[#333C4D] transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60',
+              collapsed ? 'justify-center gap-0' : 'justify-between gap-3',
+              'dark:border-white/10 dark:bg-white/5 dark:text-white'
+            )}
+            aria-label={tPreferences('theme.title')}
+            title={tPreferences('theme.title')}
+          >
+            <div className="flex items-center gap-2">
+              <Sun size={16} className={clsx(isDarkTheme ? 'text-zinc-500' : 'text-amber-500')} />
+              {!collapsed && (
+                <span className="relative inline-flex h-6 w-11 items-center rounded-full bg-slate-200 dark:bg-zinc-700">
+                  <span
+                    className={clsx(
+                      'absolute h-5 w-5 rounded-full shadow transition-transform duration-200',
+                      isDarkTheme ? 'translate-x-5 bg-[#F4C542]' : 'translate-x-0.5 bg-[#111827]'
+                    )}
+                  />
+                </span>
+              )}
+              <Moon size={16} className={clsx(isDarkTheme ? 'text-[#F4C542]' : 'text-slate-400')} />
+            </div>
+            {!collapsed && (
+              <span className="text-xs font-semibold">
+                {isDarkTheme ? tPreferences('theme.dark') : tPreferences('theme.light')}
+              </span>
+            )}
+          </button>
           <button
             onClick={handleLogout}
             className="flex items-center gap-2 text-[#333C4D] hover:text-red-400 cursor-pointer"

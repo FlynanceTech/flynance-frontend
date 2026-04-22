@@ -229,11 +229,11 @@ export default function CoupleAccountPage() {
   return (
     <section className="w-full overflow-y-auto px-4 pb-28 pt-6 md:px-6 lg:pr-8 lg:pb-6 lg:pt-0">
       <div className="mx-auto w-full max-w-6xl space-y-4">
-        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#121212]">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h1 className="text-lg font-semibold text-[#333C4D]">{t('title')}</h1>
-              <p className="text-sm text-slate-600">{t('subtitle')}</p>
+              <h1 className="text-xl font-semibold text-[#333C4D] dark:text-white md:text-2xl">{t('title')}</h1>
+              <p className="text-sm text-slate-600 dark:text-zinc-300">{t('subtitle')}</p>
             </div>
 
             <Button
