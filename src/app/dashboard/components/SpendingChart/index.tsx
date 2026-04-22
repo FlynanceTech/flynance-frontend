@@ -88,8 +88,11 @@ export function SpendingChart({
       : data
 
   return (
-    <ResponsiveContainer width="100%" height={260}>
-      <AreaChart data={chartData}>
+    <ResponsiveContainer width="100%" height={300}>
+      <AreaChart
+        data={chartData}
+        margin={{ top: 12, right: 12, bottom: 34, left: 0 }}
+      >
         <defs>
           <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%" stopColor={getStrokeColor(percent)} stopOpacity={0.5} />
@@ -102,13 +105,13 @@ export function SpendingChart({
           stroke="#666"
           tickLine={false}
           axisLine={false}
-          tickMargin={10}
+          tickMargin={16}
           padding={{ left: 10, right: 10 }}
           tickFormatter={(date) => format(parseISO(date), 'dd/MM')}
           label={{
             value: t('xAxisLabel'),
-            position: 'insideBottom',
-            offset: -8,
+            position: 'bottom',
+            offset: 12,
             style: { fill: '#6B7280', fontSize: 12 },
           }}
         />

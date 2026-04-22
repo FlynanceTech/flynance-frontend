@@ -13,6 +13,7 @@ import { SpendingChart } from '../../components/SpendingChart'
 import MonthSelector from '../../components/MonthSelector'
 import SpendingControlDrawer from '../../components/SpendingControlDrawer'
 import { useUserSession } from '@/stores/useUserSession'
+import ControlDetailsSkeleton from './ControlDetailsSkeleton'
 
 export interface Transaction {
   id: string
@@ -75,7 +76,7 @@ export default function ControlePage({
   const { id } = use(params)
   const { controlsByIdQuery } = useControls(id, selectedDate)
 
-  if (controlsByIdQuery.isLoading) return <p>{t('loading')}</p>
+  if (controlsByIdQuery.isLoading) return <ControlDetailsSkeleton />
   if (controlsByIdQuery.isError) return <p>{t('loadError')}</p>
 
   const control = controlsByIdQuery.data as ControlWithTransactions

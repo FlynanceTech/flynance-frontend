@@ -1217,7 +1217,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           'Aqui você confere o mês em foco e também usa as setas para avançar ou voltar a competência.',
         listTitle: 'Cada card é uma meta',
         listDescription:
-          'Cada card mostra o limite que você definiu, quanto já gastou, o que resta e atalhos para editar.',
+          'Cada card mostra o limite de gastos que você definiu, o quanto já gastou, o quanto ainda falta para atingir cada meta, e atalhos para editar.',
         favoritesTitle: 'Favoritos para acompanhar de perto',
         favoritesDescription:
           'Marque até 3 metas com a estrela para destacá-las no seu Dashboard e acompanhar tudo mais rápido.',

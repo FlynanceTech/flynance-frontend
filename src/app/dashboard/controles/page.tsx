@@ -20,6 +20,7 @@ import { ControlWithProgress, useControls } from '@/hooks/query/useSpendingContr
 import { useCategoryStore } from '@/stores/useCategoryStore'
 import { useSpendingControlStore } from '@/stores/useSpendingControlStore'
 import { useUserSession } from '@/stores/useUserSession'
+import ControlsPageSkeleton from './ControlsPageSkeleton'
 
 type TranslatorFn = (key: string, values?: Record<string, string | number | Date>) => string
 type Tone = 'ok' | 'warning' | 'danger'
@@ -53,7 +54,7 @@ function buildControlsOnboardingSteps(t: TranslatorFn): ReadonlyArray<PageOnboar
     },
     {
       id: 'favorites',
-      selector: '[data-onboarding-target="controles-lista"]',
+      selector: '[data-onboarding-target="controles-favorito"]',
       title: t('onboarding.favoritesTitle'),
       description: t('onboarding.favoritesDescription'),
     },
@@ -280,24 +281,7 @@ export default function SpendingControlPage() {
   }
 
   if (controlsQuery.isLoading) {
-    return (
-      <section className="w-full h-full pt-8 lg:px-8 px-4 pb-24 lg:pb-0 flex flex-col gap-6 overflow-auto">
-        <Header title={t('header.title')} subtitle="" newTransation={false} />
-        <div className="grid lg:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="bg-white border border-gray-200 rounded-xl overflow-hidden animate-pulse">
-              <div className="h-12 bg-gray-200" />
-              <div className="p-4 space-y-3">
-                <div className="h-4 w-2/3 bg-gray-200 rounded" />
-                <div className="h-3 w-full bg-gray-100 rounded" />
-                <div className="h-3 w-5/6 bg-gray-100 rounded" />
-                <div className="h-6 w-1/2 bg-gray-200 rounded" />
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-    )
+    return <ControlsPageSkeleton />
   }
 
   return (
@@ -518,6 +502,7 @@ export default function SpendingControlPage() {
                           className={clsx('cursor-pointer', c.isFavorite ? 'text-amber-400' : 'text-gray-400')}
                           title={c.isFavorite ? t('card.actions.removeFavorite') : t('card.actions.addFavorite')}
                           aria-label={t('card.actions.favorite')}
+                          data-onboarding-target={c === sortedControls[0] ? 'controles-favorito' : undefined}
                         >
                           <StarIcon size={18} weight={c.isFavorite ? 'fill' : 'regular'} />
                         </button>
