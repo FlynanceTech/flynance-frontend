@@ -11,6 +11,10 @@ import Sidebar from '../dashboard/components/Sidebar'
 import BottomMenu from '../dashboard/components/buttonMenu'
 import AdvisorActingPill from '../dashboard/components/AdvisorActingPill'
 import {
+  DESKTOP_SIDEBAR_COLLAPSED_OFFSET_CLASS,
+  DESKTOP_SIDEBAR_EXPANDED_OFFSET_CLASS,
+} from '../dashboard/components/Sidebar/sidebar.config'
+import {
   useAdvisorClientInvites,
   useAdvisorClients,
   useCreateAdvisorClientInvite,
@@ -180,6 +184,7 @@ export default function AdvisorPage() {
   const [generatedInviteResult, setGeneratedInviteResult] = useState<AdvisorClientInviteResponse | null>(null)
   const [quickLinkCopyFailed, setQuickLinkCopyFailed] = useState(false)
   const [inviteDrawerOpen, setInviteDrawerOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   const setActingClient = useAdvisorActing((s) => s.setActingClient)
 
@@ -310,10 +315,15 @@ export default function AdvisorPage() {
 
   return (
     <AdvisorGuard>
-      <main className="relative h-screen w-full gap-8 bg-[hsl(var(--background))] text-[hsl(var(--foreground))] transition-colors lg:flex lg:py-8 lg:pl-8">
+      <main className={`relative h-screen w-full gap-8 bg-[hsl(var(--background))] text-[hsl(var(--foreground))] transition-colors lg:flex lg:py-8 lg:pr-8 ${
+        sidebarCollapsed ? DESKTOP_SIDEBAR_COLLAPSED_OFFSET_CLASS : DESKTOP_SIDEBAR_EXPANDED_OFFSET_CLASS
+      }`}>
         <AdvisorActingPill />
-        <aside className="hidden lg:flex">
-          <Sidebar />
+        <aside className="hidden lg:block">
+          <Sidebar
+            collapsed={sidebarCollapsed}
+            onCollapsedChange={setSidebarCollapsed}
+          />
         </aside>
 
         <aside className="flex lg:hidden">

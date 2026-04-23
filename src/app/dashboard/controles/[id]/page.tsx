@@ -145,10 +145,9 @@ export default function ControlePage({
   const { Icon, cls, label, bar: color, textColor } = STATUS[status]
 
   return (
-    <div className="flex flex-col w-full h-full lg:pr-8 pb-16 lg:pb-0 overflow-auto">
+    <div className="flex h-full w-full flex-col overflow-auto pb-16 text-slate-900 dark:text-slate-100 lg:pr-8 lg:pb-0">
       <div
-        className="bg-gradient-to-b from-secondary to-primary lg:bg-gradient-to-r lg:from-[#fff] lg:to-[#fff]
-       p-8 rounded-b-3xl lg:rounded-b-2xl lg:rounded-t-2xl text-white lg:text-gray-600 flex flex-col gap-4"
+        className="flex flex-col gap-4 rounded-b-3xl rounded-t-none bg-gradient-to-b from-secondary to-primary p-8 text-white lg:rounded-2xl lg:bg-none lg:bg-white lg:text-slate-600 dark:from-slate-900 dark:to-slate-900 dark:text-slate-100 dark:lg:bg-slate-900"
       >
         <div className="flex justify-between">
           <Link href="/dashboard/controles" aria-label={t('back')}>
@@ -163,23 +162,23 @@ export default function ControlePage({
             <SquarePen />
           </button>
         </div>
-        <div className="flex justify-between items-center">
-          <h1 className="text-md font-bold flex gap-2 lg:text-gray-500">
+        <div className="flex items-center justify-between">
+          <h1 className="text-md flex gap-2 font-bold lg:text-slate-500 dark:lg:text-slate-300">
             {IconMap[categoryIconName as IconName] &&
               React.createElement(IconMap[categoryIconName as IconName], { size: 22 })}
             {categoryName}
           </h1>
           <MonthSelector initialDate={selectedDate} onChange={setSelectedDate} />
         </div>
-        <div className="p-4 lg:p-0 bg-white text-gray-500 rounded-md grid grid-cols-2 rounded-b-2xl">
-          <div className="flex flex-col items-center justify-center border-r border-gray-300 gap lg:gap-2">
-            <p className="font-semibold text-gray-400 text-sm lg:text-xl">{t('goal')}</p>
-            <span className="text-lg lg:text-3xl ">{formatter(goal)}</span>
+        <div className="grid grid-cols-2 rounded-md rounded-b-2xl bg-white p-4 text-slate-600 shadow-sm ring-1 ring-slate-200/80 lg:p-0 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-700/80">
+          <div className="flex flex-col items-center justify-center gap border-r border-slate-300 py-2 lg:gap-2 dark:border-slate-700">
+            <p className="text-sm font-semibold text-slate-400 lg:text-xl dark:text-slate-400">{t('goal')}</p>
+            <span className="text-lg lg:text-3xl">{formatter(goal)}</span>
           </div>
-          <div className="flex flex-col items-center justify-center gap lg:gap-2">
-            <p className="font-semibold text-gray-400 text-sm lg:text-xl">{t('currentSpent')}</p>
+          <div className="flex flex-col items-center justify-center gap py-2 lg:gap-2">
+            <p className="text-sm font-semibold text-slate-400 lg:text-xl dark:text-slate-400">{t('currentSpent')}</p>
             <div className="flex flex-col text-center">
-              <span className={`text-lg lg:text-3xl ${exceeded ? 'text-red-400' : 'text-gray-500'}`}>
+              <span className={`text-lg lg:text-3xl ${exceeded ? 'text-red-400 dark:text-red-400' : 'text-slate-600 dark:text-slate-100'}`}>
                 {formatter(spent)}
               </span>
             </div>
@@ -192,8 +191,8 @@ export default function ControlePage({
           <p className="text-xs px-2 py-1 rounded-full font-medium flex items-center">
             <span className="flex items-center gap-2">
               <Icon className={`w-4 h-4 ${cls}`} aria-hidden />
-              <span className="text-sm font-medium text-gray-700 flex-1 truncate">
-                <span className="text-xs text-gray-500">
+              <span className="flex-1 truncate text-sm font-medium text-slate-700 dark:text-slate-200">
+                <span className="text-xs text-slate-500 dark:text-slate-400">
                   {label}
                   {exceeded && <span> {formatter(exceededAmount)}</span>}
                 </span>
@@ -205,29 +204,32 @@ export default function ControlePage({
             {t('percentOfGoal', { percent: percentage.toFixed(0) })}
           </p>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
+        <div className="h-2 w-full rounded-full bg-slate-200 dark:bg-slate-800">
           <div className={`h-2 rounded-full ${color}`} style={{ width: `${Math.min(percentage, 100)}%` }} />
         </div>
       </div>
 
       <div className="p-8 pt-4 flex flex-col gap-4">
-        <div className="flex flex-col">
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <SpendingChart data={chartData} spent={spent} goal={goal} />
-          <p className="text-xs text-gray-400 text-center mt-2">{t('chartCaption')}</p>
+          <p className="mt-2 text-center text-xs text-slate-400 dark:text-slate-500">{t('chartCaption')}</p>
         </div>
-        <p className="font-semibold">{t('transactions')}</p>
+        <p className="font-semibold text-slate-900 dark:text-slate-100">{t('transactions')}</p>
 
         {transactions.length === 0 ? (
-          <p className="text-center text-gray-400 mt-4">{t('emptyTransactions')}</p>
+          <p className="mt-4 text-center text-slate-400 dark:text-slate-500">{t('emptyTransactions')}</p>
         ) : (
           <ul className="list-none flex flex-col gap-4 ">
             {transactions.map((tx) => (
-              <li key={tx.id} className="p-4 bg-white rounded-md">
+              <li
+                key={tx.id}
+                className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-900"
+              >
                 <div className="flex justify-between">
-                  <span className="font-semibold">{tx.description}</span>
-                  <span>{formatter(tx.value)}</span>
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">{tx.description}</span>
+                  <span className="text-slate-900 dark:text-slate-100">{formatter(tx.value)}</span>
                 </div>
-                <span className="text-sm text-gray-400">
+                <span className="text-sm text-slate-400 dark:text-slate-500">
                   {new Date(tx.date).toLocaleDateString(locale)}
                 </span>
               </li>

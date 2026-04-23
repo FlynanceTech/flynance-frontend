@@ -2,6 +2,7 @@
 
 import { addDays, format, parseISO } from 'date-fns'
 import { useLocale, useTranslations } from 'next-intl'
+import { useTheme } from 'next-themes'
 import {
   AreaChart,
   Area,
@@ -31,12 +32,12 @@ type CustomTooltipProps = {
 function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   if (active && payload && payload.length > 0) {
     return (
-      <div className="rounded-lg border border-secondary bg-[#3ECC8980] px-4 py-2 text-sm text-white shadow">
+      <div className="rounded-xl border border-emerald-400/50 bg-white/95 px-4 py-3 text-sm text-slate-900 shadow-xl shadow-emerald-950/10 backdrop-blur dark:border-emerald-500/30 dark:bg-slate-900/95 dark:text-slate-100">
         <p>
           <strong>Data:</strong> {label && format(new Date(label), 'dd/MM')}
         </p>
         {payload[0].payload.valor ? (
-          <p>
+          <p className="text-emerald-600 dark:text-emerald-400">
             <strong>Gasto diario:</strong> {formatCurrency(payload[0].payload.valor)}
           </p>
         ) : null}
@@ -57,6 +58,8 @@ export function SpendingChart({
 }) {
   const t = useTranslations('controlDetailsPage')
   const locale = useLocale()
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
   const percent = spent / goal
   const currencyPrefix = formatCurrency(0).replace(/[\d\s.,-]/g, '').trim() || 'R$'
 
@@ -87,6 +90,10 @@ export function SpendingChart({
         ]
       : data
 
+  const axisColor = isDark ? '#94A3B8' : '#666'
+  const axisLabelColor = isDark ? '#64748B' : '#6B7280'
+  const dotFill = isDark ? '#020617' : '#fff'
+
   return (
     <ResponsiveContainer width="100%" height={300}>
       <AreaChart
@@ -102,7 +109,7 @@ export function SpendingChart({
 
         <XAxis
           dataKey="date"
-          stroke="#666"
+          stroke={axisColor}
           tickLine={false}
           axisLine={false}
           tickMargin={16}
@@ -112,11 +119,11 @@ export function SpendingChart({
             value: t('xAxisLabel'),
             position: 'bottom',
             offset: 12,
-            style: { fill: '#6B7280', fontSize: 12 },
+            style: { fill: axisLabelColor, fontSize: 12 },
           }}
         />
         <YAxis
-          stroke="#666"
+          stroke={axisColor}
           tickLine={false}
           axisLine={false}
           width={72}
@@ -132,7 +139,7 @@ export function SpendingChart({
           stroke={getStrokeColor(percent)}
           strokeWidth={3}
           fill="url(#colorValue)"
-          activeDot={{ r: 6, stroke: getStrokeColor(percent), strokeWidth: 2, fill: '#fff' }}
+          activeDot={{ r: 6, stroke: getStrokeColor(percent), strokeWidth: 2, fill: dotFill }}
         />
       </AreaChart>
     </ResponsiveContainer>

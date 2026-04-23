@@ -1,24 +1,18 @@
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  LayoutDashboard,
-  Landmark,
-  Tag,
-  User,
-  BookOpenCheck,
-  ClipboardList,
   Menu,
   X,
-  BarChart3,
-  Clock3,
-  House,
-  ShieldCheck,
-  Users,
 } from 'lucide-react'
 import React, { useState } from 'react'
 import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react'
 import { useUserSession } from '@/stores/useUserSession'
 import { canAccessAdvisorRole, isAdminRole } from '@/utils/roles'
 import { useTranslations } from 'next-intl'
+import {
+  buildSidebarSections,
+  filterSidebarSections,
+  isSidebarPathActive,
+} from '../Sidebar/sidebar.config'
 
 type MenuItem = {
   id: string
@@ -36,46 +30,45 @@ export default function BottomMenu() {
   const isAdmin = isAdminRole(role)
   const isAdvisor = canAccessAdvisorRole(role)
 
-  const primaryItems: MenuItem[] = [
-    { id: 'dashboard', label: t('dashboard'), icon: LayoutDashboard, path: '/dashboard' },
-    { id: 'transactions', label: t('transactions'), icon: Landmark, path: '/dashboard/transacoes' },
-    { id: 'accounts', label: t('accounts'), icon: ClipboardList, path: '/dashboard/contas-fixas' },
-  ]
-  const moreItems: MenuItem[] = [
-    { id: 'future', label: t('future'), icon: Clock3, path: '/dashboard/futuros' },
-    { id: 'reports', label: t('reports'), icon: BarChart3, path: '/dashboard/relatorios' },
-    { id: 'categories', label: t('categories'), icon: Tag, path: '/dashboard/categorias' },
-    { id: 'education', label: t('education'), icon: BookOpenCheck, path: '/dashboard/educacao' },
-    { id: 'coupleAccount', label: t('coupleAccount'), icon: House, path: '/dashboard/conta-casal' },
-    ...(isAdvisor ? [{ id: 'clients', label: t('clients'), icon: Users, path: '/advisor' }] : []),
-    { id: 'profile', label: t('profile'), icon: User, path: '/dashboard/perfil' },
-    ...(isAdmin ? [{ id: 'admin', label: t('admin'), icon: ShieldCheck, path: '/admin/dashboard' }] : []),
-  ]
+  const menuItems: MenuItem[] = filterSidebarSections(
+    buildSidebarSections({
+      dashboard: t('dashboard'),
+      transactions: t('transactions'),
+      accounts: t('accounts'),
+      categories: t('categories'),
+      future: t('future'),
+      reports: t('reports'),
+      coupleAccount: t('coupleAccount'),
+      education: t('education'),
+      clients: t('clients'),
+      profile: t('profile'),
+      admin: t('admin'),
+      logout: t('logout'),
+    }),
+    {
+      isAdmin,
+      canAccessAdvisor: isAdvisor,
+    }
+  )
+    .flatMap((section) => section.items)
+    .filter((item) => Boolean(item.path))
+    .map((item) => ({
+      id: item.id,
+      label: item.label,
+      icon: item.icon,
+      path: item.path!,
+    }))
+
+  const primaryItemIds = new Set(['dashboard', 'transactions', 'accounts'])
+  const primaryItems = menuItems.filter((item) => primaryItemIds.has(item.id))
+  const moreItems = menuItems.filter((item) => !primaryItemIds.has(item.id))
   const [moreOpen, setMoreOpen] = useState(false)
-
-  const normalize = (p: string) => p.replace(/\/+$/, '')
-  const current = normalize(pathname ?? '')
-  const isPathActive = (itemPath: string) => {
-    const base = normalize(itemPath)
-
-    if (base === '/dashboard') {
-      return current === '/dashboard' || current.startsWith('/dashboard/controles')
-    }
-    if (base === '/admin/dashboard') {
-      return current.startsWith('/admin')
-    }
-    if (base === '/advisor') {
-      return current.startsWith('/advisor')
-    }
-
-    return current === base || current.startsWith(`${base}/`)
-  }
 
   return (
     <>
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center py-4 z-50">
         {primaryItems.map(({ id, label, icon: Icon, path }) => {
-          const isActive = isPathActive(path)
+          const isActive = isSidebarPathActive(pathname ?? '', path)
           return (
             <button
               key={id}
@@ -134,7 +127,7 @@ export default function BottomMenu() {
 
                 <div className="mt-4 grid grid-cols-3 gap-3">
                   {moreItems.map(({ id, label, icon: Icon, path }) => {
-                    const isActive = isPathActive(path)
+                    const isActive = isSidebarPathActive(pathname ?? '', path)
                     return (
                       <button
                         key={id}
