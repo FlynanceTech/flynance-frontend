@@ -57,6 +57,7 @@ export type FixedAccountEditPayloadInput = {
   categoryId?: string | null
   notes?: string | null
   startDateInput: string | Date
+  dueDateInput?: string | Date | null
 }
 
 export type FixedAccountEditPayload = {
@@ -66,6 +67,7 @@ export type FixedAccountEditPayload = {
   notes?: string
   startDate: string
   dueDay: number
+  dueDate?: string
 }
 
 export function buildFixedAccountEditPayload(
@@ -78,9 +80,15 @@ export function buildFixedAccountEditPayload(
   const startDate = toISODateOnlyFromDatePicker(input.startDateInput)
   if (!startDate) return null
 
-  const dueDay = getDueDayFromStartDate(startDate)
+  const dueDate = input.dueDateInput
+    ? toISODateOnlyFromDatePicker(input.dueDateInput)
+    : undefined
+  if (input.dueDateInput && !dueDate) return null
+
+  const dueDateReference = dueDate ?? startDate
+  const dueDay = getDueDayFromStartDate(dueDateReference)
   if (!dueDay || dueDay < 1 || dueDay > 31) return null
-  if (!isDueDayMatchingStartDate(startDate, dueDay)) return null
+  if (!isDueDayMatchingStartDate(dueDateReference, dueDay)) return null
 
   const categoryId = String(input.categoryId ?? '').trim() || undefined
   const notes = String(input.notes ?? '').trim() || undefined
@@ -90,6 +98,7 @@ export function buildFixedAccountEditPayload(
     amount: input.amount,
     startDate,
     dueDay,
+    dueDate,
     categoryId,
     notes,
   }

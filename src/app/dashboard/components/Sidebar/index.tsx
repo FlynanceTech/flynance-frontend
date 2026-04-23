@@ -195,7 +195,12 @@ export default function Sidebar() {
           </button>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 text-[#333C4D] hover:text-red-400 cursor-pointer"
+            className={clsx(
+              'flex items-center gap-2 cursor-pointer',
+              collapsed
+                ? 'text-[#333C4D] hover:text-red-400 dark:text-white'
+                : 'border-t border-gray-200 pt-3 text-[#333C4D] hover:text-red-400 dark:border-white/10 dark:text-white'
+            )}
           >
             <LogOut size={18} />
             {!collapsed && t('logout')}

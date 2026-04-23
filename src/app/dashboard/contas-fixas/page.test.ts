@@ -24,3 +24,11 @@ test('contas-fixas page usa dueDate do ciclo atual no mark-paid e fallback pela 
   assert.match(source, /bill\.payment\?\.periodKey\s*\|\|/)
   assert.match(source, /getDueDateForCompetenceRange\(periodStart,\s*periodEnd,\s*bill\.dueDay\)/)
 })
+
+test('contas-fixas page cria conta fixa com inicio no mes de competencia e vencimento separado', () => {
+  const pagePath = path.resolve(process.cwd(), 'src/app/dashboard/contas-fixas/page.tsx')
+  const source = fs.readFileSync(pagePath, 'utf8')
+
+  assert.match(source, /startDateInput:\s*getMonthStartDateForMonthKey\(firstCompetenceMonthKey\)/)
+  assert.match(source, /dueDateInput:\s*firstDueDateISO/)
+})

@@ -1295,7 +1295,7 @@ export default function CategoriasPage() {
         <div className="w-full">
           <Header
             title={t('classification.title')}
-            subtitle={t('classification.subtitle')}
+            subtitle=""
             newTransation={false}
             rightContent={
               <div className="hidden lg:flex lg:items-center lg:gap-3">

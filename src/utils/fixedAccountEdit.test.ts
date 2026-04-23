@@ -49,6 +49,20 @@ test('buildFixedAccountEditPayload: payload de edicao sempre usa data ISO', () =
   assert.equal(payload.dueDay, 10)
 })
 
+test('buildFixedAccountEditPayload: separa inicio da competencia do primeiro vencimento', () => {
+  const payload = buildFixedAccountEditPayload({
+    name: 'Condominio',
+    amount: 362,
+    startDateInput: '2026-04-01',
+    dueDateInput: '2026-04-20',
+  })
+
+  assert.ok(payload)
+  assert.equal(payload.startDate, '2026-04-01')
+  assert.equal(payload.dueDate, '2026-04-20')
+  assert.equal(payload.dueDay, 20)
+})
+
 test('toISODateOnlyFromDatePicker: extrai YYYY-MM-DD sem shift de timestamp ISO', () => {
   const normalized = toISODateOnlyFromDatePicker('2026-02-10T00:00:00.000Z')
   assert.equal(normalized, '2026-02-10')

@@ -327,7 +327,19 @@
 
 :root[data-theme='dark'] .hover\:bg-red-50:hover,
 .dark .hover\:bg-red-50:hover {
-  background-color: rgb(127 29 29 / 0.32) !important;
+  background-color: rgb(250 45 54 / 0.14) !important;
+}
+
+:root[data-theme='dark'] .hover\:bg-red-100:hover,
+.dark .hover\:bg-red-100:hover {
+  background-color: rgb(250 45 54 / 0.18) !important;
+}
+
+:root[data-theme='dark'] .hover\:bg-emerald-700:hover,
+:root[data-theme='dark'] .hover\:bg-green-700:hover,
+.dark .hover\:bg-emerald-700:hover,
+.dark .hover\:bg-green-700:hover {
+  background-color: #3eaf66 !important;
 }
 
 :root[data-theme='dark'] .hover\:bg-amber-50:hover,
@@ -353,4 +365,100 @@
 :root[data-theme='dark'] .focus-visible\:ring-primary\/40:focus-visible,
 .dark .focus-visible\:ring-primary\/40:focus-visible {
   --tw-ring-color: hsl(var(--ring) / 0.75) !important;
+}
+
+:root[data-theme='dark'] .text-red-400,
+:root[data-theme='dark'] .text-red-500,
+:root[data-theme='dark'] .text-red-600,
+:root[data-theme='dark'] .text-red-700,
+.dark .text-red-400,
+.dark .text-red-500,
+.dark .text-red-600,
+.dark .text-red-700 {
+  color: #fa2d36 !important;
+}
+
+:root[data-theme='dark'] .text-emerald-400,
+:root[data-theme='dark'] .text-emerald-500,
+:root[data-theme='dark'] .text-emerald-600,
+:root[data-theme='dark'] .text-emerald-700,
+:root[data-theme='dark'] .text-green-400,
+:root[data-theme='dark'] .text-green-500,
+:root[data-theme='dark'] .text-green-600,
+:root[data-theme='dark'] .text-green-700,
+.dark .text-emerald-400,
+.dark .text-emerald-500,
+.dark .text-emerald-600,
+.dark .text-emerald-700,
+.dark .text-green-400,
+.dark .text-green-500,
+.dark .text-green-600,
+.dark .text-green-700 {
+  color: #3eaf66 !important;
+}
+
+:root[data-theme='dark'] .bg-red-50,
+:root[data-theme='dark'] .bg-red-100,
+.dark .bg-red-50,
+.dark .bg-red-100 {
+  background-color: rgb(250 45 54 / 0.14) !important;
+}
+
+:root[data-theme='dark'] .bg-red-500,
+:root[data-theme='dark'] .bg-red-600,
+:root[data-theme='dark'] .bg-red-700,
+.dark .bg-red-500,
+.dark .bg-red-600,
+.dark .bg-red-700 {
+  background-color: #fa2d36 !important;
+}
+
+:root[data-theme='dark'] .bg-emerald-50,
+:root[data-theme='dark'] .bg-emerald-100,
+:root[data-theme='dark'] .bg-green-50,
+:root[data-theme='dark'] .bg-green-100,
+.dark .bg-emerald-50,
+.dark .bg-emerald-100,
+.dark .bg-green-50,
+.dark .bg-green-100 {
+  background-color: rgb(62 175 102 / 0.16) !important;
+}
+
+:root[data-theme='dark'] .bg-emerald-500,
+:root[data-theme='dark'] .bg-emerald-600,
+:root[data-theme='dark'] .bg-emerald-700,
+:root[data-theme='dark'] .bg-green-500,
+:root[data-theme='dark'] .bg-green-600,
+:root[data-theme='dark'] .bg-green-700,
+.dark .bg-emerald-500,
+.dark .bg-emerald-600,
+.dark .bg-emerald-700,
+.dark .bg-green-500,
+.dark .bg-green-600,
+.dark .bg-green-700 {
+  background-color: #3eaf66 !important;
+}
+
+:root[data-theme='dark'] .border-red-200,
+:root[data-theme='dark'] .border-red-300,
+:root[data-theme='dark'] .border-red-400,
+.dark .border-red-200,
+.dark .border-red-300,
+.dark .border-red-400 {
+  border-color: rgb(250 45 54 / 0.34) !important;
+}
+
+:root[data-theme='dark'] .border-emerald-200,
+:root[data-theme='dark'] .border-emerald-300,
+:root[data-theme='dark'] .border-emerald-400,
+:root[data-theme='dark'] .border-green-200,
+:root[data-theme='dark'] .border-green-300,
+:root[data-theme='dark'] .border-green-400,
+.dark .border-emerald-200,
+.dark .border-emerald-300,
+.dark .border-emerald-400,
+.dark .border-green-200,
+.dark .border-green-300,
+.dark .border-green-400 {
+  border-color: rgb(62 175 102 / 0.38) !important;
 }

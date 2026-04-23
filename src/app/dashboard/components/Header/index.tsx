@@ -244,11 +244,18 @@ export default function Header({
 
   const filterButtonLabel = hasPendingFilters ? tHeader('apply') : tHeader('filter')
   return (
-    <header className='flex flex-col'>
+    <header className="flex flex-col gap-3">
       <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between lg:pb-2 sm:px-0">
-        <div className="w-full grid grid-cols-3 md:items-center gap-2 mb-4">
-          <h1 className="col-span-1 text-lg font-semibold text-[#333C4D] lg:text-2xl">{title}</h1>
+        <div className="flex items-start justify-between lg:pb-2 sm:px-0">
+        <div className="w-full grid grid-cols-1 gap-3 md:grid-cols-3 md:items-start mb-4">
+          <div className="col-span-1 flex flex-col gap-1">
+            <h1 className="text-lg font-semibold text-[#333C4D] lg:text-2xl">{title}</h1>
+            {subtitle ? (
+              <p className="whitespace-pre-line text-sm font-light text-slate-500">
+                {subtitle}
+              </p>
+            ) : null}
+          </div>
   
           <div className='col-span-2 flex w-full items-center justify-end gap-2'>
             <div className="hidden lg:flex gap-4 items-center justify-end">
@@ -393,9 +400,11 @@ export default function Header({
           </div>
         )}
       
-        <div className="text-sm font-light md:pt-0">
-          <ActiveFiltersChips fallbackText={subtitle} />
-        </div>
+        {asFilter ? (
+          <div className="text-sm font-light md:pt-0">
+            <ActiveFiltersChips />
+          </div>
+        ) : null}
         {canSelectScope && (
           <div className="pt-1">
             <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">

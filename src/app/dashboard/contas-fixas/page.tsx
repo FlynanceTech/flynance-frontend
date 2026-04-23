@@ -86,6 +86,12 @@ function createFixedAccountsOnboardingSteps(
       title: t('onboarding.listTitle'),
       description: t('onboarding.listDescription'),
     },
+    {
+      id: 'card',
+      selector: '[data-onboarding-target="contas-fixas-card"]',
+      title: t('onboarding.cardTitle'),
+      description: t('onboarding.cardDescription'),
+    },
   ]
 }
 
@@ -212,6 +218,12 @@ function clampDateToMonth(isoDate: string, monthKey: string) {
   const lastDay = new Date(targetMonth.year, targetMonth.monthIndex + 1, 0).getDate()
   const clampedDay = Math.min(sourceDay, lastDay)
   return toApiDate(new Date(targetMonth.year, targetMonth.monthIndex, clampedDay))
+}
+
+function getMonthStartDateForMonthKey(monthKey: string) {
+  const parsed = parseMonthKey(monthKey)
+  if (!parsed) return todayISODate()
+  return toApiDate(new Date(parsed.year, parsed.monthIndex, 1))
 }
 
 function getDefaultFirstDueDateForMonth(monthKey: string) {
@@ -530,15 +542,13 @@ export default function FixedBillsPage() {
       return
     }
 
-    const submitStartDate =
-      editingBill != null ? firstDueDateISO : clampDateToMonth(firstDueDateISO, firstCompetenceMonthKey)
-
     const payload = buildFixedAccountEditPayload({
       name: trimmed,
       amount: parsedAmount,
       categoryId,
       notes,
-      startDateInput: submitStartDate,
+      startDateInput: getMonthStartDateForMonthKey(firstCompetenceMonthKey),
+      dueDateInput: firstDueDateISO,
     })
 
     if (!payload) {
@@ -546,7 +556,7 @@ export default function FixedBillsPage() {
       return
     }
 
-    if (!isDueDayMatchingStartDate(payload.startDate, payload.dueDay)) {
+    if (!isDueDayMatchingStartDate(payload.dueDate ?? payload.startDate, payload.dueDay)) {
       setFormError(t('errors.dueDayInvalid'))
       return
     }
@@ -803,7 +813,7 @@ export default function FixedBillsPage() {
               </div>
             )}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {visibleBills.map((bill) => {
+            {visibleBills.map((bill, index) => {
               const paid = isPaidCurrentCycle(bill.displayStatus)
               const overdue = isOverdueCurrentCycle(bill.displayStatus)
               const statusLabel = paid
@@ -815,10 +825,11 @@ export default function FixedBillsPage() {
               return (
                 <div
                   key={bill.id}
+                  data-onboarding-target={index === 0 ? 'contas-fixas-card' : undefined}
                   className={clsx(
-                    'rounded-lg border border-gray-200 p-4 flex flex-col gap-3 cursor-pointer',
+                    'cursor-pointer flex flex-col gap-3 rounded-xl border border-gray-200 p-4 transition-shadow',
                     paid
-                      ? 'border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-emerald-100/70 dark:border-emerald-400/25 dark:bg-emerald-500/10'
+                      ? 'border-[#b8e3c7] bg-[linear-gradient(135deg,rgba(62,175,102,0.18)_0%,rgba(255,255,255,0.98)_42%,rgba(62,175,102,0.12)_100%)] shadow-[0_18px_40px_-28px_rgba(62,175,102,0.75)] ring-1 ring-[#dcefe3] dark:border-[rgba(62,175,102,0.42)] dark:bg-[linear-gradient(135deg,rgba(62,175,102,0.32)_0%,rgba(28,31,30,0.96)_45%,rgba(62,175,102,0.2)_100%)] dark:shadow-[0_22px_48px_-30px_rgba(62,175,102,0.55)] dark:ring-[rgba(62,175,102,0.26)]'
                       : 'bg-white dark:border-white/10'
                   )}
                   role="button"
@@ -834,7 +845,14 @@ export default function FixedBillsPage() {
                   <div className="flex w-full items-start justify-between gap-3">
                     <div className="flex flex-col gap-1 w-full">
                       <div className='flex w-full items-center justify-between'>
-                        <h3 className="text-sm font-semibold text-gray-800 truncate">{bill.name}</h3>
+                        <h3
+                          className={clsx(
+                            'truncate text-sm font-semibold',
+                            paid ? 'text-slate-900 dark:text-white' : 'text-gray-800'
+                          )}
+                        >
+                          {bill.name}
+                        </h3>
                         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                          
 
@@ -846,7 +864,12 @@ export default function FixedBillsPage() {
                               handleEdit(bill)
                             }}
                             disabled={!canWriteBill(bill)}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 md:h-auto md:w-auto md:gap-2 md:px-3 md:py-1 md:text-xs md:font-semibold cursor-pointer"
+                            className={clsx(
+                              'inline-flex h-7 w-7 items-center justify-center rounded-full border md:h-auto md:w-auto md:gap-2 md:px-3 md:py-1 md:text-xs md:font-semibold cursor-pointer',
+                              paid
+                                ? 'border-white/70 bg-white/80 text-slate-700 hover:bg-white dark:border-white/15 dark:bg-white/8 dark:text-white dark:hover:bg-white/14'
+                                : 'border-gray-200 text-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'
+                            )}
                             title={t('edit')}
                             aria-label={t('edit')}
                           >
@@ -862,7 +885,12 @@ export default function FixedBillsPage() {
                               requestDelete(bill.id)
                             }}
                             disabled={deleteMutation.isPending || !canWriteBill(bill)}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 text-red-400 hover:bg-red-100 disabled:opacity-60 md:h-auto md:w-auto md:gap-2 md:px-3 md:py-1 md:text-xs md:font-semibold cursor-pointer"
+                            className={clsx(
+                              'inline-flex h-7 w-7 items-center justify-center rounded-full border disabled:opacity-60 md:h-auto md:w-auto md:gap-2 md:px-3 md:py-1 md:text-xs md:font-semibold cursor-pointer',
+                              paid
+                                ? 'border-[rgba(250,45,54,0.2)] bg-white/70 text-[#fa2d36] hover:bg-[rgba(250,45,54,0.08)] dark:border-[rgba(250,45,54,0.28)] dark:bg-transparent'
+                                : 'border-gray-200 text-red-400 hover:bg-red-100'
+                            )}
                             title={t('remove')}
                             aria-label={t('remove')}
                           >
@@ -873,7 +901,12 @@ export default function FixedBillsPage() {
                           </button>
                         </div>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                      <div
+                        className={clsx(
+                          'flex flex-wrap items-center gap-2 text-xs',
+                          paid ? 'text-slate-700 dark:text-slate-200' : 'text-gray-500'
+                        )}
+                      >
                         <span>{t('dueEveryDay', { day: bill.dueDay })}</span>
                         <span>•</span>
                         <span>{toBRL(bill.amount)}</span>
@@ -890,7 +923,12 @@ export default function FixedBillsPage() {
                           </>
                         )}
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-400">
+                      <div
+                        className={clsx(
+                          'flex flex-wrap items-center gap-2 text-[11px]',
+                          paid ? 'text-slate-600 dark:text-slate-300' : 'text-gray-400'
+                        )}
+                      >
                         <span>{t('competenceLabel', { label: competenceRange.label })}</span>
                         <span>•</span>
                         <span>{t('statusLabel', { status: statusLabel })}</span>
@@ -898,7 +936,14 @@ export default function FixedBillsPage() {
                         <span>Fim: {formatDateBR(bill.endDate) || 'Sem data fim'}</span> */}
                       </div>
                       {bill.notes && (
-                        <span className="text-xs text-gray-400 mt-1 truncate">{bill.notes}</span>
+                        <span
+                          className={clsx(
+                            'mt-1 truncate text-xs',
+                            paid ? 'text-slate-600 dark:text-slate-300' : 'text-gray-400'
+                          )}
+                        >
+                          {bill.notes}
+                        </span>
                       )}
                     </div>
                 
@@ -907,14 +952,16 @@ export default function FixedBillsPage() {
                   <div className="flex w-full flex-col md:flex-row justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-2">
                       {overdue && (
-                        <span className="inline-flex items-center rounded-full bg-red-600 px-2 py-1 text-xs font-semibold text-white">
+                        <span className="inline-flex items-center rounded-full bg-red-600 px-2 py-1 text-xs font-semibold text-white dark:bg-[#fa2d36]">
                           {t('overdueBadge')}
                         </span>
                       )}
                       <span
                         className={clsx(
                           'inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold',
-                          paid ? 'bg-emerald-600 text-white' : 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300'
+                          paid
+                            ? 'bg-[#3eaf66] text-white shadow-[0_10px_24px_-16px_rgba(62,175,102,0.9)]'
+                            : 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300'
                         )}
                       >
                         {paid ? t('paidBadge') : t('pendingBadge')}
@@ -931,7 +978,7 @@ export default function FixedBillsPage() {
                       className={clsx(
                         'inline-flex w-full items-center justify-center gap-2 rounded-full px-3 py-2 text-xs font-semibold border md:w-auto md:py-1 disabled:cursor-not-allowed disabled:opacity-50',
                         paid
-                          ? 'border-emerald-300 text-white bg-emerald-600 hover:bg-emerald-700 dark:border-emerald-400/30'
+                          ? 'border-[#3eaf66] bg-[#3eaf66] text-white shadow-[0_14px_30px_-18px_rgba(62,175,102,0.95)] hover:brightness-95 dark:border-[#3eaf66]'
                           : 'border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-white/5'
                       )}
                     >

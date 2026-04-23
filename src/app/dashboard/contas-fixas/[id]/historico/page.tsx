@@ -20,6 +20,7 @@ import type { FixedAccountPayment } from '@/services/fixedAccounts'
 import { formatCurrency } from '@/utils/formatter'
 import { useLocale, useTranslations } from 'next-intl'
 import { useUserSession } from '@/stores/useUserSession'
+import type { TooltipProps } from 'recharts'
 
 function toBRL(value: number) {
   return formatCurrency(value || 0)
@@ -61,6 +62,14 @@ function formatMonthLabel(key: string, locale: string = 'pt-BR') {
   return dt.toLocaleDateString(locale, { month: 'short', year: '2-digit' })
 }
 
+function formatMonthLabelLong(key: string, locale: string = 'pt-BR') {
+  const [y, m] = key.split('-')
+  if (!y || !m) return key
+  const dt = new Date(Number(y), Number(m) - 1, 1)
+  const month = dt.toLocaleDateString(locale, { month: 'long' })
+  return `${month.charAt(0).toUpperCase()}${month.slice(1)} de ${y}`
+}
+
 function formatAxisCurrency(value: number, locale: string) {
   const amount = Number(value)
   if (!Number.isFinite(amount)) return ''
@@ -90,6 +99,38 @@ function buildMonthlySeries(payments: FixedAccountPayment[]) {
     .map(([month, total]) => ({ month, total }))
 }
 
+function CustomHistoryTooltip({
+  active,
+  payload,
+  label,
+  locale,
+  t,
+}: TooltipProps<number, string> & {
+  locale: string
+  t: (key: string, values?: Record<string, string | number | Date>) => string
+}) {
+  if (!active || !payload?.length || !label) return null
+
+  const total = Number(payload[0]?.value ?? 0)
+
+  return (
+    <div className="min-w-[220px] rounded-xl border border-slate-200 bg-white/98 px-4 py-3 shadow-[0_18px_40px_-24px_rgba(15,23,42,0.35)] backdrop-blur-sm">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+        {t('chart.tooltipCompetence')}
+      </div>
+      <div className="mt-1 text-sm font-semibold text-slate-800">
+        {formatMonthLabelLong(String(label), locale)}
+      </div>
+      <div className="mt-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+        {t('chart.tooltipTotal')}
+      </div>
+      <div className="mt-1 text-base font-semibold text-[#3eaf66]">
+        {formatCurrency(total)}
+      </div>
+    </div>
+  )
+}
+
 export default function FixedAccountHistoryPage() {
   const t = useTranslations('fixedAccountHistoryPage')
   const locale = useLocale()
@@ -114,7 +155,7 @@ export default function FixedAccountHistoryPage() {
         newTransation={false}
       />
 
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm flex flex-col gap-4">
+      <div className="-mt-3 rounded-xl border border-gray-200 bg-white p-6 shadow-sm flex flex-col gap-4">
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-[#333C4D]">{fixedAccount?.name ?? t('fixedAccount')}</h2>
@@ -177,9 +218,12 @@ export default function FixedAccountHistoryPage() {
                       tickFormatter={(value) => formatAxisCurrency(Number(value), locale)}
                     />
                     <Tooltip
-                      formatter={(value: number) => formatCurrency(Number(value))}
-                      labelFormatter={(label) =>
-                        t('chart.competenceLabel', { month: formatMonthLabel(String(label), locale) })
+                      cursor={{ stroke: '#CBD5E1', strokeDasharray: '4 4' }}
+                      content={
+                        <CustomHistoryTooltip
+                          locale={locale}
+                          t={t}
+                        />
                       }
                     />
                     <Line

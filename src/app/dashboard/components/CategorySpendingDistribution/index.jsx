@@ -69,7 +69,8 @@ const CustomRect = (props) => {
           dominantBaseline="middle"
           fill="#fff"
           fontSize={width >= 140 ? 13 : 11}
-          fontWeight={600}
+          fontWeight={500}
+          style={{ textRendering: 'geometricPrecision' }}
           pointerEvents="none"
         >
           {truncateLabel(name, labelMaxChars)}

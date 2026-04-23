@@ -69,7 +69,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     dashboard: {
       title: 'Seu panorama financeiro',
       subtitle:
-        'Bem-vindo ao seu painel personalizado! Aqui você pode ver tudo relacionado ao seu orçamento nos {period}. Organizei tudo do jeito que você pediu!',
+        'Bem-vindo ao seu painel personalizado. Aqui você pode ver tudo relacionado ao seu orçamento nos {period}.',
       guideButton: 'Ver guia do dashboard',
       closeOnboardingAria: 'Fechar onboarding',
       closeGuideAria: 'Fechar guia',
@@ -238,7 +238,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     transactions: {
       title: 'Suas movimentações',
       subtitle:
-        'O que entrou e o que saiu da sua conta corrente, organizado conforme você preencheu no WhatsApp.',
+        'O que entrou e o que saiu da sua conta, atualizado sempre que você adicionar uma nova transação.',
       errorLoading: 'Erro ao carregar transacoes.',
       guideButton: 'Ver guia de transacoes',
       readOnlyBanner:
@@ -380,9 +380,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     fixedAccounts: {
       pageTitle: 'As contas do seu mês',
       pageSubtitle:
-        'Aqui você pode cadastrar e acompanhar a evolução dos seus gastos fixos recorrentes. Fique de olho no que já foi pago, no que está pendente em cada competência, e deixa comigo que eu te notifico quando estiver atrasado.',
+        'Aqui você cuida dos seus boletos.\nCadastre e acompanhe a evolução das suas contas de água, luz, telefone, internet e qualquer outra.',
       pageHelper:
-        'Cadastre nesta tela as suas contas de luz, água, gás, telefone, internet e afins, com as datas de vencimento para cada competência.',
+        'Cadastre nesta tela as suas contas com as datas de vencimento para cada competência.',
       newButton: 'Nova conta fixa',
       guideButton: 'Ver guia de contas fixas',
       summary: {
@@ -442,14 +442,15 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         category: 'Categoria',
         categoryPlaceholder: 'Selecione uma categoria',
         initialCompetenceMonth: 'Mes de competencia inicial',
-        linkedFrom: 'Esta conta sera vinculada a partir de {month}.',
+        linkedFrom:
+          'Esta conta sera vinculada a partir de {month}, e se repetira todo mes daqui pra frente no valor aproximado e data de vencimento estipulados abaixo.',
         amount: 'Valor aproximado',
         firstDueDate: 'Primeiro vencimento',
         observation: 'Observacao',
         optional: 'Opcional',
         invalidDate: 'Informe uma data valida.',
         footnote:
-          '* Contas fixas representam obrigacoes recorrentes. Marcar pagamento e opcional.',
+          '* As contas fixas representam obrigacoes recorrentes. Nao se esqueca de atualizar o painel sempre que efetuar o pagamento. Ao confirmar o pagamento, voce podera informar o valor exato da conta para acompanhar sua evolucao com mais detalhes.',
         saving: 'Salvando...',
         saveChanges: 'Salvar alteracoes',
         add: 'Adicionar conta fixa',
@@ -481,13 +482,16 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           'Acompanhe um resumo das suas contas fixas no mês. As opções permitem alterar o mês de observação, e filtrar por status para focar no que importa.',
         listTitle: 'Lista de contas',
         listDescription:
-          'Cada card mostra o status da conta fixa vigente e permite editar, remover, ou marcar pagamento. Além disso, se você clicar no card, ele te leva ao histórico de pagamento - te permitindo acompanhar a evolução de cada competência.',
+          'Cada card mostra o status por conta, e permite editar, remover, ou marcar como pago.',
+        cardTitle: 'Detalhe da conta',
+        cardDescription:
+          'Se você clicar no card, ele te leva ao histórico de pagamento - te permitindo acompanhar a evolução mensal de cada conta.',
       },
     },
     reports: {
       page: {
         title: 'Leitura da sua vida financeira',
-        subtitle: 'Entenda sua saúde financeira, acompanhe a evolução do ano e identifique os próximos ajustes.',
+        subtitle: 'Acompanhe a sua evolução, receba dicas e veja um resumo do jeito que você lida com o dinheiro.',
         year: 'Ano',
         recalc: 'Recalcular relatorio',
         recalculating: 'Recalculando...',
@@ -612,7 +616,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         title: 'As suas categorias',
         subtitle:
           'Veja todas as categorias de receitas e despesas cadastradas. Edite como quiser e organize suas prioridades movendo os cards.',
-        tip: 'Arraste categorias entre colunas e reordene dentro da mesma coluna.',
+        tip: 'Organize as suas categorias de despesas ou receitas. Arraste as categorias entre colunas, e reordene por prioridade dentro da mesma coluna.',
         createButton: 'Criar nova categoria',
         saving: 'Salvando...',
         cancel: 'Cancelar',
@@ -1160,7 +1164,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     },
     fixedAccountHistoryPage: {
       title: 'Historico de pagamentos',
-      subtitle: 'Acompanhe os pagamentos desta conta fixa.',
+      subtitle: 'Acompanhe os pagamentos desta conta mês a mês.',
       fixedAccount: 'Conta fixa',
       categoryLabel: 'Categoria: {category}',
       uncategorized: 'Sem categoria',
@@ -1169,9 +1173,11 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       loadError: 'Erro ao carregar historico.',
       empty: 'Nenhum pagamento registrado.',
       chart: {
-        title: 'Historico de gastos (por competencia)',
+        title: 'Historico de gastos por mês',
         noData: 'Sem dados para gerar o grafico.',
         competenceLabel: 'Competencia: {month}',
+        tooltipCompetence: 'Competência',
+        tooltipTotal: 'Total',
       },
       paidAt: 'Pago em:',
       value: 'Valor:',
@@ -1568,7 +1574,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       header: {
         title: 'A sua situação daqui pra frente',
         subtitle:
-          'Aqui você acompanha receitas e despesas futuras. Controle seus parcelamentos, gastos no crédito, fechamentos de fatura e pagamentos por cartão, e organize a sua vida para não se enrolar no futuro!',
+          'Aqui você acompanha ganhos e despesas futuras.\nControle seus parcelamentos, cartões, e organize a sua vida para não se enrolar.',
         newFutureTransaction: 'Transação Futura',
       },
       filters: {
@@ -2072,7 +2078,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     coupleAccountPage: {
       title: 'Conta de casal',
       subtitle:
-        'Conecte seu parceiro para acompanhar a vida financeira do casal no mesmo espaço.',
+        'Conecte seu parceiro(a) para transformar a sua conta em conjunta, e unificar os gastos e receitas do casal.',
       refresh: 'Atualizar',
       refreshing: 'Atualizando...',
       retry: 'Tentar novamente',
@@ -2124,7 +2130,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       upgradeCard: {
         title: 'Plano casal',
         description:
-          'Ative ou troque para o plano compativel com a conta de casal.',
+          'Ative o Plano Casal, ou mude o seu plano atual para unificar os orcamentos.',
         loadingPlans: 'Carregando plano disponivel...',
         noPlanTitle: 'Plano casal indisponivel',
         noPlanDescription:
@@ -2145,7 +2151,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         partnerNoteDescription:
           'Peca para o titular da conta de casal fazer a contratacao ou troca do plano.',
         prorationNote:
-          'A mudanca de plano pode gerar ajuste proporcional na proxima cobranca.',
+          'A mudanca para o plano casal pode gerar ajuste proporcional na cobranca imediata, e o valor padrao do plano sera aplicado no proximo vencimento.',
         processing: 'Processando...',
         actions: {
           changePlan: 'Trocar para plano casal',
@@ -2166,9 +2172,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           ownerMissing: 'Titular nao identificado',
           notLinkedYet: 'Ainda nao vinculado',
         },
-        ownerNoteTitle: 'Voce administra a conta',
+        ownerNoteTitle: 'Voce e o administrador da conta!',
         ownerNoteDescription:
-          'Voce pode convidar, copiar link e remover o parceiro quando necessario.',
+          'Voce pode convidar e remover pessoas da sua conta de casal quando quiser. Para convidar, basta gerar um link.',
         partnerNoteTitle: 'Voce participa da conta',
         partnerNoteDescription:
           'Voce acompanha a conta compartilhada e acessa as informacoes ja conectadas.',
@@ -2190,15 +2196,15 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           remove: 'Remover parceiro',
           removing: 'Removendo...',
         },
-        emptyTitle: 'Nenhum parceiro conectado',
+        emptyTitle: 'Ninguem esta conectado.',
         emptyOwnerDescription:
-          'Gere um convite para conectar seu parceiro a conta de casal.',
+          'Aguarde a conexao.',
         emptyPartnerDescription:
-          'Aguarde o titular concluir a conexao com o parceiro.',
+          'Aguarde a conexao.',
       },
       invitesCard: {
         title: 'Convites',
-        ownerDescription: 'Gere e copie links para convidar seu parceiro.',
+        ownerDescription: 'Convide seu parceiro(a) atraves do link.',
         partnerDescription:
           'Acompanhe o status dos convites gerados pelo titular.',
         actions: {
@@ -5137,14 +5143,15 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         category: 'Categoria',
         categoryPlaceholder: 'Selecciona una categoria',
         initialCompetenceMonth: 'Mes de competencia inicial',
-        linkedFrom: 'Esta cuenta se vinculara desde {month}.',
+        linkedFrom:
+          'Esta cuenta se vinculara desde {month}, y se repetira cada mes de aqui en adelante con el valor aproximado y la fecha de vencimiento indicados abajo.',
         amount: 'Valor aproximado',
         firstDueDate: 'Primer vencimiento',
         observation: 'Observacion',
         optional: 'Opcional',
         invalidDate: 'Ingresa una fecha valida.',
         footnote:
-          '* Las cuentas fijas representan obligaciones recurrentes. Marcar pago es opcional.',
+          '* Las cuentas fijas representan obligaciones recurrentes. No olvides actualizar el panel cada vez que realices el pago. Al confirmarlo, podras informar el valor exacto de la cuenta para seguir su evolucion con mas detalle.',
         saving: 'Guardando...',
         saveChanges: 'Guardar cambios',
         add: 'Agregar cuenta fija',

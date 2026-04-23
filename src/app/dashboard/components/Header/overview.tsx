@@ -320,7 +320,7 @@ export default function Header({
       </div>
 
       <div className="flex flex-col gap-2 pt-2 md:pt-0">
-        <p className="text-sm font-light">{subtitle}</p>
+        <p className="whitespace-pre-line text-sm font-light text-slate-500">{subtitle}</p>
         {canSelectScope && (
           <span className="inline-flex w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
             {scope === 'me' ? tScope('badge.me') : tScope('badge.house')}
