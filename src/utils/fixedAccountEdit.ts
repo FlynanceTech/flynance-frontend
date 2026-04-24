@@ -81,7 +81,7 @@ export function buildFixedAccountEditPayload(
   if (!startDate) return null
 
   const dueDate = input.dueDateInput
-    ? toISODateOnlyFromDatePicker(input.dueDateInput)
+    ? toISODateOnlyFromDatePicker(input.dueDateInput) ?? undefined
     : undefined
   if (input.dueDateInput && !dueDate) return null
 
