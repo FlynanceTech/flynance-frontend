@@ -109,6 +109,19 @@ function extractUserIdentityFromPayload(payload: unknown): BillingCheckoutIdenti
   }
 }
 
+function extractLeadIdentityFromPayload(payload: unknown): BillingCheckoutIdentity {
+  const data = (payload ?? {}) as Record<string, any>
+  const lead = data?.lead
+  if (lead && typeof lead === 'object') {
+    return {
+      userId: null,
+      email: typeof lead.email === 'string' ? lead.email : null,
+      phone: typeof lead.phone === 'string' ? lead.phone : null,
+    }
+  }
+  return { userId: null, email: null, phone: null }
+}
+
 export function persistBillingCheckoutSession(
   session: BillingCheckoutIdentity & { token: string }
 ): void {
@@ -190,10 +203,12 @@ export function captureBillingCheckoutSessionFromPayload(payload: unknown): stri
   const billingCheckoutToken = extractBillingCheckoutToken(payload)
   if (!billingCheckoutToken) return null
 
-  persistBillingCheckoutSession({
-    token: billingCheckoutToken,
-    ...extractUserIdentityFromPayload(payload),
-  })
+  let identity = extractUserIdentityFromPayload(payload)
+  if (!identity.userId && !identity.email && !identity.phone) {
+    identity = extractLeadIdentityFromPayload(payload)
+  }
+
+  persistBillingCheckoutSession({ token: billingCheckoutToken, ...identity })
 
   return billingCheckoutToken
 }

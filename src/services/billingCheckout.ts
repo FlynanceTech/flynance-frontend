@@ -10,7 +10,7 @@ const billingCheckoutApi = axios.create({
 })
 
 export type BillingCheckoutSubscriptionPayload = {
-  userId: string
+  userId?: string
   planId: string
   paymentMethodId: string
   promoCode?: string
@@ -75,17 +75,17 @@ export function clearBillingCheckoutOnInvalidToken(error: unknown): boolean {
   return true
 }
 
-export async function createBillingCheckoutSetupIntent(userId: string): Promise<{
+export async function createBillingCheckoutSetupIntent(userId?: string): Promise<{
   clientSecret: string
   customerId?: string | null
 }> {
   const billingCheckoutToken = requireBillingCheckoutToken()
+  const body: Record<string, unknown> = { billingCheckoutToken }
+  if (userId) body.userId = userId
+
   const response = await billingCheckoutApi.post(
     '/billing/setup-intent',
-    {
-      userId,
-      billingCheckoutToken,
-    },
+    body,
     {
       headers: getBillingCheckoutHeaders(billingCheckoutToken),
     }

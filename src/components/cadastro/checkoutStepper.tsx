@@ -22,6 +22,7 @@ import {
   createBillingCheckoutSubscription,
   isBillingCheckoutTokenError,
 } from "@/services/billingCheckout";
+import { captureLead, updateLeadBilling } from "@/services/leads";
 import { useSignupStore } from "@/stores/useSignupStore";
 import { useUserSession } from "@/stores/useUserSession";
 
@@ -685,6 +686,21 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
   }
 
   // ---------------------------
+  // 5b) Captura/atualiza lead (fluxo sem JWT)
+  // ---------------------------
+  async function captureOrUpdateLead(): Promise<void> {
+    const { origin, originRef } = readOriginAttribution();
+    await captureLead({
+      name: formSnapshot.name,
+      email: formSnapshot.emailNorm,
+      phone: formSnapshot.phoneE164,
+      origin,
+      originRef: originRef || undefined,
+    });
+    setLeadCreated(true);
+  }
+
+  // ---------------------------
   // 6) Auto-lead
   // ---------------------------
   useEffect(() => {
@@ -710,9 +726,8 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
     lastLeadKeyRef.current = key;
 
     const t = setTimeout(() => {
-      resolveUserAndSync()
-        .then(() => setLeadCreated(true))
-        .catch((err) => console.error("Auto-lead resolve error:", err));
+      captureOrUpdateLead()
+        .catch((err) => console.error("Auto-lead error:", err));
     }, 400);
 
     return () => clearTimeout(t);
@@ -803,7 +818,7 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
   // ---------------------------
   // Stripe helpers
   // ---------------------------
-  async function createSetupIntent(userId: string): Promise<{ clientSecret: string; customerId?: string | null }> {
+  async function createSetupIntent(userId?: string): Promise<{ clientSecret: string; customerId?: string | null }> {
     return createBillingCheckoutSetupIntent(userId); /*
 
 
@@ -885,12 +900,39 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
         throw new Error("Preencha corretamente os dados do cartão.");
       }
 
-      let ensuredUser = await resolveUserAndSync();
+      // Determina caminho: usuário autenticado (tem JWT) ou novo usuário (fluxo lead)
+      const sessionUser = doesCheckoutFormMatchUser(user?.userData?.user, {
+        emailNorm: formSnapshot.emailNorm,
+        phoneDigitsComparable: formSnapshot.phoneDigitsComparable,
+      })
+        ? user?.userData?.user
+        : null;
 
-      // 1) SetupIntent (backend cria/garante customer para o userId informado)
+      let activeUserId: string | undefined;
+
+      if (sessionUser?.id) {
+        // Usuário já autenticado — resolve/sync via PUT /user/:id (tem JWT)
+        let ensuredUser = await resolveUserAndSync();
+        activeUserId = ensuredUser.id;
+      } else {
+        // Novo usuário — captura lead e envia billing sem precisar de userId
+        await captureOrUpdateLead();
+        await updateLeadBilling({
+          cpfCnpj: formSnapshot.cpfDigits || undefined,
+          postalCode: form.postalCode || undefined,
+          address: form.address || undefined,
+          addressNumber: form.addressNumber || undefined,
+          addressComplement: form.addressComplement || undefined,
+          district: form.district || undefined,
+          city: form.city || undefined,
+          state: form.state || undefined,
+        });
+      }
+
+      // 1) SetupIntent — token identifica lead ou user
       let clientSecret: string;
       try {
-        ({ clientSecret } = await createSetupIntent(ensuredUser.id));
+        ({ clientSecret } = await createSetupIntent(activeUserId));
       } catch (err) {
         if (isBillingCheckoutTokenError(err)) {
           redirectToCheckoutValidation(
@@ -899,19 +941,22 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
           return;
         }
 
-        if (!isUserNotFoundError(err)) throw err;
-
-        ensuredUser = await resolveUserAndSync();
-        try {
-          ({ clientSecret } = await createSetupIntent(ensuredUser.id));
-        } catch (retryErr) {
-          if (isBillingCheckoutTokenError(retryErr)) {
-            redirectToCheckoutValidation(
-              "Sua validacao de checkout expirou. Faca login novamente para continuar."
-            );
-            return;
+        if (activeUserId && isUserNotFoundError(err)) {
+          const ensuredUser = await resolveUserAndSync();
+          activeUserId = ensuredUser.id;
+          try {
+            ({ clientSecret } = await createSetupIntent(activeUserId));
+          } catch (retryErr) {
+            if (isBillingCheckoutTokenError(retryErr)) {
+              redirectToCheckoutValidation(
+                "Sua validacao de checkout expirou. Faca login novamente para continuar."
+              );
+              return;
+            }
+            throw retryErr;
           }
-          throw retryErr;
+        } else {
+          throw err;
         }
       }
 
@@ -922,15 +967,13 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
       const promoCode = isAnnual ? (form.promoCode?.trim() || ANNUAL_COUPON_CODE) : undefined;
 
       const payload: any = {
-        userId: ensuredUser.id,
         planId: plan.id,
         paymentMethodId,
         promoCode,
       };
 
-      if (isAnnual) {
-        payload.annualBilling = annualBilling; // "UPFRONT" | "INSTALLMENTS"
-      }
+      if (activeUserId) payload.userId = activeUserId;
+      if (isAnnual) payload.annualBilling = annualBilling;
 
       try {
         await createBillingCheckoutSubscription(payload);
@@ -942,20 +985,22 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
           return;
         }
 
-        if (!isUserNotFoundError(err)) throw err;
-
-        ensuredUser = await resolveUserAndSync();
-        payload.userId = ensuredUser.id;
-        try {
-          await createBillingCheckoutSubscription(payload);
-        } catch (retryErr) {
-          if (isBillingCheckoutTokenError(retryErr)) {
-            redirectToCheckoutValidation(
-              "Sua validacao de checkout expirou. Faca login novamente para continuar."
-            );
-            return;
+        if (activeUserId && isUserNotFoundError(err)) {
+          const ensuredUser = await resolveUserAndSync();
+          payload.userId = ensuredUser.id;
+          try {
+            await createBillingCheckoutSubscription(payload);
+          } catch (retryErr) {
+            if (isBillingCheckoutTokenError(retryErr)) {
+              redirectToCheckoutValidation(
+                "Sua validacao de checkout expirou. Faca login novamente para continuar."
+              );
+              return;
+            }
+            throw retryErr;
           }
-          throw retryErr;
+        } else {
+          throw err;
         }
       }
 
@@ -1282,7 +1327,7 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
 
                         {isAnnual && effectivePromo === ANNUAL_COUPON_CODE && (
                           <p className="text-xs text-emerald-700">
-                            Cupom aplicado: <strong>{ANNUAL_COUPON_CODE}</strong> (30 dias grÃ¡tis)
+                            Cupom aplicado: <strong>{ANNUAL_COUPON_CODE}</strong> (30 dias grátis)
                           </p>
                         )}
                       </div>

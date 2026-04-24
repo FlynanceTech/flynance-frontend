@@ -5,7 +5,7 @@ import { User, Smartphone, Mail } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { clearBillingCheckoutSession, normalizeAuthEmail } from '@/lib/authSession'
-import { useUsers } from '@/hooks/query/useUsers'
+import { captureLead } from '@/services/leads'
 import { readOriginAttribution } from '@/utils/originAttribution'
 import { useSignupStore } from '@/stores/useSignupStore'
 
@@ -47,7 +47,6 @@ export default function SignupStepper() {
   const searchParams = useSearchParams()
   const plano = searchParams.get('plano')
   const { setData } = useSignupStore()
-  const { createMutation } = useUsers()
 
   const { register, watch, setValue } = useForm({ defaultValues: initialForm })
   const form = watch()
@@ -63,12 +62,12 @@ export default function SignupStepper() {
         break
       case 'phone': {
         const digits = value.replace(/\D/g, '')
-        if (digits.length !== 11) return 'Digite um nÃºmero de celular vÃ¡lido com DDD.'
+        if (digits.length !== 11) return 'Digite um número de celular válido com DDD.'
         break
       }
       case 'email': {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-        if (!emailRegex.test(value)) return 'Informe um e-mail vÃ¡lido.'
+        if (!emailRegex.test(value)) return 'Informe um e-mail válido.'
         break
       }
     }
@@ -93,12 +92,12 @@ export default function SignupStepper() {
     const normalizedConfirmEmail = normalizeAuthEmail(form.confirmEmail)
 
     if (normalizedConfirmEmail !== normalizedEmail) {
-      setError('Os e-mails nÃ£o coincidem.')
+      setError('Os e-mails não coincidem.')
       return
     }
 
     if (!acceptTerms) {
-      setError('VocÃª precisa aceitar os termos de uso para continuar.')
+      setError('Você precisa aceitar os termos de uso para continuar.')
       return
     }
 
@@ -117,12 +116,12 @@ export default function SignupStepper() {
         originRef: originRef || undefined,
       }
 
-      const created = await createMutation.mutateAsync(body)
+      const result = await captureLead(body)
 
       setSuccessMessage('Tudo certo! Agora vamos conferir os planos...')
       setData({
         ...body,
-        billingCheckoutToken: created.billingCheckoutToken ?? '',
+        billingCheckoutToken: result.billingCheckoutToken,
       })
 
       setTimeout(() => {
@@ -150,7 +149,7 @@ export default function SignupStepper() {
         <div className='max-w-[448px] w-full'>
           <h2 className='text-lg font-normal mb-4 text-left text-gray-700'>
             {step === 0 && 'Como podemos te chamar?'}
-            {step === 1 && 'Qual seu nÃºmero de WhatsApp?'}
+            {step === 1 && 'Qual seu número de WhatsApp?'}
             {step === 2 && 'Qual seu e-mail?'}
           </h2>
         </div>
@@ -200,7 +199,7 @@ export default function SignupStepper() {
                   </a>{' '}
                   e{' '}
                   <a href='/privacidade' className='text-primary underline' target='_blank'>
-                    polÃ­tica de privacidade
+                    política de privacidade
                   </a>
                   .
                 </label>
