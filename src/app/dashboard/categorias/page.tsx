@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from '@headlessui/react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -43,6 +44,7 @@ import {
 
 import Header from '../components/Header'
 import { ActionTriggerButton } from '../components/Buttons'
+import CategoryColorPicker from '../components/Categories/CategoryColorPicker'
 import { Skeleton } from '../components/skeleton'
 import DeleteConfirmModal from '../components/DeleteConfirmModal'
 import IconSelector from '../components/IconSelector'
@@ -513,8 +515,22 @@ type CardLabels = {
   noKeywords: string
   editAria: string
   deleteAria: string
+  colorPickerAria: string
+  colorPickerTooltip: string
   defaultLockedTitle: string
   keywordCount: (count: number) => string
+}
+
+function updateCategoryColorInBoard(board: BoardState, categoryId: string, color: string): BoardState {
+  const next = createEmptyBoardState()
+
+  for (const classification of CLASSIFICATION_ORDER) {
+    next[classification] = board[classification].map((item) =>
+      item.id === categoryId ? { ...item, color } : item
+    )
+  }
+
+  return next
 }
 
 function CategoryCard({
@@ -522,19 +538,23 @@ function CategoryCard({
   labels,
   onEdit,
   onDelete,
+  onColorChange,
   draggable = false,
   dragHandleProps,
   dragging = false,
   canManage = false,
+  colorSaving = false,
 }: {
   item: CategoryClassificationItem
   labels: CardLabels
   onEdit?: (category: CategoryClassificationItem) => void
   onDelete?: (category: CategoryClassificationItem) => void
+  onColorChange?: (category: CategoryClassificationItem, color: string) => void | Promise<void>
   draggable?: boolean
   dragHandleProps?: Record<string, unknown>
   dragging?: boolean
   canManage?: boolean
+  colorSaving?: boolean
 }) {
   const Icon = IconMap[item.icon] ?? Tag
   const showActions = Boolean(onEdit || onDelete)
@@ -571,9 +591,14 @@ function CategoryCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
-              <span
-                className="h-3 w-3 rounded-full border border-slate-300"
-                style={{ backgroundColor: item.color || '#CBD5E1' }}
+              <CategoryColorPicker
+                color={item.color || '#CBD5E1'}
+                disabled={!canManage || !onColorChange}
+                isSaving={colorSaving}
+                ariaLabel={labels.colorPickerAria}
+                tooltip={labels.colorPickerTooltip}
+                disabledTooltip={labels.defaultLockedTitle}
+                onChange={(nextColor) => onColorChange?.(item, nextColor)}
               />
               <Icon size={14} className="text-slate-500" />
               <h4 className="truncate text-sm font-semibold text-slate-800">{item.name}</h4>
@@ -666,17 +691,21 @@ function SortableExpenseCard({
   labels,
   onEdit,
   onDelete,
+  onColorChange,
   disabled,
   canDrag = true,
   canManage = false,
+  colorSaving = false,
 }: {
   item: CategoryClassificationItem
   labels: CardLabels
   onEdit: (category: CategoryClassificationItem) => void
   onDelete: (category: CategoryClassificationItem) => void
+  onColorChange: (category: CategoryClassificationItem, color: string) => void | Promise<void>
   disabled?: boolean
   canDrag?: boolean
   canManage?: boolean
+  colorSaving?: boolean
 }) {
   const { setNodeRef, attributes, listeners, transform, transition, isDragging } =
     useSortable({
@@ -696,9 +725,11 @@ function SortableExpenseCard({
         labels={labels}
         onEdit={onEdit}
         onDelete={onDelete}
+        onColorChange={onColorChange}
         draggable={canDrag}
         dragging={isDragging}
         canManage={canManage}
+        colorSaving={colorSaving}
         dragHandleProps={{ ...attributes, ...listeners }}
       />
     </div>
@@ -713,12 +744,14 @@ function ExpenseClassificationColumn({
   labels,
   onEdit,
   onDelete,
+  onColorChange,
   items,
   activeItemType,
   disabled,
   emptyPlaceholder,
   canManageItem,
   canDragItem,
+  colorSavingIds,
 }: {
   classification: ExpenseClassification
   title: string
@@ -727,12 +760,14 @@ function ExpenseClassificationColumn({
   labels: CardLabels
   onEdit: (category: CategoryClassificationItem) => void
   onDelete: (category: CategoryClassificationItem) => void
+  onColorChange: (category: CategoryClassificationItem, color: string) => void | Promise<void>
   items: CategoryClassificationItem[]
   activeItemType: string | null
   disabled: boolean
   emptyPlaceholder: string
   canManageItem: (item: CategoryClassificationItem) => boolean
   canDragItem: (item: CategoryClassificationItem) => boolean
+  colorSavingIds: ReadonlySet<string>
 }) {
   const droppable = useDroppable({
     id: toColumnId(classification),
@@ -787,9 +822,11 @@ function ExpenseClassificationColumn({
               labels={labels}
               onEdit={onEdit}
               onDelete={onDelete}
+              onColorChange={onColorChange}
               disabled={disabled || !canDragItem(item)}
               canDrag={canDragItem(item)}
               canManage={canManageItem(item)}
+              colorSaving={colorSavingIds.has(item.id)}
             />
           ))}
           {items.length === 0 ? (
@@ -810,8 +847,10 @@ function IncomeSection({
   labels,
   onEdit,
   onDelete,
+  onColorChange,
   emptyText,
   canManageItem,
+  colorSavingIds,
 }: {
   title: string
   subtitle: string
@@ -819,8 +858,10 @@ function IncomeSection({
   labels: CardLabels
   onEdit: (category: CategoryClassificationItem) => void
   onDelete: (category: CategoryClassificationItem) => void
+  onColorChange: (category: CategoryClassificationItem, color: string) => void | Promise<void>
   emptyText: string
   canManageItem: (item: CategoryClassificationItem) => boolean
+  colorSavingIds: ReadonlySet<string>
 }) {
   return (
     <section className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
@@ -840,7 +881,9 @@ function IncomeSection({
             labels={labels}
             onEdit={onEdit}
             onDelete={onDelete}
+            onColorChange={onColorChange}
             canManage={canManageItem(item)}
+            colorSaving={colorSavingIds.has(item.id)}
           />
         ))}
 
@@ -860,6 +903,7 @@ export default function CategoriasPage() {
   const tList = useTranslations('categoryList')
   const onboardingSteps = useMemo(() => createCategoriesOnboardingSteps(t), [t])
   const currentUserId = useUserSession((state) => state.user?.userData?.user?.id ?? '')
+  const queryClient = useQueryClient()
   const {
     categoriesQuery: {
       data: categories = [],
@@ -890,6 +934,7 @@ export default function CategoriasPage() {
   const [icon, setIcon] = useState<IconName>('Wallet')
   const [boardSourceCategoryIds, setBoardSourceCategoryIds] = useState<string[]>([])
   const [sessionSkippedCategoryIds, setSessionSkippedCategoryIds] = useState<string[]>([])
+  const [colorSavingIds, setColorSavingIds] = useState<Set<string>>(new Set())
 
   const drawerSchema = useMemo(
     () =>
@@ -972,6 +1017,8 @@ export default function CategoriasPage() {
       noKeywords: t('classification.noKeywords'),
       editAria: tList('editAria'),
       deleteAria: tList('deleteAria'),
+      colorPickerAria: tList('colorPickerAria'),
+      colorPickerTooltip: tList('colorPickerTooltip'),
       defaultLockedTitle: t('classification.defaultActionsLocked'),
       keywordCount: (count: number) => t('classification.keywordsCount', { count }),
     }),
@@ -1122,6 +1169,62 @@ export default function CategoriasPage() {
       return
     }
     setCategoryToDelete(category)
+  }
+
+  const handleInlineColorChange = async (
+    category: CategoryClassificationItem | CategoryResponse,
+    nextColor: string
+  ) => {
+    if (!canManageCategory(category)) {
+      toast.error(t('classification.defaultActionsLocked'))
+      return
+    }
+
+    const normalizedColor = nextColor.trim()
+    if (!normalizedColor || normalizedColor === category.color) return
+
+    const previousBoard = board
+    const previousEditingCategory = editingCategory
+
+    setColorSavingIds((current) => new Set(current).add(category.id))
+    setBoard((current) => updateCategoryColorInBoard(current, category.id, normalizedColor))
+
+    if (editingCategory?.id === category.id) {
+      setEditingCategory({ ...editingCategory, color: normalizedColor })
+      setColor(normalizedColor)
+    }
+
+    try {
+      const updated = await updateMutation.mutateAsync({
+        id: category.id,
+        data: {
+          name: category.name,
+          color: normalizedColor,
+          icon: category.icon as IconName,
+          keywords: (category.keywords ?? []).map((keyword) => keyword.name),
+          type: category.type,
+        },
+      })
+
+      queryClient.setQueriesData<CategoryResponse[]>({ queryKey: ['categories'] }, (current) =>
+        Array.isArray(current)
+          ? current.map((item) => (item.id === category.id ? { ...item, color: updated.color } : item))
+          : current
+      )
+    } catch (e) {
+      setBoard(previousBoard)
+      if (previousEditingCategory?.id === category.id) {
+        setEditingCategory(previousEditingCategory)
+        setColor(previousEditingCategory.color || '#22C55E')
+      }
+      toast.error(getErrorMessage(e, t('classification.updateError')))
+    } finally {
+      setColorSavingIds((current) => {
+        const next = new Set(current)
+        next.delete(category.id)
+        return next
+      })
+    }
   }
 
   const handleConfirmDeleteCategory = async () => {
@@ -1433,12 +1536,14 @@ export default function CategoriasPage() {
                           labels={cardLabels}
                           onEdit={handleEditCategory}
                           onDelete={handleAskDeleteCategory}
+                          onColorChange={handleInlineColorChange}
                           items={expenseItemsByColumn[classification]}
                           activeItemType={activeItem?.type ?? null}
                           disabled={classificationSaving}
                           emptyPlaceholder={t('classification.emptyPlaceholder')}
                           canManageItem={canManageCategory}
                           canDragItem={canDragCategory}
+                          colorSavingIds={colorSavingIds}
                         />
                       </div>
                     ))}
@@ -1490,8 +1595,10 @@ export default function CategoriasPage() {
                   labels={cardLabels}
                   onEdit={handleEditCategory}
                   onDelete={handleAskDeleteCategory}
+                  onColorChange={handleInlineColorChange}
                   emptyText={t('classification.emptyIncome')}
                   canManageItem={canManageCategory}
+                  colorSavingIds={colorSavingIds}
                 />
               </div>
             ) : null}

@@ -33,6 +33,7 @@ interface HeaderProps {
   importLoading?: boolean
   rightContent?: React.ReactNode
   canWriteTransactions?: boolean
+  inlineFilterSlot?: React.ReactNode
 }
 
 type AnyDateFilter =
@@ -96,6 +97,7 @@ export default function Header({
   importLoading,
   rightContent,
   canWriteTransactions: canWriteTransactionsProp = true,
+  inlineFilterSlot,
 }: HeaderProps) {
   const tButtons = useTranslations('buttons')
   const tHeader = useTranslations('dashboardHeader')
@@ -330,6 +332,7 @@ export default function Header({
                             closeMenuOnSelect={false}
                             menuPortalTarget={null}
                           />
+                          {inlineFilterSlot}
                           <button
                             type="button"
                             onClick={() => {
@@ -378,6 +381,7 @@ export default function Header({
               <SearchBar />
               <QuickTypeFilter />
               <CategoriesSelectWithChips />
+              {inlineFilterSlot}
               <DateRangeSelect
                 value={datePickerValue as any}
                 onChange={handleDateChange as any}

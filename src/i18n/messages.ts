@@ -312,8 +312,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       },
       authorFilter: {
         label: 'Quem realizou',
-        helper: 'Filtre as transacoes por membro da conta de casal.',
-        all: 'Todos da house',
+        helper: 'Filtre as transacoes pelo membro da casa.',
+        all: 'Todos da casa',
         currentUser: 'Voce',
         unknownMember: 'Membro nao identificado',
       },
@@ -684,6 +684,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     categoryList: {
       editAria: 'Editar',
       deleteAria: 'Excluir',
+      colorPickerAria: 'Alterar cor da categoria',
+      colorPickerTooltip: 'Alterar cor',
       expenseType: 'Despesas',
       incomeType: 'Receitas',
       expenseTypeLower: 'despesas',
@@ -3035,6 +3037,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     categoryList: {
       editAria: 'Edit',
       deleteAria: 'Delete',
+      colorPickerAria: 'Change category color',
+      colorPickerTooltip: 'Change color',
       expenseType: 'Expenses',
       incomeType: 'Income',
       expenseTypeLower: 'expenses',
@@ -5382,6 +5386,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     categoryList: {
       editAria: 'Editar',
       deleteAria: 'Eliminar',
+      colorPickerAria: 'Cambiar color de la categoria',
+      colorPickerTooltip: 'Cambiar color',
       expenseType: 'Gastos',
       incomeType: 'Ingresos',
       expenseTypeLower: 'gastos',

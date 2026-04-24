@@ -12,6 +12,7 @@ import { formatCurrency } from '@/utils/formatter'
 interface Props {
   transactions: Transaction[]
   getActorLabel: (transaction: Transaction) => string
+  showActor?: boolean
   selectedIds: Set<string>
   onToggleSelectRow: (index: string) => void
   onEdit: (transaction: Transaction) => void
@@ -23,6 +24,7 @@ interface Props {
 export function TransactionCardList({
   transactions,
   getActorLabel,
+  showActor = true,
   selectedIds,
   onToggleSelectRow,
   onEdit,
@@ -111,9 +113,11 @@ export function TransactionCardList({
                   <span className="rounded-full border border-slate-200 bg-white px-2 py-1 text-slate-700">
                     {originLabel(item.origin)}
                   </span>
-                  <span className="rounded-full border border-slate-200 bg-white px-2 py-1 text-slate-700">
-                    {actorLabel}
-                  </span>
+                  {showActor && (
+                    <span className="rounded-full border border-slate-200 bg-white px-2 py-1 text-slate-700">
+                      {actorLabel}
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex justify-between gap-3">

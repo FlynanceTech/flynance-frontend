@@ -177,6 +177,8 @@ export default function DateRangeSelect({
 
   const baseButtonClass = `h-9 ${withDisplay ? 'px-4 py-2' : 'w-9 p-0'} flex  lg:max-w-44 items-center justify-center gap-2 rounded-full border border-[#E2E8F0] bg-white text-gray-500 text-sm font-medium hover:bg-gray-50 cursor-pointer`
   const buttonClass = className ? `${baseButtonClass} ${className}` : baseButtonClass
+  const applyButtonClass =
+    'rounded-full border border-blue-600 bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:border-blue-500 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-amber-200/20 dark:bg-amber-300 dark:text-slate-950 dark:shadow-[0_8px_24px_-12px_rgba(250,204,21,0.9)] dark:hover:border-amber-200/40 dark:hover:bg-amber-200'
 
   const futureToggle = onIncludeFutureChange ? (
     <label className="flex items-center gap-2 text-xs text-slate-600">
@@ -238,7 +240,7 @@ export default function DateRangeSelect({
                   type="button"
                   disabled={!rangeIsValid}
                   onClick={() => onChange({ mode: 'range', start: rangeDraft.start, end: rangeDraft.end })}
-                  className="text-xs px-4 py-2 rounded-full bg-primary hover:bg-primary/80 text-black font-semibold disabled:opacity-50"
+                  className={applyButtonClass}
                 >
                   {t('apply')}
                 </button>
@@ -287,7 +289,7 @@ export default function DateRangeSelect({
                   type="button"
                   disabled={!monthIsValid}
                   onClick={() => onChange({ mode: 'month', month: monthDraft.month, year: monthDraft.year })}
-                  className="text-xs px-4 py-2 rounded-full bg-primary hover:bg-primary/80 text-black font-semibold disabled:opacity-50"
+                  className={applyButtonClass}
                 >
                   {t('applyMonth')}
                 </button>
@@ -363,7 +365,7 @@ export default function DateRangeSelect({
               type="button"
               disabled={!rangeIsValid}
               onClick={() => onChange({ mode: 'range', start: rangeDraft.start, end: rangeDraft.end })}
-              className="text-xs px-4 py-2 rounded-full bg-primary hover:bg-primary/80 cursor-pointer text-white font-semibold disabled:opacity-50"
+              className={applyButtonClass}
             >
               {t('apply')}
             </MenuItem>
@@ -413,7 +415,7 @@ export default function DateRangeSelect({
               type="button"
               disabled={!monthIsValid}
               onClick={() => onChange({ mode: 'month', month: monthDraft.month, year: monthDraft.year })}
-              className="text-xs px-4 py-2 rounded-full bg-primary hover:bg-primary/80 cursor-pointer text-white font-semibold disabled:opacity-50"
+              className={applyButtonClass}
             >
               {t('applyMonth')}
             </MenuItem>

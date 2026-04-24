@@ -12,6 +12,7 @@ type SortDirection = 'asc' | 'desc'
 type Props = {
   transactions: Transaction[]
   getActorLabel: (transaction: Transaction) => string
+  showActor?: boolean
   selectedIds: Set<string>
   selectAll: boolean
   onToggleSelectAll: () => void
@@ -40,11 +41,10 @@ function SortIcon({ active, direction }: { active: boolean; direction: SortDirec
   return direction === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
 }
 
-const GRID_COLS = 'grid-cols-[40px_110px_minmax(220px,1fr)_170px_220px_110px_140px_92px]'
-
 export function TransactionTable({
   transactions,
   getActorLabel,
+  showActor = true,
   selectedIds,
   selectAll,
   onToggleSelectAll,
@@ -61,6 +61,9 @@ export function TransactionTable({
   const locale = useLocale()
   const hasData = transactions?.length > 0
   const rows = useMemo(() => transactions ?? [], [transactions])
+  const gridCols = showActor
+    ? 'grid-cols-[40px_110px_minmax(220px,1fr)_170px_220px_110px_140px_92px]'
+    : 'grid-cols-[40px_110px_minmax(280px,1fr)_220px_110px_140px_92px]'
 
   return (
     <div className="w-full hidden md:block">
@@ -70,7 +73,7 @@ export function TransactionTable({
           className={[
             'sticky top-0 z-10',
             'grid',
-            GRID_COLS,
+            gridCols,
             'items-center gap-0',
             'border-b border-gray-200 ',
             'bg-secondary/30 backdrop-blur dark:border-white/10 dark:bg-[#1a1a1a]',
@@ -103,9 +106,11 @@ export function TransactionTable({
             {t('description')}
           </div>
 
-          <div role="columnheader" className="text-sm font-semibold text-primary dark:text-white">
-            {t('actor')}
-          </div>
+          {showActor && (
+            <div role="columnheader" className="text-sm font-semibold text-primary dark:text-white">
+              {t('actor')}
+            </div>
+          )}
 
           <div role="columnheader" className="hidden lg:block text-sm font-semibold text-primary dark:text-white">
             {t('category')}
@@ -151,7 +156,7 @@ export function TransactionTable({
                   role="row"
                   className={[
                     'grid',
-                    GRID_COLS,
+                    gridCols,
                     'items-center',
                     'px-4 py-2',
                     'border-b border-gray-100 dark:border-white/5',
@@ -177,8 +182,12 @@ export function TransactionTable({
                     <div className="truncate text-sm font-medium text-gray-900 dark:text-white">{description}</div>
 
                     <div className="lg:hidden mt-0.5 flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400 ">
-                      <span className="truncate max-w-[140px]">{actorLabel}</span>
-                      <span className="opacity-60">.</span>
+                      {showActor && (
+                        <>
+                          <span className="truncate max-w-[140px]">{actorLabel}</span>
+                          <span className="opacity-60">.</span>
+                        </>
+                      )}
                       <span className="inline-flex items-center gap-1">
                         <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: categoryColor }} />
                         <span className="truncate max-w-[200px]">{categoryName}</span>
@@ -188,9 +197,11 @@ export function TransactionTable({
                     </div>
                   </div>
 
-                  <div role="cell" className="min-w-0 pr-4 text-sm text-gray-700 dark:text-zinc-200">
-                    <span className="block truncate">{actorLabel}</span>
-                  </div>
+                  {showActor && (
+                    <div role="cell" className="min-w-0 pr-4 text-sm text-gray-700 dark:text-zinc-200">
+                      <span className="block truncate">{actorLabel}</span>
+                    </div>
+                  )}
 
                   <div role="cell" className="hidden lg:flex items-center gap-2 text-sm text-gray-700 pr-4 dark:text-zinc-200">
                     <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: categoryColor }} />

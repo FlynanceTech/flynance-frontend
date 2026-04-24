@@ -94,6 +94,50 @@ function getHouseMemberLabel(member: HouseMember | null | undefined, fallback: s
   return member?.name || member?.email || fallback
 }
 
+function getKnownActorLabel(params: {
+  actorId?: string | null
+  currentUserId?: string | null
+  currentUserName: string
+  createdByUser?: { name?: string | null; email?: string | null } | null
+  user?: { name?: string | null; email?: string | null } | null
+}) {
+  const { actorId, currentUserId, currentUserName, createdByUser, user } = params
+
+  if (createdByUser?.name?.trim()) return createdByUser.name.trim()
+  if (createdByUser?.email?.trim()) return createdByUser.email.trim()
+  if (user?.name?.trim()) return user.name.trim()
+  if (user?.email?.trim()) return user.email.trim()
+  if (actorId && currentUserId && actorId === currentUserId) return currentUserName
+  return null
+}
+
+function isCouplePlanLike(plan: any) {
+  if (!plan) return false
+
+  const text = [
+    plan?.slug,
+    plan?.name,
+    plan?.description,
+    ...(Array.isArray(plan?.features)
+      ? plan.features.flatMap((feature: any) => [feature?.label, feature?.key, feature?.value])
+      : []),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+
+  return [
+    /\bcasal\b/,
+    /\bcouple\b/,
+    /\bduo\b/,
+    /\bpartner\b/,
+    /\bcompartilh/,
+    /\bshared\b/,
+    /\bhouse\b/,
+    /\b2\s*(usuarios|pessoas|people|members)\b/,
+  ].some((pattern) => pattern.test(text))
+}
+
 export default function TransactionsPage() {
   const tr = useTranslations('transactions')
   const locale = useLocale()
@@ -113,6 +157,7 @@ export default function TransactionsPage() {
   const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
   const activePermission = useAdvisorActing((s) => s.activePermission ?? s.selectedPermission)
   const isAdvisorReadOnly = isAdvisorReadOnlyTransactionAccess(activeClientId, activePermission)
+  const hasCoupleSignature = isCouplePlanLike(user?.userData?.signature?.plan)
 
   const notifyReadOnly = () => {
     toast.error(ADVISOR_READ_ONLY_FRIENDLY_MESSAGE)
@@ -216,12 +261,32 @@ export default function TransactionsPage() {
     setSelectAll(false)
   }, [selectedAuthorId])
 
+  const activeHouseMembers = useMemo(
+    () => (houseContext?.members ?? []).filter((member) => member.active),
+    [houseContext?.members]
+  )
+
+  const apiTransactions: Transaction[] = useMemo(() => {
+    const data: any = transactionsQuery.data
+    if (!data) return []
+    if (Array.isArray(data)) return data
+    return Array.isArray(data.transactions) ? data.transactions : []
+  }, [transactionsQuery.data])
+
+  const hasCoupleContext =
+    houseContext?.status === 'COUPLE' ||
+    Boolean(houseContext?.partner?.id) ||
+    activeHouseMembers.length > 1
+
+  const showActorContext = hasCoupleContext || hasCoupleSignature
+
   const authorOptions = useMemo<AuthorOption[]>(() => {
+    if (!showActorContext) return []
+
     const currentUser = user?.userData?.user
     const currentUserName =
       currentUser?.name?.trim() || currentUser?.email?.trim() || tr('authorFilter.currentUser')
-    const activeMembers = (houseContext?.members ?? []).filter((member) => member.active)
-    const memberOptions = activeMembers
+    const memberOptions = activeHouseMembers
       .map((member) => ({
         value: member.userId ?? member.id ?? '',
         label:
@@ -229,7 +294,22 @@ export default function TransactionsPage() {
             ? currentUserName
             : getHouseMemberLabel(member, tr('authorFilter.unknownMember')),
       }))
-      .filter((option) => option.value)
+      .filter((option) => option.value && option.label !== tr('authorFilter.unknownMember'))
+
+    const transactionActorOptions = apiTransactions
+      .map((transaction) => {
+        const actorId = transaction.createdByUserId ?? transaction.userId ?? ''
+        const actorLabel = getKnownActorLabel({
+          actorId,
+          currentUserId: currentUser?.id,
+          currentUserName,
+          createdByUser: transaction.createdByUser,
+          user: transaction.user,
+        })
+
+        return actorId && actorLabel ? { value: actorId, label: actorLabel } : null
+      })
+      .filter((option): option is AuthorOption => Boolean(option?.value))
 
     const fallbackCurrentUserOption =
       currentUser?.id && !memberOptions.some((option) => option.value === currentUser.id)
@@ -244,11 +324,12 @@ export default function TransactionsPage() {
     return [
       { value: 'ALL', label: tr('authorFilter.all') },
       ...fallbackCurrentUserOption,
-      ...memberOptions.filter(
+      ...memberOptions,
+      ...transactionActorOptions,
+    ].filter(
         (option, index, options) => options.findIndex((item) => item.value === option.value) === index
-      ),
-    ]
-  }, [houseContext?.members, tr, user?.userData?.user])
+    )
+  }, [activeHouseMembers, apiTransactions, showActorContext, tr, user?.userData?.user])
 
   const authorLabelById = useMemo(() => {
     return new Map(authorOptions.map((option) => [option.value, option.label]))
@@ -411,15 +492,6 @@ export default function TransactionsPage() {
       setBulkCategoryOpen(true)
     }
   }
-
-
-const apiTransactions: Transaction[] = useMemo(() => {
-  const data: any = transactionsQuery.data
-  if (!data) return []
-  if (Array.isArray(data)) return data
-  return Array.isArray(data.transactions) ? data.transactions : []
-}, [transactionsQuery.data])
-
 const meta = useMemo(() => {
   const data: any = transactionsQuery.data
   return data && !Array.isArray(data) ? data.meta : undefined
@@ -1072,6 +1144,24 @@ const meta = useMemo(() => {
               triggerLabel={tr('guideButton')}
             />
           }
+          inlineFilterSlot={
+            showActorContext && authorOptions.length > 1 ? (
+              <div className="w-full min-w-[220px] md:max-w-[220px]">
+                <select
+                  value={selectedAuthorId}
+                  onChange={(event) => setSelectedAuthorId(event.target.value)}
+                  className="h-10 w-full rounded-xl border border-slate-700 bg-[#252525] px-3 text-sm text-white outline-none transition focus:border-slate-500 md:border-slate-200 md:bg-white md:text-slate-700"
+                  aria-label={tr('authorFilter.label')}
+                >
+                  {authorOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null
+          }
           // ⚠️ se você quer filtrar por categorias, o ideal é listar categorias do endpoint de categorias,
           // mas mantendo seu comportamento atual:
           dataToFilter={Array.from(new Set(displayedTransactions.map((t) => t.category))).filter(Boolean) as any}
@@ -1088,27 +1178,6 @@ const meta = useMemo(() => {
       {isAdvisorReadOnly && (
         <div className="w-full rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-700">
           {tr('readOnlyBanner')}
-        </div>
-      )}
-      {authorOptions.length > 2 && (
-        <div className="flex flex-col gap-2 rounded-md border border-slate-200 bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-[#333C4D]">{tr('authorFilter.label')}</p>
-            <p className="text-xs text-slate-500">{tr('authorFilter.helper')}</p>
-          </div>
-          <div className="w-full md:max-w-xs">
-            <select
-              value={selectedAuthorId}
-              onChange={(event) => setSelectedAuthorId(event.target.value)}
-              className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-slate-300"
-            >
-              {authorOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
       )}
       {showCsvTip && (
@@ -1143,6 +1212,7 @@ const meta = useMemo(() => {
         <TransactionTable
           transactions={displayedTransactions}
           getActorLabel={getTransactionActorLabel}
+          showActor={showActorContext}
           selectedIds={selectedIds}
           selectAll={selectAll}
           canWrite={!isAdvisorReadOnly}
@@ -1166,6 +1236,7 @@ const meta = useMemo(() => {
         <TransactionCardList
           transactions={displayedTransactions}
           getActorLabel={getTransactionActorLabel}
+          showActor={showActorContext}
           selectedIds={selectedIds}
           canWrite={!isAdvisorReadOnly}
           canWriteTransaction={canWriteTransaction}
