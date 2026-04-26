@@ -3,13 +3,13 @@
 import type { LucideIcon } from 'lucide-react'
 import {
   BarChart3,
+  Bell,
   BookOpenCheck,
   ClipboardList,
   Clock3,
   House,
   Landmark,
   LayoutDashboard,
-  LogOut,
   ShieldCheck,
   Tag,
   User,
@@ -24,7 +24,6 @@ export type SidebarItemConfig = {
   label: string
   icon: LucideIcon
   path?: string
-  action?: 'logout'
   requiresAdmin?: boolean
   requiresAdvisor?: boolean
 }
@@ -50,8 +49,8 @@ type SidebarTranslations = {
   education: string
   clients: string
   profile: string
+  notifications: string
   admin: string
-  logout: string
 }
 
 export function normalizeSidebarPath(pathname: string) {
@@ -211,27 +210,17 @@ export function buildSidebarSections(t: SidebarTranslations): SidebarSectionConf
           path: '/dashboard/perfil',
         },
         {
+          id: 'notifications',
+          label: t.notifications,
+          icon: Bell,
+          path: '/dashboard/perfil#notifications',
+        },
+        {
           id: 'admin',
           label: t.admin,
           icon: ShieldCheck,
           path: '/admin/dashboard',
           requiresAdmin: true,
-        },
-      ],
-    },
-    {
-      id: 'actions',
-      title: 'Acoes',
-      icon: LogOut,
-      collapsible: false,
-      defaultOpen: true,
-      autoCollapsePriority: 100,
-      items: [
-        {
-          id: 'logout',
-          label: t.logout,
-          icon: LogOut,
-          action: 'logout',
         },
       ],
     },
