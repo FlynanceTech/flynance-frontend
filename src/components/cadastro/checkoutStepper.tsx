@@ -543,6 +543,10 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
   ): Promise<UserDTO> {
     if (!base?.id) return base;
 
+    if (typeof window !== "undefined" && !localStorage.getItem("token")) {
+      return base;
+    }
+
     const currentName = (base as any).name ?? "";
     const currentEmail = normalizeEmail((base as any).email ?? "");
     const currentPhoneDigits = normalizePhoneIdentity((base as any).phone ?? "");
