@@ -2,67 +2,222 @@
 
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
-import { useState } from 'react'
-import logoFlynance from '../../../../../assets/Logo/PNG/Logo Fly principal colorida.png'
-import logoFly from '../../../../../assets/Logo/PNG/Logo Fly colorida 1.png'
-import {
-  Landmark,
-  LayoutDashboard,
-  LogOut,
-  Tag,
-  User,
-  PanelLeftClose,
-  PanelLeftOpen,
-  BookOpenCheck,
-  ClipboardList,
-  BarChart3,
-  Clock3,
-  ShieldCheck,
-  Users,
-} from 'lucide-react'
-import SidebarItem from './SidebarItem'
-import { useUserSession } from '@/stores/useUserSession'
+import { useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
-import { isAdvisorRole, isAdminRole } from '@/utils/roles'
+import { PanelLeftClose, PanelLeftOpen, Moon, Sun } from 'lucide-react'
 
-export default function Sidebar() {
-  const router = useRouter()
-  const pathname = usePathname()
-  const { logout, user } = useUserSession()
-  const role = user?.userData?.user?.role
-  const isAdmin = isAdminRole(role)
-  const isAdvisor = isAdvisorRole(role)
+import logoFlynance from '../../../../../assets/Logo/PNG/Logo Fly principal colorida.png'
+import logoFlynanceWhite from '../../../../../assets/Logo/PNG/Logo Fly principal branca.png'
+import logoBird from '../../../../../assets/Logo/PNG/Logo Fly colorida 1.png'
+import logoBirdWhite from '../../../../../assets/Logo/PNG/Logo Fly branca 1.png'
+import { useUserSession } from '@/stores/useUserSession'
+import { canAccessAdvisorRole, isAdminRole } from '@/utils/roles'
+import { useTranslations } from 'next-intl'
+import { useUserTheme } from '@/providers/UserThemeProvider'
 
-  const [collapsed, setCollapsed] = useState(false)
+import SidebarSection from './SidebarSection'
+import {
+  buildSidebarSections,
+  filterSidebarSections,
+  isSidebarPathActive,
+} from './sidebar.config'
 
-  const navItems = [
-    { label: 'Dashboard', icon: <LayoutDashboard />, path: '/dashboard' },
-    { label: 'Transações', icon: <Landmark />, path: '/dashboard/transacoes' },
-    { label: 'Contas', icon: <ClipboardList />, path: '/dashboard/contas-fixas' },
-    { label: 'Futuros', icon: <Clock3 />, path: '/dashboard/futuros' },
-    { label: 'Relatorios', icon: <BarChart3 />, path: '/dashboard/relatorios' },
-    { label: 'Categorias', icon: <Tag />, path: '/dashboard/categorias' },
-    { label: 'Educacao', icon: <BookOpenCheck />, path: '/dashboard/educacao' },
-    ...(isAdvisor
-      ? [{ label: 'Clientes', icon: <Users />, path: '/advisor' }]
-      : []),
-    { label: 'Perfil', icon: <User />, path: '/dashboard/perfil' },
-    ...(isAdmin
-      ? [{ label: 'Admin', icon: <ShieldCheck />, path: '/admin/dashboard' }]
-      : []),
+const MAX_OPEN_SECTIONS = 3
+
+type SidebarProps = {
+  collapsed?: boolean
+  onCollapsedChange?: (next: boolean) => void
+}
+
+function buildAutoCollapsedSet(params: {
+  height: number
+  activeSectionIds: Set<string>
+}) {
+  const forcedCollapsed = new Set<string>()
+  const { height, activeSectionIds } = params
+
+  const thresholds: Array<{ id: string; maxHeight: number }> = [
+    { id: 'settings', maxHeight: 920 },
+    { id: 'professional', maxHeight: 880 },
+    { id: 'education', maxHeight: 840 },
+    { id: 'financial-life', maxHeight: 800 },
+    { id: 'planning', maxHeight: 740 },
   ]
 
-  const normalize = (p: string) => p.replace(/\/+$/, '')
-  const current = normalize(pathname ?? '')
+  thresholds.forEach(({ id, maxHeight }) => {
+    if (height < maxHeight && !activeSectionIds.has(id)) {
+      forcedCollapsed.add(id)
+    }
+  })
 
-  const isPathActive = (itemPath: string) => {
-    const base = normalize(itemPath)
+  return forcedCollapsed
+}
 
-    if (base === '/dashboard') {
-      return current === '/dashboard' || current.startsWith('/dashboard/controles')
+export default function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const t = useTranslations('nav')
+  const tPreferences = useTranslations('preferences')
+  const { logout, user } = useUserSession()
+  const { theme, saveTheme, isSavingTheme } = useUserTheme()
+
+  const role = user?.userData?.user?.role
+  const isAdmin = isAdminRole(role)
+  const canAccessAdvisor = canAccessAdvisorRole(role)
+  const isDarkTheme = theme === 'DARK'
+
+  const [internalCollapsed, setInternalCollapsed] = useState(false)
+  const [viewportHeight, setViewportHeight] = useState(1080)
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({})
+  const [sectionOpenOrder, setSectionOpenOrder] = useState<string[]>([])
+  const sectionsCollapsed = collapsed ?? internalCollapsed
+
+  const setSectionsCollapsed = (next: boolean | ((current: boolean) => boolean)) => {
+    const resolvedValue =
+      typeof next === 'function' ? next(sectionsCollapsed) : next
+
+    if (onCollapsedChange) onCollapsedChange(resolvedValue)
+    else setInternalCollapsed(resolvedValue)
+  }
+
+  const sections = useMemo(() => {
+    return filterSidebarSections(buildSidebarSections({
+      dashboard: t('dashboard'),
+      transactions: t('transactions'),
+      accounts: t('accounts'),
+      categories: t('categories'),
+      future: t('future'),
+      reports: t('reports'),
+      coupleAccount: t('coupleAccount'),
+      education: t('education'),
+      clients: t('clients'),
+      profile: t('profile'),
+      admin: t('admin'),
+      logout: t('logout'),
+    }), {
+      isAdmin,
+      canAccessAdvisor,
+    })
+  }, [canAccessAdvisor, isAdmin, t])
+
+  const activeSectionIds = useMemo(() => {
+    return new Set(
+      sections
+        .filter((section) =>
+          section.items.some((item) => isSidebarPathActive(pathname ?? '', item.path))
+        )
+        .map((section) => section.id)
+    )
+  }, [pathname, sections])
+
+  const forcedCollapsedSections = useMemo(() => {
+    return buildAutoCollapsedSet({
+      height: viewportHeight,
+      activeSectionIds,
+    })
+  }, [activeSectionIds, viewportHeight])
+
+  useEffect(() => {
+    const defaultOpenIds = sections
+      .filter((section) => section.defaultOpen || activeSectionIds.has(section.id))
+      .map((section) => section.id)
+
+    const nextOpenIds = defaultOpenIds.reduce<string[]>((acc, id) => {
+      if (!acc.includes(id)) acc.push(id)
+      return acc
+    }, [])
+
+    while (nextOpenIds.length > MAX_OPEN_SECTIONS) {
+      const removableIndex = nextOpenIds.findIndex((id) => !activeSectionIds.has(id))
+      if (removableIndex === -1) break
+      nextOpenIds.splice(removableIndex, 1)
     }
 
-    return current === base || current.startsWith(`${base}/`)
+    const nextState = sections.reduce<Record<string, boolean>>((acc, section) => {
+      acc[section.id] = nextOpenIds.includes(section.id)
+      return acc
+    }, {})
+
+    setOpenSections(nextState)
+    setSectionOpenOrder(nextOpenIds)
+  }, [activeSectionIds, sections])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const syncViewportHeight = () => setViewportHeight(window.innerHeight)
+
+    syncViewportHeight()
+    window.addEventListener('resize', syncViewportHeight)
+    return () => window.removeEventListener('resize', syncViewportHeight)
+  }, [])
+
+  const navigationSections = sections.filter((section) => section.id !== 'actions')
+  const actionSection = sections.find((section) => section.id === 'actions') ?? null
+
+  const openSectionWithLimit = (sectionId: string) => {
+    setOpenSections((current) => {
+      const currentOpenIds = Object.entries(current)
+        .filter(([, isOpen]) => isOpen)
+        .map(([id]) => id)
+
+      const nextOrderBase = sectionOpenOrder.filter(
+        (id) => currentOpenIds.includes(id) && id !== sectionId
+      )
+      const nextOrder = [...nextOrderBase, sectionId]
+      const nextState = { ...current, [sectionId]: true }
+
+      while (nextOrder.length > MAX_OPEN_SECTIONS) {
+        const closableId = nextOrder.find((id) => !activeSectionIds.has(id) && id !== sectionId)
+        if (!closableId) break
+        nextState[closableId] = false
+        nextOrder.splice(nextOrder.indexOf(closableId), 1)
+      }
+
+      setSectionOpenOrder(nextOrder)
+      return nextState
+    })
+  }
+
+  const handleToggleSection = (sectionId: string) => {
+    const isActiveSection = activeSectionIds.has(sectionId)
+
+    setOpenSections((current) => {
+      const isCurrentlyOpen = current[sectionId] !== false
+
+      if (isCurrentlyOpen) {
+        if (isActiveSection) return current
+
+        setSectionOpenOrder((order) => order.filter((id) => id !== sectionId))
+        return {
+          ...current,
+          [sectionId]: false,
+        }
+      }
+
+      const currentOpenIds = Object.entries(current)
+        .filter(([, isOpen]) => isOpen)
+        .map(([id]) => id)
+
+      const nextOrderBase = sectionOpenOrder.filter((id) => currentOpenIds.includes(id) && id !== sectionId)
+      const nextOrder = [...nextOrderBase, sectionId]
+      const nextState = { ...current, [sectionId]: true }
+
+      while (nextOrder.length > MAX_OPEN_SECTIONS) {
+        const closableId = nextOrder.find((id) => !activeSectionIds.has(id))
+        if (!closableId) break
+        nextState[closableId] = false
+        nextOrder.splice(nextOrder.indexOf(closableId), 1)
+      }
+
+      setSectionOpenOrder(nextOrder)
+      return nextState
+    })
+  }
+
+  const handleCollapsedSectionClick = (sectionId: string) => {
+    setSectionsCollapsed(false)
+    openSectionWithLimit(sectionId)
   }
 
   const handleLogout = async () => {
@@ -70,75 +225,150 @@ export default function Sidebar() {
     router.push('/login')
   }
 
+  const handleThemeToggle = async () => {
+    if (isSavingTheme) return
+    try {
+      await saveTheme(isDarkTheme ? 'LIGHT' : 'DARK')
+    } catch {
+      // feedback tratado na camada de preferencia
+    }
+  }
+
   return (
     <aside
-      className={
-        'bg-white py-6 px-4 rounded-2xl border border-[#E2E8F0] flex flex-col justify-center items-center transition-all duration-300 ' +
-        (collapsed ? 'w-20 items-center' : 'min-w-44')
-      }
+      className={clsx(
+        'fixed inset-y-0 left-0 z-40 hidden h-screen p-4 transition-[width] duration-200 lg:block',
+        sectionsCollapsed ? 'w-[7rem]' : 'w-72'
+      )}
     >
-      <div className="relative">
-        <button
-          className={clsx(
-            'absolute text-gray-400 bg-white p-2 rounded-full shadow-md border border-gray-200',
-            collapsed ? '-right-16' : '-right-[110px]'
-          )}
-          onClick={() => setCollapsed((prev) => !prev)}
-          title="Expandir/retrair menu"
-        >
-          {collapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
-        </button>
-      </div>
-
-      <div className="flex items-center justify-between mb-6">
-        {!collapsed ? (
-          <Image
-            src={logoFlynance}
-            className="w-[120px] lg:w-[150px]"
-            alt="Flynance Logo"
-            width={120}
-            height={60}
-          />
-        ) : (
-          <Image
-            src={logoFly}
-            className="w-[120px] lg:w-[150px]"
-            alt="Flynance Logo"
-            width={100}
-            height={40}
-          />
+      <div
+        className={clsx(
+          'flex h-full flex-col overflow-hidden rounded-[28px] border border-[#E2E8F0] bg-white py-5 shadow-[0_20px_50px_-35px_rgba(15,23,42,0.35)] transition-[padding] duration-200 dark:border-white/10 dark:bg-[#121212]',
+          sectionsCollapsed ? 'px-3' : 'px-4'
         )}
-      </div>
+      >
+        <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-4 dark:border-white/10">
+          <Image
+            src={sectionsCollapsed ? (isDarkTheme ? logoBirdWhite : logoBird) : (isDarkTheme ? logoFlynanceWhite : logoFlynance)}
+            className={clsx('h-auto transition-all', sectionsCollapsed ? 'w-10' : 'w-[136px]')}
+            alt="Flynance Logo"
+            width={sectionsCollapsed ? 40 : 136}
+            height={sectionsCollapsed ? 40 : 42}
+          />
 
-      <nav className="flex flex-col justify-between h-full">
-        <ul className="flex flex-col gap-6">
-          {navItems.map(({ label, icon, path }) => (
-            <SidebarItem
-              key={label}
-              label={label}
-              icon={icon}
-              collapsed={collapsed}
-              active={isPathActive(path)}
-              onClick={() => router.push(path)}
-            />
-          ))}
-        </ul>
-
-        <footer
-          className={
-            'pt-4 border-t border-gray-300 flex ' +
-            (collapsed ? 'justify-center' : 'px-2 flex-col gap-4')
-          }
-        >
           <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 text-[#333C4D] hover:text-red-500 cursor-pointer"
+            type="button"
+            onClick={() => setSectionsCollapsed((current) => !current)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-zinc-300 dark:hover:bg-white/10 dark:hover:text-white"
+            title={t('toggleMenu')}
+            aria-label={t('toggleMenu')}
           >
-            <LogOut size={18} />
-            {!collapsed && 'Sair'}
+            {sectionsCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
           </button>
-        </footer>
-      </nav>
+        </div>
+
+        <div className="flex min-h-0 flex-1 flex-col justify-between pt-4">
+          <nav className="min-h-0 flex-1 overflow-hidden">
+            <div className="space-y-4">
+              {navigationSections.map((section) => {
+                const isOpen =
+                  !sectionsCollapsed &&
+                  !forcedCollapsedSections.has(section.id) &&
+                  openSections[section.id] !== false
+                const isSectionActive = activeSectionIds.has(section.id)
+
+                return (
+                  <SidebarSection
+                    key={section.id}
+                    title={section.title}
+                    icon={section.icon}
+                    collapsible={section.collapsible}
+                    open={isOpen}
+                    collapsed={sectionsCollapsed}
+                    active={isSectionActive}
+                    onToggle={section.collapsible ? () => handleToggleSection(section.id) : undefined}
+                    onCollapsedClick={() => handleCollapsedSectionClick(section.id)}
+                    items={section.items.map((item) => ({
+                      ...item,
+                      active: isSidebarPathActive(pathname ?? '', item.path),
+                      onClick: () => {
+                        if (!item.path) return
+                        router.push(item.path)
+                      },
+                    }))}
+                  />
+                )
+              })}
+            </div>
+          </nav>
+
+          <footer className="mt-4 shrink-0 border-t border-slate-200 pt-4 dark:border-white/10">
+            <div className="space-y-3">
+              <div className={clsx('px-1', sectionsCollapsed && 'sr-only')}>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-zinc-500">
+                  Tema
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  void handleThemeToggle()
+                }}
+                disabled={isSavingTheme}
+                className={clsx(
+                  'flex w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-3 text-[#333C4D] transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10',
+                  sectionsCollapsed ? 'items-center justify-center' : 'items-center justify-between'
+                )}
+                aria-label={tPreferences('theme.title')}
+                title={tPreferences('theme.title')}
+              >
+                <div className="flex items-center gap-2">
+                  <Sun size={16} className={clsx(isDarkTheme ? 'text-zinc-500' : 'text-amber-500')} />
+                  {!sectionsCollapsed ? (
+                    <span className="relative inline-flex h-6 w-11 items-center rounded-full bg-slate-200 dark:bg-zinc-700">
+                      <span
+                        className={clsx(
+                          'absolute h-5 w-5 rounded-full shadow transition-transform duration-200',
+                          isDarkTheme ? 'translate-x-5 bg-[#F4C542]' : 'translate-x-0.5 bg-[#111827]'
+                        )}
+                      />
+                    </span>
+                  ) : null}
+                  <Moon size={16} className={clsx(isDarkTheme ? 'text-[#F4C542]' : 'text-slate-400')} />
+                </div>
+                {!sectionsCollapsed ? (
+                  <span className="text-xs font-semibold">
+                    {isDarkTheme ? tPreferences('theme.dark') : tPreferences('theme.light')}
+                  </span>
+                ) : null}
+              </button>
+
+              {actionSection ? (
+                <SidebarSection
+                  title={actionSection.title}
+                  icon={actionSection.icon}
+                  collapsible={false}
+                  open
+                  collapsed={sectionsCollapsed}
+                  items={actionSection.items.map((item) => ({
+                    ...item,
+                    active: false,
+                    onClick: () => {
+                      if (item.action === 'logout') {
+                        void handleLogout()
+                      }
+                    },
+                  }))}
+                  onCollapsedClick={() => {
+                    void handleLogout()
+                  }}
+                />
+              ) : null}
+            </div>
+          </footer>
+        </div>
+      </div>
     </aside>
   )
 }

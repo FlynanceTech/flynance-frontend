@@ -1,4 +1,4 @@
-import api from '@/lib/axios'
+﻿import api from '@/lib/axios'
 import axios from 'axios'
 import { getErrorMessage } from '@/utils/getErrorMessage'
 
@@ -88,6 +88,22 @@ export type AdminLeadsResponse = {
   meta: PaginationMeta
 }
 
+export type AdminUser = {
+  id: string
+  name: string
+  email: string
+  phone?: string | null
+  role?: string | null
+  isTester: boolean
+  createdAt?: string | null
+  updatedAt?: string | null
+}
+
+export type AdminUserTesterUpdate = {
+  id: string
+  isTester: boolean
+}
+
 export type AdminPlanPeriod = 'WEEKLY' | 'MONTHLY' | 'YEARLY'
 
 export type AdminPlanFeature = {
@@ -97,6 +113,16 @@ export type AdminPlanFeature = {
   value?: string | null
 }
 
+export type AdminPlanStripeProductLocal = {
+  id?: string | null
+  stripeProductId?: string | null
+  name?: string | null
+  status?: string | null
+  active?: boolean | null
+  createdAt?: string | null
+  updatedAt?: string | null
+}
+
 export type AdminPlan = {
   id: string
   name: string
@@ -104,9 +130,13 @@ export type AdminPlan = {
   description?: string | null
   priceCents: number
   currency: string
+  scope?: string | null
   priceId?: string | null
   installmentPriceId?: string | null
   yearlyPriceId?: string | null
+  stripeProductId?: string | null
+  stripeProduct?: StripeProduct | null
+  stripeProductLocal?: AdminPlanStripeProductLocal | null
   allowCancel: boolean
   commitmentMonths?: number | null
   period: AdminPlanPeriod
@@ -143,6 +173,7 @@ export type UpsertAdminPlanPayload = {
   description?: string
   priceCents: number
   currency: string
+  scope?: string
   priceId?: string
   installmentPriceId?: string
   yearlyPriceId?: string
@@ -460,6 +491,31 @@ function toLead(raw: any): AdminLead | null {
   }
 }
 
+function toAdminUser(raw: any): AdminUser | null {
+  const id = String(raw?.id ?? raw?.userId ?? '')
+  if (!id) return null
+
+  const name =
+    String(raw?.name ?? raw?.fullName ?? '')
+      .trim() || 'Sem nome'
+  const email = String(raw?.email ?? '').trim()
+  const phone =
+    raw?.phone == null || String(raw?.phone).trim() === '' ? null : String(raw?.phone).trim()
+  const role =
+    raw?.role == null || String(raw?.role).trim() === '' ? null : String(raw?.role).trim()
+
+  return {
+    id,
+    name,
+    email,
+    phone,
+    role,
+    isTester: toBoolean(raw?.isTester ?? raw?.is_tester, false),
+    createdAt: toIsoDate(raw?.createdAt ?? raw?.created_at),
+    updatedAt: toIsoDate(raw?.updatedAt ?? raw?.updated_at),
+  }
+}
+
 function toPlanPeriod(value: unknown): AdminPlanPeriod {
   const normalized = String(value ?? '').trim().toUpperCase()
   if (normalized === 'WEEKLY' || normalized === 'YEARLY') return normalized
@@ -482,6 +538,37 @@ function toPlanFeature(raw: any): AdminPlanFeature | null {
   }
 }
 
+function toAdminPlanStripeProductLocal(raw: unknown): AdminPlanStripeProductLocal | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+
+  const source = raw as Record<string, unknown>
+
+  const id =
+    source.id == null &&
+    source.productId == null &&
+    source.stripeProductId == null &&
+    source.stripe_product_id == null
+      ? null
+      : String(source.id ?? source.productId ?? source.stripeProductId ?? source.stripe_product_id)
+
+  const rawActive = source.active ?? source.isActive ?? source.is_active
+
+  return {
+    id,
+    stripeProductId:
+      source.stripeProductId == null &&
+      source.stripe_product_id == null &&
+      source.productId == null
+        ? null
+        : String(source.stripeProductId ?? source.stripe_product_id ?? source.productId),
+    name: source.name == null ? null : String(source.name),
+    status: source.status == null ? null : String(source.status),
+    active: rawActive == null ? null : toBoolean(rawActive, false),
+    createdAt: toIsoDate(source.createdAt ?? source.created_at),
+    updatedAt: toIsoDate(source.updatedAt ?? source.updated_at),
+  }
+}
+
 function toAdminPlan(raw: any): AdminPlan | null {
   const id = String(raw?.id ?? '').trim()
   if (!id) return null
@@ -497,6 +584,7 @@ function toAdminPlan(raw: any): AdminPlan | null {
     description: raw?.description == null ? null : String(raw.description),
     priceCents: toInteger(raw?.priceCents ?? raw?.price_cents, 0),
     currency: String(raw?.currency ?? 'BRL').toUpperCase(),
+    scope: raw?.scope == null ? null : String(raw?.scope),
     priceId:
       raw?.priceId == null && raw?.price_id == null
         ? null
@@ -509,6 +597,34 @@ function toAdminPlan(raw: any): AdminPlan | null {
       raw?.yearlyPriceId == null && raw?.yearly_price_id == null
         ? null
         : String(raw?.yearlyPriceId ?? raw?.yearly_price_id),
+    stripeProductId:
+      raw?.stripeProductId == null &&
+      raw?.stripe_product_id == null &&
+      raw?.stripeProduct?.stripeProductId == null &&
+      raw?.stripeProduct?.id == null &&
+      raw?.stripe_product?.stripeProductId == null &&
+      raw?.stripe_product?.id == null &&
+      raw?.stripeProductLocal?.stripeProductId == null &&
+      raw?.stripeProductLocal?.productId == null &&
+      raw?.stripe_product_local?.stripeProductId == null &&
+      raw?.stripe_product_local?.productId == null
+        ? null
+        : String(
+            raw?.stripeProductId ??
+              raw?.stripe_product_id ??
+              raw?.stripeProduct?.stripeProductId ??
+              raw?.stripeProduct?.id ??
+              raw?.stripe_product?.stripeProductId ??
+              raw?.stripe_product?.id ??
+              raw?.stripeProductLocal?.stripeProductId ??
+              raw?.stripeProductLocal?.productId ??
+              raw?.stripe_product_local?.stripeProductId ??
+              raw?.stripe_product_local?.productId
+          ),
+    stripeProduct: toStripeProduct(raw?.stripeProduct ?? raw?.stripe_product),
+    stripeProductLocal: toAdminPlanStripeProductLocal(
+      raw?.stripeProductLocal ?? raw?.stripe_product_local
+    ),
     allowCancel: toBoolean(raw?.allowCancel, true),
     commitmentMonths:
       raw?.commitmentMonths == null && raw?.commitment_months == null
@@ -579,6 +695,24 @@ function normalizeAdminPlansResponse(data: any, fallbackPage: number, fallbackLi
   }
 }
 
+function getAdminUserRowsFromPayload(data: any): any[] {
+  const candidates = [
+    data?.users,
+    data?.items,
+    data?.rows,
+    data?.data,
+    data?.data?.users,
+    data?.data?.items,
+    data?.data?.rows,
+  ]
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) return candidate
+  }
+
+  return Array.isArray(data) ? data : []
+}
+
 async function requestAdminPlansByPath(path: string, query: string, page: number, limit: number) {
   const url = `${path}${query ? `?${query}` : ''}`
   if (process.env.NODE_ENV !== 'production') {
@@ -596,6 +730,26 @@ async function requestAdminPlansByPath(path: string, query: string, page: number
   }
 
   return normalized
+}
+
+async function requestAdminUsersByPath(path: string) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.debug('[admin:users] GET', path)
+  }
+
+  const response = await api.get(path)
+  const data = response.data ?? {}
+  const users = getAdminUserRowsFromPayload(data)
+    .map(toAdminUser)
+    .filter((item: AdminUser | null): item is AdminUser => Boolean(item))
+
+  if (process.env.NODE_ENV !== 'production') {
+    const keys = data && typeof data === 'object' ? Object.keys(data) : []
+    console.debug('[admin:users] payload keys', keys)
+    console.debug('[admin:users] rows normalized', users.length)
+  }
+
+  return users
 }
 
 async function requestAdvisorInvitesByPath(path: string, query: string, page: number, limit: number) {
@@ -730,6 +884,53 @@ function toQuery(params: Record<string, string | number | boolean | undefined>) 
   return qp.toString()
 }
 
+function mergePlanEnvelope(data: unknown) {
+  const root =
+    data && typeof data === 'object' && !Array.isArray(data)
+      ? (data as Record<string, unknown>)
+      : {}
+  const payloadCandidate = root.data
+  const payload =
+    payloadCandidate && typeof payloadCandidate === 'object' && !Array.isArray(payloadCandidate)
+      ? (payloadCandidate as Record<string, unknown>)
+      : root
+  const planCandidate = payload.plan ?? root.plan ?? payload
+  const planSource =
+    planCandidate && typeof planCandidate === 'object' && !Array.isArray(planCandidate)
+      ? (planCandidate as Record<string, unknown>)
+      : null
+
+  if (!planSource || typeof planSource !== 'object' || Array.isArray(planSource)) {
+    return payload
+  }
+
+  return {
+    ...planSource,
+    scope: planSource.scope ?? payload.scope ?? root.scope,
+    stripeProductId:
+      planSource.stripeProductId ??
+      planSource.stripe_product_id ??
+      payload.stripeProductId ??
+      payload.stripe_product_id ??
+      root.stripeProductId ??
+      root.stripe_product_id,
+    stripeProduct:
+      planSource.stripeProduct ??
+      planSource.stripe_product ??
+      payload.stripeProduct ??
+      payload.stripe_product ??
+      root.stripeProduct ??
+      root.stripe_product,
+    stripeProductLocal:
+      planSource.stripeProductLocal ??
+      planSource.stripe_product_local ??
+      payload.stripeProductLocal ??
+      payload.stripe_product_local ??
+      root.stripeProductLocal ??
+      root.stripe_product_local,
+  }
+}
+
 function normalizePlanPayload(payload: UpsertAdminPlanPayload) {
   return {
     name: payload.name.trim(),
@@ -737,6 +938,7 @@ function normalizePlanPayload(payload: UpsertAdminPlanPayload) {
     description: payload.description?.trim() || undefined,
     priceCents: toInteger(payload.priceCents, 0),
     currency: String(payload.currency || 'BRL').toUpperCase(),
+    scope: payload.scope?.trim() || undefined,
     priceId: payload.priceId?.trim() || undefined,
     installmentPriceId: payload.installmentPriceId?.trim() || undefined,
     yearlyPriceId: payload.yearlyPriceId?.trim() || undefined,
@@ -768,6 +970,7 @@ function normalizePartialPlanPayload(payload: Partial<UpsertAdminPlanPayload>) {
   }
   if (payload.priceCents !== undefined) normalized.priceCents = toInteger(payload.priceCents, 0)
   if (payload.currency !== undefined) normalized.currency = String(payload.currency || 'BRL').toUpperCase()
+  if (payload.scope !== undefined) normalized.scope = payload.scope?.trim() || undefined
   if (payload.priceId !== undefined) normalized.priceId = payload.priceId?.trim() || undefined
   if (payload.installmentPriceId !== undefined) {
     normalized.installmentPriceId = payload.installmentPriceId?.trim() || undefined
@@ -977,6 +1180,22 @@ export async function getAdminLeads(params: AdminLeadsParams): Promise<AdminLead
   }
 }
 
+export async function getAdminUsers(): Promise<AdminUser[]> {
+  try {
+    return await requestAdminUsersByPath('/admin/users')
+  } catch (e: unknown) {
+    if (axios.isAxiosError(e) && e.response?.status === 404) {
+      try {
+        return await requestAdminUsersByPath('/users')
+      } catch (fallbackError: unknown) {
+        throw new Error(toAdminErrorMessage(fallbackError, 'Erro ao buscar usuarios.'))
+      }
+    }
+
+    throw new Error(toAdminErrorMessage(e, 'Erro ao buscar usuarios.'))
+  }
+}
+
 export async function getAdminPlans(params?: AdminPlansParams): Promise<AdminPlansResponse> {
   const page = params?.page ?? 1
   const limit = params?.limit ?? 20
@@ -1022,10 +1241,47 @@ export async function getAdminPlans(params?: AdminPlansParams): Promise<AdminPla
   }
 }
 
+export async function updateAdminUserTester(
+  userId: string,
+  isTester: boolean
+): Promise<AdminUserTesterUpdate> {
+  const payload = { isTester }
+
+  try {
+    const response = await api.patch(`/admin/users/${userId}/tester`, payload)
+    const source = response.data?.user ?? response.data?.data?.user ?? response.data?.data ?? response.data
+    return {
+      id: String(source?.id ?? source?.userId ?? userId),
+      isTester: toBoolean(source?.isTester ?? source?.is_tester, isTester),
+    }
+  } catch (e: unknown) {
+    if (
+      axios.isAxiosError(e) &&
+      (e.response?.status === 404 || e.response?.status === 405)
+    ) {
+      try {
+        const response = await api.put(`/admin/users/${userId}/tester`, payload)
+        const source =
+          response.data?.user ?? response.data?.data?.user ?? response.data?.data ?? response.data
+        return {
+          id: String(source?.id ?? source?.userId ?? userId),
+          isTester: toBoolean(source?.isTester ?? source?.is_tester, isTester),
+        }
+      } catch (fallbackError: unknown) {
+        throw new Error(
+          toAdminErrorMessage(fallbackError, 'Erro ao atualizar permissao tester.')
+        )
+      }
+    }
+
+    throw new Error(toAdminErrorMessage(e, 'Erro ao atualizar permissao tester.'))
+  }
+}
+
 export async function getAdminPlanById(planId: string): Promise<AdminPlan> {
   try {
     const response = await api.get(`/admin/plans/${planId}`)
-    const plan = toAdminPlan(response.data?.plan ?? response.data?.data ?? response.data)
+    const plan = toAdminPlan(mergePlanEnvelope(response.data))
     if (!plan) throw new Error('Plano invalido retornado pelo backend.')
     return plan
   } catch (e: unknown) {
@@ -1036,7 +1292,7 @@ export async function getAdminPlanById(planId: string): Promise<AdminPlan> {
 export async function createAdminPlan(payload: UpsertAdminPlanPayload): Promise<AdminPlan> {
   try {
     const response = await api.post('/admin/plans', normalizePlanPayload(payload))
-    const plan = toAdminPlan(response.data?.plan ?? response.data?.data ?? response.data)
+    const plan = toAdminPlan(mergePlanEnvelope(response.data))
     if (!plan) throw new Error('Plano invalido retornado pelo backend.')
     return plan
   } catch (e: unknown) {
@@ -1051,7 +1307,7 @@ export async function updateAdminPlan(
   try {
     const normalized = normalizePartialPlanPayload(payload)
     const response = await api.patch(`/admin/plans/${planId}`, normalized)
-    const plan = toAdminPlan(response.data?.plan ?? response.data?.data ?? response.data)
+    const plan = toAdminPlan(mergePlanEnvelope(response.data))
     if (!plan) throw new Error('Plano invalido retornado pelo backend.')
     return plan
   } catch (e: unknown) {

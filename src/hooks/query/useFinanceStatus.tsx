@@ -2,6 +2,7 @@
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/axios'
 import { useAdvisorActing } from '@/stores/useAdvisorActing'
+import { useFinancialScope } from '@/hooks/useFinancialScope'
 
 type FinanceStatusParams = {
   userId?: string
@@ -20,12 +21,13 @@ type FinanceStatusResponse = {
 export function useFinanceStatus({ userId, days, month }: FinanceStatusParams) {
   const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
   const actingContextKey = activeClientId ?? userId ?? 'self'
+  const { scope, scopeKey } = useFinancialScope()
 
   const daysNorm = Number.isFinite(days) ? Number(days) : undefined
   const monthNorm = month && month.length >= 7 ? month : undefined
 
   return useQuery<FinanceStatusResponse>({
-    queryKey: ['transactions', actingContextKey, { days: daysNorm ?? null, month: monthNorm ?? null }],
+    queryKey: ['financeStatus', actingContextKey, scopeKey, { days: daysNorm ?? null, month: monthNorm ?? null }],
     enabled: (Boolean(userId) || Boolean(activeClientId)) && (Boolean(daysNorm) || Boolean(monthNorm)), 
 
     queryFn: async () => {
@@ -34,6 +36,7 @@ export function useFinanceStatus({ userId, days, month }: FinanceStatusParams) {
       if (contextUserId) params.userId = contextUserId
       if (daysNorm) params.days = String(daysNorm) 
       if (monthNorm) params.month = monthNorm
+      if (scope) params.scope = scope
 
       const res = await api.get<FinanceStatusResponse>('/dashboard/finance-status', {
         params,

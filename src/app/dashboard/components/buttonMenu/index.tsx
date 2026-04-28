@@ -1,73 +1,77 @@
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  LayoutDashboard,
-  Landmark,
-  Tag,
-  User,
-  BookOpenCheck,
-  ClipboardList,
   Menu,
   X,
-  BarChart3,
-  Clock3,
-  ShieldCheck,
-  Users,
 } from 'lucide-react'
 import React, { useState } from 'react'
 import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react'
 import { useUserSession } from '@/stores/useUserSession'
-import { isAdvisorRole, isAdminRole } from '@/utils/roles'
+import { canAccessAdvisorRole, isAdminRole } from '@/utils/roles'
+import { useTranslations } from 'next-intl'
+import {
+  buildSidebarSections,
+  filterSidebarSections,
+  isSidebarPathActive,
+} from '../Sidebar/sidebar.config'
+
+type MenuItem = {
+  id: string
+  label: string
+  icon: React.ComponentType<{ size?: number }>
+  path: string
+}
 
 export default function BottomMenu() {
   const router = useRouter()
   const pathname = usePathname()
+  const t = useTranslations('nav')
   const { user } = useUserSession()
   const role = user?.userData?.user?.role
   const isAdmin = isAdminRole(role)
-  const isAdvisor = isAdvisorRole(role)
+  const isAdvisor = canAccessAdvisorRole(role)
 
-  const primaryItems = [
-    { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
-    { label: 'Transações', icon: Landmark, path: '/dashboard/transacoes' },
-    { label: 'Contas', icon: ClipboardList, path: '/dashboard/contas-fixas' },
-  ]
-  const moreItems = [
-    { label: 'Futuros', icon: Clock3, path: '/dashboard/futuros' },
-    { label: 'Relatorios', icon: BarChart3, path: '/dashboard/relatorios' },
-    { label: 'Categorias', icon: Tag, path: '/dashboard/categorias' },
-    { label: 'Educacao', icon: BookOpenCheck, path: '/dashboard/educacao' },
-    ...(isAdvisor ? [{ label: 'Clientes', icon: Users, path: '/advisor' }] : []),
-    { label: 'Perfil', icon: User, path: '/dashboard/perfil' },
-    ...(isAdmin ? [{ label: 'Admin', icon: ShieldCheck, path: '/admin/dashboard' }] : []),
-  ]
+  const menuItems: MenuItem[] = filterSidebarSections(
+    buildSidebarSections({
+      dashboard: t('dashboard'),
+      transactions: t('transactions'),
+      accounts: t('accounts'),
+      categories: t('categories'),
+      future: t('future'),
+      reports: t('reports'),
+      coupleAccount: t('coupleAccount'),
+      education: t('education'),
+      clients: t('clients'),
+      profile: t('profile'),
+      admin: t('admin'),
+      logout: t('logout'),
+    }),
+    {
+      isAdmin,
+      canAccessAdvisor: isAdvisor,
+    }
+  )
+    .flatMap((section) => section.items)
+    .filter((item) => Boolean(item.path))
+    .map((item) => ({
+      id: item.id,
+      label: item.label,
+      icon: item.icon,
+      path: item.path!,
+    }))
+
+  const primaryItemIds = new Set(['dashboard', 'transactions', 'accounts'])
+  const primaryItems = menuItems.filter((item) => primaryItemIds.has(item.id))
+  const moreItems = menuItems.filter((item) => !primaryItemIds.has(item.id))
   const [moreOpen, setMoreOpen] = useState(false)
-
-  const normalize = (p: string) => p.replace(/\/+$/, '')
-  const current = normalize(pathname ?? '')
-  const isPathActive = (itemPath: string) => {
-    const base = normalize(itemPath)
-
-    if (base === '/dashboard') {
-      return current === '/dashboard' || current.startsWith('/dashboard/controles')
-    }
-    if (base === '/admin/dashboard') {
-      return current.startsWith('/admin')
-    }
-    if (base === '/advisor') {
-      return current.startsWith('/advisor')
-    }
-
-    return current === base || current.startsWith(`${base}/`)
-  }
 
   return (
     <>
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center py-4 z-50">
-        {primaryItems.map(({ label, icon: Icon, path }) => {
-          const isActive = isPathActive(path)
+        {primaryItems.map(({ id, label, icon: Icon, path }) => {
+          const isActive = isSidebarPathActive(pathname ?? '', path)
           return (
             <button
-              key={label}
+              key={id}
               onClick={() => router.push(path)}
               className={`flex flex-col items-center text-xs ${isActive ? 'text-primary' : 'text-gray-500'}`}
             >
@@ -81,7 +85,7 @@ export default function BottomMenu() {
           className="flex flex-col items-center text-xs text-gray-500"
         >
           <Menu size={22} />
-          <span>Mais</span>
+          <span>{t('more')}</span>
         </button>
       </nav>
 
@@ -111,22 +115,22 @@ export default function BottomMenu() {
             >
               <DialogPanel className="w-full rounded-t-2xl bg-white p-5 shadow-xl">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-gray-700">Mais opcoes</span>
+                  <span className="text-sm font-semibold text-gray-700">{t('moreOptions')}</span>
                   <button
                     onClick={() => setMoreOpen(false)}
                     className="rounded-full border border-gray-200 p-2 text-gray-500 hover:bg-gray-50"
-                    aria-label="Fechar"
+                    aria-label={t('close')}
                   >
                     <X className="h-4 w-4" />
                   </button>
                 </div>
 
                 <div className="mt-4 grid grid-cols-3 gap-3">
-                  {moreItems.map(({ label, icon: Icon, path }) => {
-                    const isActive = isPathActive(path)
+                  {moreItems.map(({ id, label, icon: Icon, path }) => {
+                    const isActive = isSidebarPathActive(pathname ?? '', path)
                     return (
                       <button
-                        key={label}
+                        key={id}
                         onClick={() => {
                           setMoreOpen(false)
                           router.push(path)
@@ -149,3 +153,4 @@ export default function BottomMenu() {
     </>
   )
 }
+

@@ -234,7 +234,7 @@ export default function CheckoutStepper({
     <div>
       <div className="flex flex-col gap-8">
         {error && (
-          <div className="text-red-600 bg-red-100 border border-red-300 px-4 py-2 rounded-md text-sm">
+          <div className="text-red-400 bg-red-100 border border-red-300 px-4 py-2 rounded-md text-sm">
             {error}
           </div>
         )}

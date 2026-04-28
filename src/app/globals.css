@@ -2,45 +2,42 @@
 @plugin "tailwindcss-animate";
 @import "./theme.css" layer(theme);
 
-@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+@custom-variant dark (&:where(.dark, .dark *, [data-theme=dark], [data-theme=dark] *));
 
-
-/* --------- TOKENS (HSL numérico) --------- */
+/* Theme tokens (HSL numeric) */
 :root {
-  /* base light */
-  --background: 0 0% 100%;
-  --foreground: 222 47% 11%;
+  /* LIGHT THEME: white + black + blue */
+  --background: 220 23% 97%;
+  --foreground: 0 0% 0%;
 
-  --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
+  --card: 0 0% 96%;
+  --card-foreground: 0 0% 0%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
+  --popover-foreground: 0 0% 0%;
 
-  /* primária (azul fly) */
-  --primary: 203, 100%, 32%;
+  --primary: 203 100% 32%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 199, 100%, 42%;
-  --secondary-foreground: 222 47% 11%;
+  --secondary: 199 100% 42%;
+  --secondary-foreground: 0 0% 100%;
 
-  --yellowfly: 49 100% 54%;            /* sem vírgulas é mais seguro */
-  --yellowfly-foreground: 0 0% 100%;
+  --yellowfly: 49 100% 54%;
+  --yellowfly-foreground: 0 0% 0%;
 
-  --muted: 210 20% 96%;
-  --muted-foreground: 215 16% 47%;
+  --muted: 0 0% 97%;
+  --muted-foreground: 0 0% 30%;
 
-  --accent: 210 20% 96%;
-  --accent-foreground: 222 47% 11%;
+  --accent: 203 100% 96%;
+  --accent-foreground: 0 0% 0%;
 
   --destructive: 0 63% 31%;
   --destructive-foreground: 0 0% 100%;
 
-  --border: 203, 100%, 32%;
-  --input: 214 32% 91%;
-  --ring: 203, 100%, 32%;
+  --border: 0 0% 78%;
+  --input: 0 0% 94%;
+  --ring: 203 100% 32%;
 
-  /* opcionais */
   --success: 142 76% 36%;
   --success-foreground: 0 0% 100%;
   --warning: 38 92% 50%;
@@ -48,40 +45,44 @@
   --info: 217 91% 60%;
   --info-foreground: 0 0% 100%;
 
-  /* radius */
   --radius: 10px;
 }
 
+:root[data-theme='dark'],
 .dark {
-  --background: 222 47% 11%;
-  --foreground: 210 20% 98%;
+  /* DARK THEME: black + white + yellow */
+  --background: 0 0% 0%;
+  --foreground: 0 0% 100%;
 
-  --card: 217 33% 17%;
-  --card-foreground: 210 20% 98%;
+  --card: 0 0% 14%;
+  --card-foreground: 0 0% 100%;
 
-  --popover: 217 33% 17%;
-  --popover-foreground: 210 20% 98%;
+  --popover: 0 0% 10%;
+  --popover-foreground: 0 0% 100%;
 
-  --primary: 142 76% 36%;
-  --primary-foreground: 0 0% 100%;
+  --primary: 49 100% 54%;
+  --primary-foreground: 0 0% 0%;
 
-  --secondary: 217 33% 17%;
-  --secondary-foreground: 210 20% 98%;
+  --secondary: 0 0% 100%;
+  --secondary-foreground: 0 0% 0%;
 
-  --muted: 217 33% 17%;
-  --muted-foreground: 215 20% 65%;
+  --muted: 0 0% 11%;
+  --muted-foreground: 0 0% 87%;
 
-  --accent: 217 33% 17%;
-  --accent-foreground: 210 20% 98%;
+  --accent: 49 100% 54%;
+  --accent-foreground: 0 0% 0%;
 
   --destructive: 0 63% 31%;
-  --destructive-foreground: 210 20% 98%;
+  --destructive-foreground: 0 0% 100%;
 
-  --border: 217 33% 17%;
-  --input: 217 33% 17%;
-  --ring: 142 76% 36%;
+  --border: 0 0% 70%;
+  --input: 0 0% 12%;
+  --ring: 49 100% 54%;
+
+  --yellowfly: 49 100% 54%;
+  --yellowfly-foreground: 0 0% 0%;
+  color-scheme: dark;
 }
-
 
 @layer base {
   html {
@@ -103,22 +104,361 @@
   }
 }
 
+:root[data-theme='dark'] body,
+.dark body {
+  background-color: #000000;
+}
 
-/* @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-} */
+:root[data-theme='dark'] *,
+.dark * {
+  border-color: hsl(var(--border) / 0.15);
+}
 
-/* @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #ffffff;
-    --foreground: #333C4D;
-  }
-} */
+/* Dark mode compatibility layer for legacy utility classes */
+:root[data-theme='dark'] .text-slate-400,
+:root[data-theme='dark'] .text-gray-400,
+:root[data-theme='dark'] .text-zinc-400,
+.dark .text-slate-400,
+.dark .text-gray-400,
+.dark .text-zinc-400 {
+  color: #d2dced !important;
+}
 
+:root[data-theme='dark'] .text-slate-500,
+:root[data-theme='dark'] .text-gray-500,
+:root[data-theme='dark'] .text-zinc-500,
+:root[data-theme='dark'] .text-muted-foreground,
+.dark .text-slate-500,
+.dark .text-gray-500,
+.dark .text-zinc-500,
+.dark .text-muted-foreground {
+  color: #e1e9f5 !important;
+}
 
+:root[data-theme='dark'] .text-slate-600,
+:root[data-theme='dark'] .text-gray-600,
+:root[data-theme='dark'] .text-zinc-600,
+:root[data-theme='dark'] .text-slate-700,
+:root[data-theme='dark'] .text-gray-700,
+:root[data-theme='dark'] .text-zinc-700,
+:root[data-theme='dark'] .text-slate-800,
+:root[data-theme='dark'] .text-gray-800,
+:root[data-theme='dark'] .text-zinc-800,
+:root[data-theme='dark'] .text-slate-900,
+:root[data-theme='dark'] .text-gray-900,
+:root[data-theme='dark'] .text-zinc-900,
+.dark .text-slate-600,
+.dark .text-gray-600,
+.dark .text-zinc-600,
+.dark .text-slate-700,
+.dark .text-gray-700,
+.dark .text-zinc-700,
+.dark .text-slate-800,
+.dark .text-gray-800,
+.dark .text-zinc-800,
+.dark .text-slate-900,
+.dark .text-gray-900,
+.dark .text-zinc-900 {
+  color: #f2f6fc !important;
+}
 
+:root[data-theme='dark'] .text-\[\#333C4D\],
+:root[data-theme='dark'] .text-\[\#1A202C\],
+:root[data-theme='dark'] .text-\[\#1F2A37\],
+.dark .text-\[\#333C4D\],
+.dark .text-\[\#1A202C\],
+.dark .text-\[\#1F2A37\] {
+  color: #f7f9fd !important;
+}
 
+:root[data-theme='dark'] .border-slate-100,
+:root[data-theme='dark'] .border-slate-200,
+:root[data-theme='dark'] .border-slate-300,
+:root[data-theme='dark'] .border-gray-100,
+:root[data-theme='dark'] .border-gray-200,
+:root[data-theme='dark'] .border-gray-300,
+:root[data-theme='dark'] .border-zinc-100,
+:root[data-theme='dark'] .border-zinc-200,
+:root[data-theme='dark'] .border-zinc-300,
+:root[data-theme='dark'] [class*='border-slate-'],
+:root[data-theme='dark'] [class*='border-gray-'],
+:root[data-theme='dark'] [class*='border-zinc-'],
+:root[data-theme='dark'] .border-\[\#E2E8F0\],
+:root[data-theme='dark'] .border-\[\#D7EAF5\],
+:root[data-theme='dark'] .border-\[\#BFE0F5\],
+:root[data-theme='dark'] .border-\[\#94C9E7\],
+.dark .border-slate-100,
+.dark .border-slate-200,
+.dark .border-slate-300,
+.dark .border-gray-100,
+.dark .border-gray-200,
+.dark .border-gray-300,
+.dark .border-zinc-100,
+.dark .border-zinc-200,
+.dark .border-zinc-300,
+.dark [class*='border-slate-'],
+.dark [class*='border-gray-'],
+.dark [class*='border-zinc-'],
+.dark .border-\[\#E2E8F0\],
+.dark .border-\[\#D7EAF5\],
+.dark .border-\[\#BFE0F5\],
+.dark .border-\[\#94C9E7\] {
+  border-color: hsl(var(--border) / 0.15) !important;
+}
 
+:root[data-theme='dark'] input:not([type='checkbox']):not([type='radio']):not([type='range']),
+:root[data-theme='dark'] select,
+:root[data-theme='dark'] textarea,
+.dark input:not([type='checkbox']):not([type='radio']):not([type='range']),
+.dark select,
+.dark textarea {
+  background-color: hsl(var(--input)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border) / 0.24) !important;
+}
+
+:root[data-theme='dark'] input::placeholder,
+:root[data-theme='dark'] textarea::placeholder,
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #9fb0c7 !important;
+}
+
+:root[data-theme='dark'] .bg-white,
+:root[data-theme='dark'] [class*='bg-white/'],
+.dark .bg-white,
+.dark [class*='bg-white/'] {
+  background-color: hsl(var(--card)) !important;
+  color: hsl(var(--card-foreground)) !important;
+}
+
+:root[data-theme='dark'] .bg-slate-50,
+:root[data-theme='dark'] .bg-slate-100,
+:root[data-theme='dark'] .bg-gray-50,
+:root[data-theme='dark'] .bg-gray-100,
+:root[data-theme='dark'] .bg-zinc-50,
+:root[data-theme='dark'] .bg-zinc-100,
+:root[data-theme='dark'] .bg-neutral-50,
+:root[data-theme='dark'] .bg-neutral-100,
+:root[data-theme='dark'] .bg-stone-50,
+:root[data-theme='dark'] .bg-stone-100,
+:root[data-theme='dark'] [class*='bg-slate-50/'],
+:root[data-theme='dark'] [class*='bg-slate-100/'],
+:root[data-theme='dark'] [class*='bg-gray-50/'],
+:root[data-theme='dark'] [class*='bg-gray-100/'],
+:root[data-theme='dark'] [class*='bg-zinc-50/'],
+:root[data-theme='dark'] [class*='bg-zinc-100/'],
+:root[data-theme='dark'] [class*='bg-neutral-50/'],
+:root[data-theme='dark'] [class*='bg-neutral-100/'],
+:root[data-theme='dark'] [class*='bg-stone-50/'],
+:root[data-theme='dark'] [class*='bg-stone-100/'],
+.dark .bg-slate-50,
+.dark .bg-slate-100,
+.dark .bg-gray-50,
+.dark .bg-gray-100,
+.dark .bg-zinc-50,
+.dark .bg-zinc-100,
+.dark .bg-neutral-50,
+.dark .bg-neutral-100,
+.dark .bg-stone-50,
+.dark .bg-stone-100,
+.dark [class*='bg-slate-50/'],
+.dark [class*='bg-slate-100/'],
+.dark [class*='bg-gray-50/'],
+.dark [class*='bg-gray-100/'],
+.dark [class*='bg-zinc-50/'],
+.dark [class*='bg-zinc-100/'],
+.dark [class*='bg-neutral-50/'],
+.dark [class*='bg-neutral-100/'],
+.dark [class*='bg-stone-50/'],
+.dark [class*='bg-stone-100/'] {
+  background-color: hsl(var(--muted)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+:root[data-theme='dark'] [style*='background-color:white'],
+:root[data-theme='dark'] [style*='background-color: white'],
+:root[data-theme='dark'] [style*='background-color:#fff'],
+:root[data-theme='dark'] [style*='background-color: #fff'],
+:root[data-theme='dark'] [style*='background-color:rgb(255,255,255)'],
+:root[data-theme='dark'] [style*='background-color: rgb(255, 255, 255)'],
+.dark [style*='background-color:white'],
+.dark [style*='background-color: white'],
+.dark [style*='background-color:#fff'],
+.dark [style*='background-color: #fff'],
+.dark [style*='background-color:rgb(255,255,255)'],
+.dark [style*='background-color: rgb(255, 255, 255)'] {
+  background-color: hsl(var(--card)) !important;
+}
+
+:root[data-theme='dark'] .hover\:bg-slate-50:hover,
+:root[data-theme='dark'] .hover\:bg-slate-100:hover,
+:root[data-theme='dark'] .hover\:bg-gray-50:hover,
+:root[data-theme='dark'] .hover\:bg-gray-100:hover,
+:root[data-theme='dark'] .hover\:bg-zinc-50:hover,
+:root[data-theme='dark'] .hover\:bg-zinc-100:hover,
+:root[data-theme='dark'] .hover\:bg-neutral-50:hover,
+:root[data-theme='dark'] .hover\:bg-neutral-100:hover,
+:root[data-theme='dark'] .hover\:bg-stone-50:hover,
+:root[data-theme='dark'] .hover\:bg-stone-100:hover,
+.dark .hover\:bg-slate-50:hover,
+.dark .hover\:bg-slate-100:hover,
+.dark .hover\:bg-gray-50:hover,
+.dark .hover\:bg-gray-100:hover,
+.dark .hover\:bg-zinc-50:hover,
+.dark .hover\:bg-zinc-100:hover,
+.dark .hover\:bg-neutral-50:hover,
+.dark .hover\:bg-neutral-100:hover,
+.dark .hover\:bg-stone-50:hover,
+.dark .hover\:bg-stone-100:hover {
+  background-color: hsl(var(--muted)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+:root[data-theme='dark'] .hover\:bg-gray-200:hover,
+:root[data-theme='dark'] .hover\:bg-slate-200:hover,
+:root[data-theme='dark'] .hover\:bg-zinc-200:hover,
+.dark .hover\:bg-gray-200:hover,
+.dark .hover\:bg-slate-200:hover,
+.dark .hover\:bg-zinc-200:hover {
+  background-color: hsl(var(--muted-foreground) / 0.18) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+:root[data-theme='dark'] .hover\:bg-red-50:hover,
+.dark .hover\:bg-red-50:hover {
+  background-color: rgb(250 45 54 / 0.14) !important;
+}
+
+:root[data-theme='dark'] .hover\:bg-red-100:hover,
+.dark .hover\:bg-red-100:hover {
+  background-color: rgb(250 45 54 / 0.18) !important;
+}
+
+:root[data-theme='dark'] .hover\:bg-emerald-700:hover,
+:root[data-theme='dark'] .hover\:bg-green-700:hover,
+.dark .hover\:bg-emerald-700:hover,
+.dark .hover\:bg-green-700:hover {
+  background-color: #3eaf66 !important;
+}
+
+:root[data-theme='dark'] .hover\:bg-amber-50:hover,
+.dark .hover\:bg-amber-50:hover {
+  background-color: rgb(146 64 14 / 0.28) !important;
+}
+
+:root[data-theme='dark'] .hover\:text-gray-600:hover,
+:root[data-theme='dark'] .hover\:text-gray-700:hover,
+:root[data-theme='dark'] .hover\:text-slate-600:hover,
+:root[data-theme='dark'] .hover\:text-slate-700:hover,
+:root[data-theme='dark'] .hover\:text-zinc-600:hover,
+:root[data-theme='dark'] .hover\:text-zinc-700:hover,
+.dark .hover\:text-gray-600:hover,
+.dark .hover\:text-gray-700:hover,
+.dark .hover\:text-slate-600:hover,
+.dark .hover\:text-slate-700:hover,
+.dark .hover\:text-zinc-600:hover,
+.dark .hover\:text-zinc-700:hover {
+  color: #f7fbff !important;
+}
+
+:root[data-theme='dark'] .focus-visible\:ring-primary\/40:focus-visible,
+.dark .focus-visible\:ring-primary\/40:focus-visible {
+  --tw-ring-color: hsl(var(--ring) / 0.75) !important;
+}
+
+:root[data-theme='dark'] .text-red-400,
+:root[data-theme='dark'] .text-red-500,
+:root[data-theme='dark'] .text-red-600,
+:root[data-theme='dark'] .text-red-700,
+.dark .text-red-400,
+.dark .text-red-500,
+.dark .text-red-600,
+.dark .text-red-700 {
+  color: #fa2d36 !important;
+}
+
+:root[data-theme='dark'] .text-emerald-400,
+:root[data-theme='dark'] .text-emerald-500,
+:root[data-theme='dark'] .text-emerald-600,
+:root[data-theme='dark'] .text-emerald-700,
+:root[data-theme='dark'] .text-green-400,
+:root[data-theme='dark'] .text-green-500,
+:root[data-theme='dark'] .text-green-600,
+:root[data-theme='dark'] .text-green-700,
+.dark .text-emerald-400,
+.dark .text-emerald-500,
+.dark .text-emerald-600,
+.dark .text-emerald-700,
+.dark .text-green-400,
+.dark .text-green-500,
+.dark .text-green-600,
+.dark .text-green-700 {
+  color: #3eaf66 !important;
+}
+
+:root[data-theme='dark'] .bg-red-50,
+:root[data-theme='dark'] .bg-red-100,
+.dark .bg-red-50,
+.dark .bg-red-100 {
+  background-color: rgb(250 45 54 / 0.14) !important;
+}
+
+:root[data-theme='dark'] .bg-red-500,
+:root[data-theme='dark'] .bg-red-600,
+:root[data-theme='dark'] .bg-red-700,
+.dark .bg-red-500,
+.dark .bg-red-600,
+.dark .bg-red-700 {
+  background-color: #fa2d36 !important;
+}
+
+:root[data-theme='dark'] .bg-emerald-50,
+:root[data-theme='dark'] .bg-emerald-100,
+:root[data-theme='dark'] .bg-green-50,
+:root[data-theme='dark'] .bg-green-100,
+.dark .bg-emerald-50,
+.dark .bg-emerald-100,
+.dark .bg-green-50,
+.dark .bg-green-100 {
+  background-color: rgb(62 175 102 / 0.16) !important;
+}
+
+:root[data-theme='dark'] .bg-emerald-500,
+:root[data-theme='dark'] .bg-emerald-600,
+:root[data-theme='dark'] .bg-emerald-700,
+:root[data-theme='dark'] .bg-green-500,
+:root[data-theme='dark'] .bg-green-600,
+:root[data-theme='dark'] .bg-green-700,
+.dark .bg-emerald-500,
+.dark .bg-emerald-600,
+.dark .bg-emerald-700,
+.dark .bg-green-500,
+.dark .bg-green-600,
+.dark .bg-green-700 {
+  background-color: #3eaf66 !important;
+}
+
+:root[data-theme='dark'] .border-red-200,
+:root[data-theme='dark'] .border-red-300,
+:root[data-theme='dark'] .border-red-400,
+.dark .border-red-200,
+.dark .border-red-300,
+.dark .border-red-400 {
+  border-color: rgb(250 45 54 / 0.34) !important;
+}
+
+:root[data-theme='dark'] .border-emerald-200,
+:root[data-theme='dark'] .border-emerald-300,
+:root[data-theme='dark'] .border-emerald-400,
+:root[data-theme='dark'] .border-green-200,
+:root[data-theme='dark'] .border-green-300,
+:root[data-theme='dark'] .border-green-400,
+.dark .border-emerald-200,
+.dark .border-emerald-300,
+.dark .border-emerald-400,
+.dark .border-green-200,
+.dark .border-green-300,
+.dark .border-green-400 {
+  border-color: rgb(62 175 102 / 0.38) !important;
+}

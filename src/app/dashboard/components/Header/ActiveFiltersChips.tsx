@@ -3,6 +3,7 @@
 import React from 'react'
 import { X } from 'lucide-react'
 import clsx from 'clsx'
+import { useLocale, useTranslations } from 'next-intl'
 import { useTransactionFilter } from '@/stores/useFilter'
 import { toRangeFromDays } from '@/utils/transactionPeriod'
 
@@ -10,10 +11,12 @@ function Chip({
   children,
   onRemove,
   color,
+  removeAriaLabel,
 }: {
   children: React.ReactNode
   onRemove?: () => void
   color?: string
+  removeAriaLabel?: string
 }) {
   return (
     <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm">
@@ -24,7 +27,7 @@ function Chip({
           type="button"
           onClick={onRemove}
           className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full hover:bg-slate-100"
-          aria-label="Remover filtro"
+          aria-label={removeAriaLabel}
         >
           <X size={14} />
         </button>
@@ -33,37 +36,41 @@ function Chip({
   )
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, locale: string): string {
   const parsed = new Date(`${iso}T00:00:00`)
   if (Number.isNaN(parsed.getTime())) return iso
-  return parsed.toLocaleDateString('pt-BR')
+  return parsed.toLocaleDateString(locale)
 }
 
-function getPeriodLabel(
-  mode: 'days' | 'month' | 'range',
-  dateRange: number,
-  includeFuture: boolean,
-  month: string,
-  year: string,
-  rangeStart: string,
+function getPeriodLabel(params: {
+  mode: 'days' | 'month' | 'range'
+  dateRange: number
+  includeFuture: boolean
+  month: string
+  year: string
+  rangeStart: string
   rangeEnd: string
-): string {
-  if (mode === 'range' && rangeStart && rangeEnd) {
-    return `${formatDate(rangeStart)} - ${formatDate(rangeEnd)}`
+  locale: string
+  t: (key: string, values?: Record<string, string | number | Date>) => string
+}): string {
+  if (params.mode === 'range' && params.rangeStart && params.rangeEnd) {
+    return `${formatDate(params.rangeStart, params.locale)} - ${formatDate(params.rangeEnd, params.locale)}`
   }
 
-  if (mode === 'month' && month && year) {
-    return `${month}/${year}`
+  if (params.mode === 'month' && params.month && params.year) {
+    return `${params.month}/${params.year}`
   }
 
-  const safeDays = Math.max(1, Number(dateRange || 30))
-  if (includeFuture) {
-    return `Proximos ${safeDays} dias`
+  const safeDays = Math.max(1, Number(params.dateRange || 30))
+  if (params.includeFuture) {
+    return params.t('periodNextDays', { days: safeDays })
   }
-  return `Ultimos ${safeDays} dias`
+  return params.t('periodLastDays', { days: safeDays })
 }
 
 export default function ActiveFiltersChips({ fallbackText }: { fallbackText?: string }) {
+  const t = useTranslations('filters')
+  const locale = useLocale()
   const selectedCategoriesDraft = useTransactionFilter((s) => s.selectedCategories)
   const setSelectedCategoriesDraft = useTransactionFilter((s) => s.setSelectedCategories)
 
@@ -155,7 +162,7 @@ export default function ActiveFiltersChips({ fallbackText }: { fallbackText?: st
     typeFilter !== 'ALL'
 
   const typeLabel =
-    typeFilter === 'INCOME' ? 'Receitas' : typeFilter === 'EXPENSE' ? 'Despesas' : ''
+    typeFilter === 'INCOME' ? t('typeIncome') : typeFilter === 'EXPENSE' ? t('typeExpense') : ''
 
   const removeCategory = (id: string) => {
     const next = selectedCategories.filter((c) => c.id !== id)
@@ -186,42 +193,45 @@ export default function ActiveFiltersChips({ fallbackText }: { fallbackText?: st
     setRangeEndApplied(defaultRange.end)
   }
 
-  const periodLabel = getPeriodLabel(
+  const periodLabel = getPeriodLabel({
     mode,
-    Number(dateRange || 30),
+    dateRange: Number(dateRange || 30),
     includeFuture,
     month,
     year,
     rangeStart,
-    rangeEnd
-  )
+    rangeEnd,
+    locale,
+    t,
+  })
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-   
       {!hasAny ? (
         <p className="text-sm font-light text-slate-500">{fallbackText}</p>
       ) : (
         <>
           {hasPending && (
             <span className="text-xs font-semibold uppercase tracking-wide text-amber-700">
-              Filtros pendentes
+              {t('pending')}
             </span>
           )}
-          {periodLabel && 
-          <Chip onRemove={removePeriod}>
-            {periodLabel}
-          </Chip>
-          }
+          {periodLabel && <Chip onRemove={removePeriod} removeAriaLabel={t('removeFilter')}>{periodLabel}</Chip>}
           {typeFilter !== 'ALL' && (
-            <Chip onRemove={() => (hasPending ? setTypeFilterDraft('ALL') : setTypeFilterApplied('ALL'))}>
+            <Chip
+              onRemove={() => (hasPending ? setTypeFilterDraft('ALL') : setTypeFilterApplied('ALL'))}
+              removeAriaLabel={t('removeFilter')}
+            >
               {typeLabel}
             </Chip>
           )}
 
           {!!searchTerm && (
-            <Chip onRemove={() => (hasPending ? setSearchTermDraft('') : setSearchTermApplied(''))}>
-              Busca: "{searchTerm}"
+            <Chip
+              onRemove={() => (hasPending ? setSearchTermDraft('') : setSearchTermApplied(''))}
+              removeAriaLabel={t('removeFilter')}
+            >
+              {t('searchChip', { value: searchTerm })}
             </Chip>
           )}
 
@@ -230,6 +240,7 @@ export default function ActiveFiltersChips({ fallbackText }: { fallbackText?: st
               key={cat.id}
               color={cat.color ?? '#CBD5E1'}
               onRemove={() => removeCategory(cat.id)}
+              removeAriaLabel={t('removeFilter')}
             >
               {cat.name}
             </Chip>
@@ -242,7 +253,7 @@ export default function ActiveFiltersChips({ fallbackText }: { fallbackText?: st
               'ml-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 hover:bg-slate-50'
             )}
           >
-            Limpar tudo
+            {t('clearAll')}
           </button>
         </>
       )}

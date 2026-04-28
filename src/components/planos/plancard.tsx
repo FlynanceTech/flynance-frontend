@@ -25,6 +25,7 @@ export type UiPlan = {
 type Props = {
   plan: UiPlan;
   revalidateSubscription?: boolean;
+  benefitLimit?: number;
 };
 
 function parseBRLToNumber(value: string) {
@@ -53,7 +54,7 @@ function splitPrice(priceBR: string) {
   return { intPart, decPart };
 }
 
-export function PlanCard({ plan, revalidateSubscription = false }: Props) {
+export function PlanCard({ plan, revalidateSubscription = false, benefitLimit }: Props) {
   const pathname = usePathname();
 
   const {
@@ -106,16 +107,25 @@ export function PlanCard({ plan, revalidateSubscription = false }: Props) {
         : "Reativar assinatura";
 
   const finalCtaLabel = isWinbackPlansRoute ? winbackCtaLabel : ctaLabel;
+  const visibleBenefits =
+    typeof benefitLimit === "number" && benefitLimit > 0
+      ? benefits.slice(0, benefitLimit)
+      : benefits;
 
   return (
-    <div className={clsx("flex flex-col cursor-default hover:scale-105 transition-all", isDiscount ? "" : "")}>
+    <div
+      className={clsx(
+        "flex w-full max-w-[360px] flex-col cursor-default transition-all hover:scale-105",
+        isDiscount ? "" : ""
+      )}
+    >
       <div
         className={clsx(
-          "flex flex-col rounded-xl overflow-hidden w-full h-full mx-auto shadow-2xl",
+          "flex h-full flex-col rounded-xl overflow-hidden w-full mx-auto shadow-2xl",
           isDiscount ? "bg-gradient-to-t from-white to-white shadow-2xl" : "bg-primary shadow-2xl",
         )}
       >
-        <div className={clsx("h-full p-8 flex flex-col gap-8", isDiscount ? "bg-primary" : "bg-white")}>
+        <div className={clsx("flex h-full flex-col gap-8 p-8", isDiscount ? "bg-primary" : "bg-white")}>
           {badge && (
             <div
               className={clsx(
@@ -127,7 +137,7 @@ export function PlanCard({ plan, revalidateSubscription = false }: Props) {
             </div>
           )}
 
-          <div className="flex flex-col gap-4 text-center">
+          <div className="flex flex-1 flex-col gap-4 text-center">
             <div className={clsx("flex items-center", displayPreviousPrice ? "justify-between" : "justify-center")}>
               {displayPreviousPrice && (
                 <p className="text-sm text-gray-100 line-through">
@@ -171,10 +181,10 @@ export function PlanCard({ plan, revalidateSubscription = false }: Props) {
               </p>
 
               <ul className={clsx("space-y-1.5 text-base", isDiscount ? "text-slate-50" : "text-primary")}>
-                {benefits.map((item) => (
-                  <li key={item} className="flex items-center gap-2">
+                {visibleBenefits.map((item) => (
+                  <li key={item} className="flex min-w-0 items-start gap-2">
                     <Check className={clsx("w-4 h-4", isDiscount ? "text-green-400" : "text-primary")} />
-                    <span>{item}</span>
+                    <span className="min-w-0 break-words leading-snug">{item}</span>
                   </li>
                 ))}
               </ul>
@@ -184,7 +194,7 @@ export function PlanCard({ plan, revalidateSubscription = false }: Props) {
           <Link
             href={pathRedirect}
             className={clsx(
-              "block text-center py-3 text-sm md:text-xl font-semibold rounded-full",
+              "mt-auto block text-center py-3 text-sm md:text-xl font-semibold rounded-full",
               isDiscount ? "bg-white text-primary shadow-2xl" : "bg-primary text-white shadow-2xl",
             )}
           >

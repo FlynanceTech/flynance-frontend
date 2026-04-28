@@ -15,6 +15,10 @@ import QuickTypeFilter from './QuickTypeFilter'
 import { useTransactionFilter } from '@/stores/useFilter'
 import DateRangeSelect from '../DateRangeSelect'
 import { toFutureRangeFromDays, toRangeFromDays } from '@/utils/transactionPeriod'
+import { useAdvisorActing } from '@/stores/useAdvisorActing'
+import { isAdvisorReadOnlyTransactionAccess } from '@/utils/transactionWriteAccess'
+import { useTranslations } from 'next-intl'
+import { useFinancialScope } from '@/hooks/useFinancialScope'
 
 interface HeaderProps {
   title?: string
@@ -28,6 +32,8 @@ interface HeaderProps {
   onImportClick?: () => void
   importLoading?: boolean
   rightContent?: React.ReactNode
+  canWriteTransactions?: boolean
+  inlineFilterSlot?: React.ReactNode
 }
 
 type AnyDateFilter =
@@ -78,8 +84,32 @@ function asFullMonthRange(start: string, end: string): { month: string; year: st
   }
 }
 
-export default function Header({ title, subtitle, asFilter = false, asReport = false, dataToFilter, newTransation = true, importTransations, onApplyFilters, onImportClick, importLoading, rightContent}: HeaderProps) {
+export default function Header({
+  title,
+  subtitle,
+  asFilter = false,
+  asReport = false,
+  dataToFilter,
+  newTransation = true,
+  importTransations,
+  onApplyFilters,
+  onImportClick,
+  importLoading,
+  rightContent,
+  canWriteTransactions: canWriteTransactionsProp = true,
+  inlineFilterSlot,
+}: HeaderProps) {
+  const tButtons = useTranslations('buttons')
+  const tHeader = useTranslations('dashboardHeader')
+  const tScope = useTranslations('financialScope')
+  const { canSelectScope, scope } = useFinancialScope()
+
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
+  const activePermission = useAdvisorActing((s) => s.activePermission ?? s.selectedPermission)
+  const isAdvisorReadOnly = isAdvisorReadOnlyTransactionAccess(activeClientId, activePermission)
+  const canWriteTransactions = canWriteTransactionsProp && !isAdvisorReadOnly
+  const canCreateTransactions = Boolean(newTransation && canWriteTransactions)
 
   const selectedCategories = useTransactionFilter((s) => s.selectedCategories)
   const searchTerm = useTransactionFilter((s) => s.searchTerm)
@@ -214,119 +244,132 @@ export default function Header({ title, subtitle, asFilter = false, asReport = f
     onApplyFilters?.()
   }
 
-  const filterButtonLabel = hasPendingFilters ? 'Aplicar filtro' : 'Filtrar'
+  const filterButtonLabel = hasPendingFilters ? tHeader('apply') : tHeader('filter')
   return (
-    <header className='flex flex-col'>
+    <header className="flex flex-col gap-3">
       <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between lg:pb-2 sm:px-0">
-        <div className="w-full flex  md:flex-row justify-between md:items-center gap-2 mb-4">
-          <h1 className="lg:text-xl text-base font-semibold text-[#333C4D]">{title}</h1>
-  
-
-          <div className="hidden lg:flex gap-4 items-center justify-end">
-           {/*  <NotificationBell asFilter={asFilter} /> */}
-           {
-            importTransations &&
-            <ImportTransactionsButton
-              onClick={() => {
-                if (onImportClick) onImportClick()
-                else setDrawerOpen(true)
-              }}
-              disabled={importLoading}
-              label={importLoading ? 'Importando...' : undefined}
-            />
-           }
-            {
-              newTransation &&
-              <NewTransactionButton onClick={() => setDrawerOpen(true)} />
-            }
+        <div className="flex items-start justify-between lg:pb-2 sm:px-0">
+        <div className="w-full grid grid-cols-1 gap-3 md:grid-cols-3 md:items-start mb-4">
+          <div className="col-span-1 flex flex-col gap-1">
+            <h1 className="text-lg font-semibold text-[#333C4D] lg:text-2xl">{title}</h1>
+            {subtitle ? (
+              <p className="whitespace-pre-line text-sm font-light text-slate-500">
+                {subtitle}
+              </p>
+            ) : null}
           </div>
-              {rightContent && (
-              <div className="flex items-center gap-2">
-                {rightContent}
-              </div>
-            )}
-          <div className="flex lg:hidden gap-2 items-center ">
-          
-          {/*   <NotificationBell  asFilter={asFilter} /> */}
-            {importTransations && (
-              <ImportTransactionsButton
-                onClick={() => {
-                  if (onImportClick) onImportClick()
-                  else setDrawerOpen(true)
-                }}
-                disabled={importLoading}
-                label={importLoading ? 'Importando...' : 'Importar'}
-              />
-            )}
-          
-            {asFilter && (
-            <Menu as="div" className="relative lg:hidden">
-            {({ open, close }) => (
-              <>
-                <MenuButton className="p-1.5 rounded-md hover:bg-gray-100 transition cursor-pointer">
-                  {open ? <X /> : <SlidersHorizontal />}
-                </MenuButton>
-          
-                <Transition
-                  enter="transition ease-out duration-200"
-                  enterFrom="opacity-0 scale-95"
-                  enterTo="opacity-100 scale-100"
-                  leave="transition ease-in duration-150"
-                  leaveFrom="opacity-100 scale-100"
-                  leaveTo="opacity-0 scale-95"
-                >
-                  <MenuItems className="absolute right-0 mt-2 min-w-[90vw] bg-white shadow-lg rounded-md p-3 z-40 flex flex-col gap-3 outline-none">
-                    {dataToFilter && (
-                      <div className="min-w-full flex flex-col gap-3 items-stretch">
-                        <QuickTypeFilter />
-                        <SearchBar />
-                        <DateRangeSelect
-                          value={datePickerValue as any}
-                          onChange={handleDateChange as any}
-                          includeFuture={includeFuture}
-                          onIncludeFutureChange={setIncludeFuture}
-                          inline
-                          withDisplay
-                          className="w-full justify-between px-3"
-                        />
-                        <CategoriesSelectWithCheck
-                          closeMenuOnSelect={false}
-                          menuPortalTarget={null}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            handleApplyFilters()
-                            close()
-                          }}
-                          disabled={!hasPendingFilters}
-                          className="h-10 w-full rounded-full bg-primary px-4 text-sm font-semibold text-white hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {filterButtonLabel}
-                        </button>
+  
+          <div className='col-span-2 flex w-full items-center justify-end gap-2'>
+            <div className="hidden lg:flex gap-4 items-center justify-end">
+            {/*  <NotificationBell asFilter={asFilter} /> */}
+                {rightContent && (
+                <div className="flex items-center gap-2">
+                  {rightContent}
+                </div>
+              )}    
+            {
+              importTransations &&
+                  <ImportTransactionsButton
+                    onClick={() => {
+                      if (onImportClick) onImportClick()
+                      else if (canCreateTransactions) setDrawerOpen(true)
+                    }}
+                    disabled={importLoading}
+                    label={importLoading ? tButtons('importing') : undefined}
+                  />
+            }
+              {
+                canCreateTransactions &&
+                <NewTransactionButton onClick={() => setDrawerOpen(true)} />
+              }
+            </div>
+            
+            <div className="flex lg:hidden gap-2 items-center ">
+            
+            {/*   <NotificationBell  asFilter={asFilter} /> */}
+              {importTransations && (
+                <ImportTransactionsButton
+                  onClick={() => {
+                    if (onImportClick) onImportClick()
+                    else if (canCreateTransactions) setDrawerOpen(true)
+                  }}
+                  disabled={importLoading}
+                  label={importLoading ? tButtons('importing') : tButtons('importTransaction')}
+                />
+              )}
+            
+              {asFilter && (
+              <Menu as="div" className="relative lg:hidden">
+              {({ open, close }) => (
+                <>
+                  <MenuButton className="p-1.5 rounded-md hover:bg-gray-100 transition cursor-pointer">
+                    {open ? <X /> : <SlidersHorizontal />}
+                  </MenuButton>
+            
+                  <Transition
+                    enter="transition ease-out duration-200"
+                    enterFrom="opacity-0 scale-95"
+                    enterTo="opacity-100 scale-100"
+                    leave="transition ease-in duration-150"
+                    leaveFrom="opacity-100 scale-100"
+                    leaveTo="opacity-0 scale-95"
+                  >
+                    <MenuItems className="absolute right-0 mt-2 min-w-[90vw] bg-white shadow-lg rounded-md p-3 z-40 flex flex-col gap-3 outline-none">
+                      {dataToFilter && (
+                        <div className="min-w-full flex flex-col gap-3 items-stretch">
+                          <QuickTypeFilter />
+                          <SearchBar />
+                          <DateRangeSelect
+                            value={datePickerValue as any}
+                            onChange={handleDateChange as any}
+                            includeFuture={includeFuture}
+                            onIncludeFutureChange={setIncludeFuture}
+                            inline
+                            withDisplay
+                            className="w-full justify-between px-3"
+                          />
+                          <CategoriesSelectWithCheck
+                            closeMenuOnSelect={false}
+                            menuPortalTarget={null}
+                          />
+                          {inlineFilterSlot}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleApplyFilters()
+                              close()
+                            }}
+                            disabled={!hasPendingFilters}
+                            className="h-10 w-full rounded-full bg-primary px-4 text-sm font-semibold text-white hover:bg-secondary hover:text-black disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {filterButtonLabel}
+                          </button>
 
-                      </div>
-                    )}
-                  </MenuItems>
-                </Transition>
-              </>
-            )}
-          </Menu>
-            )}
+                        </div>
+                      )}
+                    </MenuItems>
+                  </Transition>
+                </>
+              )}
+            </Menu>
+              )}
+            </div>
           </div>
         </div>
 
-        <button
-          onClick={() => setDrawerOpen(true)}
-          className="fixed bottom-20 right-4 bg-secondary/30 text-black rounded-full w-12 h-12 flex items-center justify-center text-2xl shadow-lg z-40 sm:hidden"
-        >
-          <Plus />
-        </button>
+        {canCreateTransactions && (
+          <button
+            onClick={() => setDrawerOpen(true)}
+            className="fixed bottom-20 right-4 bg-secondary/30 text-black rounded-full w-12 h-12 flex items-center justify-center text-2xl shadow-lg z-40 sm:hidden"
+          >
+            <Plus />
+          </button>
+        )}
 
         <TransactionDrawer
           open={drawerOpen}
           onClose={() => setDrawerOpen(false)}
+          readOnly={!canWriteTransactions}
         />
       </div>
 
@@ -338,6 +381,7 @@ export default function Header({ title, subtitle, asFilter = false, asReport = f
               <SearchBar />
               <QuickTypeFilter />
               <CategoriesSelectWithChips />
+              {inlineFilterSlot}
               <DateRangeSelect
                 value={datePickerValue as any}
                 onChange={handleDateChange as any}
@@ -349,7 +393,8 @@ export default function Header({ title, subtitle, asFilter = false, asReport = f
                 type="button"
                 onClick={handleApplyFilters}
                 disabled={!hasPendingFilters}
-                className="h-10 rounded-full bg-primary px-4 text-sm font-semibold text-white hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-10 rounded-full bg-primary px-4 text-sm font-semibold text-white dark:text-black hover:bg-primary/80 cursor-pointer
+                 hover:text-black disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {filterButtonLabel}
               </button>
@@ -359,9 +404,18 @@ export default function Header({ title, subtitle, asFilter = false, asReport = f
           </div>
         )}
       
-        <div className="text-sm font-light md:pt-0">
-          <ActiveFiltersChips fallbackText={subtitle} />
-        </div>
+        {asFilter ? (
+          <div className="text-sm font-light md:pt-0">
+            <ActiveFiltersChips />
+          </div>
+        ) : null}
+        {canSelectScope && (
+          <div className="pt-1">
+            <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+              {scope === 'me' ? tScope('badge.me') : tScope('badge.house')}
+            </span>
+          </div>
+        )}
       </div>
     </header>
   )

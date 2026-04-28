@@ -17,6 +17,7 @@ import {
   Pie,
 } from 'recharts'
 import React from 'react'
+import { formatCurrency } from '@/utils/formatter'
 
 const LABEL: Record<PaymentType, string> = {
   DEBIT_CARD: 'Débito',
@@ -52,7 +53,7 @@ const COLORS: Record<PaymentType, string> = {
 }
 
 const brl = (v: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
+  formatCurrency(v)
 
 export default function PaymentTypeCard() {
   const isMobile = useIsMobile()

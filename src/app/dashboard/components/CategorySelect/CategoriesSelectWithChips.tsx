@@ -3,6 +3,7 @@
 import React, { useMemo } from 'react'
 import Select, { components, GroupBase, StylesConfig } from 'react-select'
 import { X } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 import { useCategories } from '@/hooks/query/useCategory'
 import type { CategoryResponse } from '@/services/category'
@@ -20,10 +21,6 @@ type CategoryOption = {
 
 type CategoryGroup = GroupBase<CategoryOption> & { label: string }
 
-function defaultGroupLabel(type: CategoryType) {
-  return type === 'INCOME' ? 'Receitas' : 'Despesas'
-}
-
 function toOption(cat: CategoryResponse): CategoryOption {
   return {
     value: cat.id,
@@ -34,7 +31,10 @@ function toOption(cat: CategoryResponse): CategoryOption {
   }
 }
 
-function buildGroupedOptions(categories: CategoryResponse[]): CategoryGroup[] {
+function buildGroupedOptions(
+  categories: CategoryResponse[],
+  labels: { income: string; expense: string }
+): CategoryGroup[] {
   const byType: Record<CategoryType, CategoryOption[]> = { EXPENSE: [], INCOME: [] }
 
   categories.forEach((c) => {
@@ -43,8 +43,8 @@ function buildGroupedOptions(categories: CategoryResponse[]): CategoryGroup[] {
   })
 
   const groups: CategoryGroup[] = []
-  if (byType.EXPENSE.length) groups.push({ label: defaultGroupLabel('EXPENSE'), options: byType.EXPENSE })
-  if (byType.INCOME.length) groups.push({ label: defaultGroupLabel('INCOME'), options: byType.INCOME })
+  if (byType.EXPENSE.length) groups.push({ label: labels.expense, options: byType.EXPENSE })
+  if (byType.INCOME.length) groups.push({ label: labels.income, options: byType.INCOME })
   return groups
 }
 
@@ -82,10 +82,11 @@ const selectStyles: StylesConfig<CategoryOption, true, CategoryGroup> = {
     minHeight: 40,
     height: 40,
     borderRadius: 9999,
-    borderColor: state.isFocused ? '#CBD5E1' : '#E2E8F0',
-    boxShadow: state.isFocused ? '0 0 0 2px rgba(59,130,246,0.15)' : 'none',
-    ':hover': { borderColor: '#CBD5E1' },
-    overflow: 'hidden', // ✅ evita “saltar” conteúdo
+    backgroundColor: 'hsl(var(--input))',
+    borderColor: state.isFocused ? 'hsl(var(--ring) / 0.45)' : 'hsl(var(--border) / 0.24)',
+    boxShadow: state.isFocused ? '0 0 0 2px hsl(var(--ring) / 0.22)' : 'none',
+    ':hover': { borderColor: 'hsl(var(--border) / 0.4)' },
+    overflow: 'hidden',
   }),
 
   valueContainer: (base) => ({
@@ -94,39 +95,48 @@ const selectStyles: StylesConfig<CategoryOption, true, CategoryGroup> = {
     paddingLeft: 12,
     paddingRight: 8,
     overflow: 'hidden',
-    flexWrap: 'nowrap', // ✅ importante: não quebrar linha
+    flexWrap: 'nowrap',
   }),
 
-  // ✅ input não pode empurrar a altura
   input: (base) => ({
     ...base,
     margin: 0,
     padding: 0,
+    color: 'hsl(var(--foreground))',
   }),
 
   placeholder: (base) => ({
     ...base,
-    color: '#64748B',
+    color: 'hsl(var(--muted-foreground))',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
   }),
 
   indicatorsContainer: (base) => ({ ...base, height: 40 }),
+  indicatorSeparator: (base) => ({ ...base, backgroundColor: 'hsl(var(--border) / 0.3)' }),
   clearIndicator: (base) => ({ ...base, padding: 6 }),
-  dropdownIndicator: (base) => ({ ...base, padding: 6 }),
+  dropdownIndicator: (base, state) => ({
+    ...base,
+    padding: 6,
+    color: state.isFocused ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))',
+    ':hover': { color: 'hsl(var(--foreground))' },
+  }),
 
   menu: (base) => ({
     ...base,
     borderRadius: 12,
+    backgroundColor: 'hsl(var(--card))',
+    border: '1px solid hsl(var(--border) / 0.22)',
+    boxShadow: '0 12px 30px rgba(0, 0, 0, 0.35)',
     overflow: 'hidden',
-    minWidth: '100%',      // ✅ menu acompanha largura do control
+    minWidth: '100%',
   }),
 
   menuList: (base) => ({
     ...base,
-    padding: 6,            // ✅ respiro
-    maxHeight: 320,        // ✅ scroll estável
+    padding: 6,
+    maxHeight: 320,
   }),
 
   menuPortal: (base) => ({ ...base, zIndex: 9999 }),
@@ -135,15 +145,27 @@ const selectStyles: StylesConfig<CategoryOption, true, CategoryGroup> = {
     ...base,
     borderRadius: 10,
     margin: '2px 0',
-    backgroundColor: state.isFocused ? '#F1F5F9' : 'white',
-    color: '#0F172A',
-    padding: '10px 10px', // ✅ altura “clicável”
+    backgroundColor: state.isSelected
+      ? 'hsl(var(--accent))'
+      : state.isFocused
+      ? 'hsl(var(--muted))'
+      : 'transparent',
+    color: 'hsl(var(--foreground))',
+    padding: '10px 10px',
+    cursor: 'pointer',
   }),
 
-  // 🔥 não renderizar chips dentro do input
+  groupHeading: (base) => ({
+    ...base,
+    color: 'hsl(var(--muted-foreground))',
+    fontWeight: 700,
+    fontSize: 11,
+    letterSpacing: '0.04em',
+    textTransform: 'uppercase',
+  }),
+
   multiValue: (base) => ({ ...base, display: 'none' }),
 }
-
 /** Chips externos */
 function CategoryChip({
   item,
@@ -173,6 +195,8 @@ function CategoryChip({
 }
 
 export default function CategoriesSelectWithChips() {
+  const tFilters = useTranslations('filters')
+  const tType = useTranslations('quickTypeFilter')
   const selectedCategories = useTransactionFilter((s) => s.selectedCategories)
   const setSelectedCategories = useTransactionFilter((s) => s.setSelectedCategories)
 
@@ -180,7 +204,14 @@ export default function CategoriesSelectWithChips() {
     categoriesQuery: { data: categories = [] },
   } = useCategories()
 
-  const groupedOptions = useMemo(() => buildGroupedOptions(categories), [categories])
+  const groupedOptions = useMemo(
+    () =>
+      buildGroupedOptions(categories, {
+        income: tType('income'),
+        expense: tType('expense'),
+      }),
+    [categories, tType]
+  )
 
   // react-select precisa dos options selecionados como "option"
   const selectedOptions = useMemo(() => {
@@ -190,8 +221,8 @@ export default function CategoriesSelectWithChips() {
   }, [selectedCategories, groupedOptions])
 
   const placeholder = selectedCategories?.length
-    ? `${selectedCategories.length} categoria(s) selecionada(s)`
-    : 'Filtrar categorias'
+    ? tFilters('selectedCategories', { count: selectedCategories.length })
+    : tFilters('categoryPlaceholder')
 
   const onChange = (opts: readonly CategoryOption[] | null) => {
     const list = (opts ?? []).map((o) => o.raw)

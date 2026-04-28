@@ -1,27 +1,14 @@
 import { useMemo, useState, useEffect } from 'react'
 import { CalendarDays } from 'lucide-react'
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
+import { useLocale, useTranslations } from 'next-intl'
 
 export type DateFilter =
   | { mode: 'days'; days: number }
-  | { mode: 'month'; month: string; year: string } // month '01'..'12'
-  | { mode: 'range'; start: string; end: string } // "YYYY-MM-DD"
+  | { mode: 'month'; month: string; year: string }
+  | { mode: 'range'; start: string; end: string }
 
 const dayOptions = [7, 15, 30, 60, 90, 180]
-const monthOptions = [
-  { value: '01', label: 'Janeiro' },
-  { value: '02', label: 'Fevereiro' },
-  { value: '03', label: 'Marco' },
-  { value: '04', label: 'Abril' },
-  { value: '05', label: 'Maio' },
-  { value: '06', label: 'Junho' },
-  { value: '07', label: 'Julho' },
-  { value: '08', label: 'Agosto' },
-  { value: '09', label: 'Setembro' },
-  { value: '10', label: 'Outubro' },
-  { value: '11', label: 'Novembro' },
-  { value: '12', label: 'Dezembro' },
-] as const
 
 interface Props {
   value: DateFilter
@@ -35,13 +22,6 @@ interface Props {
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
 const toISODate = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
-
-function formatRangeDisplay(startISO: string, endISO: string) {
-  const start = new Date(startISO + 'T00:00:00')
-  const end = new Date(endISO + 'T00:00:00')
-  const fmt = (d: Date) => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-  return `${fmt(start)} - ${fmt(end)}`
-}
 
 function monthToRange(month: string, year: string): { start: string; end: string } | null {
   const mm = Number(month)
@@ -75,7 +55,14 @@ function asFullMonthRange(start: string, end: string): { month: string; year: st
   }
 }
 
-function formatMonthDisplay(month: string, year: string): string {
+function formatRangeDisplay(startISO: string, endISO: string, locale: string) {
+  const start = new Date(startISO + 'T00:00:00')
+  const end = new Date(endISO + 'T00:00:00')
+  const fmt = (d: Date) => d.toLocaleDateString(locale, { day: '2-digit', month: '2-digit' })
+  return `${fmt(start)} - ${fmt(end)}`
+}
+
+function formatMonthDisplay(month: string, year: string, locale: string): string {
   const mm = Number(month)
   const yy = Number(year)
   if (!Number.isInteger(mm) || mm < 1 || mm > 12 || !Number.isInteger(yy) || yy < 1) {
@@ -83,7 +70,7 @@ function formatMonthDisplay(month: string, year: string): string {
   }
 
   const date = new Date(yy, mm - 1, 1)
-  const label = date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })
+  const label = date.toLocaleDateString(locale, { month: 'short', year: 'numeric' })
   return label.replace('.', '')
 }
 
@@ -96,6 +83,8 @@ export default function DateRangeSelect({
   withDisplay = false,
   inline = false,
 }: Props) {
+  const t = useTranslations('dateRange')
+  const locale = useLocale()
   const [open, setOpen] = useState(false)
   const currentYear = new Date().getFullYear()
   const yearOptions = useMemo(
@@ -103,17 +92,35 @@ export default function DateRangeSelect({
     [currentYear]
   )
 
+  const monthOptions = useMemo(
+    () => ([
+      '01',
+      '02',
+      '03',
+      '04',
+      '05',
+      '06',
+      '07',
+      '08',
+      '09',
+      '10',
+      '11',
+      '12',
+    ] as const).map((value) => ({ value, label: t(`monthNames.${value}`) })),
+    [t]
+  )
+
   const displayText = useMemo(() => {
     if (value.mode === 'days') {
       return includeFuture
-        ? `Proximos ${value.days} dias`
-        : `Ultimos ${value.days} dias`
+        ? t('displayNextDays', { days: value.days })
+        : t('displayLastDays', { days: value.days })
     }
     if (value.mode === 'month') {
-      return `Mes: ${formatMonthDisplay(value.month, value.year)}`
+      return t('displayMonth', { value: formatMonthDisplay(value.month, value.year, locale) })
     }
-    return `Periodo: ${formatRangeDisplay(value.start, value.end)}`
-  }, [value, includeFuture])
+    return t('displayPeriod', { value: formatRangeDisplay(value.start, value.end, locale) })
+  }, [value, includeFuture, locale, t])
 
   const defaultRange = useMemo(() => {
     const end = new Date()
@@ -170,6 +177,8 @@ export default function DateRangeSelect({
 
   const baseButtonClass = `h-9 ${withDisplay ? 'px-4 py-2' : 'w-9 p-0'} flex  lg:max-w-44 items-center justify-center gap-2 rounded-full border border-[#E2E8F0] bg-white text-gray-500 text-sm font-medium hover:bg-gray-50 cursor-pointer`
   const buttonClass = className ? `${baseButtonClass} ${className}` : baseButtonClass
+  const applyButtonClass =
+    'rounded-full border border-blue-600 bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:border-blue-500 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-amber-200/20 dark:bg-amber-300 dark:text-slate-950 dark:shadow-[0_8px_24px_-12px_rgba(250,204,21,0.9)] dark:hover:border-amber-200/40 dark:hover:bg-amber-200'
 
   const futureToggle = onIncludeFutureChange ? (
     <label className="flex items-center gap-2 text-xs text-slate-600">
@@ -179,7 +188,7 @@ export default function DateRangeSelect({
         onChange={(e) => onIncludeFutureChange(e.target.checked)}
         className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40"
       />
-      Periodo futuro
+      {t('futurePeriod')}
     </label>
   ) : null
 
@@ -189,8 +198,8 @@ export default function DateRangeSelect({
         <button
           type="button"
           className={buttonClass}
-          aria-label="Selecionar periodo"
-          title="Selecionar periodo"
+          aria-label={t('selectPeriodAria')}
+          title={t('selectPeriodTitle')}
           onClick={() => setOpen(!open)}
         >
           {withDisplay && <h3 className={inline ? 'block' : 'hidden md:block'}>{displayText}</h3>}
@@ -198,12 +207,12 @@ export default function DateRangeSelect({
         </button>
         {open && (
           <div className="bg-white origin-top-right rounded-xl border border-[#E2E8F0] p-2 text-sm text-[#1A202C] shadow-lg focus:outline-none z-50 lg:mt-0 mt-2 w-full">
-            <div className="mb-2 font-semibold text-xs text-gray-500 px-2">Selecionar intervalo</div>
+            <div className="mb-2 font-semibold text-xs text-gray-500 px-2">{t('sectionSelectRange')}</div>
 
             <div className="px-2 pb-2">
               <div className="grid grid-cols-2 gap-2">
                 <label className="flex flex-col gap-1">
-                  <span className="text-[11px] text-gray-500">Inicio</span>
+                  <span className="text-[11px] text-gray-500">{t('start')}</span>
                   <input
                     type="date"
                     value={rangeDraft.start}
@@ -213,7 +222,7 @@ export default function DateRangeSelect({
                 </label>
 
                 <label className="flex flex-col gap-1">
-                  <span className="text-[11px] text-gray-500">Fim</span>
+                  <span className="text-[11px] text-gray-500">{t('end')}</span>
                   <input
                     type="date"
                     value={rangeDraft.end}
@@ -223,7 +232,7 @@ export default function DateRangeSelect({
                 </label>
               </div>
 
-              {!rangeIsValid && <div className="mt-2 text-[11px] text-red-600">O inicio nao pode ser depois do fim.</div>}
+              {!rangeIsValid && <div className="mt-2 text-[11px] text-red-400">{t('invalidRange')}</div>}
 
               <div className="mt-3 flex items-center justify-between gap-2">
                 {futureToggle}
@@ -231,23 +240,21 @@ export default function DateRangeSelect({
                   type="button"
                   disabled={!rangeIsValid}
                   onClick={() => onChange({ mode: 'range', start: rangeDraft.start, end: rangeDraft.end })}
-                  className="text-xs px-4 py-2 rounded-full bg-primary hover:bg-secondary text-white font-semibold disabled:opacity-50"
+                  className={applyButtonClass}
                 >
-                  Aplicar
+                  {t('apply')}
                 </button>
               </div>
-
-   
             </div>
 
             <div className="my-2 h-px w-full bg-gray-200" />
 
-            <div className="mb-2 font-semibold text-xs text-gray-500 px-2">Selecionar mes especifico</div>
+            <div className="mb-2 font-semibold text-xs text-gray-500 px-2">{t('sectionSelectMonth')}</div>
 
             <div className="px-2 pb-2">
               <div className="grid grid-cols-2 gap-2">
                 <label className="flex flex-col gap-1">
-                  <span className="text-[11px] text-gray-500">Mes</span>
+                  <span className="text-[11px] text-gray-500">{t('month')}</span>
                   <select
                     value={monthDraft.month}
                     onChange={(e) => setMonthDraft((prev) => ({ ...prev, month: e.target.value }))}
@@ -262,7 +269,7 @@ export default function DateRangeSelect({
                 </label>
 
                 <label className="flex flex-col gap-1">
-                  <span className="text-[11px] text-gray-500">Ano</span>
+                  <span className="text-[11px] text-gray-500">{t('year')}</span>
                   <select
                     value={monthDraft.year}
                     onChange={(e) => setMonthDraft((prev) => ({ ...prev, year: e.target.value }))}
@@ -282,27 +289,27 @@ export default function DateRangeSelect({
                   type="button"
                   disabled={!monthIsValid}
                   onClick={() => onChange({ mode: 'month', month: monthDraft.month, year: monthDraft.year })}
-                  className="text-xs px-4 py-2 rounded-full bg-primary hover:bg-secondary text-white font-semibold disabled:opacity-50"
+                  className={applyButtonClass}
                 >
-                  Aplicar mes
+                  {t('applyMonth')}
                 </button>
               </div>
             </div>
 
             <div className="my-2 h-px w-full bg-gray-200" />
 
-            <div className="mb-2 font-semibold text-xs text-gray-500 px-2">Filtrar por periodo de</div>
+            <div className="mb-2 font-semibold text-xs text-gray-500 px-2">{t('sectionFilterDays')}</div>
 
             <div className="grid grid-cols-3 gap-2 px-2">
               {dayOptions.map((day) => (
                 <button
                   key={day}
                   onClick={() => onChange({ mode: 'days', days: day })}
-                  className={`px-2 py-1 text-center rounded hover:bg-secondary/30 ${
-                    value.mode === 'days' && value.days === day ? 'bg-secondary/30 text-primary' : ''
+                  className={`px-2 py-1 text-center rounded hover:bg-primary/30 ${
+                    value.mode === 'days' && value.days === day ? 'bg-primary/30 text-primary' : ''
                   }`}
                 >
-                  {day} dias
+                  {t('days', { days: day })}
                 </button>
               ))}
             </div>
@@ -314,7 +321,7 @@ export default function DateRangeSelect({
 
   return (
     <Menu>
-      <MenuButton className={buttonClass} aria-label="Selecionar periodo" title="Selecionar periodo">
+      <MenuButton className={buttonClass} aria-label={t('selectPeriodAria')} title={t('selectPeriodTitle')}>
         {withDisplay && <h3 className={inline ? 'block' : 'hidden md:block'}>{displayText}</h3>}
         <CalendarDays size={18} />
       </MenuButton>
@@ -324,12 +331,12 @@ export default function DateRangeSelect({
         portal={false}
         className="bg-white origin-top-right rounded-xl border border-[#E2E8F0] p-2 text-sm text-[#1A202C] shadow-lg focus:outline-none z-50 lg:mt-0 mt-2 w-[320px]"
       >
-        <div className="mb-2 font-semibold text-xs text-gray-500 px-2">Selecionar intervalo</div>
+        <div className="mb-2 font-semibold text-xs text-gray-500 px-2">{t('sectionSelectRange')}</div>
 
         <div className="px-2 pb-2">
           <div className="grid grid-cols-2 gap-2">
             <label className="flex flex-col gap-1">
-              <span className="text-[11px] text-gray-500">Inicio</span>
+              <span className="text-[11px] text-gray-500">{t('start')}</span>
               <input
                 type="date"
                 value={rangeDraft.start}
@@ -339,7 +346,7 @@ export default function DateRangeSelect({
             </label>
 
             <label className="flex flex-col gap-1">
-              <span className="text-[11px] text-gray-500">Fim</span>
+              <span className="text-[11px] text-gray-500">{t('end')}</span>
               <input
                 type="date"
                 value={rangeDraft.end}
@@ -349,7 +356,7 @@ export default function DateRangeSelect({
             </label>
           </div>
 
-          {!rangeIsValid && <div className="mt-2 text-[11px] text-red-600">O inicio nao pode ser depois do fim.</div>}
+          {!rangeIsValid && <div className="mt-2 text-[11px] text-red-400">{t('invalidRange')}</div>}
 
           <div className="mt-3 flex items-center justify-between gap-2">
             {futureToggle}
@@ -358,23 +365,21 @@ export default function DateRangeSelect({
               type="button"
               disabled={!rangeIsValid}
               onClick={() => onChange({ mode: 'range', start: rangeDraft.start, end: rangeDraft.end })}
-              className="text-xs px-4 py-2 rounded-full bg-primary hover:bg-secondary text-white font-semibold disabled:opacity-50"
+              className={applyButtonClass}
             >
-              Aplicar
+              {t('apply')}
             </MenuItem>
           </div>
-
-
         </div>
 
         <div className="my-2 h-px w-full bg-gray-200" />
 
-        <div className="mb-2 font-semibold text-xs text-gray-500 px-2">Selecionar mes especifico</div>
+        <div className="mb-2 font-semibold text-xs text-gray-500 px-2">{t('sectionSelectMonth')}</div>
 
         <div className="px-2 pb-2">
           <div className="grid grid-cols-2 gap-2">
             <label className="flex flex-col gap-1">
-              <span className="text-[11px] text-gray-500">Mes</span>
+              <span className="text-[11px] text-gray-500">{t('month')}</span>
               <select
                 value={monthDraft.month}
                 onChange={(e) => setMonthDraft((prev) => ({ ...prev, month: e.target.value }))}
@@ -389,7 +394,7 @@ export default function DateRangeSelect({
             </label>
 
             <label className="flex flex-col gap-1">
-              <span className="text-[11px] text-gray-500">Ano</span>
+              <span className="text-[11px] text-gray-500">{t('year')}</span>
               <select
                 value={monthDraft.year}
                 onChange={(e) => setMonthDraft((prev) => ({ ...prev, year: e.target.value }))}
@@ -410,16 +415,16 @@ export default function DateRangeSelect({
               type="button"
               disabled={!monthIsValid}
               onClick={() => onChange({ mode: 'month', month: monthDraft.month, year: monthDraft.year })}
-              className="text-xs px-4 py-2 rounded-full bg-primary hover:bg-secondary text-white font-semibold disabled:opacity-50"
+              className={applyButtonClass}
             >
-              Aplicar mes
+              {t('applyMonth')}
             </MenuItem>
           </div>
         </div>
 
         <div className="my-2 h-px w-full bg-gray-200" />
 
-        <div className="mb-2 font-semibold text-xs text-gray-500 px-2">Filtrar por periodo de</div>
+        <div className="mb-2 font-semibold text-xs text-gray-500 px-2">{t('sectionFilterDays')}</div>
 
         <div className="grid grid-cols-3 gap-2 px-2">
           {dayOptions.map((day) => (
@@ -427,11 +432,11 @@ export default function DateRangeSelect({
               key={day}
               as="button"
               onClick={() => onChange({ mode: 'days', days: day })}
-              className={`px-2 py-1 text-center rounded data-[focus]:bg-secondary/30 ${
+              className={`px-2 py-1 text-center rounded data-[focus]:bg-secondary/30 cursor-pointer ${
                 value.mode === 'days' && value.days === day ? 'bg-secondary/30 text-primary' : ''
               }`}
             >
-              {day} dias
+              {t('days', { days: day })}
             </MenuItem>
           ))}
         </div>

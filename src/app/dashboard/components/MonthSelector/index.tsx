@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { addMonths, format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { addMonths } from 'date-fns'
+import { useLocale } from 'next-intl'
 
 interface MonthSelectorProps {
   initialDate?: Date
@@ -11,7 +11,13 @@ interface MonthSelectorProps {
 }
 
 export default function MonthSelector({ initialDate = new Date(), onChange }: MonthSelectorProps) {
+  const locale = useLocale()
   const [currentDate, setCurrentDate] = useState(initialDate)
+
+  const monthLabel = useMemo(() => {
+    const formatted = currentDate.toLocaleDateString(locale, { month: 'long', year: 'numeric' })
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1)
+  }, [currentDate, locale])
 
   function handleChangeMonth(delta: number) {
     const newDate = addMonths(currentDate, delta)
@@ -20,14 +26,14 @@ export default function MonthSelector({ initialDate = new Date(), onChange }: Mo
   }
 
   return (
-    <div className="flex items-center gap-2 lg:text-gray-600 font-medium">
+    <div className="flex items-center gap-2 lg:text-gray-600 dark:lg:text-white font-medium">
       <button
         onClick={() => handleChangeMonth(-1)}
         className="hover:text-primary transition-colors cursor-pointer"
       >
         <ChevronLeft size={20} />
       </button>
-      <span>{format(currentDate, 'MMMM yyyy', { locale: ptBR })}</span>
+      <span>{monthLabel}</span>
       <button
         onClick={() => handleChangeMonth(1)}
         className="hover:text-primary transition-colors cursor-pointer"

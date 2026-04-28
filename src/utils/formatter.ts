@@ -1,43 +1,63 @@
-export const formatter = new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format
+import { useUserPreferencesStore } from '@/stores/useUserPreferences'
+
+const DEFAULT_LOCALE = 'pt-BR'
+const DEFAULT_CURRENCY = 'BRL'
+
+function resolveLocaleCurrency() {
+  const preferences = useUserPreferencesStore.getState().preferences
+  const locale = String(preferences?.locale ?? DEFAULT_LOCALE).trim() || DEFAULT_LOCALE
+  const currency = String(preferences?.currency ?? DEFAULT_CURRENCY).trim().toUpperCase() || DEFAULT_CURRENCY
+  return { locale, currency }
+}
+
+export function formatCurrency(value: number, options?: { locale?: string; currency?: string }) {
+  const resolved = resolveLocaleCurrency()
+  const locale = options?.locale || resolved.locale
+  const currency = (options?.currency || resolved.currency).toUpperCase()
+  const safeValue = Number.isFinite(Number(value)) ? Number(value) : 0
+
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency,
+    }).format(safeValue)
+  } catch {
+    return new Intl.NumberFormat(DEFAULT_LOCALE, {
+      style: 'currency',
+      currency: DEFAULT_CURRENCY,
+    }).format(safeValue)
+  }
+}
+
+export const formatter = (value: number) => formatCurrency(value)
 
 export function getLocalISOString(date = new Date()) {
   const offset = date.getTimezoneOffset()
   const localDate = new Date(date.getTime() - offset * 60 * 1000)
   return localDate.toISOString().slice(0, 16)
-  }
-  
-  // utils/date.ts
-
-// ✅ Normaliza qualquer entrada para "YYYY-MM-DDTHH:mm:ss.sssZ"
-export function toUTCISOString(input: string | Date) {
-  // Se vier do input datetime-local: "2025-12-23T10:12"
-  // new Date("2025-12-23T10:12") é interpretado como horário LOCAL
-  // e toISOString() converte para UTC com Z (formato esperado do backend)
-  const date = typeof input === "string" ? new Date(input) : input;
-
-  if (Number.isNaN(date.getTime())) {
-    throw new Error("Data inválida");
-  }
-
-  return date.toISOString(); // ex: "2025-12-26T19:17:00.000Z"
 }
 
-// ✅ Para preencher <input type="datetime-local" /> a partir de um ISO Z
+export function toUTCISOString(input: string | Date) {
+  const date = typeof input === 'string' ? new Date(input) : input
+
+  if (Number.isNaN(date.getTime())) {
+    throw new Error('Data invalida')
+  }
+
+  return date.toISOString()
+}
+
 export function isoZToDatetimeLocal(isoZ: string) {
-  const date = new Date(isoZ);
-  if (Number.isNaN(date.getTime())) return "";
+  const date = new Date(isoZ)
+  if (Number.isNaN(date.getTime())) return ''
 
-  // datetime-local espera "YYYY-MM-DDTHH:mm" (SEM timezone)
-  const pad = (n: number) => String(n).padStart(2, "0");
+  const pad = (n: number) => String(n).padStart(2, '0')
 
-  const yyyy = date.getFullYear();
-  const mm = pad(date.getMonth() + 1);
-  const dd = pad(date.getDate());
-  const hh = pad(date.getHours());
-  const min = pad(date.getMinutes());
+  const yyyy = date.getFullYear()
+  const mm = pad(date.getMonth() + 1)
+  const dd = pad(date.getDate())
+  const hh = pad(date.getHours())
+  const min = pad(date.getMinutes())
 
-  return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+  return `${yyyy}-${mm}-${dd}T${hh}:${min}`
 }

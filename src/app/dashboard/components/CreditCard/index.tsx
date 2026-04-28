@@ -3,6 +3,7 @@
 import * as React from 'react'
 import { clsx } from 'clsx'
 import { CreditCard as CardIcon } from 'lucide-react'
+import { formatCurrency } from '@/utils/formatter'
 
 export type CardBrand = 'VISA' | 'MASTERCARD' | 'ELO' | 'AMEX' | 'HIPERCARD' | 'OTHER'
 
@@ -65,7 +66,7 @@ function Chip() {
 
 /** Formata BRL */
 const brl = (v: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
+  formatCurrency(v)
 
 /** Componente principal */
 export default function CreditCard({

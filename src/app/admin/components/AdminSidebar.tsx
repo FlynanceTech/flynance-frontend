@@ -17,6 +17,7 @@ import { useUserSession } from '@/stores/useUserSession'
 const items = [
   { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
   { label: 'Advisors', href: '/admin/advisors', icon: UserSquare2 },
+  { label: 'Users', href: '/admin/users', icon: Users },
   { label: 'Leads', href: '/admin/leads', icon: Users },
   { label: 'Billing/Coupons', href: '/admin/billing/coupons', icon: Ticket },
   { label: 'Billing/Plans', href: '/admin/billing/plans', icon: BadgeDollarSign },

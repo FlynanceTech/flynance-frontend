@@ -1,5 +1,9 @@
-// services/user.ts
+// services/users.ts
 import api from '@/lib/axios'
+import {
+  captureBillingCheckoutSessionFromPayload,
+  normalizeAuthEmail,
+} from '@/lib/authSession'
 import { userResponse } from '@/types/Transaction'
 import { UserDTO, UserResponse } from '@/types/user'
 
