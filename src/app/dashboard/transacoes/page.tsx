@@ -7,13 +7,14 @@ import { useTransactionFilter } from '@/stores/useFilter'
 import { Pagination } from '../components/Pagination'
 import { Skeleton } from '../components/skeleton'
 import TransactionDrawer from '../components/TransactionDrawer'
+import CreditCardChargeDrawer from '../components/CreditCardChargeDrawer'
 import { TransactionTable } from '../components/Transaction/transactionTable'
 import { TransactionCardList } from '../components/Transaction/TransactionCardList'
 import { CategoryType, Transaction } from '@/types/Transaction'
 import { useTranscation } from '@/hooks/query/useTransaction'
 import { useUserSession } from '@/stores/useUserSession'
 import { useCategories } from '@/hooks/query/useCategory'
-import { TrashIcon } from 'lucide-react'
+import { CreditCard, TrashIcon, ShoppingBag } from 'lucide-react'
 import DeleteConfirmModal from '../components/DeleteConfirmModal'
 import { CategorySelect } from '../components/CategorySelect'
 import Select from 'react-select'
@@ -21,6 +22,9 @@ import type { StylesConfig } from 'react-select'
 import type { CategoryResponse } from '@/services/category'
 import PageOnboardingTour, { type PageOnboardingStep } from '@/components/onboarding/PageOnboardingTour'
 import { useAdvisorActing } from '@/stores/useAdvisorActing'
+import { useCreditCardCharges } from '@/hooks/query/useCreditCardCharges'
+import { formatCurrency as _formatCurrency } from '@/utils/formatter'
+import type { CreditCardChargeItem } from '@/services/creditCardCharges'
 import toast from 'react-hot-toast'
 import { ADVISOR_READ_ONLY_FRIENDLY_MESSAGE } from '@/services/transactions'
 import { isAdvisorReadOnlyTransactionAccess } from '@/utils/transactionWriteAccess'
@@ -174,6 +178,8 @@ export default function TransactionsPage() {
   const [deleteConfirmIds, setDeleteConfirmIds] = useState<string[]>([])
   const [deleteConfirmMode, setDeleteConfirmMode] = useState<'single' | 'bulk'>('single')
 
+  const [activeTab, setActiveTab] = useState<'all' | 'credit_card'>('all')
+
   const [sortState, setSortState] = useState<{
     field: 'date' | 'value' | null
     direction: 'asc' | 'desc'
@@ -194,13 +200,22 @@ export default function TransactionsPage() {
   const typeFilter = useTransactionFilter((s) => s.appliedTypeFilter)
 
   const { transactionsQuery, deleteMutation, updateMutation, createMutation, importMutation, importPreviewMutation, importConfirmMutation } = useTranscation({
-  userId,
-  page: currentPage,
-  limit: PAGE_SIZE,
-  filters: {
-    userIds: selectedAuthorId !== 'ALL' ? [selectedAuthorId] : undefined,
-  },
-})
+    userId,
+    page: currentPage,
+    limit: PAGE_SIZE,
+    filters: {
+      userIds: selectedAuthorId !== 'ALL' ? [selectedAuthorId] : undefined,
+      excludePaymentType: 'CREDIT_CARD',
+    },
+  })
+
+  const { chargesQuery } = useCreditCardCharges({
+    page: currentPage,
+    limit: PAGE_SIZE,
+    enabled: activeTab === 'credit_card',
+  })
+
+  const [chargeDrawerOpen, setChargeDrawerOpen] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [importedTransactions, setImportedTransactions] = useState<Transaction[]>([])
@@ -1208,6 +1223,180 @@ const meta = useMemo(() => {
         </div>
       )}
 
+      <div className="flex items-center justify-between border-b border-gray-200">
+        <div className="flex gap-1">
+          <button
+            type="button"
+            onClick={() => { setActiveTab('all'); setCurrentPage(1); setSelectedIds(new Set()); setSelectAll(false) }}
+            className={`flex items-center gap-1.5 pb-2.5 px-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'all'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Pix / Débito / Dinheiro
+          </button>
+          <button
+            type="button"
+            onClick={() => { setActiveTab('credit_card'); setCurrentPage(1); setSelectedIds(new Set()); setSelectAll(false) }}
+            className={`flex items-center gap-1.5 pb-2.5 px-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'credit_card'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <CreditCard className="w-4 h-4" />
+            Cartão de Crédito
+          </button>
+        </div>
+        {activeTab === 'credit_card' && !isAdvisorReadOnly && (
+          <button
+            type="button"
+            onClick={() => setChargeDrawerOpen(true)}
+            className="mb-1 flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-secondary"
+          >
+            + Nova Compra
+          </button>
+        )}
+      </div>
+
+      {activeTab === 'credit_card' && (
+        <section className="flex flex-col gap-4 overflow-auto" data-onboarding-target="transacoes-lista">
+          {chargesQuery.isLoading && (
+            <div className="w-full bg-white rounded-xl border border-gray-200 p-8">
+              <Skeleton type="table" rows={6} />
+            </div>
+          )}
+          {chargesQuery.isError && (
+            <p className="text-sm text-red-400 px-1">Erro ao carregar gastos do cartão.</p>
+          )}
+          {!chargesQuery.isLoading && !chargesQuery.isError && (
+            <div className="w-full bg-white rounded-xl border border-gray-200 overflow-hidden">
+              {/* desktop table */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="border-b border-gray-100 bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-medium text-gray-500">Data</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-500">Descrição</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-500">Categoria</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-500">Cartão</th>
+                      <th className="px-4 py-3 text-right font-medium text-gray-500">Valor</th>
+                      <th className="px-4 py-3 text-center font-medium text-gray-500">Parcelas</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {(chargesQuery.data?.charges ?? []).length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-400">
+                          Nenhum gasto de cartão encontrado.
+                        </td>
+                      </tr>
+                    ) : (
+                      (chargesQuery.data?.charges ?? []).map((charge: CreditCardChargeItem) => (
+                        <tr key={charge.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                            {new Date(charge.purchaseDate).toLocaleDateString('pt-BR')}
+                          </td>
+                          <td className="px-4 py-3 text-gray-800 font-medium max-w-[200px] truncate">
+                            {charge.description}
+                          </td>
+                          <td className="px-4 py-3">
+                            {charge.category ? (
+                              <span
+                                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+                                style={{ backgroundColor: `${charge.category.color}20`, color: charge.category.color }}
+                              >
+                                {charge.category.icon} {charge.category.name}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400 text-xs">—</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 text-sm whitespace-nowrap">
+                            {charge.creditCard
+                              ? charge.creditCard.last4
+                                ? `${charge.creditCard.name} ••${charge.creditCard.last4}`
+                                : charge.creditCard.name
+                              : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-right font-semibold text-red-600 whitespace-nowrap">
+                            {_formatCurrency(charge.amountTotal)}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span className="inline-flex items-center justify-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
+                              {charge.installmentCount}x
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              {/* mobile cards */}
+              <div className="md:hidden divide-y divide-gray-100">
+                {(chargesQuery.data?.charges ?? []).length === 0 ? (
+                  <div className="px-4 py-8 text-center text-sm text-gray-400">
+                    Nenhum gasto de cartão encontrado.
+                  </div>
+                ) : (
+                  (chargesQuery.data?.charges ?? []).map((charge: CreditCardChargeItem) => (
+                    <div key={charge.id} className="p-4 flex flex-col gap-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-400">
+                          {new Date(charge.purchaseDate).toLocaleDateString('pt-BR')}
+                        </span>
+                        <span className="text-sm font-bold text-red-600">
+                          {_formatCurrency(charge.amountTotal)}
+                        </span>
+                      </div>
+                      <p className="text-sm font-medium text-gray-800 truncate">{charge.description}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        {charge.category && (
+                          <span
+                            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+                            style={{ backgroundColor: `${charge.category.color}20`, color: charge.category.color }}
+                          >
+                            {charge.category.icon} {charge.category.name}
+                          </span>
+                        )}
+                        {charge.creditCard && (
+                          <span className="text-xs text-gray-500">
+                            {charge.creditCard.last4 ? `••${charge.creditCard.last4}` : charge.creditCard.name}
+                          </span>
+                        )}
+                        <span className="ml-auto inline-flex items-center justify-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
+                          {charge.installmentCount}x
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+          <div className="flex items-center justify-between px-1">
+            <span className="text-sm text-muted-foreground">
+              {chargesQuery.data
+                ? `${chargesQuery.data.charges.length} de ${chargesQuery.data.meta.total} gastos`
+                : ''}
+            </span>
+            {(chargesQuery.data?.meta?.totalPages ?? 1) > 1 && (
+              <div className="flex justify-center pb-24 lg:pb-0">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={chargesQuery.data?.meta?.totalPages ?? 1}
+                  onChange={(page) => setCurrentPage(page)}
+                />
+              </div>
+            )}
+          </div>
+          <CreditCardChargeDrawer open={chargeDrawerOpen} onClose={() => setChargeDrawerOpen(false)} />
+        </section>
+      )}
+
+      {activeTab === 'all' && (
       <section className="flex flex-col gap-4 lg:gap-0 overflow-auto" data-onboarding-target="transacoes-lista">
         <TransactionTable
           transactions={displayedTransactions}
@@ -1341,6 +1530,7 @@ const meta = useMemo(() => {
           />
         )}
       </section>
+      )}
     </section>
   )
 }

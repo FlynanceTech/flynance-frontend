@@ -60,6 +60,8 @@ export type TransactionFilters = {
   categoryIds?: string[] // no request vira "a,b,c"
   userIds?: string[]
   type?: 'ALL' | 'INCOME' | 'EXPENSE'
+  paymentType?: PaymentType
+  excludePaymentType?: PaymentType
 }
 
 export type GetTransactionParams = {
@@ -129,6 +131,14 @@ export async function getTransaction({
 
     if (filters.type && filters.type !== 'ALL') {
       params.set('type', filters.type)
+    }
+
+    if (filters.paymentType) {
+      params.set('paymentType', filters.paymentType)
+    }
+
+    if (filters.excludePaymentType) {
+      params.set('excludePaymentType', filters.excludePaymentType)
     }
 
   }

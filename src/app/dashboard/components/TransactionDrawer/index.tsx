@@ -83,7 +83,6 @@ const typeOptions: TypeOption[] = [
 
 const paymentTypeOptions: PaymentTypeOption[] = [
   { value: 'DEBIT_CARD', label: 'Cartão de débito' },
-  { value: 'CREDIT_CARD', label: 'Cartão de crédito' },
   { value: 'PIX', label: 'Pix' },
   { value: 'BOLETO', label: 'Boleto' },
   { value: 'TED', label: 'TED' },

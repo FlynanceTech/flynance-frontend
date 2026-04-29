@@ -1,13 +1,14 @@
 'use client'
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, Info, X } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, CreditCard, Info, TrendingDown, TrendingUp, X } from 'lucide-react'
+import Link from 'next/link'
 
 import Header from './components/Header/overview'
-import { SpendingControl } from './components/SpendingControl'
 import ComparisonChart from './components/ComparisonChart'
 import CategorySpendingDistribution from './components/CategorySpendingDistribution'
 import InstallPrompt from '@/components/cadastro/InstallPrompt/InstallPrompt'
+import CreditCardInvoicesWidget from './components/CreditCardInvoicesWidget'
 
 import FinanceStatus from './components/FincanceStatus'
 
@@ -16,6 +17,9 @@ import { useTransactionFilter } from '@/stores/useFilter'
 import { useTranscation } from '@/hooks/query/useTransaction'
 import { getBrowserTimezone, toFutureRangeFromDays } from '@/utils/transactionPeriod'
 import { useLocale, useTranslations } from 'next-intl'
+import { useFutureForecast } from '@/hooks/query/useFuture'
+import type { FutureItem } from '@/services/futureService'
+import { formatCurrency } from '@/utils/formatter'
 
 const PERIOD_ZERO = {
   income: 0,
@@ -124,6 +128,118 @@ function computeFinanceStatusFromTransactions(transactions: any[]) {
       totalBalance: balance,
     },
   }
+}
+
+function FutureSummaryWidget() {
+  const { data, isLoading } = useFutureForecast({ days: 30 })
+  const totals = data?.totals
+  const nextItems = useMemo(() => {
+    const upcoming = (data?.upcoming ?? []) as FutureItem[]
+    return upcoming
+      .filter((i) => i.type !== null)
+      .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+      .slice(0, 4)
+  }, [data?.upcoming])
+
+  if (isLoading) {
+    return (
+      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="h-4 w-36 rounded bg-gray-100 animate-pulse mb-4" />
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          {[1, 2].map((n) => (
+            <div key={n} className="h-16 rounded-lg bg-gray-100 animate-pulse" />
+          ))}
+        </div>
+        <div className="space-y-2">
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="h-6 rounded bg-gray-100 animate-pulse" />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (!data) return null
+
+  const balance = (totals?.toReceive ?? 0) - (totals?.toPay ?? 0)
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-gray-700">Próximos 30 dias</h3>
+        <Link
+          href="/dashboard/futuros"
+          className="text-xs font-medium text-primary hover:underline"
+        >
+          Ver tudo →
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="rounded-lg bg-red-50 border border-red-100 p-3">
+          <div className="flex items-center gap-1.5 mb-1">
+            <TrendingDown className="h-3.5 w-3.5 text-red-500" />
+            <span className="text-xs text-red-600 font-medium">A pagar</span>
+          </div>
+          <p className="text-base font-bold text-red-700">{formatCurrency(totals?.toPay ?? 0)}</p>
+        </div>
+        <div className="rounded-lg bg-emerald-50 border border-emerald-100 p-3">
+          <div className="flex items-center gap-1.5 mb-1">
+            <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
+            <span className="text-xs text-emerald-600 font-medium">A receber</span>
+          </div>
+          <p className="text-base font-bold text-emerald-700">{formatCurrency(totals?.toReceive ?? 0)}</p>
+        </div>
+      </div>
+
+      <div
+        className={`rounded-lg px-3 py-2 text-xs font-medium mb-4 ${
+          balance >= 0
+            ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+            : 'bg-red-50 text-red-700 border border-red-100'
+        }`}
+      >
+        Saldo previsto: <span className="font-bold">{formatCurrency(balance)}</span>
+      </div>
+
+      {nextItems.length > 0 && (
+        <div className="space-y-2.5">
+          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
+            Próximos vencimentos
+          </p>
+          {nextItems.map((item) => (
+            <div key={item.id} className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                {item.sourceType === 'credit_card_statement_installment' ? (
+                  <CreditCard className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                ) : (
+                  <CalendarDays className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                )}
+                <span className="text-sm text-gray-700 truncate">
+                  {item.description ?? item.card?.name ?? '-'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs text-gray-400">
+                  {new Date(item.dueDate).toLocaleDateString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                  })}
+                </span>
+                <span
+                  className={`text-sm font-semibold ${
+                    item.type === 'INCOME' ? 'text-emerald-700' : 'text-red-700'
+                  }`}
+                >
+                  {formatCurrency(item.amount)}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function Dashboard() {
@@ -424,8 +540,11 @@ export default function Dashboard() {
                 <ComparisonChart transactions={transactions} isLoading={isTxLoading} periodTag={periodLabel} />
               </div>
 
-              <div className="lg:col-span-2 h-full" data-onboarding-target="spending-control">
-                <SpendingControl />
+              <div className="lg:col-span-2 flex flex-col gap-4 h-full">
+                <div data-onboarding-target="spending-control">
+                  <CreditCardInvoicesWidget />
+                </div>
+                <FutureSummaryWidget />
               </div>
             </div>
 
