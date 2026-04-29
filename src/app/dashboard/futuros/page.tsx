@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import React, { useEffect, useMemo, useState } from 'react'
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { CalendarDays, CheckCircle2, Eye, Pencil, Plus, Trash2, X } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useLocale, useTranslations } from 'next-intl'
 
 import Header from '../components/Header'
 import { Pagination } from '../components/Pagination'
@@ -30,98 +31,126 @@ import {
   useFutureMutations,
   useFuturePlans,
 } from '@/hooks/query/useFuture'
+import { formatCurrency } from '@/utils/formatter'
+import { Button } from '@/components/ui/button'
 
-const planSchema = z.object({
-  description: z.string().min(2, 'Informe uma descricao'),
-  type: z.enum(['EXPENSE', 'INCOME']),
-  paymentType: z.enum([
-    'DEBIT_CARD',
-    'CREDIT_CARD',
-    'PIX',
-    'BOLETO',
-    'TED',
-    'DOC',
-    'MONEY',
-    'CASH',
-    'OTHER',
-  ]),
-  categoryId: z.string().optional(),
-  cardId: z.string().optional(),
-  totalAmount: z.coerce.number().min(0.01, 'Informe um valor maior que zero'),
-  installmentCount: z.coerce.number().int().min(1, 'Minimo 1 parcela').max(240, 'Maximo 240 parcelas'),
-  intervalMonths: z.coerce.number().int().min(1, 'Minimo 1').max(12, 'Maximo 12'),
-  firstDueDate: z.string().min(1, 'Informe a data do primeiro vencimento'),
-  status: z.enum(['active', 'completed', 'canceled']).optional(),
-  recalculateRemaining: z.boolean().optional(),
-  notes: z.string().optional(),
-})
+type TranslatorFn = (key: string, values?: Record<string, string | number | Date>) => string
+
+function buildPlanSchema(t: TranslatorFn) {
+  return z.object({
+    description: z.string().min(2, t('validation.plan.descriptionRequired')),
+    type: z.enum(['EXPENSE', 'INCOME']),
+    paymentType: z.enum([
+      'DEBIT_CARD',
+      'CREDIT_CARD',
+      'PIX',
+      'BOLETO',
+      'TED',
+      'DOC',
+      'MONEY',
+      'CASH',
+      'OTHER',
+    ]),
+    categoryId: z.string().optional(),
+    cardId: z.string().optional(),
+    totalAmount: z.coerce.number().min(0.01, t('validation.plan.totalAmountMin')),
+    installmentCount: z.coerce
+      .number()
+      .int()
+      .min(1, t('validation.plan.installmentCountMin'))
+      .max(240, t('validation.plan.installmentCountMax')),
+    intervalMonths: z.coerce
+      .number()
+      .int()
+      .min(1, t('validation.plan.intervalMonthsMin'))
+      .max(12, t('validation.plan.intervalMonthsMax')),
+    firstDueDate: z.string().min(1, t('validation.plan.firstDueDateRequired')),
+    status: z.enum(['active', 'completed', 'canceled']).optional(),
+    recalculateRemaining: z.boolean().optional(),
+    notes: z.string().optional(),
+  })
+}
 
 const settleSchema = z.object({
   amount: z.string().optional(),
   paidAt: z.string().optional(),
 })
 
-const installmentEditSchema = z.object({
-  amount: z.coerce.number().min(0.01, 'Informe valor maior que zero'),
-  dueDate: z.string().min(1, 'Informe a data de vencimento'),
-  status: z.enum(['pending', 'canceled']),
-  recalculateRemaining: z.boolean(),
-})
+function buildInstallmentEditSchema(t: TranslatorFn) {
+  return z.object({
+    amount: z.coerce.number().min(0.01, t('validation.installment.amountMin')),
+    dueDate: z.string().min(1, t('validation.installment.dueDateRequired')),
+    status: z.enum(['pending', 'canceled']),
+    recalculateRemaining: z.boolean(),
+  })
+}
 
-type PlanFormData = z.infer<typeof planSchema>
+type PlanFormData = z.infer<ReturnType<typeof buildPlanSchema>>
 type SettleFormData = z.infer<typeof settleSchema>
-type InstallmentEditFormData = z.infer<typeof installmentEditSchema>
+type InstallmentEditFormData = z.infer<ReturnType<typeof buildInstallmentEditSchema>>
 
-const paymentTypeOptions: { value: FuturePaymentType; label: string }[] = [
-  { value: 'DEBIT_CARD', label: 'Cartao de debito' },
-  { value: 'CREDIT_CARD', label: 'Cartao de credito' },
-  { value: 'PIX', label: 'PIX' },
-  { value: 'BOLETO', label: 'Boleto' },
-  { value: 'TED', label: 'TED' },
-  { value: 'DOC', label: 'DOC' },
-  { value: 'MONEY', label: 'Dinheiro' },
-  { value: 'CASH', label: 'Especie' },
-  { value: 'OTHER', label: 'Outro' },
-]
+function buildPaymentTypeOptions(t: TranslatorFn): { value: FuturePaymentType; label: string }[] {
+  return [
+    { value: 'DEBIT_CARD', label: t('options.paymentType.debitCard') },
+    { value: 'CREDIT_CARD', label: t('options.paymentType.creditCard') },
+    { value: 'PIX', label: t('options.paymentType.pix') },
+    { value: 'BOLETO', label: t('options.paymentType.boleto') },
+    { value: 'TED', label: t('options.paymentType.ted') },
+    { value: 'DOC', label: t('options.paymentType.doc') },
+    { value: 'MONEY', label: t('options.paymentType.money') },
+    { value: 'CASH', label: t('options.paymentType.cash') },
+    { value: 'OTHER', label: t('options.paymentType.other') },
+  ]
+}
 
-const statusOptions: { value: '' | FutureStatus; label: string }[] = [
-  { value: '', label: 'Todos status' },
-  { value: 'pending', label: 'Pendente' },
-  { value: 'overdue', label: 'Vencida' },
-  { value: 'settled', label: 'Liquidada' },
-  { value: 'canceled', label: 'Cancelada' },
-]
+function buildStatusOptions(t: TranslatorFn): { value: '' | FutureStatus; label: string }[] {
+  return [
+    { value: '', label: t('options.statusFilter.all') },
+    { value: 'pending', label: t('options.statusFilter.pending') },
+    { value: 'overdue', label: t('options.statusFilter.overdue') },
+    { value: 'settled', label: t('options.statusFilter.settled') },
+    { value: 'canceled', label: t('options.statusFilter.canceled') },
+  ]
+}
 
-const typeOptions: { value: '' | FutureType; label: string }[] = [
-  { value: '', label: 'Todos tipos' },
-  { value: 'EXPENSE', label: 'Despesa' },
-  { value: 'INCOME', label: 'Receita' },
-]
+function buildTypeOptions(t: TranslatorFn): { value: '' | FutureType; label: string }[] {
+  return [
+    { value: '', label: t('options.typeFilter.all') },
+    { value: 'EXPENSE', label: t('options.typeFilter.expense') },
+    { value: 'INCOME', label: t('options.typeFilter.income') },
+  ]
+}
 
-const planStatusOptions: { value: FuturePlanStatus; label: string }[] = [
-  { value: 'active', label: 'Ativo' },
-  { value: 'completed', label: 'Concluido' },
-  { value: 'canceled', label: 'Cancelado' },
-]
+function buildPlanStatusOptions(t: TranslatorFn): { value: FuturePlanStatus; label: string }[] {
+  return [
+    { value: 'active', label: t('options.planStatus.active') },
+    { value: 'completed', label: t('options.planStatus.completed') },
+    { value: 'canceled', label: t('options.planStatus.canceled') },
+  ]
+}
 
-const installmentEditableStatusOptions: { value: FutureEditableInstallmentStatus; label: string }[] = [
-  { value: 'pending', label: 'Pendente' },
-  { value: 'canceled', label: 'Cancelada' },
-]
+function buildInstallmentEditableStatusOptions(
+  t: TranslatorFn
+): { value: FutureEditableInstallmentStatus; label: string }[] {
+  return [
+    { value: 'pending', label: t('options.installmentStatus.pending') },
+    { value: 'canceled', label: t('options.installmentStatus.canceled') },
+  ]
+}
 
 function formatBRL(v: number) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(v || 0))
+  return formatCurrency(Number(v || 0))
 }
 
 function roundCurrency(v: number) {
   return Math.round(Number(v || 0) * 100) / 100
 }
 
-function formatDateBR(iso?: string | null) {
+function formatDateByLocale(iso: string | null | undefined, locale: string) {
   if (!iso) return '-'
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return '-'
-  return d.toLocaleDateString('pt-BR')
+  return d.toLocaleDateString(locale)
 }
 
 function toDateInput(iso?: string | null) {
@@ -155,11 +184,11 @@ function statusBadgeClass(status: FutureStatus) {
   return 'bg-amber-100 text-amber-700'
 }
 
-function statusLabel(status: FutureStatus) {
-  if (status === 'pending') return 'Pendente'
-  if (status === 'overdue') return 'Vencida'
-  if (status === 'settled') return 'Liquidada'
-  if (status === 'canceled') return 'Cancelada'
+function statusLabel(status: FutureStatus, t: TranslatorFn) {
+  if (status === 'pending') return t('status.pending')
+  if (status === 'overdue') return t('status.overdue')
+  if (status === 'settled') return t('status.settled')
+  if (status === 'canceled') return t('status.canceled')
   return status
 }
 
@@ -170,20 +199,34 @@ function normalizePlanStatus(raw?: string | null): FuturePlanStatus {
   return 'active'
 }
 
-function mapFutureDomainError(message: string) {
+function mapFutureDomainError(message: string, t: TranslatorFn) {
   const m = (message || '').toLowerCase()
-  if (m.includes('amountexceedsplantotal')) return 'Valor informado excede o total do plano.'
-  if (m.includes('plantotalmismatch')) return 'Não foi possível fechar o saldo do plano com as parcelas disponíveis.'
+  if (m.includes('amountexceedsplantotal')) return t('errors.amountExceedsPlanTotal')
+  if (m.includes('plantotalmismatch')) return t('errors.planTotalMismatch')
   if (
     m.includes('status') &&
     (m.includes('parcela liquidada') || m.includes('settled'))
   ) {
-    return 'Não é possível editar/cancelar parcela já liquidada.'
+    return t('errors.settledInstallmentLocked')
   }
-  return message || 'Não foi possível concluir a operação.'
+  return message || t('errors.operationFailed')
 }
 
 export default function FuturosPage() {
+  const t = useTranslations('futurosPage')
+  const locale = useLocale()
+
+  const planSchema = useMemo(() => buildPlanSchema(t), [t])
+  const installmentEditSchema = useMemo(() => buildInstallmentEditSchema(t), [t])
+  const paymentTypeOptions = useMemo(() => buildPaymentTypeOptions(t), [t])
+  const statusOptions = useMemo(() => buildStatusOptions(t), [t])
+  const typeOptions = useMemo(() => buildTypeOptions(t), [t])
+  const planStatusOptions = useMemo(() => buildPlanStatusOptions(t), [t])
+  const installmentEditableStatusOptions = useMemo(
+    () => buildInstallmentEditableStatusOptions(t),
+    [t]
+  )
+
   const [filters, setFilters] = useState({
     from: '',
     to: '',
@@ -444,10 +487,12 @@ export default function FuturosPage() {
       }
 
       closePlanModal()
-      toast.success(planModalMode === 'edit' ? 'Transação Futura atualizada.' : 'Transação Futura criada.')
+      toast.success(
+        planModalMode === 'edit' ? t('toasts.planUpdated') : t('toasts.planCreated')
+      )
     } catch (err) {
-      const raw = err instanceof Error ? err.message : 'Erro ao salvar Transação Futura.'
-      const message = mapFutureDomainError(raw)
+      const raw = err instanceof Error ? err.message : t('toasts.planSaveError')
+      const message = mapFutureDomainError(raw, t)
       setActionError(message)
       toast.error(message)
     }
@@ -462,10 +507,10 @@ export default function FuturosPage() {
         setSelectedPlanId(null)
       }
       setDeletePlanTarget(null)
-      toast.success('Transação Futura excluído.')
+      toast.success(t('toasts.planDeleted'))
     } catch (err) {
-      const raw = err instanceof Error ? err.message : 'Erro ao excluir Transação Futura.'
-      const message = mapFutureDomainError(raw)
+      const raw = err instanceof Error ? err.message : t('toasts.planDeleteError')
+      const message = mapFutureDomainError(raw, t)
       setActionError(message)
       toast.error(message)
     }
@@ -503,10 +548,10 @@ export default function FuturosPage() {
       })
 
       closeInstallmentEditModal()
-      toast.success('Parcela atualizada.')
+      toast.success(t('toasts.installmentUpdated'))
     } catch (err) {
-      const raw = err instanceof Error ? err.message : 'Erro ao atualizar parcela.'
-      const message = mapFutureDomainError(raw)
+      const raw = err instanceof Error ? err.message : t('toasts.installmentUpdateError')
+      const message = mapFutureDomainError(raw, t)
       setActionError(message)
       toast.error(message)
     }
@@ -518,10 +563,10 @@ export default function FuturosPage() {
     try {
       await deleteInstallmentMutation.mutateAsync(deleteInstallmentTarget.id)
       setDeleteInstallmentTarget(null)
-      toast.success('Parcela excluída.')
+      toast.success(t('toasts.installmentDeleted'))
     } catch (err) {
-      const raw = err instanceof Error ? err.message : 'Erro ao excluir parcela.'
-      const message = mapFutureDomainError(raw)
+      const raw = err instanceof Error ? err.message : t('toasts.installmentDeleteError')
+      const message = mapFutureDomainError(raw, t)
       setActionError(message)
       toast.error(message)
     }
@@ -561,10 +606,10 @@ export default function FuturosPage() {
       })
 
       closeSettleModal()
-      toast.success('Baixa registrada.')
+      toast.success(t('toasts.settleSuccess'))
     } catch (err) {
-      const raw = err instanceof Error ? err.message : 'Erro ao dar baixa na parcela.'
-      const message = mapFutureDomainError(raw)
+      const raw = err instanceof Error ? err.message : t('toasts.settleError')
+      const message = mapFutureDomainError(raw, t)
       setActionError(message)
       toast.error(message)
     }
@@ -582,10 +627,10 @@ export default function FuturosPage() {
           recalculateRemaining: false,
         },
       })
-      toast.success('Total da transação futura sincronizado com as parcelas.')
+      toast.success(t('toasts.syncSuccess'))
     } catch (err) {
-      const raw = err instanceof Error ? err.message : 'Erro ao sincronizar total da transação futura.'
-      const message = mapFutureDomainError(raw)
+      const raw = err instanceof Error ? err.message : t('toasts.syncError')
+      const message = mapFutureDomainError(raw, t)
       setActionError(message)
       toast.error(message)
     } finally {
@@ -606,7 +651,7 @@ export default function FuturosPage() {
     (plansQuery.error as Error | undefined)?.message ||
     (installmentsQuery.error as Error | undefined)?.message ||
     (forecastQuery.error as Error | undefined)?.message ||
-    'Erro ao carregar futuros.'
+    t('errors.loadFutures')
 
   const totals = forecastQuery.data?.totals
   const isSavingPlan = createPlanMutation.isPending || updatePlanMutation.isPending
@@ -614,25 +659,26 @@ export default function FuturosPage() {
   return (
     <section className="w-full h-full pt-8 lg:px-8 px-4 pb-24 lg:pb-0 flex flex-col gap-6 overflow-auto">
       <Header
-        title="Futuros"
-        subtitle="Gerencie Transaçôes Futuras e acompanhe previsoes de despesas e receitas futuras."
+        title={t('header.title')}
+        subtitle={t('header.subtitle')}
         newTransation={false}
         rightContent={
-          <button
+          <Button
             type="button"
+            variant="default"
             onClick={openCreatePlanModal}
-            className="h-10 rounded-full bg-primary px-4 text-sm font-semibold text-white hover:bg-secondary flex items-center gap-2"
+            className="h-10 rounded-full  px-4 text-sm  flex items-center gap-2"
           >
             <Plus size={16} />
-            Transação Futura
-          </button>
+            {t('header.newFutureTransaction')}
+          </Button>
         }
       />
 
       <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3 items-end">
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-gray-600">De</span>
+            <span className="text-xs text-gray-600">{t('filters.from')}</span>
             <input
               type="date"
               value={filters.from}
@@ -645,7 +691,7 @@ export default function FuturosPage() {
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-gray-600">Ate</span>
+            <span className="text-xs text-gray-600">{t('filters.to')}</span>
             <input
               type="date"
               value={filters.to}
@@ -658,7 +704,7 @@ export default function FuturosPage() {
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-gray-600">Tipo</span>
+            <span className="text-xs text-gray-600">{t('filters.type')}</span>
             <select
               value={filters.type}
               onChange={(e) => {
@@ -676,7 +722,7 @@ export default function FuturosPage() {
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-gray-600">Status (parcelas)</span>
+            <span className="text-xs text-gray-600">{t('filters.installmentStatus')}</span>
             <select
               value={filters.status}
               onChange={(e) =>
@@ -693,7 +739,7 @@ export default function FuturosPage() {
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-gray-600">Itens por pagina (parcelas)</span>
+            <span className="text-xs text-gray-600">{t('filters.installmentsPerPage')}</span>
             <select
               value={filters.limit}
               onChange={(e) => setFilters((p) => ({ ...p, limit: Number(e.target.value), page: 1 }))}
@@ -723,19 +769,19 @@ export default function FuturosPage() {
 
       <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-gray-500">A pagar</p>
+          <p className="text-xs text-gray-500">{t('forecast.toPay')}</p>
           <p className="text-2xl font-bold text-red-700 mt-1">{loadingCards ? '...' : formatBRL(totals?.toPay ?? 0)}</p>
         </div>
 
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-gray-500">A receber</p>
+          <p className="text-xs text-gray-500">{t('forecast.toReceive')}</p>
           <p className="text-2xl font-bold text-emerald-700 mt-1">
             {loadingCards ? '...' : formatBRL(totals?.toReceive ?? 0)}
           </p>
         </div>
 
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-gray-500">Vencidas (pagar / receber)</p>
+          <p className="text-xs text-gray-500">{t('forecast.overdueBreakdown')}</p>
           <p className="text-lg font-semibold text-gray-900 mt-1">
             {loadingCards
               ? '...'
@@ -744,7 +790,7 @@ export default function FuturosPage() {
         </div>
 
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-gray-500">Qtd. pendente / vencida</p>
+          <p className="text-xs text-gray-500">{t('forecast.pendingOverdueCount')}</p>
           <p className="text-lg font-semibold text-gray-900 mt-1">
             {loadingCards ? '...' : `${Number(totals?.pendingCount ?? 0)} / ${Number(totals?.overdueCount ?? 0)}`}
           </p>
@@ -753,27 +799,27 @@ export default function FuturosPage() {
 
       <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between pb-3">
-          <h3 className="text-base font-semibold text-gray-800">Lista de transações futuras</h3>
-          <span className="text-xs text-gray-500">{visiblePlans.length} ativo(s)</span>
+          <h3 className="text-base font-semibold text-gray-800">{t('plans.title')}</h3>
+          <span className="text-xs text-gray-500">{t('plans.activeCount', { count: visiblePlans.length })}</span>
         </div>
 
         {loadingPlans ? (
           <Skeleton type="table" rows={6} />
         ) : visiblePlans.length === 0 ? (
-          <div className="py-10 text-center text-sm text-gray-500">Nenhuma transação futura encontrada.</div>
+          <div className="py-10 text-center text-sm text-gray-500">{t('plans.noResults')}</div>
         ) : (
           <>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="text-left text-gray-500 border-b border-gray-200">
-                    <th className="py-3 pr-3">Descricao</th>
-                    <th className="py-3 pr-3">Tipo</th>
-                    <th className="py-3 pr-3">Parcelas</th>
-                    <th className="py-3 pr-3">Total</th>
-                    <th className="py-3 pr-3">1o vencimento</th>
-                    <th className="py-3 pr-3">Intervalo</th>
-                    <th className="py-3 pr-3 text-right">Acoes</th>
+                    <th className="py-3 pr-3">{t('tablePlans.description')}</th>
+                    <th className="py-3 pr-3">{t('tablePlans.type')}</th>
+                    <th className="py-3 pr-3">{t('tablePlans.installments')}</th>
+                    <th className="py-3 pr-3">{t('tablePlans.total')}</th>
+                    <th className="py-3 pr-3">{t('tablePlans.firstDueDate')}</th>
+                    <th className="py-3 pr-3">{t('tablePlans.interval')}</th>
+                    <th className="py-3 pr-3 text-right">{t('tablePlans.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -793,18 +839,18 @@ export default function FuturosPage() {
                             <span>{plan.description}</span>
                             {selectedRowShowsMismatch ? (
                               <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
-                                Divergente
+                                {t('badges.mismatch')}
                               </span>
                             ) : null}
                             {isSyncingThisPlan ? (
                               <span className="inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-700">
-                                Sincronizando...
+                                {t('badges.syncing')}
                               </span>
                             ) : null}
                           </div>
                         </td>
-                        <td className="py-3 pr-3">{plan.type === 'EXPENSE' ? 'Despesa' : 'Receita'}</td>
-                        <td className="py-3 pr-3">{plan.installmentCount}x</td>
+                        <td className="py-3 pr-3">{plan.type === 'EXPENSE' ? t('labels.expense') : t('labels.income')}</td>
+                        <td className="py-3 pr-3">{t('labels.installmentCount', { count: Number(plan.installmentCount || 0) })}</td>
                         <td className="py-3 pr-3">
                           <div className="flex flex-col">
                             <span className={selectedRowShowsMismatch ? 'font-semibold text-amber-800' : ''}>
@@ -812,25 +858,25 @@ export default function FuturosPage() {
                             </span>
                             {selected ? (
                               planTotalCheckQuery.isLoading ? (
-                                <span className="text-[11px] text-gray-400">Somando parcelas...</span>
+                                <span className="text-[11px] text-gray-400">{t('labels.summingInstallments')}</span>
                               ) : canComparePlanTotal ? (
                                 <span
                                   className={`text-[11px] ${
                                     hasPlanTotalMismatch ? 'text-amber-700' : 'text-emerald-700'
                                   }`}
                                 >
-                                  Soma parcelas: {formatBRL(planInstallmentsSum)}
+                                  {t('labels.installmentsSum')}: {formatBRL(planInstallmentsSum)}
                                 </span>
                               ) : (
                                 <span className="text-[11px] text-gray-400">
-                                  Soma parcial (nem todas as parcelas foram carregadas)
+                                  {t('labels.partialSum')}
                                 </span>
                               )
                             ) : null}
                           </div>
                         </td>
-                        <td className="py-3 pr-3">{formatDateBR(plan.firstDueDate)}</td>
-                        <td className="py-3 pr-3">{plan.intervalMonths} mes(es)</td>
+                        <td className="py-3 pr-3">{formatDateByLocale(plan.firstDueDate, locale)}</td>
+                        <td className="py-3 pr-3">{t('labels.monthInterval', { count: Number(plan.intervalMonths || 0) })}</td>
                         <td className="py-3 text-right">
                           <div className="inline-flex items-center gap-1">
                             <button
@@ -844,7 +890,7 @@ export default function FuturosPage() {
                               }`}
                             >
                               <Eye size={13} />
-                              Parcelas
+                              {t('buttons.installments')}
                             </button>
 
                             <button
@@ -853,7 +899,7 @@ export default function FuturosPage() {
                               className="inline-flex items-center gap-1 rounded-full border border-gray-300 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
                             >
                               <Pencil size={13} />
-                              Editar
+                              {t('buttons.edit')}
                             </button>
 
                             <button
@@ -862,7 +908,7 @@ export default function FuturosPage() {
                               className="inline-flex items-center gap-1 rounded-full border border-red-300 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
                             >
                               <Trash2 size={13} />
-                              Excluir
+                              {t('buttons.delete')}
                             </button>
                           </div>
                         </td>
@@ -885,7 +931,9 @@ export default function FuturosPage() {
       <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between pb-3">
           <h3 className="text-base font-semibold text-gray-800">
-            {selectedPlan ? `Parcelas da transação futura: ${selectedPlan.description}` : 'Parcelas da transação futura'}
+            {selectedPlan
+              ? t('installments.titleWithPlan', { description: selectedPlan.description })
+              : t('installments.title')}
           </h3>
           {selectedPlan ? (
             <button
@@ -893,7 +941,7 @@ export default function FuturosPage() {
               onClick={() => setSelectedPlanId(null)}
               className="text-xs rounded-full border border-gray-300 px-3 py-1 text-gray-600 hover:bg-gray-50"
             >
-              Fechar detalhes
+              {t('buttons.closeDetails')}
             </button>
           ) : null}
         </div>
@@ -906,18 +954,18 @@ export default function FuturosPage() {
           >
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <span className="text-gray-700">
-                Total do plano: <strong>{formatBRL(selectedPlan.totalAmount)}</strong>
+                {t('labels.planTotal')}: <strong>{formatBRL(selectedPlan.totalAmount)}</strong>
               </span>
               <span className="text-gray-700">
-                Soma das parcelas:{' '}
+                {t('labels.installmentsTotal')}:{' '}
                 <strong>{planTotalCheckQuery.isLoading ? '...' : formatBRL(planInstallmentsSum)}</strong>
               </span>
               {canComparePlanTotal ? (
                 <span className={hasPlanTotalMismatch ? 'text-amber-800' : 'text-emerald-700'}>
-                  Diferença: <strong>{formatBRL(planTotalDifference)}</strong>
+                  {t('labels.difference')}: <strong>{formatBRL(planTotalDifference)}</strong>
                 </span>
               ) : (
-                <span className="text-gray-500">Sem base completa para comparar totais.</span>
+                <span className="text-gray-500">{t('labels.noComparisonBase')}</span>
               )}
 
               {hasPlanTotalMismatch ? (
@@ -927,7 +975,7 @@ export default function FuturosPage() {
                   disabled={syncingPlanId === selectedPlan.id || updatePlanMutation.isPending}
                   className="rounded-full border border-amber-300 bg-white px-3 py-1 font-semibold text-amber-800 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {syncingPlanId === selectedPlan.id ? 'Sincronizando...' : 'Sincronizar total com parcelas'}
+                  {syncingPlanId === selectedPlan.id ? t('buttons.syncingTotal') : t('buttons.syncPlanTotal')}
                 </button>
               ) : null}
             </div>
@@ -936,25 +984,25 @@ export default function FuturosPage() {
 
         {!selectedPlanId ? (
           <div className="py-10 text-center text-sm text-gray-500">
-            Selecione uma transação futura na lista acima para ver as parcelas.
+            {t('installments.selectPlan')}
           </div>
         ) : loadingInstallments ? (
           <Skeleton type="table" rows={8} />
         ) : installments.length === 0 ? (
-          <div className="py-10 text-center text-sm text-gray-500">Nenhuma parcela encontrada para esta transação futura.</div>
+          <div className="py-10 text-center text-sm text-gray-500">{t('installments.noResults')}</div>
         ) : (
           <>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="text-left text-gray-500 border-b border-gray-200">
-                    <th className="py-3 pr-3">Descricao</th>
-                    <th className="py-3 pr-3">Tipo</th>
-                    <th className="py-3 pr-3">Parcela</th>
-                    <th className="py-3 pr-3">Valor</th>
-                    <th className="py-3 pr-3">Vencimento</th>
-                    <th className="py-3 pr-3">Status</th>
-                    <th className="py-3 pr-3 text-right">Acao</th>
+                    <th className="py-3 pr-3">{t('tableInstallments.description')}</th>
+                    <th className="py-3 pr-3">{t('tableInstallments.type')}</th>
+                    <th className="py-3 pr-3">{t('tableInstallments.installment')}</th>
+                    <th className="py-3 pr-3">{t('tableInstallments.value')}</th>
+                    <th className="py-3 pr-3">{t('tableInstallments.dueDate')}</th>
+                    <th className="py-3 pr-3">{t('tableInstallments.status')}</th>
+                    <th className="py-3 pr-3 text-right">{t('tableInstallments.action')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -965,19 +1013,19 @@ export default function FuturosPage() {
                     return (
                       <tr key={item.id} className="border-b border-gray-100">
                         <td className="py-3 pr-3 text-gray-800">{item.description}</td>
-                        <td className="py-3 pr-3">{item.type === 'EXPENSE' ? 'Despesa' : 'Receita'}</td>
+                        <td className="py-3 pr-3">{item.type === 'EXPENSE' ? t('labels.expense') : t('labels.income')}</td>
                         <td className="py-3 pr-3">
                           {item.installmentNumber}/{item.installmentCount}
                         </td>
                         <td className="py-3 pr-3 font-medium">{formatBRL(item.amount)}</td>
-                        <td className="py-3 pr-3">{formatDateBR(item.dueDate)}</td>
+                        <td className="py-3 pr-3">{formatDateByLocale(item.dueDate, locale)}</td>
                         <td className="py-3 pr-3">
                           <span
                             className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${statusBadgeClass(
                               effectiveStatus
                             )}`}
                           >
-                            {statusLabel(effectiveStatus)}
+                            {statusLabel(effectiveStatus, t)}
                           </span>
                         </td>
                         <td className="py-3 text-right">
@@ -989,7 +1037,7 @@ export default function FuturosPage() {
                                 className="inline-flex items-center gap-1 rounded-full border border-primary px-3 py-1 text-xs font-medium text-primary hover:bg-primary/5"
                               >
                                 <CheckCircle2 size={14} />
-                                Dar baixa
+                                {t('buttons.settle')}
                               </button>
                             ) : null}
 
@@ -1000,7 +1048,7 @@ export default function FuturosPage() {
                               className="inline-flex items-center gap-1 rounded-full border border-gray-300 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               <Pencil size={13} />
-                              Editar
+                              {t('buttons.edit')}
                             </button>
 
                             <button
@@ -1010,7 +1058,7 @@ export default function FuturosPage() {
                               className="inline-flex items-center gap-1 rounded-full border border-red-300 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               <Trash2 size={13} />
-                              Excluir
+                              {t('buttons.delete')}
                             </button>
                           </div>
                         </td>
@@ -1038,7 +1086,7 @@ export default function FuturosPage() {
           <DialogPanel className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between mb-4">
               <DialogTitle className="text-lg font-semibold text-gray-900">
-                {planModalMode === 'edit' ? 'Editar Transação Futura' : 'Nova Transação Futura'}
+                {planModalMode === 'edit' ? t('modals.plan.editTitle') : t('modals.plan.createTitle')}
               </DialogTitle>
               <button type="button" onClick={closePlanModal} className="text-gray-500 hover:text-gray-700">
                 <X size={18} />
@@ -1047,21 +1095,21 @@ export default function FuturosPage() {
 
             <form onSubmit={handleSubmitPlan(onSavePlan)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <label className="flex flex-col gap-1 md:col-span-2">
-                <span className="text-xs text-gray-600">Descricao</span>
+                <span className="text-xs text-gray-600">{t('forms.description')}</span>
                 <input {...registerPlan('description')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm" />
-                {planErrors.description && <span className="text-xs text-red-600">{planErrors.description.message}</span>}
+                {planErrors.description && <span className="text-xs text-red-400">{planErrors.description.message}</span>}
               </label>
 
               <label className="flex flex-col gap-1">
-                <span className="text-xs text-gray-600">Tipo</span>
+                <span className="text-xs text-gray-600">{t('forms.type')}</span>
                 <select {...registerPlan('type')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm">
-                  <option value="EXPENSE">Despesa</option>
-                  <option value="INCOME">Receita</option>
+                  <option value="EXPENSE">{t('labels.expense')}</option>
+                  <option value="INCOME">{t('labels.income')}</option>
                 </select>
               </label>
 
               <label className="flex flex-col gap-1">
-                <span className="text-xs text-gray-600">Pagamento</span>
+                <span className="text-xs text-gray-600">{t('forms.payment')}</span>
                 <select {...registerPlan('paymentType')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm">
                   {paymentTypeOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -1072,7 +1120,7 @@ export default function FuturosPage() {
               </label>
 
               <label className="flex flex-col gap-1">
-                <span className="text-xs text-gray-600">Valor total</span>
+                <span className="text-xs text-gray-600">{t('forms.totalValue')}</span>
                 <input
                   type="number"
                   step="0.01"
@@ -1080,11 +1128,11 @@ export default function FuturosPage() {
                   {...registerPlan('totalAmount')}
                   className="h-10 rounded-lg border border-gray-200 px-3 text-sm"
                 />
-                {planErrors.totalAmount && <span className="text-xs text-red-600">{planErrors.totalAmount.message}</span>}
+                {planErrors.totalAmount && <span className="text-xs text-red-400">{planErrors.totalAmount.message}</span>}
               </label>
 
               <label className="flex flex-col gap-1">
-                <span className="text-xs text-gray-600">Quantidade de parcelas</span>
+                <span className="text-xs text-gray-600">{t('forms.installmentCount')}</span>
                 <input
                   type="number"
                   min="1"
@@ -1092,21 +1140,21 @@ export default function FuturosPage() {
                   className="h-10 rounded-lg border border-gray-200 px-3 text-sm"
                 />
                 {planErrors.installmentCount && (
-                  <span className="text-xs text-red-600">{planErrors.installmentCount.message}</span>
+                  <span className="text-xs text-red-400">{planErrors.installmentCount.message}</span>
                 )}
               </label>
 
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-gray-600 flex items-center gap-1">
                   <CalendarDays size={14} />
-                  Primeiro vencimento
+                  {t('forms.firstDueDate')}
                 </span>
                 <input type="date" {...registerPlan('firstDueDate')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm" />
-                {planErrors.firstDueDate && <span className="text-xs text-red-600">{planErrors.firstDueDate.message}</span>}
+                {planErrors.firstDueDate && <span className="text-xs text-red-400">{planErrors.firstDueDate.message}</span>}
               </label>
 
               <label className="flex flex-col gap-1">
-                <span className="text-xs text-gray-600">Intervalo (meses)</span>
+                <span className="text-xs text-gray-600">{t('forms.intervalMonths')}</span>
                 <input
                   type="number"
                   min="1"
@@ -1114,13 +1162,13 @@ export default function FuturosPage() {
                   className="h-10 rounded-lg border border-gray-200 px-3 text-sm"
                 />
                 {planErrors.intervalMonths && (
-                  <span className="text-xs text-red-600">{planErrors.intervalMonths.message}</span>
+                  <span className="text-xs text-red-400">{planErrors.intervalMonths.message}</span>
                 )}
               </label>
 
               {planModalMode === 'edit' ? (
                 <label className="flex flex-col gap-1">
-                  <span className="text-xs text-gray-600">Status do plano</span>
+                  <span className="text-xs text-gray-600">{t('forms.planStatus')}</span>
                   <select {...registerPlan('status')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm">
                     {planStatusOptions.map((opt) => (
                       <option key={opt.value} value={opt.value}>
@@ -1138,14 +1186,14 @@ export default function FuturosPage() {
                     {...registerPlan('recalculateRemaining')}
                     className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40"
                   />
-                  Recalcular parcelas abertas
+                  {t('forms.recalculateOpenInstallments')}
                 </label>
               ) : null}
 
               <label className="flex flex-col gap-1">
-                <span className="text-xs text-gray-600">Categoria (opcional)</span>
+                <span className="text-xs text-gray-600">{t('forms.categoryOptional')}</span>
                 <select {...registerPlan('categoryId')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm">
-                  <option value="">Sem categoria</option>
+                  <option value="">{t('forms.noCategory')}</option>
                   {(categoriesQuery.data ?? []).map((cat) => (
                     <option key={cat.id} value={cat.id}>
                       {cat.name}
@@ -1155,13 +1203,13 @@ export default function FuturosPage() {
               </label>
 
               <label className="flex flex-col gap-1">
-                <span className="text-xs text-gray-600">Cartao (opcional)</span>
+                <span className="text-xs text-gray-600">{t('forms.cardOptional')}</span>
                 <select
                   {...registerPlan('cardId')}
                   disabled={watchedPaymentType !== 'CREDIT_CARD'}
                   className="h-10 rounded-lg border border-gray-200 px-3 text-sm disabled:bg-gray-100"
                 >
-                  <option value="">Sem cartao</option>
+                  <option value="">{t('forms.noCard')}</option>
                   {(cardQuery.data ?? []).map((card) => (
                     <option key={card.id} value={card.id}>
                       {card.name}
@@ -1171,12 +1219,12 @@ export default function FuturosPage() {
               </label>
 
               <label className="flex flex-col gap-1 md:col-span-2">
-                <span className="text-xs text-gray-600">Observacoes (opcional)</span>
+                <span className="text-xs text-gray-600">{t('forms.notesOptional')}</span>
                 <textarea {...registerPlan('notes')} rows={3} className="rounded-lg border border-gray-200 px-3 py-2 text-sm" />
               </label>
 
               <div className="md:col-span-2 rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-sm">
-                Valor aproximado por parcela: <strong>{formatBRL(approximateInstallmentValue)}</strong>
+                {t('forms.approxInstallmentValue')}: <strong>{formatBRL(approximateInstallmentValue)}</strong>
               </div>
 
               <div className="md:col-span-2 flex justify-end gap-2 pt-2">
@@ -1185,14 +1233,14 @@ export default function FuturosPage() {
                   onClick={closePlanModal}
                   className="h-10 rounded-full border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50"
                 >
-                  Cancelar
+                  {t('buttons.cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={isSavingPlan}
                   className="h-10 rounded-full bg-primary px-4 text-sm font-semibold text-white hover:bg-secondary disabled:opacity-60"
                 >
-                  {isSavingPlan ? 'Salvando...' : planModalMode === 'edit' ? 'Salvar alteracoes' : 'Criar transação futura'}
+                  {isSavingPlan ? t('buttons.saving') : planModalMode === 'edit' ? t('buttons.saveChanges') : t('buttons.createFuture')}
                 </button>
               </div>
             </form>
@@ -1205,7 +1253,7 @@ export default function FuturosPage() {
         <div className="fixed inset-0 flex items-center justify-center p-4">
           <DialogPanel className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between mb-4">
-              <DialogTitle className="text-lg font-semibold text-gray-900">Dar baixa na parcela</DialogTitle>
+              <DialogTitle className="text-lg font-semibold text-gray-900">{t('modals.settle.title')}</DialogTitle>
               <button type="button" onClick={closeSettleModal} className="text-gray-500 hover:text-gray-700">
                 <X size={18} />
               </button>
@@ -1215,29 +1263,32 @@ export default function FuturosPage() {
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
                 <p className="font-medium text-slate-700">{selectedInstallment?.description}</p>
                 <p className="text-slate-600 mt-1">
-                  Parcela {selectedInstallment?.installmentNumber}/{selectedInstallment?.installmentCount} -{' '}
-                  {formatBRL(selectedInstallment?.amount ?? 0)}
+                  {t('modals.settle.installmentLine', {
+                    number: Number(selectedInstallment?.installmentNumber ?? 0),
+                    total: Number(selectedInstallment?.installmentCount ?? 0),
+                    amount: formatBRL(selectedInstallment?.amount ?? 0),
+                  })}
                 </p>
               </div>
 
               <label className="flex flex-col gap-1">
-                <span className="text-xs text-gray-600">Valor pago (opcional)</span>
+                <span className="text-xs text-gray-600">{t('forms.amountPaidOptional')}</span>
                 <input
                   type="text"
-                  placeholder="Ex.: 250,00"
+                  placeholder={t('forms.amountPaidPlaceholder')}
                   {...registerSettle('amount')}
                   className="h-10 rounded-lg border border-gray-200 px-3 text-sm"
                 />
                 {settleErrors.amount && (
-                  <span className="text-xs text-red-600">{settleErrors.amount.message as string}</span>
+                  <span className="text-xs text-red-400">{settleErrors.amount.message as string}</span>
                 )}
               </label>
 
               <label className="flex flex-col gap-1">
-                <span className="text-xs text-gray-600">Data do pagamento (opcional)</span>
+                <span className="text-xs text-gray-600">{t('forms.paymentDateOptional')}</span>
                 <input type="date" {...registerSettle('paidAt')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm" />
                 {settleErrors.paidAt && (
-                  <span className="text-xs text-red-600">{settleErrors.paidAt.message as string}</span>
+                  <span className="text-xs text-red-400">{settleErrors.paidAt.message as string}</span>
                 )}
               </label>
 
@@ -1247,14 +1298,14 @@ export default function FuturosPage() {
                   onClick={closeSettleModal}
                   className="h-10 rounded-full border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50"
                 >
-                  Cancelar
+                  {t('buttons.cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={settleInstallmentMutation.isPending}
                   className="h-10 rounded-full bg-primary px-4 text-sm font-semibold text-white hover:bg-secondary disabled:opacity-60"
                 >
-                  {settleInstallmentMutation.isPending ? 'Salvando...' : 'Confirmar baixa'}
+                  {settleInstallmentMutation.isPending ? t('buttons.saving') : t('buttons.confirmSettle')}
                 </button>
               </div>
             </form>
@@ -1267,7 +1318,7 @@ export default function FuturosPage() {
         <div className="fixed inset-0 flex items-center justify-center p-4">
           <DialogPanel className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between mb-4">
-              <DialogTitle className="text-lg font-semibold text-gray-900">Editar parcela</DialogTitle>
+              <DialogTitle className="text-lg font-semibold text-gray-900">{t('modals.installmentEdit.title')}</DialogTitle>
               <button type="button" onClick={closeInstallmentEditModal} className="text-gray-500 hover:text-gray-700">
                 <X size={18} />
               </button>
@@ -1277,12 +1328,16 @@ export default function FuturosPage() {
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
                 <p className="font-medium text-slate-700">{editingInstallment?.description}</p>
                 <p className="text-slate-600 mt-1">
-                  Parcela {editingInstallment?.installmentNumber}/{editingInstallment?.installmentCount}
+                  {t('modals.settle.installmentLine', {
+                    number: Number(editingInstallment?.installmentNumber ?? 0),
+                    total: Number(editingInstallment?.installmentCount ?? 0),
+                    amount: formatBRL(editingInstallment?.amount ?? 0),
+                  })}
                 </p>
               </div>
 
               <label className="flex flex-col gap-1">
-                <span className="text-xs text-gray-600">Valor</span>
+                <span className="text-xs text-gray-600">{t('forms.value')}</span>
                 <input
                   type="number"
                   step="0.01"
@@ -1291,20 +1346,20 @@ export default function FuturosPage() {
                   className="h-10 rounded-lg border border-gray-200 px-3 text-sm"
                 />
                 {installmentEditErrors.amount && (
-                  <span className="text-xs text-red-600">{installmentEditErrors.amount.message}</span>
+                  <span className="text-xs text-red-400">{installmentEditErrors.amount.message}</span>
                 )}
               </label>
 
               <label className="flex flex-col gap-1">
-                <span className="text-xs text-gray-600">Vencimento</span>
+                <span className="text-xs text-gray-600">{t('forms.dueDate')}</span>
                 <input type="date" {...registerInstallmentEdit('dueDate')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm" />
                 {installmentEditErrors.dueDate && (
-                  <span className="text-xs text-red-600">{installmentEditErrors.dueDate.message}</span>
+                  <span className="text-xs text-red-400">{installmentEditErrors.dueDate.message}</span>
                 )}
               </label>
 
               <label className="flex flex-col gap-1">
-                <span className="text-xs text-gray-600">Status</span>
+                <span className="text-xs text-gray-600">{t('forms.status')}</span>
                 <select {...registerInstallmentEdit('status')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm">
                   {installmentEditableStatusOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -1313,7 +1368,7 @@ export default function FuturosPage() {
                   ))}
                 </select>
                 {installmentEditErrors.status && (
-                  <span className="text-xs text-red-600">{installmentEditErrors.status.message}</span>
+                  <span className="text-xs text-red-400">{installmentEditErrors.status.message}</span>
                 )}
               </label>
 
@@ -1323,7 +1378,7 @@ export default function FuturosPage() {
                   {...registerInstallmentEdit('recalculateRemaining')}
                   className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40"
                 />
-                Recalcular parcelas seguintes
+                {t('forms.recalculateNextInstallments')}
               </label>
 
               <div className="flex justify-end gap-2 pt-2">
@@ -1332,14 +1387,14 @@ export default function FuturosPage() {
                   onClick={closeInstallmentEditModal}
                   className="h-10 rounded-full border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50"
                 >
-                  Cancelar
+                  {t('buttons.cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={updateInstallmentMutation.isPending}
                   className="h-10 rounded-full bg-primary px-4 text-sm font-semibold text-white hover:bg-secondary disabled:opacity-60"
                 >
-                  {updateInstallmentMutation.isPending ? 'Salvando...' : 'Salvar parcela'}
+                  {updateInstallmentMutation.isPending ? t('buttons.saving') : t('buttons.saveInstallment')}
                 </button>
               </div>
             </form>
@@ -1351,19 +1406,20 @@ export default function FuturosPage() {
         isOpen={Boolean(deletePlanTarget)}
         onClose={() => setDeletePlanTarget(null)}
         onConfirm={onDeletePlan}
-        title="Excluir transação futura"
-        description={`Deseja excluir "${deletePlanTarget?.description ?? ''}"? Essa acao nao pode ser desfeita.`}
-        confirmLabel={deletePlanMutation.isPending ? 'Excluindo...' : 'Excluir'}
+        title={t('delete.planTitle')}
+        description={t('delete.planDescription', { description: deletePlanTarget?.description ?? '' })}
+        confirmLabel={deletePlanMutation.isPending ? t('delete.deleting') : t('delete.delete')}
       />
 
       <DeleteConfirmModal
         isOpen={Boolean(deleteInstallmentTarget)}
         onClose={() => setDeleteInstallmentTarget(null)}
         onConfirm={onDeleteInstallment}
-        title="Excluir parcela"
-        description={`Deseja excluir a parcela "${deleteInstallmentTarget?.description ?? ''}"? Essa acao nao pode ser desfeita.`}
-        confirmLabel={deleteInstallmentMutation.isPending ? 'Excluindo...' : 'Excluir'}
+        title={t('delete.installmentTitle')}
+        description={t('delete.installmentDescription', { description: deleteInstallmentTarget?.description ?? '' })}
+        confirmLabel={deleteInstallmentMutation.isPending ? t('delete.deleting') : t('delete.delete')}
       />
     </section>
   )
 }
+

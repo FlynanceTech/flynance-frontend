@@ -1,24 +1,49 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import Header from '../components/Header'
 import { Check, Pencil, Plus, Trash2, X } from 'lucide-react'
 import clsx from 'clsx'
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
 import toast from 'react-hot-toast'
 import DeleteConfirmModal from '../components/DeleteConfirmModal'
+import { ActionTriggerButton } from '../components/Buttons'
 import { useFixedAccounts } from '@/hooks/query/useFixedAccounts'
+import { useUserCyclePreferences } from '@/hooks/query/useUserCyclePreferences'
 import { CategorySelect } from '../components/CategorySelect'
 import { useCategories } from '@/hooks/query/useCategory'
 import type { CategoryDTO, CategoryResponse } from '@/services/category'
 import type { CreateCategoryDraft } from '../components/Categories/createCategoryModal'
 import { useRouter } from 'next/navigation'
+import PageOnboardingTour, { type PageOnboardingStep } from '@/components/onboarding/PageOnboardingTour'
+import { toApiDate } from '@/utils/apiDate'
+import { resolveCompetenceRange } from '@/utils/resolveCompetenceRange'
+import {
+  buildFixedAccountEditPayload,
+  FIXED_ACCOUNT_TIME_ZONE,
+  isDueDayMatchingStartDate,
+  toISODateOnlyFromDatePicker,
+} from '@/utils/fixedAccountEdit'
+import {
+  isPaidInCompetence,
+  isOverdueCurrentCycle,
+  isPaidCurrentCycle,
+  matchesCurrentCycleFilter,
+  shouldDisplayOverdueTag,
+} from '@/utils/fixedAccountCycleStatus'
+import type { FixedAccountPayment, FixedAccountCycleStatus } from '@/services/fixedAccounts'
+import { formatCurrency } from '@/utils/formatter'
+import { useLocale, useTranslations } from 'next-intl'
+import { Button } from '@/components/ui/button'
+import { useUserSession } from '@/stores/useUserSession'
 
 type FixedBill = {
   id: string
+  userId?: string
   name: string
   amount: number
   dueDay: number
+  dueDate?: string
   notes?: string
   currency?: string
   status?: 'active' | 'paused' | 'canceled'
@@ -28,62 +53,118 @@ type FixedBill = {
   categoryId?: string | null
   categoryName?: string | null
   isPaid?: boolean
-  payment?: {
-    amount?: number
-    paidAt?: string
-    dueDate?: string | null
-    periodKey?: string
-  } | null
+  payment?: FixedAccountPayment | null
+  paymentCurrentCycle?: FixedAccountPayment | null
+  lastPayment?: FixedAccountPayment | null
+  payments?: FixedAccountPayment[]
+  statusCurrentCycle?: FixedAccountCycleStatus
 }
 
 type FilterKey = 'all' | 'paid' | 'pending'
-
-function toBRL(v: number) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0)
+const FILTER_STORAGE_KEY = 'flynance:fixed-accounts:filter'
+const MONTH_STORAGE_KEY = 'flynance:fixed-accounts:selected-month'
+function createFixedAccountsOnboardingSteps(
+  t: (key: string, values?: Record<string, string | number | Date>) => string
+): ReadonlyArray<PageOnboardingStep> {
+  return [
+    {
+      id: 'header',
+      selector: '[data-onboarding-target="contas-fixas-header"]',
+      align: 'bottom',
+      title: t('onboarding.headerTitle'),
+      description: t('onboarding.headerDescription'),
+    },
+    {
+      id: 'summary-filters',
+      selector: '[data-onboarding-target="contas-fixas-resumo"]',
+      title: t('onboarding.summaryTitle'),
+      description: t('onboarding.summaryDescription'),
+    },
+    {
+      id: 'list',
+      selector: '[data-onboarding-target="contas-fixas-lista"]',
+      title: t('onboarding.listTitle'),
+      description: t('onboarding.listDescription'),
+    },
+    {
+      id: 'card',
+      selector: '[data-onboarding-target="contas-fixas-card"]',
+      title: t('onboarding.cardTitle'),
+      description: t('onboarding.cardDescription'),
+    },
+  ]
 }
 
-function formatDateBR(iso?: string) {
-  if (!iso) return ''
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleDateString('pt-BR')
+function pad2(value: number) {
+  return String(value).padStart(2, '0')
 }
 
 function todayISODate() {
-  return new Date().toISOString().split('T')[0]
+  const now = new Date()
+  return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`
 }
 
-function getDayFromISODate(isoDate: string) {
-  const [_, __, day] = (isoDate || '').split('-')
-  const parsed = Number(day)
-  return Number.isFinite(parsed) ? parsed : NaN
+function toBRL(v: number) {
+  return formatCurrency(v || 0)
+}
+
+function parseDateOnly(value?: string | null): Date | null {
+  if (!value) return null
+  const raw = String(value).trim()
+  if (!raw) return null
+
+  const dateOnly = raw.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (dateOnly) {
+    return new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
+  }
+
+  const parsed = new Date(raw)
+  if (Number.isNaN(parsed.getTime())) return null
+  return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate())
 }
 
 function parseAmountInput(value: string) {
   const raw = String(value ?? '').trim()
   if (!raw) return NaN
 
-  const hasComma = raw.includes(',')
-  const hasDot = raw.includes('.')
-  let normalized = raw
+  const sanitized = raw.replace(/[^\d,.-]/g, '')
+  if (!sanitized) return NaN
+
+  const hasComma = sanitized.includes(',')
+  const hasDot = sanitized.includes('.')
+  let normalized = sanitized
 
   if (hasComma && hasDot) {
-    // Usa o ultimo separador como decimal e remove o outro como milhar.
-    const lastComma = raw.lastIndexOf(',')
-    const lastDot = raw.lastIndexOf('.')
+    const lastComma = sanitized.lastIndexOf(',')
+    const lastDot = sanitized.lastIndexOf('.')
     if (lastComma > lastDot) {
-      normalized = raw.replace(/\./g, '').replace(',', '.')
+      normalized = sanitized.replace(/\./g, '').replace(',', '.')
     } else {
-      normalized = raw.replace(/,/g, '')
+      normalized = sanitized.replace(/,/g, '')
     }
   } else if (hasComma) {
-    normalized = raw.replace(/\./g, '').replace(',', '.')
+    normalized = sanitized.replace(/\./g, '').replace(',', '.')
   } else {
-    normalized = raw.replace(/,/g, '')
+    normalized = sanitized.replace(/,/g, '')
   }
 
   const parsed = Number(normalized)
   return Number.isFinite(parsed) ? parsed : NaN
+}
+
+function formatAmountInput(value: string) {
+  const digitsOnly = String(value ?? '').replace(/\D/g, '')
+  if (!digitsOnly) return ''
+
+  const asNumber = Number(digitsOnly) / 100
+  if (!Number.isFinite(asNumber) || asNumber < 0) return ''
+
+  return toBRL(asNumber)
+}
+
+function formatAmountFromNumber(value: number | null | undefined) {
+  if (!Number.isFinite(value as number)) return ''
+  return toBRL(Number(value))
 }
 
 function monthKeyFromDate(d = new Date()) {
@@ -92,42 +173,200 @@ function monthKeyFromDate(d = new Date()) {
   return `${y}-${m}`
 }
 
-function getMonthKeyFromISO(iso?: string) {
-  if (!iso) return ''
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  return monthKeyFromDate(d)
-}
+function parseMonthKey(value?: string | null) {
+  const raw = String(value ?? '').trim()
+  const matched = raw.match(/^(\d{4})-(\d{2})$/)
+  if (!matched) return null
 
-function getCycleInfo(dueDay: number, leadDays = 10, now = new Date()) {
-  const currentMonthDue = new Date(now.getFullYear(), now.getMonth(), dueDay)
-  const boundary = new Date(currentMonthDue)
-  boundary.setDate(boundary.getDate() - leadDays)
-
-  let cycleYear = now.getFullYear()
-  let cycleMonth = now.getMonth()
-  if (now < boundary) {
-    const prev = new Date(currentMonthDue)
-    prev.setMonth(prev.getMonth() - 1)
-    cycleYear = prev.getFullYear()
-    cycleMonth = prev.getMonth()
+  const year = Number(matched[1])
+  const monthIndex = Number(matched[2]) - 1
+  if (!Number.isInteger(year) || !Number.isInteger(monthIndex) || monthIndex < 0 || monthIndex > 11) {
+    return null
   }
 
-  const cycleDueDate = new Date(cycleYear, cycleMonth, dueDay)
-  const cycleKey = monthKeyFromDate(cycleDueDate)
+  return { year, monthIndex }
+}
 
-  return { cycleKey, cycleDueDate }
+function formatMonthKeyLabel(monthKey: string, locale: string) {
+  const parsed = parseMonthKey(monthKey)
+  if (!parsed) return monthKey
+
+  const date = new Date(parsed.year, parsed.monthIndex, 1)
+  const label = date.toLocaleDateString(locale, { month: 'long', year: 'numeric' })
+  return label.charAt(0).toUpperCase() + label.slice(1)
+}
+
+function shiftMonthKey(monthKey: string, offset: number) {
+  const parsed = parseMonthKey(monthKey)
+  if (!parsed) return monthKeyFromDate(new Date())
+
+  const next = new Date(parsed.year, parsed.monthIndex + offset, 1)
+  return monthKeyFromDate(next)
+}
+
+function getMonthKeyFromISODate(isoDate?: string | null) {
+  const parsed = parseDateOnly(isoDate)
+  return parsed ? monthKeyFromDate(parsed) : ''
+}
+
+function clampDateToMonth(isoDate: string, monthKey: string) {
+  const targetMonth = parseMonthKey(monthKey)
+  if (!targetMonth) return isoDate
+
+  const sourceDate = parseDateOnly(isoDate) ?? new Date()
+  const sourceDay = Math.max(1, sourceDate.getDate())
+  const lastDay = new Date(targetMonth.year, targetMonth.monthIndex + 1, 0).getDate()
+  const clampedDay = Math.min(sourceDay, lastDay)
+  return toApiDate(new Date(targetMonth.year, targetMonth.monthIndex, clampedDay))
+}
+
+function getMonthStartDateForMonthKey(monthKey: string) {
+  const parsed = parseMonthKey(monthKey)
+  if (!parsed) return todayISODate()
+  return toApiDate(new Date(parsed.year, parsed.monthIndex, 1))
+}
+
+function getDefaultFirstDueDateForMonth(monthKey: string) {
+  const parsed = parseMonthKey(monthKey)
+  if (!parsed) return todayISODate()
+
+  const today = new Date()
+  const day = Math.max(1, today.getDate())
+  const lastDay = new Date(parsed.year, parsed.monthIndex + 1, 0).getDate()
+  return toApiDate(new Date(parsed.year, parsed.monthIndex, Math.min(day, lastDay)))
+}
+
+function isISODateOnly(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value ?? '').trim())
+}
+
+function getDueDateForSelectedMonth(cycleMonthKey: string, dueDay: number) {
+  const parsed = parseMonthKey(cycleMonthKey)
+  const base = parsed ? new Date(parsed.year, parsed.monthIndex, 1) : new Date()
+  const safeDay = Math.max(1, Math.trunc(dueDay || 1))
+  const lastDay = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate()
+  const dueDate = new Date(base.getFullYear(), base.getMonth(), Math.min(safeDay, lastDay))
+  return toApiDate(dueDate)
+}
+
+function isDateWithinRange(value: Date, start: Date, end: Date) {
+  return value.getTime() >= start.getTime() && value.getTime() <= end.getTime()
+}
+
+function getDueDateForCompetenceRange(periodStart: string, periodEnd: string, dueDay: number) {
+  const start = parseDateOnly(periodStart)
+  const end = parseDateOnly(periodEnd)
+  if (!start || !end) return null
+
+  const safeDay = Math.max(1, Math.trunc(dueDay || 1))
+  const lastDayOfStartMonth = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate()
+  const lastDayOfEndMonth = new Date(end.getFullYear(), end.getMonth() + 1, 0).getDate()
+
+  const startCandidate = new Date(
+    start.getFullYear(),
+    start.getMonth(),
+    Math.min(safeDay, lastDayOfStartMonth)
+  )
+  const endCandidate = new Date(end.getFullYear(), end.getMonth(), Math.min(safeDay, lastDayOfEndMonth))
+
+  if (isDateWithinRange(startCandidate, start, end)) return toApiDate(startCandidate)
+  if (isDateWithinRange(endCandidate, start, end)) return toApiDate(endCandidate)
+  return toApiDate(endCandidate)
+}
+
+function resolveMarkPaidDueDate(
+  bill: FixedBill,
+  fallbackMonthKey: string,
+  periodStart: string,
+  periodEnd: string
+) {
+  const fromApiCycle =
+    bill.paymentCurrentCycle?.dueDate ??
+    bill.payment?.dueDate ??
+    bill.dueDate ??
+    null
+
+  const normalizedFromApi = fromApiCycle ? toISODateOnlyFromDatePicker(fromApiCycle) : null
+  if (normalizedFromApi) return normalizedFromApi
+
+  const fromCompetenceRange = getDueDateForCompetenceRange(periodStart, periodEnd, bill.dueDay)
+  if (fromCompetenceRange) return fromCompetenceRange
+
+  return getDueDateForSelectedMonth(fallbackMonthKey, bill.dueDay)
+}
+
+function resolveCurrentPeriodKey(bill: FixedBill, fallbackPeriodKey: string) {
+  return (
+    bill.paymentCurrentCycle?.periodKey ||
+    bill.payment?.periodKey ||
+    bill.payments?.find((payment) => payment.periodKey)?.periodKey ||
+    fallbackPeriodKey
+  )
+}
+
+type DisplayCycleStatus = 'PAID' | 'PENDING' | 'OVERDUE'
+type FixedBillWithDisplayStatus = FixedBill & { displayStatus: DisplayCycleStatus }
+
+function resolveBillDisplayStatus(
+  bill: FixedBill,
+  periodStart: string,
+  periodEnd: string,
+  fallbackMonthKey: string
+): DisplayCycleStatus {
+  const paid = isPaidInCompetence({
+    status: bill.statusCurrentCycle,
+    selectedMonthKey: fallbackMonthKey,
+    periodStart,
+    periodEnd,
+    paymentCurrentCycle: bill.paymentCurrentCycle,
+    payment: bill.payment,
+  })
+
+  if (paid) return 'PAID'
+
+  const dueDateFromCycle =
+    bill.paymentCurrentCycle?.dueDate ??
+    bill.payment?.dueDate ??
+    getDueDateForCompetenceRange(periodStart, periodEnd, bill.dueDay) ??
+    getDueDateForSelectedMonth(fallbackMonthKey, bill.dueDay)
+  const normalizedDueDate = toISODateOnlyFromDatePicker(dueDateFromCycle)
+  const overdue = shouldDisplayOverdueTag({
+    status: bill.statusCurrentCycle,
+    dueDate: normalizedDueDate,
+    isPaid: false,
+    timeZone: FIXED_ACCOUNT_TIME_ZONE,
+  })
+
+  return overdue ? 'OVERDUE' : 'PENDING'
 }
 
 export default function FixedBillsPage() {
+  const t = useTranslations('fixedAccounts')
+  const locale = useLocale()
+  const onboardingSteps = useMemo(() => createFixedAccountsOnboardingSteps(t), [t])
+  const currentUserId = useUserSession((state) => state.user?.userData?.user?.id ?? '')
+
   const router = useRouter()
+  const [filter, setFilter] = useState<FilterKey>('all')
+  const [selectedMonthKey, setSelectedMonthKey] = useState(() => monthKeyFromDate(new Date()))
+  const { preferencesQuery } = useUserCyclePreferences()
+  const competenceRange = useMemo(
+    () => resolveCompetenceRange(selectedMonthKey, preferencesQuery.data),
+    [selectedMonthKey, preferencesQuery.data]
+  )
+  const competenceQueryParams = useMemo(
+    () => ({
+      periodStart: competenceRange.periodStart,
+      periodEnd: competenceRange.periodEnd,
+    }),
+    [competenceRange.periodEnd, competenceRange.periodStart]
+  )
   const { fixedAccountsQuery, createMutation, updateMutation, deleteMutation, markPaidMutation, unmarkPaidMutation } =
-    useFixedAccounts()
+    useFixedAccounts(competenceQueryParams)
   const {
     categoriesQuery: { data: categories = [] },
     createMutation: createCategoryMutation,
   } = useCategories()
-  const [filter, setFilter] = useState<FilterKey>('all')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
@@ -138,32 +377,49 @@ export default function FixedBillsPage() {
 
   const [name, setName] = useState('')
   const [amount, setAmount] = useState('')
-  const [firstDueDate, setFirstDueDate] = useState(todayISODate())
+  const [firstDueDateISO, setFirstDueDateISO] = useState(() =>
+    getDefaultFirstDueDateForMonth(selectedMonthKey)
+  )
+  const [firstCompetenceMonthKey, setFirstCompetenceMonthKey] = useState(() => selectedMonthKey)
   const [notes, setNotes] = useState('')
   const [categoryId, setCategoryId] = useState('')
+  const [formError, setFormError] = useState<string | null>(null)
   const [editingBill, setEditingBill] = useState<FixedBill | null>(null)
 
-  const isPaid = (bill: FixedBill) => !!bill.isPaid
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const stored = window.localStorage.getItem(FILTER_STORAGE_KEY)
+    if (stored === 'all' || stored === 'paid' || stored === 'pending') {
+      setFilter(stored)
+    }
+  }, [])
 
-  const computeIsPaid = (bill: FixedBill) => {
-    if (!bill.payment) return !!bill.isPaid
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(FILTER_STORAGE_KEY, filter)
+  }, [filter])
 
-    const { cycleKey } = getCycleInfo(bill.dueDay)
-    const paymentMonthKey =
-      bill.payment.periodKey ||
-      getMonthKeyFromISO(bill.payment.dueDate ?? undefined) ||
-      getMonthKeyFromISO(bill.payment.paidAt)
-    return !!paymentMonthKey && paymentMonthKey === cycleKey
-  }
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const stored = window.localStorage.getItem(MONTH_STORAGE_KEY)
+    if (parseMonthKey(stored)) setSelectedMonthKey(stored as string)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(MONTH_STORAGE_KEY, selectedMonthKey)
+  }, [selectedMonthKey])
 
   const bills = useMemo(() => {
     const data = fixedAccountsQuery.data ?? []
     return data
       .map((b) => ({
         id: b.id,
+        userId: b.userId,
         name: b.name,
         amount: b.amount,
         dueDay: b.dueDay,
+        dueDate: b.dueDate,
         notes: b.notes,
         currency: b.currency,
         status: b.status,
@@ -172,50 +428,84 @@ export default function FixedBillsPage() {
         endDate: b.endDate,
         categoryId: b.category?.id ?? null,
         categoryName: b.category?.name ?? null,
-        isPaid: computeIsPaid({
-          id: b.id,
-          name: b.name,
-          amount: b.amount,
-          dueDay: b.dueDay,
-          notes: b.notes,
-          currency: b.currency,
-          status: b.status,
-          autoPay: b.autoPay,
-          startDate: b.startDate,
-          endDate: b.endDate,
-          categoryId: b.category?.id ?? null,
-          categoryName: b.category?.name ?? null,
-          isPaid: b.isPaid ?? false,
-          payment: b.payment ?? null,
-        } as FixedBill),
+        isPaid: b.isPaid ?? false,
         payment: b.payment ?? null,
+        paymentCurrentCycle: b.paymentCurrentCycle ?? null,
+        lastPayment: b.lastPayment ?? null,
+        payments: b.payments ?? [],
+        statusCurrentCycle: b.statusCurrentCycle,
       }))
       .sort((a, b) => a.dueDay - b.dueDay)
   }, [fixedAccountsQuery.data])
 
-  const summary = useMemo(() => {
-    const paid = bills.filter((b) => isPaid(b)).length
-    const pending = bills.length - paid
-    return { paid, pending, total: bills.length }
-  }, [bills])
+  const billsWithDisplayStatus = useMemo<FixedBillWithDisplayStatus[]>(() => {
+    return bills.map((bill) => ({
+      ...bill,
+      displayStatus: resolveBillDisplayStatus(
+        bill,
+        competenceRange.periodStart,
+        competenceRange.periodEnd,
+        selectedMonthKey
+      ),
+    }))
+  }, [bills, competenceRange.periodEnd, competenceRange.periodStart, selectedMonthKey])
 
-  const visibleBills = useMemo(() => {
-    if (filter === 'paid') return bills.filter((b) => isPaid(b))
-    if (filter === 'pending') return bills.filter((b) => !isPaid(b))
-    return bills
-  }, [bills, filter])
+  const selectedMonthLabel = useMemo(() => formatMonthKeyLabel(selectedMonthKey, locale), [selectedMonthKey, locale])
+  const amountPlaceholder = formatCurrency(0)
+
+  const summary = useMemo(() => {
+    const paid = billsWithDisplayStatus.filter((bill) => isPaidCurrentCycle(bill.displayStatus)).length
+    const pending = billsWithDisplayStatus.filter((bill) =>
+      matchesCurrentCycleFilter(bill.displayStatus, 'pending')
+    ).length
+    return { paid, pending, total: billsWithDisplayStatus.length }
+  }, [billsWithDisplayStatus])
+
+  const monthlyTotals = useMemo(() => {
+    return billsWithDisplayStatus.reduce(
+      (acc, bill) => {
+        const billAmount = Number(bill.amount ?? 0)
+        if (!Number.isFinite(billAmount)) return acc
+
+        acc.total += billAmount
+        if (isPaidCurrentCycle(bill.displayStatus)) {
+          const paidAmount = Number(bill.paymentCurrentCycle?.amount ?? billAmount)
+          acc.paid += Number.isFinite(paidAmount) ? paidAmount : billAmount
+        }
+        return acc
+      },
+      { total: 0, paid: 0 }
+    )
+  }, [billsWithDisplayStatus])
+
+  const monthlyPendingAmount = Math.max(0, monthlyTotals.total - monthlyTotals.paid)
+
+  const visibleBills = useMemo<FixedBillWithDisplayStatus[]>(() => {
+    return billsWithDisplayStatus.filter((bill) => matchesCurrentCycleFilter(bill.displayStatus, filter))
+  }, [billsWithDisplayStatus, filter])
+
+  const emptyStateMessage = useMemo(() => {
+    if (billsWithDisplayStatus.length === 0) return t('emptyForMonth', { month: selectedMonthLabel })
+    if (filter === 'paid') return t('emptyPaid', { month: selectedMonthLabel })
+    if (filter === 'pending') return t('emptyPending', { month: selectedMonthLabel })
+    return t('emptyDefault')
+  }, [billsWithDisplayStatus.length, filter, selectedMonthLabel, t])
 
   const selectedCategoryObj = useMemo<CategoryResponse | null>(() => {
     if (!categoryId) return null
     return categories.find((c) => c.id === categoryId) ?? null
   }, [categories, categoryId])
+  const canWriteBill = (bill: FixedBill) => !bill.userId || bill.userId === currentUserId
 
   const resetForm = () => {
+    const baseMonth = selectedMonthKey
     setName('')
     setAmount('')
-    setFirstDueDate(todayISODate())
+    setFirstCompetenceMonthKey(baseMonth)
+    setFirstDueDateISO(getDefaultFirstDueDateForMonth(baseMonth))
     setNotes('')
     setCategoryId('')
+    setFormError(null)
     setEditingBill(null)
   }
 
@@ -237,59 +527,71 @@ export default function FixedBillsPage() {
     return created
   }
 
-  const handleAdd = (e: React.FormEvent) => {
+  const firstDueDateIsValid =
+    isISODateOnly(firstDueDateISO) && Boolean(toISODateOnlyFromDatePicker(firstDueDateISO))
+
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault()
+    setFormError(null)
     const trimmed = name.trim()
     const parsedAmount = parseAmountInput(amount)
-    const parsedDueDay = getDayFromISODate(firstDueDate)
     if (!trimmed || Number.isNaN(parsedAmount) || parsedAmount <= 0) return
-    if (!parsedDueDay || parsedDueDay < 1 || parsedDueDay > 31) return
-    if (!firstDueDate) return
 
-    const createPayload = {
-      name: trimmed,
-      amount: parsedAmount,
-      dueDay: parsedDueDay,
-      dueDate: firstDueDate,
-      startDate: firstDueDate,
-      categoryId: categoryId || undefined,
-      notes: notes.trim() || undefined,
-    }
-
-    if (editingBill?.id) {
-      const updatePayload = {
-        name: trimmed,
-        amount: parsedAmount,
-        dueDay: parsedDueDay,
-        dueDate: firstDueDate,
-        categoryId: categoryId || undefined,
-        notes: notes.trim() || undefined,
-      }
-      updateMutation.mutate(
-        { id: editingBill.id, data: updatePayload },
-        {
-          onSuccess: () => {
-            resetForm()
-            closeDrawer()
-          },
-        }
-      )
+    if (!isISODateOnly(firstDueDateISO)) {
+      setFormError(t('errors.dateFormat'))
       return
     }
 
-    createMutation.mutate(createPayload, {
-      onSuccess: () => {
-        resetForm()
-        closeDrawer()
-      },
+    const payload = buildFixedAccountEditPayload({
+      name: trimmed,
+      amount: parsedAmount,
+      categoryId,
+      notes,
+      startDateInput: getMonthStartDateForMonthKey(firstCompetenceMonthKey),
+      dueDateInput: firstDueDateISO,
     })
+
+    if (!payload) {
+      setFormError(t('errors.firstDueInvalid'))
+      return
+    }
+
+    if (!isDueDayMatchingStartDate(payload.dueDate ?? payload.startDate, payload.dueDay)) {
+      setFormError(t('errors.dueDayInvalid'))
+      return
+    }
+
+    try {
+      if (editingBill?.id) {
+        await updateMutation.mutateAsync({ id: editingBill.id, data: payload })
+        await fixedAccountsQuery.refetch()
+        closeDrawer()
+        return
+      }
+
+      await createMutation.mutateAsync(payload)
+      await fixedAccountsQuery.refetch()
+      closeDrawer()
+    } catch (err: any) {
+      const status = Number(err?.status ?? err?.response?.status)
+      if (status === 400) {
+        setFormError(t('errors.invalidData'))
+      } else {
+        setFormError(err?.message ?? t('errors.saveFailed'))
+      }
+      toast.error(err?.message ?? t('errors.saveFailed'))
+    }
   }
 
   const handleEdit = (bill: FixedBill) => {
     setEditingBill(bill)
+    setFormError(null)
     setName(bill.name ?? '')
-    setAmount(String(bill.amount ?? ''))
-    setFirstDueDate((bill.startDate ?? todayISODate()).split('T')[0])
+    setAmount(formatAmountFromNumber(bill.amount))
+    const normalizedStartDate =
+      toISODateOnlyFromDatePicker(bill.startDate ?? bill.dueDate ?? todayISODate()) ?? todayISODate()
+    setFirstDueDateISO(normalizedStartDate)
+    setFirstCompetenceMonthKey(getMonthKeyFromISODate(normalizedStartDate) || selectedMonthKey)
     setNotes(bill.notes ?? '')
     setCategoryId((bill.categoryId as string) ?? '')
     setDrawerOpen(true)
@@ -297,7 +599,7 @@ export default function FixedBillsPage() {
 
   const openPayConfirm = (bill: FixedBill) => {
     setPayTarget(bill)
-    setPayAmount(String(bill.payment?.amount ?? bill.amount ?? ''))
+    setPayAmount(formatAmountFromNumber(bill.paymentCurrentCycle?.amount ?? bill.amount))
     setPayDate(todayISODate())
     setPayConfirmOpen(true)
   }
@@ -306,25 +608,43 @@ export default function FixedBillsPage() {
     if (!payTarget) return
     const parsedAmount = parseAmountInput(payAmount)
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      toast.error('Informe um valor valido para confirmar o pagamento.')
+      toast.error(t('errors.invalidPaymentAmount'))
       return
     }
 
     try {
+      const dueDate = resolveMarkPaidDueDate(
+        payTarget,
+        selectedMonthKey,
+        competenceRange.periodStart,
+        competenceRange.periodEnd
+      )
+      const optimisticPeriodKey = resolveCurrentPeriodKey(
+        payTarget,
+        getMonthKeyFromISODate(dueDate) || selectedMonthKey
+      )
+
       await markPaidMutation.mutateAsync({
         id: payTarget.id,
+        optimisticPeriodKey,
         data: {
           amount: parsedAmount,
           paidAt: payDate || todayISODate(),
+          dueDate,
         },
       })
-      toast.success('Pagamento confirmado com sucesso.')
+      await fixedAccountsQuery.refetch()
+      toast.success(t('payments.markSuccess'))
       setPayConfirmOpen(false)
       setPayTarget(null)
       setPayDate(todayISODate())
       setPayAmount('')
     } catch (err: any) {
-      toast.error(err?.message ?? 'Nao foi possivel confirmar o pagamento.')
+      if (String(err?.message ?? '').includes('fixedAccountCycleOutOfRange')) {
+        toast.error(t('errors.wrongCycle'))
+        return
+      }
+      toast.error(err?.message ?? t('errors.markPaymentFailed'))
     }
   }
 
@@ -332,19 +652,23 @@ export default function FixedBillsPage() {
     setPayConfirmOpen(false)
     setPayTarget(null)
     setPayDate(todayISODate())
+    setPayAmount('')
   }
 
-  const togglePaid = (id: string, bill: FixedBill) => {
-    if (!isPaid(bill)) {
+  const togglePaid = async (id: string, bill: FixedBill, isPaidInCurrentCompetence: boolean) => {
+    if (!isPaidInCurrentCompetence) {
       openPayConfirm(bill)
       return
     }
 
-    const periodKey =
-      bill.payment?.periodKey ??
-      (bill.payment?.paidAt ? monthKeyFromDate(new Date(bill.payment.paidAt)) : monthKeyFromDate())
-
-    unmarkPaidMutation.mutate({ id, periodKey })
+    const periodKey = resolveCurrentPeriodKey(bill, selectedMonthKey)
+    try {
+      await unmarkPaidMutation.mutateAsync({ id, periodKey })
+      await fixedAccountsQuery.refetch()
+      toast.success(t('payments.unmarkSuccess'))
+    } catch (err: any) {
+      toast.error(err?.message ?? t('errors.unmarkPaymentFailed'))
+    }
   }
 
   const removeBill = (id: string) => {
@@ -358,78 +682,155 @@ export default function FixedBillsPage() {
 
   return (
     <section className="w-full h-full pt-8 lg:px-8 px-4 pb-24 lg:pb-0 flex flex-col gap-6 overflow-auto">
-      <Header title="Contas Fixas" subtitle="Controle de pagamentos fixos do mes." newTransation={false} />
-
-      <div className="flex flex-col gap-6">
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm flex flex-col gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold text-[#333C4D]">Minhas contas fixas</h2>
-              <p className="text-sm text-slate-500">
-                Pagas: <strong>{summary.paid}</strong> • Pendentes: <strong>{summary.pending}</strong>
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
+      <div data-onboarding-target="contas-fixas-header">
+        <Header
+          title={t('pageTitle')}
+          subtitle={t('pageSubtitle')}
+          newTransation={false}
+          rightContent={
+            <div className="flex items-center gap-2">
+              <PageOnboardingTour
+                steps={onboardingSteps}
+                storageKeyBase="flynance:dashboard:onboarding:contas-fixas:v1"
+                triggerLabel={t('guideButton')}
+              />
+              <ActionTriggerButton
                 onClick={() => {
                   resetForm()
                   setDrawerOpen(true)
                 }}
-                className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-white hover:bg-secondary"
-              >
-                <Plus className="h-4 w-4" />
-                Nova conta fixa
-              </button>
-              {(['all', 'pending', 'paid'] as FilterKey[]).map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setFilter(key)}
-                  className={clsx(
-                    'rounded-full px-3 py-1 text-xs font-semibold border',
-                    filter === key
-                      ? 'bg-secondary/30 border-secondary text-[#333C4D]'
-                      : 'border-gray-200 text-gray-500 hover:bg-gray-50'
-                  )}
-                >
-                  {key === 'all' ? 'Todas' : key === 'paid' ? 'Pagas' : 'Pendentes'}
-                </button>
-              ))}
+                label={t('newButton')}
+                icon={Plus}
+                size="sm"
+              />
             </div>
-          </div>
+          }
+        />
+        <p className="pt-1 text-xs text-slate-500 lg:text-sm">{t('pageHelper')}</p>
+      </div>
+
+
+
+    <div className="flex flex-wrap items-center justify-between gap-3" data-onboarding-target="contas-fixas-resumo">
+      <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="min-w-0 rounded-lg border border-gray-300 bg-white p-3 sm:p-4 flex flex-col gap-1">
+          <span className="text-base sm:text-sm text-slate-500">
+            {t('summary.paidCount')}: <strong>{summary.paid}</strong>
+          </span>
+          <span className="text-base sm:text-sm text-slate-500">
+            {t('summary.pendingCount')}: <strong>{summary.pending}</strong>
+          </span>
+        </div>
+        <div className="min-w-0 rounded-lg border border-gray-300 bg-white p-3 sm:p-4 flex flex-col gap-1">
+          <span className="text-sm sm:text-sm text-slate-500">
+            {t('summary.estimatedTotal')}: <strong>{toBRL(monthlyTotals.total)}</strong> 
+          </span>
+          <span className="text-sm sm:text-sm text-slate-500">
+           {t('summary.paidAmount')}:{' '}
+          <strong>{toBRL(monthlyTotals.paid)}</strong>
+          </span>
+        </div>
+        <div className="col-span-2 min-w-0 rounded-lg border border-gray-300 bg-white p-3 sm:p-4 flex flex-col gap-1 sm:col-span-2 xl:col-span-1">
+          <span className="text-sm sm:text-sm text-slate-500">
+            {t('summary.pendingAmount')}:{' '}
+          <strong>{toBRL(monthlyPendingAmount)}</strong>
+          </span>
+          <span className="text-sm sm:text-sm text-slate-500">
+            {t('summary.competence', { label: competenceRange.label })}
+          </span>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="inline-flex items-center gap-1 rounded-full  px-2 py-1">
+          <button
+            type="button"
+            onClick={() => setSelectedMonthKey((prev) => shiftMonthKey(prev, -1))}
+            className="rounded-full px-2 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-100"
+            aria-label={t('monthPrevAria')}
+          >
+            {'<'}
+          </button>
+          <input
+            type="month"
+            value={selectedMonthKey}
+            lang={locale}
+            onChange={(e) => {
+              const next = e.target.value
+              if (parseMonthKey(next)) setSelectedMonthKey(next)
+            }}
+            className="month-inline-picker rounded-full px-2 py-1 text-xs font-semibold text-gray-700 outline-none focus:border-transparent"
+          />
+          <button
+            type="button"
+            onClick={() => setSelectedMonthKey((prev) => shiftMonthKey(prev, 1))}
+            className="rounded-full px-2 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-100"
+            aria-label={t('monthNextAria')}
+          >
+            {'>'}
+          </button>
+        </div>
+        <div className='flex gap-2'>
+          {(['all', 'pending', 'paid'] as FilterKey[]).map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setFilter(key)}
+              className={clsx(
+                'rounded-full px-3 py-1 text-xs font-semibold border',
+                filter === key
+                  ? 'bg-secondary/30 border-secondary text-[#333C4D] dark:bg-[#F4C542] dark:border-[#F4C542] dark:text-black'
+                  : 'border-gray-200 text-gray-500 hover:bg-gray-50 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-white/5'
+              )}
+            >
+              {key === 'all' ? t('filters.all') : key === 'paid' ? t('filters.paid') : t('filters.pending')}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+
+      <div className="flex flex-col gap-6">
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm flex flex-col gap-4" data-onboarding-target="contas-fixas-lista">
+ 
 
           <div className="flex flex-col gap-3">
             {fixedAccountsQuery.isLoading && (
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-                Carregando contas fixas...
+                {t('loading')}
               </div>
             )}
 
             {fixedAccountsQuery.isError && (
               <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                Erro ao carregar contas fixas.
+                {t('loadingError')}
               </div>
             )}
 
             {!fixedAccountsQuery.isLoading && !fixedAccountsQuery.isError && visibleBills.length === 0 && (
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-                Nenhuma conta fixa cadastrada.
+                {emptyStateMessage}
               </div>
             )}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {visibleBills.map((bill, index) => {
+              const paid = isPaidCurrentCycle(bill.displayStatus)
+              const overdue = isOverdueCurrentCycle(bill.displayStatus)
+              const statusLabel = paid
+                ? t('status.paid')
+                : overdue
+                ? t('status.overdue')
+                : t('status.pending')
 
-            {visibleBills.map((bill) => {
-              const paid = isPaid(bill)
-              const { cycleDueDate } = getCycleInfo(bill.dueDay)
-              const { cycleKey } = getCycleInfo(bill.dueDay)
-              const overdue = !paid && new Date() > cycleDueDate
               return (
                 <div
                   key={bill.id}
+                  data-onboarding-target={index === 0 ? 'contas-fixas-card' : undefined}
                   className={clsx(
-                    'rounded-lg border border-gray-200 p-4 flex flex-col gap-3 cursor-pointer',
-                    paid ? 'bg-emerald-50/40' : 'bg-white'
+                    'cursor-pointer flex flex-col gap-3 rounded-xl border border-gray-200 p-4 transition-shadow',
+                    paid
+                      ? 'border-[#b8e3c7] bg-[linear-gradient(135deg,rgba(62,175,102,0.18)_0%,rgba(255,255,255,0.98)_42%,rgba(62,175,102,0.12)_100%)] shadow-[0_18px_40px_-28px_rgba(62,175,102,0.75)] ring-1 ring-[#dcefe3] dark:border-[rgba(62,175,102,0.42)] dark:bg-[linear-gradient(135deg,rgba(62,175,102,0.32)_0%,rgba(28,31,30,0.96)_45%,rgba(62,175,102,0.2)_100%)] dark:shadow-[0_22px_48px_-30px_rgba(62,175,102,0.55)] dark:ring-[rgba(62,175,102,0.26)]'
+                      : 'bg-white dark:border-white/10'
                   )}
                   role="button"
                   tabIndex={0}
@@ -441,18 +842,80 @@ export default function FixedBillsPage() {
                     }
                   }}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex flex-col min-w-0 gap-1">
-                      <h3 className="text-sm font-semibold text-gray-800 truncate">{bill.name}</h3>
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                        <span>Vence todo dia {bill.dueDay}</span>
-                      {/*   <span>{toBRL(bill.amount)}</span>
+                  <div className="flex w-full items-start justify-between gap-3">
+                    <div className="flex flex-col gap-1 w-full">
+                      <div className='flex w-full items-center justify-between'>
+                        <h3
+                          className={clsx(
+                            'truncate text-sm font-semibold',
+                            paid ? 'text-slate-900 dark:text-white' : 'text-gray-800'
+                          )}
+                        >
+                          {bill.name}
+                        </h3>
+                        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                         
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (!canWriteBill(bill)) return
+                              handleEdit(bill)
+                            }}
+                            disabled={!canWriteBill(bill)}
+                            className={clsx(
+                              'inline-flex h-7 w-7 items-center justify-center rounded-full border md:h-auto md:w-auto md:gap-2 md:px-3 md:py-1 md:text-xs md:font-semibold cursor-pointer',
+                              paid
+                                ? 'border-white/70 bg-white/80 text-slate-700 hover:bg-white dark:border-white/15 dark:bg-white/8 dark:text-white dark:hover:bg-white/14'
+                                : 'border-gray-200 text-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'
+                            )}
+                            title={t('edit')}
+                            aria-label={t('edit')}
+                          >
+                            <Pencil className="h-3 w-3" />
+                            <span className="hidden md:inline">{t('edit')}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (!canWriteBill(bill)) return
+                              requestDelete(bill.id)
+                            }}
+                            disabled={deleteMutation.isPending || !canWriteBill(bill)}
+                            className={clsx(
+                              'inline-flex h-7 w-7 items-center justify-center rounded-full border disabled:opacity-60 md:h-auto md:w-auto md:gap-2 md:px-3 md:py-1 md:text-xs md:font-semibold cursor-pointer',
+                              paid
+                                ? 'border-[rgba(250,45,54,0.2)] bg-white/70 text-[#fa2d36] hover:bg-[rgba(250,45,54,0.08)] dark:border-[rgba(250,45,54,0.28)] dark:bg-transparent'
+                                : 'border-gray-200 text-red-400 hover:bg-red-100'
+                            )}
+                            title={t('remove')}
+                            aria-label={t('remove')}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            <span className="hidden md:inline">
+                              {deleteMutation.isPending ? t('removing') : t('remove')}
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                      <div
+                        className={clsx(
+                          'flex flex-wrap items-center gap-2 text-xs',
+                          paid ? 'text-slate-700 dark:text-slate-200' : 'text-gray-500'
+                        )}
+                      >
+                        <span>{t('dueEveryDay', { day: bill.dueDay })}</span>
+                        <span>•</span>
+                        <span>{toBRL(bill.amount)}</span>
                         {bill.currency && bill.currency !== 'BRL' && (
                           <>
                             <span>•</span>
                             <span>{bill.currency}</span>
                           </>
-                        )} */}
+                        )}
                         {bill.categoryName && (
                           <>
                             <span>•</span>
@@ -460,97 +923,73 @@ export default function FixedBillsPage() {
                           </>
                         )}
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-400">
-                        <span>Competência: {cycleKey}</span>
+                      <div
+                        className={clsx(
+                          'flex flex-wrap items-center gap-2 text-[11px]',
+                          paid ? 'text-slate-600 dark:text-slate-300' : 'text-gray-400'
+                        )}
+                      >
+                        <span>{t('competenceLabel', { label: competenceRange.label })}</span>
                         <span>•</span>
-                        <span>
-                          Status: {paid ? 'Paga' : overdue ? 'Atrasada' : bill.status === 'active' ? 'Ativa' : bill.status === 'paused' ? 'Pausada' : 'Cancelada'}
-                        </span>
-                       {/*  {bill.autoPay != null && (
-                          <>
-                            <span>•</span>
-                            <span>Auto: {bill.autoPay ? 'Sim' : 'Não'}</span>
-                          </>
-                        )} */}
-                        {bill.startDate && (
-                          <>
-                            <span>•</span>
-                            <span>Início: {formatDateBR(bill.startDate)}</span>
-                          </>
-                        )}
-                        {bill.endDate && (
-                          <>
-                            <span>•</span>
-                            <span>Fim: {formatDateBR(bill.endDate)}</span>
-                          </>
-                        )}
+                        <span>{t('statusLabel', { status: statusLabel })}</span>
+                       {/*  <span>•</span>
+                        <span>Fim: {formatDateBR(bill.endDate) || 'Sem data fim'}</span> */}
                       </div>
                       {bill.notes && (
-                        <span className="text-xs text-gray-400 mt-1 truncate">{bill.notes}</span>
+                        <span
+                          className={clsx(
+                            'mt-1 truncate text-xs',
+                            paid ? 'text-slate-600 dark:text-slate-300' : 'text-gray-400'
+                          )}
+                        >
+                          {bill.notes}
+                        </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
+                
+                  </div>
+
+                  <div className="flex w-full flex-col md:flex-row justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       {overdue && (
-                        <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-700">
-                          Atrasada
+                        <span className="inline-flex items-center rounded-full bg-red-600 px-2 py-1 text-xs font-semibold text-white dark:bg-[#fa2d36]">
+                          {t('overdueBadge')}
                         </span>
                       )}
                       <span
                         className={clsx(
                           'inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold',
-                          paid ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                          paid
+                            ? 'bg-[#3eaf66] text-white shadow-[0_10px_24px_-16px_rgba(62,175,102,0.9)]'
+                            : 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300'
                         )}
                       >
-                        {paid ? 'Pago' : 'Pendente'}
+                        {paid ? t('paidBadge') : t('pendingBadge')}
                       </span>
                     </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation()
-                        handleEdit(bill)
+                        if (!canWriteBill(bill)) return
+                        togglePaid(bill.id, bill, paid)
                       }}
-                      className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 cursor-pointer"
-                    >
-                      <Pencil className="h-3 w-3" />
-                      Editar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        togglePaid(bill.id, bill)
-                      }}
+                      disabled={!canWriteBill(bill)}
                       className={clsx(
-                        'inline-flex items-center cursor-pointer gap-2 rounded-full px-3 py-1 text-xs font-semibold border',
+                        'inline-flex w-full items-center justify-center gap-2 rounded-full px-3 py-2 text-xs font-semibold border md:w-auto md:py-1 disabled:cursor-not-allowed disabled:opacity-50',
                         paid
-                          ? 'border-emerald-300 text-emerald-700 hover:bg-emerald-50'
-                          : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                          ? 'border-[#3eaf66] bg-[#3eaf66] text-white shadow-[0_14px_30px_-18px_rgba(62,175,102,0.95)] hover:brightness-95 dark:border-[#3eaf66]'
+                          : 'border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-white/5'
                       )}
                     >
                       <Check className="h-3 w-3" />
-                      {paid ? 'Desmarcar pagamento' : 'Marcar como pago'}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        requestDelete(bill.id)
-                      }}
-                      disabled={deleteMutation.isPending}
-                      className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold border border-gray-200 text-red-600 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                      {deleteMutation.isPending ? 'Removendo...' : 'Remover'}
+                      {paid ? t('unmarkPayment') : t('markAsPaid')}
                     </button>
                   </div>
                 </div>
               )
             })}
+            </div>
           </div>
         </div>
       </div>
@@ -564,8 +1003,8 @@ export default function FixedBillsPage() {
         onConfirm={() => {
           if (deleteTargetId) removeBill(deleteTargetId)
         }}
-        title="Excluir conta fixa"
-        description="Tem certeza que deseja excluir esta conta fixa?"
+        title={t('deleteTitle')}
+        description={t('deleteDescription')}
       />
 
       <Dialog open={payConfirmOpen} onClose={closePayConfirm} className="relative z-50">
@@ -573,30 +1012,31 @@ export default function FixedBillsPage() {
         <div className="fixed inset-0 flex items-center justify-center p-4">
           <DialogPanel className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
             <DialogTitle className="text-lg font-semibold text-gray-800">
-              Confirmar pagamento
+              {t('payDialog.title')}
             </DialogTitle>
             <p className="mt-2 text-sm text-gray-500">
-              Confira o valor pago para {payTarget?.name ?? 'esta conta fixa'}.
+              {t('payDialog.description', { name: payTarget?.name ?? t('pageTitle') })}
             </p>
 
             <div className="mt-4">
-              <label className="text-sm text-gray-600">Valor pago</label>
+              <label className="text-sm text-gray-600">{t('payDialog.valueLabel')}</label>
               <input
                 value={payAmount}
-                onChange={(e) => setPayAmount(e.target.value)}
+                onChange={(e) => setPayAmount(formatAmountInput(e.target.value))}
                 type="text"
                 inputMode="decimal"
                 className="mt-2 w-full rounded-full border border-gray-200 px-4 py-2 text-sm"
-                placeholder="0,00"
+                placeholder={amountPlaceholder}
               />
             </div>
 
             <div className="mt-4">
-              <label className="text-sm text-gray-600">Data do pagamento</label>
+              <label className="text-sm text-gray-600">{t('payDialog.dateLabel')}</label>
               <input
                 value={payDate}
                 onChange={(e) => setPayDate(e.target.value)}
                 type="date"
+                lang={locale}
                 className="mt-2 w-full rounded-full border border-gray-200 px-4 py-2 text-sm"
               />
             </div>
@@ -607,7 +1047,7 @@ export default function FixedBillsPage() {
                 className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 cursor-pointer"
                 onClick={closePayConfirm}
               >
-                Cancelar
+                {t('payDialog.cancel')}
               </button>
               <button
                 type="button"
@@ -615,7 +1055,7 @@ export default function FixedBillsPage() {
                 onClick={handleConfirmPay}
                 disabled={markPaidMutation.isPending}
               >
-                {markPaidMutation.isPending ? 'Confirmando...' : 'Confirmar pagamento'}
+                {markPaidMutation.isPending ? t('payDialog.confirming') : t('payDialog.confirm')}
               </button>
             </div>
           </DialogPanel>
@@ -628,12 +1068,12 @@ export default function FixedBillsPage() {
           <DialogPanel className="bg-white w-4/5 max-w-md h-full rounded-l-xl shadow-lg p-6 space-y-6 overflow-y-auto">
             <div className="flex justify-between items-center">
               <DialogTitle className="text-lg font-semibold text-gray-800">
-                {editingBill ? 'Editar conta fixa' : 'Nova conta fixa'}
+                {editingBill ? t('drawer.editTitle') : t('drawer.newTitle')}
               </DialogTitle>
               <button
                 onClick={closeDrawer}
                 className="text-gray-500 hover:text-gray-700 cursor-pointer"
-                aria-label="Fechar"
+                aria-label={t('drawer.closeAria')}
               >
                 <X size={20} />
               </button>
@@ -641,75 +1081,134 @@ export default function FixedBillsPage() {
 
             <form onSubmit={handleAdd} className="space-y-4">
               <div className="flex flex-col gap-2">
-                <label className="text-sm text-gray-600">Nome</label>
+                <label className="text-sm text-gray-600">{t('drawer.name')}</label>
                 <input
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    setName(e.target.value)
+                    setFormError(null)
+                  }}
                   className="w-full rounded-full border border-gray-200 px-4 py-2 text-sm"
-                  placeholder="Ex: Internet, Aluguel"
+                  placeholder={t('drawer.namePlaceholder')}
                   required
                 />
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-sm text-gray-600">Categoria</label>
+                <label className="text-sm text-gray-600">{t('drawer.category')}</label>
                 <CategorySelect
                   value={selectedCategoryObj}
-                  onChange={(cat) => setCategoryId((cat as CategoryResponse | null)?.id ?? '')}
+                  onChange={(cat) => {
+                    setCategoryId((cat as CategoryResponse | null)?.id ?? '')
+                    setFormError(null)
+                  }}
                   typeFilter="EXPENSE"
-                  placeholder="Selecione uma categoria"
+                  placeholder={t('drawer.categoryPlaceholder')}
                   allowCreate
                   onCreateCategory={handleCreateCategory}
                   className="w-full"
                 />
               </div>
 
+              {!editingBill && (
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm text-gray-600">{t('drawer.initialCompetenceMonth')}</label>
+                  <input
+                    type="month"
+                    value={firstCompetenceMonthKey}
+                    lang={locale}
+                    onChange={(e) => {
+                      const nextMonthKey = e.target.value
+                      if (!parseMonthKey(nextMonthKey)) return
+                      setFirstCompetenceMonthKey(nextMonthKey)
+                      setFirstDueDateISO((prev) => {
+                        const baseDate = prev || getDefaultFirstDueDateForMonth(nextMonthKey)
+                        return clampDateToMonth(baseDate, nextMonthKey)
+                      })
+                      setFormError(null)
+                    }}
+                    className="w-full rounded-full border border-gray-200 px-4 py-2 text-sm"
+                  />
+                  <span className="text-xs text-gray-500">
+                    {t('drawer.linkedFrom', { month: formatMonthKeyLabel(firstCompetenceMonthKey, locale) })}
+                  </span>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-2">
-                  <label className="text-sm text-gray-600">Valor aproximado.</label>
+                  <label className="text-sm text-gray-600">{t('drawer.amount')}</label>
                   <input
                     value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
+                    onChange={(e) => {
+                      setAmount(formatAmountInput(e.target.value))
+                      setFormError(null)
+                    }}
                     type="text"
                     inputMode="decimal"
                     className="w-full rounded-full border border-gray-200 px-4 py-2 text-sm"
-                    placeholder="0,00"
+                    placeholder={amountPlaceholder}
                     required
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-sm text-gray-600">Primeiro vencimento</label>
+                  <label className="text-sm text-gray-600">{t('drawer.firstDueDate')}</label>
                   <input
-                    value={firstDueDate}
-                    onChange={(e) => setFirstDueDate(e.target.value)}
+                    value={firstDueDateISO}
+                    onChange={(e) => {
+                      const normalized = toISODateOnlyFromDatePicker(e.target.value)
+                      setFirstDueDateISO(normalized ?? '')
+                      if (normalized) {
+                        setFirstCompetenceMonthKey(getMonthKeyFromISODate(normalized) || firstCompetenceMonthKey)
+                      }
+                      setFormError(null)
+                    }}
                     type="date"
-                    className="w-full rounded-full border border-gray-200 px-4 py-2 text-sm"
+                    lang={locale}
+                    className={clsx(
+                      'w-full rounded-full border px-4 py-2 text-sm',
+                      firstDueDateIsValid ? 'border-gray-200' : 'border-red-400'
+                    )}
                     required
                   />
+                  {!firstDueDateIsValid && (
+                    <span className="text-xs text-red-400">{t('drawer.invalidDate')}</span>
+                  )}
                 </div>
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-sm text-gray-600">Observacao</label>
+                <label className="text-sm text-gray-600">{t('drawer.observation')}</label>
                 <input
                   value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
+                  onChange={(e) => {
+                    setNotes(e.target.value)
+                    setFormError(null)
+                  }}
                   className="w-full rounded-full border border-gray-200 px-4 py-2 text-sm"
-                  placeholder="Opcional"
+                  placeholder={t('drawer.optional')}
                 />
               </div>
-              <span className="text-xs text-gray-500">* Valores aproximados</span>
-              <button
+              {formError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                  {formError}
+                </div>
+              )}
+              <span className="text-xs text-gray-500">
+                {t('drawer.footnote')}
+              </span>
+              <Button
                 type="submit"
-                className="w-full mt-4 bg-primary hover:bg-secondary text-white font-semibold py-2 px-4 rounded-full cursor-pointer disabled:opacity-60"
-                disabled={createMutation.isPending || updateMutation.isPending}
+                variant="default"
+                className='mt-4'
+                disabled={createMutation.isPending || updateMutation.isPending || !firstDueDateIsValid}
               >
                 {createMutation.isPending || updateMutation.isPending
-                  ? 'Salvando...'
+                  ? t('drawer.saving')
                   : editingBill
-                  ? 'Salvar Alterações'
-                  : 'Adicionar conta fixa'}
-              </button>
+                  ? t('drawer.saveChanges')
+                  : t('drawer.add')}
+              </Button>
             </form>
           </DialogPanel>
         </div>

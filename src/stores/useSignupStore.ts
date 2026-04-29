@@ -7,6 +7,7 @@ type SignupData = {
   phone: string
   origin: 'ORGANIC' | 'CAMPAIGN' | 'INFLUENCER'
   originRef?: string
+  billingCheckoutToken?: string
 }
 
 type SignupStore = {
@@ -20,9 +21,10 @@ export const useSignupStore = create<SignupStore>((set) => ({
     name: '',
     email: '',
     phone: '',
-    origin: 'ORGANIC',
-    originRef: '',
-  },
+      origin: 'ORGANIC',
+      originRef: '',
+      billingCheckoutToken: '',
+    },
   setData: (data) => set({ data }),
   reset: () =>
     set({
@@ -32,6 +34,7 @@ export const useSignupStore = create<SignupStore>((set) => ({
         phone: '',
         origin: 'ORGANIC',
         originRef: '',
+        billingCheckoutToken: '',
       },
     }),
 }))

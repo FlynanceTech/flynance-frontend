@@ -1,50 +1,53 @@
-import { useState } from "react";
-import { User, Mail, Phone, Camera, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import { useUserSession } from "@/stores/useUserSession";
-import { useUsers } from "@/hooks/query/useUsers";
+import { useState } from 'react'
+import { Loader2, Mail, Phone, User } from 'lucide-react'
+import { useTranslations } from 'next-intl'
+import { toast } from 'sonner'
+
+import { useUsers } from '@/hooks/query/useUsers'
+import { useUserSession } from '@/stores/useUserSession'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 const UserInfoCard = () => {
+  const t = useTranslations('profile.userInfoCard')
   const { user, setUser } = useUserSession()
-  const {updateMutation} = useUsers()
+  const { updateMutation } = useUsers()
+
   const [formData, setFormData] = useState({
     name: user?.userData.user.name || '',
     email: user?.userData.user.email || '',
     whatsapp: user?.userData.user.phone || '',
-  });
-  
-  const [loading, setLoading] = useState(false);
-  if(!user) return null
+  })
+  const [loading, setLoading] = useState(false)
+
+  if (!user) return null
 
   const formatWhatsApp = (value: string) => {
-    const numbers = value.replace(/\D/g, "");
+    const numbers = value.replace(/\D/g, '')
     if (numbers.length <= 11) {
       return numbers
-        .replace(/(\d{2})(\d)/, "($1) $2")
-        .replace(/(\d{5})(\d)/, "$1-$2");
+        .replace(/(\d{2})(\d)/, '($1) $2')
+        .replace(/(\d{5})(\d)/, '$1-$2')
     }
-    return value;
-  };
+    return value
+  }
 
   const handleWhatsAppChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatWhatsApp(e.target.value);
-    setFormData({ ...formData, whatsapp: formatted });
-  };
-
+    const formatted = formatWhatsApp(e.target.value)
+    setFormData({ ...formData, whatsapp: formatted })
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
 
-    if (! user?.userData.user.id) {
-      toast.error("Usuário não identificado.");
-      return;
+    if (!user?.userData.user.id) {
+      toast.error(t('errors.userNotIdentified'))
+      return
     }
 
     try {
-      setLoading(true);
+      setLoading(true)
       await updateMutation.mutateAsync({
         id: user.userData.user.id,
         data: {
@@ -52,12 +55,12 @@ const UserInfoCard = () => {
           email: formData.email,
           phone: formData.whatsapp,
         },
-      });
+      })
 
       setUser({
         ...user,
         userData: {
-            user: {
+          user: {
             ...user.userData.user,
             name: formData.name,
             email: formData.email,
@@ -86,42 +89,31 @@ const UserInfoCard = () => {
           },
           hasActiveSignature: user.userData.hasActiveSignature,
         },
-      });
+      })
 
-      toast.success("Informações atualizadas com sucesso!", {
-        description: "Suas alterações foram salvas.",
-      });
+      toast.success(t('toasts.updatedTitle'), {
+        description: t('toasts.updatedDescription'),
+      })
     } catch (error) {
-      console.error(error);
-      toast.error("Falha ao atualizar informações.", {
-        description: "Tente novamente mais tarde.",
-      });
+      console.error(error)
+      toast.error(t('toasts.updateErrorTitle'), {
+        description: t('toasts.updateErrorDescription'),
+      })
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
-
+  }
 
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-sm border border-border/15 animate-slide-up">
+    <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm animate-slide-up">
       <div className="flex items-center gap-3 mb-6">
         <div className="p-2 bg-primary/10 rounded-full">
           <User className="h-5 w-5 text-primary" />
         </div>
-        <h2 className="text-xl font-semibold text-foreground">
-          Informações do Usuário
-        </h2>
+        <h2 className="text-xl font-semibold text-foreground">{t('title')}</h2>
       </div>
 
       <div className="flex items-center gap-4 mb-6 pb-6 border-b border-border/15">
-     {/*    <div className="relative">
-          <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center text-2xl font-semibold text-primary">
-            JS
-          </div>
-          <button className="absolute bottom-0 right-0 p-1.5 bg-primary rounded-full hover:bg-primary/90 transition-colors">
-            <Camera className="h-3.5 w-3.5 text-primary-foreground" />
-          </button>
-        </div> */}
         <div>
           <p className="font-medium text-foreground">{formData.name}</p>
           <p className="text-sm text-muted-foreground">{formData.email}</p>
@@ -130,17 +122,17 @@ const UserInfoCard = () => {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="name">Nome completo</Label>
+          <Label htmlFor="name">{t('fields.fullName')}</Label>
           <Input
             id="name"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="Digite seu nome"
+            placeholder={t('placeholders.fullName')}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="email">E-mail</Label>
+          <Label htmlFor="email">{t('fields.email')}</Label>
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -148,16 +140,14 @@ const UserInfoCard = () => {
               type="email"
               className="pl-10"
               value={formData.email}
-              onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
-              }
-              placeholder="seu@email.com"
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              placeholder={t('placeholders.email')}
             />
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="whatsapp">WhatsApp</Label>
+          <Label htmlFor="whatsapp">{t('fields.whatsapp')}</Label>
           <div className="relative">
             <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -165,24 +155,19 @@ const UserInfoCard = () => {
               className="pl-10"
               value={formData.whatsapp}
               onChange={handleWhatsAppChange}
-              placeholder="(00) 00000-0000"
+              placeholder={t('placeholders.whatsapp')}
               maxLength={15}
             />
           </div>
         </div>
 
-        <Button
-          type="submit"
-          className="w-full"
-          size="lg"
-          disabled={loading}
-        >
+        <Button type="submit" className="w-full" size="lg" disabled={loading}>
           {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Salvar Alterações
+          {loading ? t('actions.saving') : t('actions.save')}
         </Button>
       </form>
     </div>
-  );
-};
+  )
+}
 
-export default UserInfoCard;
+export default UserInfoCard

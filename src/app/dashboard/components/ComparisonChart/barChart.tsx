@@ -1,9 +1,9 @@
 'use client'
 
 import React, { useMemo, useState } from 'react'
+import { formatCurrency } from '@/utils/formatter'
 
-const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-const formatBRL = (n: number) => currency.format(Number.isFinite(n) ? n : 0)
+const formatMoney = (n: number) => formatCurrency(Number.isFinite(n) ? n : 0)
 
 function buildTicks(maxValue: number, tickCount = 5) {
   const safeMax = maxValue > 0 ? maxValue : 1
@@ -34,7 +34,7 @@ export function BarCompareChart({
   yAxisWidth = 72,
   tickCount = 5,
   income,
-  stackedLabel = 'Despesas',
+  stackedLabel = 'Expenses',
   segments,
 }: {
   containerW?: number
@@ -43,7 +43,7 @@ export function BarCompareChart({
   tickCount?: number
   income: BarCompareIncome
   stackedLabel?: string
-  segments: BarCompareSegment[] // recomendado: ordenado desc (maior->menor)
+  segments: BarCompareSegment[]
 }) {
   const labelRowH = 26
   const plotH = Math.max(220, height - labelRowH)
@@ -54,11 +54,7 @@ export function BarCompareChart({
 
   const incomePct = (income.value / maxTotal) * 100
   const stackPct = (totalStack / maxTotal) * 100
-
-  // largura fixa usada APENAS em >= sm (desktop/tablet)
   const incomeBarW = clamp(Math.round((containerW || 800) * 0.22), 120, 220)
-
-  // CSS var para Tailwind usar em sm:w-[var(--income-w)]
   const cssVars = { ['--income-w' as any]: `${incomeBarW}px` } as React.CSSProperties
 
   const shouldShowLabel = (segValue: number) => {
@@ -69,7 +65,6 @@ export function BarCompareChart({
 
   return (
     <div className="flex gap-4" style={cssVars}>
-      {/* Y axis */}
       <div className="shrink-0" style={{ width: yAxisWidth }}>
         <div className="flex flex-col justify-between text-[11px] text-slate-500" style={{ height: plotH }}>
           {ticks
@@ -77,18 +72,15 @@ export function BarCompareChart({
             .reverse()
             .map((t, idx) => (
               <div key={idx} className="leading-none">
-                {formatBRL(t)}
+                {formatMoney(t)}
               </div>
             ))}
         </div>
       </div>
 
-      {/* Plot + X labels */}
       <div className="min-w-0 flex-1">
         <div className="grid" style={{ gridTemplateRows: `${plotH}px ${labelRowH}px`, height }}>
-          {/* PLOT */}
           <div className="relative">
-            {/* grid lines */}
             <div className="pointer-events-none absolute inset-0 flex flex-col justify-between">
               {ticks
                 .slice()
@@ -98,27 +90,24 @@ export function BarCompareChart({
                 ))}
             </div>
 
-            {/* BARS: mobile = colunas iguais (flex-1), desktop = receita fixa */}
             <div className="relative flex h-full items-end gap-3 sm:gap-5">
-              {/* Income */}
               <div className="relative h-full flex-1 sm:flex-none sm:w-[var(--income-w)]">
                 <div
                   className="absolute inset-x-0 bottom-0 rounded-sm"
                   style={{ height: `${incomePct}%`, backgroundColor: income.color }}
-                  title={`${income.label}: ${formatBRL(income.value)}`}
+                  title={`${income.label}: ${formatMoney(income.value)}`}
                 >
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-sm font-semibold text-white">{formatBRL(income.value)}</span>
+                    <span className="text-sm font-semibold text-white">{formatMoney(income.value)}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Stacked */}
               <div className="relative h-full flex-1">
                 <div
                   className="absolute inset-x-0 bottom-0 overflow-hidden rounded-sm"
                   style={{ height: `${stackPct}%` }}
-                  title={`${stackedLabel}: ${formatBRL(totalStack)}`}
+                  title={`${stackedLabel}: ${formatMoney(totalStack)}`}
                 >
                   <div className="flex h-full w-full flex-col-reverse">
                     {segments.map((seg) => {
@@ -128,10 +117,10 @@ export function BarCompareChart({
                           key={seg.key}
                           className="relative flex w-full items-center justify-center"
                           style={{ height: `${segPct}%`, backgroundColor: seg.color }}
-                          title={`${seg.label}: ${formatBRL(seg.value)}`}
+                          title={`${seg.label}: ${formatMoney(seg.value)}`}
                         >
                           {shouldShowLabel(seg.value) ? (
-                            <span className="text-sm font-semibold text-white">{formatBRL(seg.value)}</span>
+                            <span className="text-sm font-semibold text-white">{formatMoney(seg.value)}</span>
                           ) : null}
                         </div>
                       )
@@ -142,10 +131,9 @@ export function BarCompareChart({
             </div>
           </div>
 
-          {/* X LABELS: mesma regra de largura */}
           <div className="flex items-center gap-3 sm:gap-5">
             <div className="flex-1 text-center text-xs text-slate-600 sm:flex-none sm:w-[var(--income-w)]">
-              Receita
+              {income.label}
             </div>
             <div className="flex-1 text-center text-xs text-slate-600">{stackedLabel}</div>
           </div>
@@ -167,26 +155,31 @@ export function BarDetailChart({
   tickCount = 5,
   color = '#94a3b8',
   items,
+  emptyMessage = 'No transactions found for this category in the selected period.',
+  dateLabel = 'Date',
+  valueLabel = 'Value',
 }: {
   height?: number
   yAxisWidth?: number
   tickCount?: number
   color?: string
   items: DetailBarItem[]
+  emptyMessage?: string
+  dateLabel?: string
+  valueLabel?: string
 }) {
   const [hovered, setHovered] = useState<DetailBarItem | null>(null)
 
   if (!items.length) {
     return (
       <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-        Nenhuma transação encontrada para esta categoria no período selecionado.
+        {emptyMessage}
       </div>
     )
   }
 
   const maxV = Math.max(...items.map((i) => i.value || 0), 1)
   const ticks = buildTicks(maxV, tickCount)
-
   const barAreaH = Math.max(180, height - 24)
 
   return (
@@ -198,7 +191,7 @@ export function BarDetailChart({
             .reverse()
             .map((t, idx) => (
               <div key={idx} className="leading-none">
-                {formatBRL(t)}
+                {formatMoney(t)}
               </div>
             ))}
         </div>
@@ -218,8 +211,12 @@ export function BarDetailChart({
           {hovered ? (
             <div className="absolute right-2 top-2 z-10 max-w-[320px] rounded-md border border-slate-200 bg-white p-3 text-sm shadow">
               <div className="font-semibold text-slate-800">{hovered.description}</div>
-              <div className="text-slate-600">Data: {hovered.dateLabel}</div>
-              <div className="font-medium text-slate-700">Valor: {formatBRL(hovered.value)}</div>
+              <div className="text-slate-600">
+                {dateLabel}: {hovered.dateLabel}
+              </div>
+              <div className="font-medium text-slate-700">
+                {valueLabel}: {formatMoney(hovered.value)}
+              </div>
             </div>
           ) : null}
 
@@ -235,7 +232,7 @@ export function BarDetailChart({
                       style={{ height: `${hPx}px`, backgroundColor: color }}
                       onMouseEnter={() => setHovered(it)}
                       onMouseLeave={() => setHovered(null)}
-                      title={`${it.description} • ${it.dateLabel} • ${formatBRL(it.value)}`}
+                      title={`${it.description} - ${it.dateLabel} - ${formatMoney(it.value)}`}
                     />
                     <div className="mt-1 w-full truncate text-center text-[10px] text-slate-600">{it.dateLabel}</div>
                   </div>

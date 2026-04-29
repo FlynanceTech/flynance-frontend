@@ -7,6 +7,7 @@ import { useMemo } from 'react'
 const mobileItems = [
   { label: 'Dashboard', href: '/admin/dashboard' },
   { label: 'Advisors', href: '/admin/advisors' },
+  { label: 'Users', href: '/admin/users' },
   { label: 'Leads', href: '/admin/leads' },
   { label: 'Coupons', href: '/admin/billing/coupons' },
   { label: 'Plans', href: '/admin/billing/plans' },
@@ -14,6 +15,7 @@ const mobileItems = [
 
 function getTitle(pathname: string): string {
   if (pathname.startsWith('/admin/advisors')) return 'Advisors'
+  if (pathname.startsWith('/admin/users')) return 'Users'
   if (pathname.startsWith('/admin/leads')) return 'Leads'
   if (pathname.startsWith('/admin/billing/coupons')) return 'Billing / Coupons'
   if (pathname.startsWith('/admin/billing/plans')) return 'Billing / Plans'

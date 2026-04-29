@@ -8,64 +8,79 @@ import { cancelSignature, undoCancelSignature } from '@/services/payment'
 import { useRouter } from 'next/navigation'
 import { useUserSession } from '@/stores/useUserSession'
 import {
+  billingKeys,
   useBillingSubscriptionSummary,
   useCreateBillingSetupIntent,
   useUpdateBillingPaymentMethod,
 } from '@/hooks/query/useBilling'
+import { resolveSubscriptionNextDueDate } from '@/services/billing'
+import { formatCurrency } from '@/utils/formatter'
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
 import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js'
 import { loadStripe } from '@stripe/stripe-js'
 import toast from 'react-hot-toast'
+import { useQueryClient } from '@tanstack/react-query'
+import { useLocale, useTranslations } from 'next-intl'
 
 const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null
 
 function parseDate(value?: string | null): Date | null {
   if (!value) return null
-  const parsed = new Date(value)
-  return Number.isNaN(parsed.getTime()) ? null : parsed
+  const raw = String(value).trim()
+  if (!raw) return null
+
+  const dateOnly = raw.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (dateOnly) {
+    return new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
+  }
+
+  const parsed = new Date(raw)
+  if (Number.isNaN(parsed.getTime())) return null
+  return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate())
 }
 
-function toBrDate(value?: string | null): string {
+function toDateLabel(value: string | null | undefined, locale: string): string {
   const parsed = parseDate(value)
   if (!parsed) return '-'
-  return parsed.toLocaleDateString('pt-BR')
+  return parsed.toLocaleDateString(locale || 'pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
 }
 
-function toBrMoney(value?: number | null): string {
+function toMoneyLabel(value?: number | null): string {
   if (value == null || !Number.isFinite(value)) return '-'
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value)
+  return formatCurrency(value)
 }
 
-function mapStripeStatusToLabel(status?: string | null): string {
+function mapStripeStatusToKey(status?: string | null): string {
   const normalized = String(status ?? '').toLowerCase()
-  if (normalized === 'active') return 'Ativa'
-  if (normalized === 'trialing') return 'Em teste'
-  if (normalized === 'past_due') return 'Em atraso'
-  if (normalized === 'canceled') return 'Cancelada'
-  if (normalized === 'incomplete') return 'Incompleta'
-  if (normalized === 'incomplete_expired') return 'Incompleta (expirada)'
-  if (normalized === 'unpaid') return 'Nao paga'
-  if (normalized === 'paused') return 'Pausada'
-  return normalized || 'Indefinido'
+  if (normalized === 'active') return 'active'
+  if (normalized === 'trialing') return 'trialing'
+  if (normalized === 'past_due') return 'past_due'
+  if (normalized === 'canceled') return 'canceled'
+  if (normalized === 'incomplete') return 'incomplete'
+  if (normalized === 'incomplete_expired') return 'incomplete_expired'
+  if (normalized === 'unpaid') return 'unpaid'
+  if (normalized === 'paused') return 'paused'
+  return 'unknown'
 }
 
-function mapDbStatusToLabel(status?: string | null): string {
+function mapDbStatusToKey(status?: string | null): string {
   const normalized = String(status ?? '').toUpperCase()
-  if (normalized === 'ACTIVE') return 'Ativa'
-  if (normalized === 'TRIALING') return 'Em teste'
-  if (normalized === 'PAST_DUE') return 'Em atraso'
-  if (normalized === 'CANCELED') return 'Cancelada'
-  if (normalized === 'INCOMPLETE') return 'Incompleta'
-  if (normalized === 'INACTIVE') return 'Inativa'
-  return normalized || 'Indefinido'
+  if (normalized === 'ACTIVE') return 'active'
+  if (normalized === 'TRIALING') return 'trialing'
+  if (normalized === 'PAST_DUE') return 'past_due'
+  if (normalized === 'CANCELED') return 'canceled'
+  if (normalized === 'INCOMPLETE') return 'incomplete'
+  if (normalized === 'INACTIVE') return 'inactive'
+  return 'unknown'
 }
 
-function formatBrand(brand?: string | null): string {
-  if (!brand) return 'Cartao'
+function formatBrand(brand: string | null | undefined, fallbackLabel: string): string {
+  if (!brand) return fallbackLabel
   return brand.charAt(0).toUpperCase() + brand.slice(1).toLowerCase()
 }
 
@@ -74,6 +89,16 @@ function formatExpiry(month?: number | null, year?: number | null): string {
   const mm = String(month).padStart(2, '0')
   const yy = String(year).slice(-2)
   return `${mm}/${yy}`
+}
+
+function uniqueIds(...values: Array<string | null | undefined>): string[] {
+  const unique = new Set<string>()
+  for (const value of values) {
+    const normalized = String(value ?? '').trim()
+    if (!normalized) continue
+    unique.add(normalized)
+  }
+  return Array.from(unique)
 }
 
 type ChangeCardModalContentProps = {
@@ -87,6 +112,7 @@ function ChangeCardModalContent({
   onCompleted,
   subscriptionId,
 }: ChangeCardModalContentProps) {
+  const t = useTranslations('profile.subscriptionCard.changeCardModal')
   const stripe = useStripe()
   const elements = useElements()
   const createSetupIntentMutation = useCreateBillingSetupIntent()
@@ -95,13 +121,13 @@ function ChangeCardModalContent({
 
   const handleSubmit = async () => {
     if (!stripe || !elements) {
-      toast.error('Stripe ainda nao carregou. Tente novamente.')
+      toast.error(t('errors.stripeNotLoaded'))
       return
     }
 
     const cardElement = elements.getElement(CardElement)
     if (!cardElement) {
-      toast.error('Nao foi possivel carregar o campo de cartao.')
+      toast.error(t('errors.cardFieldNotLoaded'))
       return
     }
 
@@ -115,7 +141,7 @@ function ChangeCardModalContent({
       })
 
       if (confirmation.error) {
-        throw new Error(confirmation.error.message || 'Falha ao validar o cartao.')
+        throw new Error(confirmation.error.message || t('errors.cardValidationFailed'))
       }
 
       const paymentMethod = confirmation.setupIntent?.payment_method
@@ -123,7 +149,7 @@ function ChangeCardModalContent({
         typeof paymentMethod === 'string' ? paymentMethod : paymentMethod?.id
 
       if (!paymentMethodId) {
-        throw new Error('Nao foi possivel identificar o metodo de pagamento.')
+        throw new Error(t('errors.paymentMethodMissing'))
       }
 
       await updatePaymentMethodMutation.mutateAsync({
@@ -132,10 +158,10 @@ function ChangeCardModalContent({
       })
 
       await onCompleted()
-      toast.success('Cartao atualizado para as proximas faturas.')
+      toast.success(t('success.updated'))
       onClose()
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : 'Erro ao trocar cartao.')
+      toast.error(error instanceof Error ? error.message : t('errors.updateFailed'))
     } finally {
       setIsSubmitting(false)
     }
@@ -146,10 +172,8 @@ function ChangeCardModalContent({
 
   return (
     <DialogPanel className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
-      <DialogTitle className="text-lg font-semibold text-[#333C4D]">Trocar cartao</DialogTitle>
-      <p className="mt-1 text-sm text-slate-600">
-        O novo cartao sera usado nas proximas faturas da assinatura.
-      </p>
+      <DialogTitle className="text-lg font-semibold text-[#333C4D]">{t('title')}</DialogTitle>
+      <p className="mt-1 text-sm text-slate-600">{t('description')}</p>
 
       <div className="mt-4 rounded-xl border border-slate-200 p-3">
         <CardElement
@@ -171,16 +195,16 @@ function ChangeCardModalContent({
 
       <div className="mt-5 flex justify-end gap-2">
         <Button variant="outline" onClick={onClose} disabled={pending}>
-          Cancelar
+          {t('actions.cancel')}
         </Button>
         <Button onClick={handleSubmit} disabled={pending}>
           {pending ? (
             <span className="inline-flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Atualizando...
+              {t('actions.updating')}
             </span>
           ) : (
-            'Salvar cartao'
+            t('actions.saveCard')
           )}
         </Button>
       </div>
@@ -220,7 +244,10 @@ function ChangeCardModal({
 }
 
 const SubscriptionCard = () => {
+  const t = useTranslations('profile.subscriptionCard')
+  const locale = useLocale()
   const router = useRouter()
+  const queryClient = useQueryClient()
   const { user, status, fetchAccount } = useUserSession()
   const [loadingCancel, setLoadingCancel] = useState(false)
   const [loadingReactivate, setLoadingReactivate] = useState(false)
@@ -228,7 +255,7 @@ const SubscriptionCard = () => {
   const [isChangeCardOpen, setIsChangeCardOpen] = useState(false)
 
   const userId = user?.userData?.user?.id
-  const summaryQuery = useBillingSubscriptionSummary(Boolean(userId))
+  const summaryQuery = useBillingSubscriptionSummary(Boolean(userId), userId)
 
   useEffect(() => {
     if (status === 'idle') {
@@ -240,13 +267,13 @@ const SubscriptionCard = () => {
   const db = summary?.db
   const stripe = summary?.stripe
   const paymentMethod = summary?.paymentMethod
-  const planName = db?.plan?.name || 'Plano Flynance'
+  const planName = db?.plan?.name || t('planFallback')
 
   const normalizedStripeStatus = String(stripe?.status ?? '').toLowerCase()
   const normalizedDbStatus = String(db?.status ?? '').toUpperCase()
   const statusLabel = stripe
-    ? mapStripeStatusToLabel(stripe.status)
-    : mapDbStatusToLabel(db?.status)
+    ? t(`status.${mapStripeStatusToKey(stripe.status)}`)
+    : t(`status.${mapDbStatusToKey(db?.status)}`)
   const isCancelled =
     normalizedStripeStatus === 'canceled' || normalizedDbStatus === 'CANCELED'
   const isActive =
@@ -255,10 +282,22 @@ const SubscriptionCard = () => {
     Boolean(db?.active)
   const cancelAtPeriodEnd = Boolean(stripe?.cancelAtPeriodEnd ?? db?.cancelAtPeriodEnd)
   const scheduledToCancel = isActive && !isCancelled && cancelAtPeriodEnd
-  const nextDueDate = stripe?.currentPeriodEnd ?? db?.nextDueDate
+  const nextDueDate = resolveSubscriptionNextDueDate(summary)
   const endedAt = db?.endDate ?? stripe?.canceledAt ?? null
-  const signatureId = db?.signatureId ?? null
+  const sessionSignatureId = user?.userData?.signature?.id ?? null
+  const signatureCandidates = useMemo(
+    () => uniqueIds(sessionSignatureId, db?.signatureId),
+    [sessionSignatureId, db?.signatureId]
+  )
   const subscriptionId = stripe?.id ?? db?.subscriptionId ?? undefined
+
+  const refreshSubscriptionSummary = async () => {
+    await queryClient.invalidateQueries({
+      queryKey: billingKeys.subscriptionSummaryRoot,
+      refetchType: 'active',
+    })
+    await summaryQuery.refetch()
+  }
 
   const statusBadgeClass = useMemo(() => {
     if (isActive && !isCancelled) return 'bg-emerald-100 text-emerald-700 border-emerald-200'
@@ -266,15 +305,34 @@ const SubscriptionCard = () => {
   }, [isActive, isCancelled])
 
   const handleCancelSubscription = async () => {
-    if (!signatureId) return
+    if (!signatureCandidates.length) {
+      toast.error(t('toasts.subscriptionIdNotFoundCancel'))
+      return
+    }
     try {
       setLoadingCancel(true)
-      await cancelSignature(signatureId)
+      let canceled = false
+      let lastError: unknown = null
+
+      for (const candidateId of signatureCandidates) {
+        try {
+          await cancelSignature(candidateId)
+          canceled = true
+          break
+        } catch (error: unknown) {
+          lastError = error
+        }
+      }
+
+      if (!canceled) {
+        throw lastError ?? new Error(t('toasts.cancelError'))
+      }
+
       await fetchAccount()
-      await summaryQuery.refetch()
-      toast.success('Cancelamento solicitado com sucesso.')
+      await refreshSubscriptionSummary()
+      toast.success(t('toasts.cancelRequested'))
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : 'Erro ao cancelar assinatura.')
+      toast.error(error instanceof Error ? error.message : t('toasts.cancelError'))
     } finally {
       setLoadingCancel(false)
       setConfirmingCancel(false)
@@ -282,15 +340,34 @@ const SubscriptionCard = () => {
   }
 
   const handleUndoCancel = async () => {
-    if (!signatureId) return
+    if (!signatureCandidates.length) {
+      toast.error(t('toasts.subscriptionIdNotFoundReactivate'))
+      return
+    }
     try {
       setLoadingReactivate(true)
-      await undoCancelSignature(signatureId)
+      let restored = false
+      let lastError: unknown = null
+
+      for (const candidateId of signatureCandidates) {
+        try {
+          await undoCancelSignature(candidateId)
+          restored = true
+          break
+        } catch (error: unknown) {
+          lastError = error
+        }
+      }
+
+      if (!restored) {
+        throw lastError ?? new Error(t('toasts.reactivateError'))
+      }
+
       await fetchAccount()
-      await summaryQuery.refetch()
-      toast.success('Cancelamento desfeito com sucesso.')
+      await refreshSubscriptionSummary()
+      toast.success(t('toasts.cancelUndoSuccess'))
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : 'Erro ao desfazer cancelamento.')
+      toast.error(error instanceof Error ? error.message : t('toasts.cancelUndoError'))
     } finally {
       setLoadingReactivate(false)
     }
@@ -312,11 +389,11 @@ const SubscriptionCard = () => {
           <div className="p-2 bg-primary/10 rounded-full">
             <CreditCard className="h-5 w-5 text-primary" />
           </div>
-          <h2 className="text-xl font-semibold text-foreground">Assinatura e Plano</h2>
+          <h2 className="text-xl font-semibold text-foreground">{t('title')}</h2>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Carregando dados da assinatura...
+          {t('loading')}
         </div>
       </div>
     )
@@ -329,21 +406,21 @@ const SubscriptionCard = () => {
           <div className="p-2 bg-primary/10 rounded-full">
             <CreditCard className="h-5 w-5 text-primary" />
           </div>
-          <h2 className="text-xl font-semibold text-foreground">Assinatura e Plano</h2>
+          <h2 className="text-xl font-semibold text-foreground">{t('title')}</h2>
         </div>
         <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
-          <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+          <AlertCircle className="h-5 w-5 text-red-400 mt-0.5 flex-shrink-0" />
           <div>
             <p className="text-sm font-medium text-slate-900">
-              Nao foi possivel carregar os dados da assinatura.
+              {t('loadError.title')}
             </p>
             <p className="text-xs text-slate-600 mt-1">
               {summaryQuery.error instanceof Error
                 ? summaryQuery.error.message
-                : 'Tente novamente em instantes.'}
+                : t('loadError.description')}
             </p>
             <Button variant="outline" size="sm" className="mt-3" onClick={() => summaryQuery.refetch()}>
-              Tentar novamente
+              {t('actions.retry')}
             </Button>
           </div>
         </div>
@@ -358,22 +435,22 @@ const SubscriptionCard = () => {
           <div className="p-2 bg-primary/10 rounded-full">
             <CreditCard className="h-5 w-5 text-primary" />
           </div>
-          <h2 className="text-xl font-semibold text-foreground">Assinatura e Plano</h2>
+          <h2 className="text-xl font-semibold text-foreground">{t('title')}</h2>
         </div>
         <p className="text-sm text-muted-foreground">
-          Voce ainda nao possui assinatura ativa. Quando contratar um plano, os detalhes aparecerao aqui.
+          {t('emptyState')}
         </p>
       </div>
     )
   }
 
   return (
-    <div className="bg-card rounded-2xl p-6 shadow-sm border border-border/15 animate-slide-up">
+    <div className="bg-white border border-gray-200 rounded-2xl p-6  shadow-sm animate-slide-up">
       <div className="flex items-center gap-3 mb-6">
         <div className="p-2 bg-primary/10 rounded-full">
           <CreditCard className="h-5 w-5 text-primary" />
         </div>
-        <h2 className="text-xl font-semibold text-foreground">Assinatura e Plano</h2>
+        <h2 className="text-xl font-semibold text-foreground">{t('title')}</h2>
       </div>
 
       <div className="space-y-4">
@@ -386,23 +463,27 @@ const SubscriptionCard = () => {
               </Badge>
               {scheduledToCancel && (
                 <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-200">
-                  Cancelara no fim do periodo
+                  {t('badges.cancelAtPeriodEnd')}
                 </Badge>
               )}
             </div>
 
             <p className="text-sm text-muted-foreground">
-              Valor: {toBrMoney(db.value)} {summary.source ? `· Fonte: ${summary.source}` : ''}
+              {summary.source
+                ? t('valueWithSource', { value: toMoneyLabel(db.value), source: summary.source })
+                : t('valueOnly', { value: toMoneyLabel(db.value) })}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              Proxima cobranca: {toBrDate(nextDueDate)}
+              {t('nextBilling', { date: toDateLabel(nextDueDate, locale) })}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              Cancelamento no fim do periodo: {cancelAtPeriodEnd ? 'Sim' : 'Nao'}
+              {t('cancelAtPeriodEndLabel', {
+                value: cancelAtPeriodEnd ? t('common.yes') : t('common.no'),
+              })}
             </p>
             {endedAt && isCancelled && (
               <p className="text-xs text-muted-foreground mt-1">
-                Encerrada em: {toBrDate(endedAt)}
+                {t('endedAt', { date: toDateLabel(endedAt, locale) })}
               </p>
             )}
           </div>
@@ -411,39 +492,42 @@ const SubscriptionCard = () => {
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-[#1F2A37]">Cartao atual</p>
+              <p className="text-sm font-semibold text-[#1F2A37]">{t('card.currentTitle')}</p>
               {paymentMethod ? (
                 <div className="mt-1 text-sm text-slate-700">
                   <p>
-                    {formatBrand(paymentMethod.brand)} ****{paymentMethod.last4 || '----'}
+                    {formatBrand(paymentMethod.brand, t('card.fallbackBrand'))} ****
+                    {paymentMethod.last4 || '----'}
                   </p>
                   <p className="text-xs text-slate-500">
-                    Validade: {formatExpiry(paymentMethod.expMonth, paymentMethod.expYear)}
-                    {paymentMethod.funding ? ` · ${paymentMethod.funding}` : ''}
+                    {t('card.expiry', {
+                      value: formatExpiry(paymentMethod.expMonth, paymentMethod.expYear),
+                    })}
+                    {paymentMethod.funding ? ` - ${paymentMethod.funding}` : ''}
                   </p>
                 </div>
               ) : (
                 <p className="mt-1 text-sm text-slate-600">
-                  Nenhum cartao vinculado a assinatura no momento.
+                  {t('card.noCard')}
                 </p>
               )}
             </div>
 
             <div className="flex flex-col items-start gap-2 sm:items-end">
               <Button
-                variant="outline"
+                variant="default"
                 onClick={() => {
                   if (!stripePromise) {
-                    toast.error('Stripe nao configurado no frontend (NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY).')
+                    toast.error(t('toasts.stripeMissingFrontendKey'))
                     return
                   }
                   setIsChangeCardOpen(true)
                 }}
               >
-                Trocar cartao
+                {t('card.changeButton')}
               </Button>
               <p className="text-xs text-slate-500">
-                Atualiza apenas as proximas faturas.
+                {t('card.changeHint')}
               </p>
             </div>
           </div>
@@ -453,7 +537,7 @@ const SubscriptionCard = () => {
           {scheduledToCancel && (
             <div className="rounded-xl border border-border/60 bg-muted/40 p-3 space-y-3">
               <p className="text-xs text-muted-foreground">
-                Sua assinatura esta programada para cancelar no fim do periodo.
+                {t('scheduledCancel.description')}
               </p>
 
               <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
@@ -467,12 +551,12 @@ const SubscriptionCard = () => {
                   {loadingReactivate ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Atualizando...
+                      {t('actions.updating')}
                     </>
                   ) : (
                     <>
                       <RotateCw className="h-4 w-4" />
-                      Desfazer cancelamento
+                      {t('actions.undoCancel')}
                     </>
                   )}
                 </Button>
@@ -490,12 +574,12 @@ const SubscriptionCard = () => {
                   onClick={() => setConfirmingCancel(true)}
                   disabled={loadingCancel}
                 >
-                  Cancelar assinatura
+                  {t('actions.cancelSubscription')}
                 </Button>
               ) : (
                 <div className="rounded-xl border border-red-300 bg-red-50 p-3 space-y-3">
                   <p className="text-xs text-slate-700">
-                    Ao confirmar, sua assinatura sera cancelada no fim do periodo atual.
+                    {t('cancelConfirm.description')}
                   </p>
                   <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
                     <Button
@@ -504,7 +588,7 @@ const SubscriptionCard = () => {
                       onClick={() => setConfirmingCancel(false)}
                       disabled={loadingCancel}
                     >
-                      Manter assinatura
+                      {t('cancelConfirm.keepSubscription')}
                     </Button>
                     <Button
                       variant="destructive"
@@ -512,7 +596,7 @@ const SubscriptionCard = () => {
                       onClick={handleCancelSubscription}
                       disabled={loadingCancel}
                     >
-                      {loadingCancel ? 'Cancelando...' : 'Confirmar cancelamento'}
+                      {loadingCancel ? t('actions.cancelling') : t('cancelConfirm.confirm')}
                     </Button>
                   </div>
                 </div>
@@ -523,7 +607,7 @@ const SubscriptionCard = () => {
           {isCancelled && (
             <div className="rounded-xl border border-border/60 bg-muted/40 p-3 space-y-3">
               <p className="text-xs text-muted-foreground">
-                Sua assinatura esta cancelada. Voce pode reativar selecionando um novo plano.
+                {t('cancelled.description')}
               </p>
               <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
                 <Button
@@ -536,12 +620,12 @@ const SubscriptionCard = () => {
                   {loadingReactivate ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Redirecionando...
+                      {t('actions.redirecting')}
                     </>
                   ) : (
                     <>
                       <RotateCw className="h-4 w-4" />
-                      Reativar assinatura
+                      {t('actions.reactivateSubscription')}
                     </>
                   )}
                 </Button>
@@ -555,7 +639,7 @@ const SubscriptionCard = () => {
         open={isChangeCardOpen}
         onClose={() => setIsChangeCardOpen(false)}
         onCompleted={async () => {
-          await summaryQuery.refetch()
+          await refreshSubscriptionSummary()
           await fetchAccount()
         }}
         subscriptionId={subscriptionId}
@@ -565,3 +649,4 @@ const SubscriptionCard = () => {
 }
 
 export default SubscriptionCard
+

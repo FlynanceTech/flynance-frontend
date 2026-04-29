@@ -4,12 +4,14 @@ import {
   Pie,
   Cell,
 } from 'recharts'
+import { useLocale, useTranslations } from 'next-intl'
 import InfoTip from './InfoTip'
-import { formatDateBR, scoreColor } from './utils'
+import type { ScoreLevel } from './utils'
+import { formatDateByLocale, scoreColor } from './utils'
 
 type Props = {
   score: number
-  badgeLabel: string
+  level: ScoreLevel
   badgeClass: string
   periodStart?: string
   periodEnd?: string
@@ -18,23 +20,27 @@ type Props = {
 
 export default function ScoreHeaderCard({
   score,
-  badgeLabel,
+  level,
   badgeClass,
   periodStart,
   periodEnd,
   isCurrentYear,
 }: Props) {
+  const t = useTranslations('reports.scoreCard')
+  const locale = useLocale()
+  const badgeLabel = t(`levels.${level}`)
+
   return (
-    <div className="flex flex-col justify-center items-center gap-3 rounded-2xl border border-gray-200 bg-white/80 p-5 shadow-sm">
-      <div className="flex items-center justify-between w-full gap-2">
+    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-gray-200 bg-white/80 p-5 shadow-sm">
+      <div className="flex w-full items-center justify-between gap-2">
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${badgeClass}`}>
           {badgeLabel}
         </span>
-        <InfoTip text="Score combina taxa de poupança, dívida, uso de crédito e volatilidade de gastos. 0–49 crítico, 50–74 atenção, 75–100 saudável." />
+        <InfoTip text={t('scoreInfo')} />
       </div>
       <div className="relative h-36 w-40 overflow-visible">
         <ResponsiveContainer width="100%" height="100%">
-          <PieChart className="translate-y-2 h-full">
+          <PieChart className="h-full translate-y-2">
             <Pie
               data={[
                 { name: 'score', value: score },
@@ -54,27 +60,26 @@ export default function ScoreHeaderCard({
             </Pie>
           </PieChart>
         </ResponsiveContainer>
-        <div className="absolute top-10 inset-0 flex items-center justify-center">
+        <div className="absolute inset-0 top-10 flex items-center justify-center">
           <div className="text-3xl font-semibold text-gray-800">{score}</div>
         </div>
       </div>
-     
-   
-    
+
       <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
         <span>
-          Período: {formatDateBR(periodStart)} até {formatDateBR(periodEnd)}
+          {t('periodLabel')}: {formatDateByLocale(periodStart, locale)} {t('periodTo')}{' '}
+          {formatDateByLocale(periodEnd, locale)}
         </span>
         {isCurrentYear && (
           <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700">
-            Acumulado até hoje
+            {t('accumulatedUntilToday')}
           </span>
         )}
       </div>
 
       {isCurrentYear && (
         <div className="text-xs text-amber-600">
-          Os resultados refletem apenas os meses com dados até o momento.
+          {t('currentYearWarning')}
         </div>
       )}
     </div>

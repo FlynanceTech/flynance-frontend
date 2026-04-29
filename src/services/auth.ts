@@ -1,9 +1,30 @@
-import axios from 'axios'
+import api from '@/lib/axios'
+import {
+  captureBillingCheckoutSessionFromPayload,
+  normalizeAuthEmail,
+  persistAuthToken,
+} from '@/lib/authSession'
 
-const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5555/api'
+type AuthIdentifierPayload = {
+  email?: string
+  whatsappPhone?: string
+}
+
+function normalizeAuthPayload<T extends AuthIdentifierPayload>(payload: T): T {
+  const normalizedEmail = normalizeAuthEmail(payload.email)
+
+  return {
+    ...payload,
+    ...(normalizedEmail ? { email: normalizedEmail } : {}),
+    ...(payload.whatsappPhone
+      ? { whatsappPhone: String(payload.whatsappPhone).trim() }
+      : {}),
+  }
+}
 
 export async function sendLoginCode(data: { email?: string; whatsappPhone?: string }) {
-  const res = await axios.post(`${baseURL}/auth/send-code`, data)
+  const payload = normalizeAuthPayload(data)
+  const res = await api.post('/auth/send-code', payload, { withCredentials: true })
   return res.data
 }
 
@@ -36,14 +57,25 @@ function extractAuthToken(payload: unknown): string | null {
   return null
 }
 
-export async function verifyCode(data: { email?: string; whatsappPhone?: string; code: string }) {
-  const res = await axios.post(`${baseURL}/auth/verify-code`, data)
+export async function verifyCode(data: {
+  email?: string
+  whatsappPhone?: string
+  code: string
+}) {
+  const payload = normalizeAuthPayload({
+    ...data,
+    code: String(data.code ?? '').trim(),
+  })
+  const res = await api.post('/auth/verify-code', payload, { withCredentials: true })
   const token = extractAuthToken(res.data)
+  const billingCheckoutToken = captureBillingCheckoutSessionFromPayload(res.data)
 
   if (!token) {
-    throw new Error('Token não recebido no login.')
+    throw new Error('Token nÃ£o recebido no login.')
   }
 
-  localStorage.setItem('token', token)
-  return res.data
+  persistAuthToken(token)
+  return { ...res.data, token, billingCheckoutToken }
 }
+
+export { extractAuthToken, normalizeAuthPayload }

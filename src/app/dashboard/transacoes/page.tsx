@@ -19,13 +19,18 @@ import { CategorySelect } from '../components/CategorySelect'
 import Select from 'react-select'
 import type { StylesConfig } from 'react-select'
 import type { CategoryResponse } from '@/services/category'
+import PageOnboardingTour, { type PageOnboardingStep } from '@/components/onboarding/PageOnboardingTour'
+import { useAdvisorActing } from '@/stores/useAdvisorActing'
+import toast from 'react-hot-toast'
+import { ADVISOR_READ_ONLY_FRIENDLY_MESSAGE } from '@/services/transactions'
+import { isAdvisorReadOnlyTransactionAccess } from '@/utils/transactionWriteAccess'
+import { formatCurrency } from '@/utils/formatter'
+import { useLocale, useTranslations } from 'next-intl'
+import { useFinancialScope } from '@/hooks/useFinancialScope'
+import type { HouseMember } from '@/types/house'
 
 type TypeOption = { value: CategoryType; label: string }
-
-const typeOptions: TypeOption[] = [
-  { value: 'EXPENSE', label: 'Despesa' },
-  { value: 'INCOME', label: 'Receita' },
-]
+type AuthorOption = { value: string; label: string }
 
 const typeSelectStyles: StylesConfig<TypeOption, false> = {
   control: (base, state) => ({
@@ -49,6 +54,31 @@ const typeSelectStyles: StylesConfig<TypeOption, false> = {
 
 const PAGE_SIZE = 10
 const CSV_TIP_AUTO_CLOSE_MS = 8000
+function createTransactionsOnboardingSteps(
+  tr: (key: string, values?: Record<string, string | number | Date>) => string
+): ReadonlyArray<PageOnboardingStep> {
+  return [
+    {
+      id: 'filters',
+      selector: '[data-onboarding-target="transacoes-filtros"]',
+      align: 'bottom',
+      title: tr('onboarding.filtersTitle'),
+      description: tr('onboarding.filtersDescription'),
+    },
+    {
+      id: 'list',
+      selector: '[data-onboarding-target="transacoes-lista"]',
+      title: tr('onboarding.listTitle'),
+      description: tr('onboarding.listDescription'),
+    },
+    {
+      id: 'summary',
+      selector: '[data-onboarding-target="transacoes-resumo"]',
+      title: tr('onboarding.summaryTitle'),
+      description: tr('onboarding.summaryDescription'),
+    },
+  ]
+}
 
 function SkeletonSection() {
   return (
@@ -60,11 +90,81 @@ function SkeletonSection() {
   )
 }
 
+function getHouseMemberLabel(member: HouseMember | null | undefined, fallback: string) {
+  return member?.name || member?.email || fallback
+}
+
+function getKnownActorLabel(params: {
+  actorId?: string | null
+  currentUserId?: string | null
+  currentUserName: string
+  createdByUser?: { name?: string | null; email?: string | null } | null
+  user?: { name?: string | null; email?: string | null } | null
+}) {
+  const { actorId, currentUserId, currentUserName, createdByUser, user } = params
+
+  if (createdByUser?.name?.trim()) return createdByUser.name.trim()
+  if (createdByUser?.email?.trim()) return createdByUser.email.trim()
+  if (user?.name?.trim()) return user.name.trim()
+  if (user?.email?.trim()) return user.email.trim()
+  if (actorId && currentUserId && actorId === currentUserId) return currentUserName
+  return null
+}
+
+function isCouplePlanLike(plan: any) {
+  if (!plan) return false
+
+  const text = [
+    plan?.slug,
+    plan?.name,
+    plan?.description,
+    ...(Array.isArray(plan?.features)
+      ? plan.features.flatMap((feature: any) => [feature?.label, feature?.key, feature?.value])
+      : []),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+
+  return [
+    /\bcasal\b/,
+    /\bcouple\b/,
+    /\bduo\b/,
+    /\bpartner\b/,
+    /\bcompartilh/,
+    /\bshared\b/,
+    /\bhouse\b/,
+    /\b2\s*(usuarios|pessoas|people|members)\b/,
+  ].some((pattern) => pattern.test(text))
+}
+
 export default function TransactionsPage() {
+  const tr = useTranslations('transactions')
+  const locale = useLocale()
+  const onboardingSteps = useMemo(() => createTransactionsOnboardingSteps(tr), [tr])
+  const typeOptions = useMemo<TypeOption[]>(
+    () => [
+      { value: 'EXPENSE', label: tr('type.expense') },
+      { value: 'INCOME', label: tr('type.income') },
+    ],
+    [tr]
+  )
+
   const { user } = useUserSession()
   const userId = user?.userData?.user?.id ?? ''
+  const houseContext = user?.houseContext ?? null
+  const { scopeKey } = useFinancialScope()
+  const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
+  const activePermission = useAdvisorActing((s) => s.activePermission ?? s.selectedPermission)
+  const isAdvisorReadOnly = isAdvisorReadOnlyTransactionAccess(activeClientId, activePermission)
+  const hasCoupleSignature = isCouplePlanLike(user?.userData?.signature?.plan)
+
+  const notifyReadOnly = () => {
+    toast.error(ADVISOR_READ_ONLY_FRIENDLY_MESSAGE)
+  }
 
   const [currentPage, setCurrentPage] = useState(1)
+  const [selectedAuthorId, setSelectedAuthorId] = useState<string>('ALL')
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
 
@@ -97,6 +197,9 @@ export default function TransactionsPage() {
   userId,
   page: currentPage,
   limit: PAGE_SIZE,
+  filters: {
+    userIds: selectedAuthorId !== 'ALL' ? [selectedAuthorId] : undefined,
+  },
 })
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -140,6 +243,116 @@ export default function TransactionsPage() {
     return () => window.clearTimeout(timer)
   }, [showCsvTip])
 
+  useEffect(() => {
+    if (!isAdvisorReadOnly) return
+    setSelectedIds(new Set())
+    setSelectAll(false)
+  }, [isAdvisorReadOnly])
+
+  useEffect(() => {
+    setCurrentPage(1)
+    setSelectedIds(new Set())
+    setSelectAll(false)
+  }, [scopeKey])
+
+  useEffect(() => {
+    setCurrentPage(1)
+    setSelectedIds(new Set())
+    setSelectAll(false)
+  }, [selectedAuthorId])
+
+  const activeHouseMembers = useMemo(
+    () => (houseContext?.members ?? []).filter((member) => member.active),
+    [houseContext?.members]
+  )
+
+  const apiTransactions: Transaction[] = useMemo(() => {
+    const data: any = transactionsQuery.data
+    if (!data) return []
+    if (Array.isArray(data)) return data
+    return Array.isArray(data.transactions) ? data.transactions : []
+  }, [transactionsQuery.data])
+
+  const hasCoupleContext =
+    houseContext?.status === 'COUPLE' ||
+    Boolean(houseContext?.partner?.id) ||
+    activeHouseMembers.length > 1
+
+  const showActorContext = hasCoupleContext || hasCoupleSignature
+
+  const authorOptions = useMemo<AuthorOption[]>(() => {
+    if (!showActorContext) return []
+
+    const currentUser = user?.userData?.user
+    const currentUserName =
+      currentUser?.name?.trim() || currentUser?.email?.trim() || tr('authorFilter.currentUser')
+    const memberOptions = activeHouseMembers
+      .map((member) => ({
+        value: member.userId ?? member.id ?? '',
+        label:
+          member.userId === currentUser?.id
+            ? currentUserName
+            : getHouseMemberLabel(member, tr('authorFilter.unknownMember')),
+      }))
+      .filter((option) => option.value && option.label !== tr('authorFilter.unknownMember'))
+
+    const transactionActorOptions = apiTransactions
+      .map((transaction) => {
+        const actorId = transaction.createdByUserId ?? transaction.userId ?? ''
+        const actorLabel = getKnownActorLabel({
+          actorId,
+          currentUserId: currentUser?.id,
+          currentUserName,
+          createdByUser: transaction.createdByUser,
+          user: transaction.user,
+        })
+
+        return actorId && actorLabel ? { value: actorId, label: actorLabel } : null
+      })
+      .filter((option): option is AuthorOption => Boolean(option?.value))
+
+    const fallbackCurrentUserOption =
+      currentUser?.id && !memberOptions.some((option) => option.value === currentUser.id)
+        ? [
+            {
+              value: currentUser.id,
+              label: currentUserName,
+            },
+          ]
+        : []
+
+    return [
+      { value: 'ALL', label: tr('authorFilter.all') },
+      ...fallbackCurrentUserOption,
+      ...memberOptions,
+      ...transactionActorOptions,
+    ].filter(
+        (option, index, options) => options.findIndex((item) => item.value === option.value) === index
+    )
+  }, [activeHouseMembers, apiTransactions, showActorContext, tr, user?.userData?.user])
+
+  const authorLabelById = useMemo(() => {
+    return new Map(authorOptions.map((option) => [option.value, option.label]))
+  }, [authorOptions])
+
+  const getTransactionActorLabel = React.useCallback(
+    (transaction: Transaction) => {
+      if (transaction.createdByUser?.name?.trim()) return transaction.createdByUser.name.trim()
+      if (transaction.createdByUser?.email?.trim()) return transaction.createdByUser.email.trim()
+      if (transaction.user?.name?.trim()) return transaction.user.name.trim()
+      const actorId = transaction.createdByUserId ?? transaction.userId
+      if (actorId && authorLabelById.has(actorId)) {
+        return authorLabelById.get(actorId) ?? tr('authorFilter.unknownMember')
+      }
+      if (transaction.user?.email?.trim()) return transaction.user.email.trim()
+      return tr('authorFilter.unknownMember')
+    },
+    [authorLabelById, tr]
+  )
+
+  const canWriteTransaction = (transaction: Transaction) =>
+    !isAdvisorReadOnly && transaction.userId === userId
+
   const handleImportClick = () => {
     if (!userId) return
     fileInputRef.current?.click()
@@ -155,7 +368,7 @@ export default function TransactionsPage() {
     if (!file) return
 
     if (!isValidImportFile(file)) {
-      setImportError('Arquivo invalido. Envie um arquivo .csv.')
+      setImportError(tr('invalidCsvFile'))
       e.target.value = ''
       return
     }
@@ -279,15 +492,6 @@ export default function TransactionsPage() {
       setBulkCategoryOpen(true)
     }
   }
-
-
-const apiTransactions: Transaction[] = useMemo(() => {
-  const data: any = transactionsQuery.data
-  if (!data) return []
-  if (Array.isArray(data)) return data
-  return Array.isArray(data.transactions) ? data.transactions : []
-}, [transactionsQuery.data])
-
 const meta = useMemo(() => {
   const data: any = transactionsQuery.data
   return data && !Array.isArray(data) ? data.meta : undefined
@@ -296,6 +500,12 @@ const meta = useMemo(() => {
   // ✅ Se backend já filtra por categoria/search/days, aqui fica só ordenação local (opcional)
   const displayedTransactions = useMemo(() => {
     let result = apiTransactions
+
+    if (selectedAuthorId !== 'ALL') {
+      result = result.filter(
+        (transaction) => (transaction.createdByUserId ?? transaction.userId) === selectedAuthorId
+      )
+    }
 
     if (sortField) {
       result = [...result].sort((a, b) => {
@@ -318,8 +528,9 @@ const meta = useMemo(() => {
 
   // ✅ totalPages agora vem do backend
   const totalPages = meta?.totalPages ?? 1
-  const totalAll = meta?.total ?? displayedTransactions.length
-  const totalFiltered = meta?.total ?? displayedTransactions.length
+  const totalAll = meta?.total ?? apiTransactions.length
+  const totalFiltered =
+    selectedAuthorId === 'ALL' ? meta?.total ?? displayedTransactions.length : displayedTransactions.length
 
   const startIndex =
     totalFiltered === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1
@@ -345,6 +556,7 @@ const meta = useMemo(() => {
   }
 
   const toggleSelectRow = (id: string) => {
+    if (isAdvisorReadOnly) return
     setSelectedIds((prev) => {
       const updated = new Set(prev)
       if (updated.has(id)) updated.delete(id)
@@ -354,12 +566,17 @@ const meta = useMemo(() => {
   }
 
   const toggleSelectAll = () => {
-    const currentIds = displayedTransactions.map((item) => item.id)
+    if (isAdvisorReadOnly) return
+    const currentIds = displayedTransactions.filter(canWriteTransaction).map((item) => item.id)
     setSelectedIds(selectAll ? new Set() : new Set(currentIds))
     setSelectAll(!selectAll)
   }
 
   const handleDeleteSelected = async (ids?: string[]) => {
+    if (isAdvisorReadOnly) {
+      notifyReadOnly()
+      return
+    }
     const idsToDelete = ids ?? Array.from(selectedIds)
     try {
       await Promise.all(idsToDelete.map((id) => deleteMutation.mutateAsync(id)))
@@ -371,6 +588,10 @@ const meta = useMemo(() => {
   }
 
   const handleDeleteSingle = async (id: string) => {
+    if (isAdvisorReadOnly) {
+      notifyReadOnly()
+      return
+    }
     try {
       await deleteMutation.mutateAsync(id)
       setSelectedIds((prev) => {
@@ -384,12 +605,20 @@ const meta = useMemo(() => {
   }
 
   const requestDeleteSingle = (id: string) => {
+    if (isAdvisorReadOnly) {
+      notifyReadOnly()
+      return
+    }
     setDeleteConfirmMode('single')
     setDeleteConfirmIds([id])
     setDeleteConfirmOpen(true)
   }
 
   const requestDeleteSelected = () => {
+    if (isAdvisorReadOnly) {
+      notifyReadOnly()
+      return
+    }
     const idsToDelete = Array.from(selectedIds)
     if (idsToDelete.length === 0) return
     setDeleteConfirmMode('bulk')
@@ -409,9 +638,12 @@ const meta = useMemo(() => {
   if (transactionsQuery.error) {
     return (
       <section className="w-full h-full px-4 lg:pl-0 lg:pr-8 flex flex-col gap-4 pt-4 md:pt-0">
-        <Header subtitle="Seus últimos movimentos financeiros"  />
+        <Header
+          subtitle={tr('subtitle')}
+          canWriteTransactions={!isAdvisorReadOnly}
+        />
         <div className="w-full h-full bg-white rounded-xl border border-gray-200 p-8">
-          <p className="text-sm text-red-600">Erro ao carregar transações.</p>
+          <p className="text-sm text-red-400">{tr('errorLoading')}</p>
         </div>
       </section>
     )
@@ -427,12 +659,12 @@ const meta = useMemo(() => {
               <div className="rounded-xl border border-gray-200 bg-secondary/10 p-3">
                 <div className="hidden md:block">
                   <div className="grid grid-cols-[110px_minmax(240px,1fr)_220px_160px_140px_48px] items-center gap-0 rounded-lg border border-gray-200 bg-secondary/30 px-4 py-3 text-sm font-semibold text-primary">
-                    <div>Data</div>
-                    <div>Descricao</div>
-                    <div>Categoria</div>
-                    <div>Tipo</div>
-                    <div className="text-right pr-2">Valor</div>
-                    <div className="text-right pr-2">Remover</div>
+                    <div>{tr('previewTable.date')}</div>
+                    <div>{tr('previewTable.description')}</div>
+                    <div>{tr('previewTable.category')}</div>
+                    <div>{tr('previewTable.type')}</div>
+                    <div className="text-right pr-2">{tr('previewTable.value')}</div>
+                    <div className="text-right pr-2">{tr('previewTable.remove')}</div>
                   </div>
 
                   <div className="max-h-[460px] overflow-auto rounded-lg border border-gray-200 bg-white">
@@ -453,7 +685,7 @@ const meta = useMemo(() => {
                           className="grid grid-cols-[110px_minmax(240px,1fr)_220px_160px_140px_48px] items-center gap-0 border-b border-gray-100 px-4 py-2 text-sm"
                         >
                           <div className="text-gray-700">
-                            {new Date(t.date).toLocaleDateString('pt-BR')}
+                            {new Date(t.date).toLocaleDateString(locale)}
                           </div>
                           <div className="min-w-0 pr-3">
                             {rowIsEditing ? (
@@ -477,7 +709,7 @@ const meta = useMemo(() => {
                                 type="button"
                                 onDoubleClick={() => beginEditDescription(t.id, t.description)}
                                 className="w-full truncate text-left text-gray-800"
-                                title="Duplo clique para editar"
+                                title={tr('doubleClickToEdit')}
                               >
                               {t.description}
                             </button>
@@ -492,7 +724,11 @@ const meta = useMemo(() => {
                                   ? 'bg-amber-100 text-amber-700'
                                   : 'bg-gray-100 text-gray-600',
                               ].join(' ')}
-                              title={matchedKeyword ? `Categoria sugerida por: ${matchedKeyword}` : undefined}
+                              title={
+                                matchedKeyword
+                                  ? tr('suggestedCategoryBy', { keyword: matchedKeyword })
+                                  : undefined
+                              }
                             >
                               {confidence}
                             </span>
@@ -526,7 +762,7 @@ const meta = useMemo(() => {
                             allowCreate={false}
                             typeFilter={categoryType}
                             closeMenuOnSelect
-                            placeholder="Selecionar categoria"
+                            placeholder={tr('selectCategory')}
                             className="w-full"
                             menuPlacement="auto"
                           />
@@ -550,10 +786,7 @@ const meta = useMemo(() => {
                           />
                         </div>
                         <div className="text-right pr-2 font-semibold">
-                          {new Intl.NumberFormat('pt-BR', {
-                            style: 'currency',
-                            currency: 'BRL',
-                            }).format(Number(t.value ?? 0))}
+                          {formatCurrency(Number(t.value ?? 0))}
                           </div>
                           <div className="flex justify-end">
                             <button
@@ -561,9 +794,9 @@ const meta = useMemo(() => {
                               onClick={() =>
                                 t.id ? removeImportedTransaction(t.id) : removeImportedTransactionByIndex(idx)
                               }
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 text-red-600 hover:bg-red-50"
-                              title="Remover transacao do preview"
-                              aria-label="Remover transacao do preview"
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 text-red-400 hover:bg-red-50"
+                              title={tr('removeFromPreview')}
+                              aria-label={tr('removeFromPreview')}
                             >
                               <TrashIcon className="h-4 w-4" />
                             </button>
@@ -593,16 +826,16 @@ const meta = useMemo(() => {
                       >
                         <div className="flex items-center justify-between">
                           <div className="text-xs text-gray-500">
-                            {new Date(t.date).toLocaleDateString('pt-BR')}
+                            {new Date(t.date).toLocaleDateString(locale)}
                           </div>
                           <button
                             type="button"
                             onClick={() =>
                               t.id ? removeImportedTransaction(t.id) : removeImportedTransactionByIndex(idx)
                             }
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 text-red-600 hover:bg-red-50"
-                            title="Remover transacao do preview"
-                            aria-label="Remover transacao do preview"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 text-red-400 hover:bg-red-50"
+                            title={tr('removeFromPreview')}
+                            aria-label={tr('removeFromPreview')}
                           >
                             <TrashIcon className="h-4 w-4" />
                           </button>
@@ -629,7 +862,7 @@ const meta = useMemo(() => {
                               type="button"
                               onDoubleClick={() => beginEditDescription(t.id, t.description)}
                               className="w-full truncate text-left text-sm font-semibold text-gray-800"
-                              title="Duplo clique para editar"
+                              title={tr('doubleClickToEdit')}
                             >
                               {t.description}
                             </button>
@@ -645,7 +878,11 @@ const meta = useMemo(() => {
                                 ? 'bg-amber-100 text-amber-700'
                                 : 'bg-gray-100 text-gray-600',
                             ].join(' ')}
-                            title={matchedKeyword ? `Categoria sugerida por: ${matchedKeyword}` : undefined}
+                            title={
+                              matchedKeyword
+                                ? tr('suggestedCategoryBy', { keyword: matchedKeyword })
+                                : undefined
+                            }
                           >
                             {confidence}
                           </span>
@@ -679,7 +916,7 @@ const meta = useMemo(() => {
                             allowCreate={false}
                             typeFilter={categoryType}
                             closeMenuOnSelect
-                            placeholder="Selecionar categoria"
+                            placeholder={tr('selectCategory')}
                             className="w-full"
                             menuPlacement="auto"
                           />
@@ -705,10 +942,7 @@ const meta = useMemo(() => {
                             />
                           </div>
                           <span className="text-sm font-semibold text-gray-800">
-                            {new Intl.NumberFormat('pt-BR', {
-                              style: 'currency',
-                              currency: 'BRL',
-                            }).format(Number(t.value ?? 0))}
+                            {formatCurrency(Number(t.value ?? 0))}
                           </span>
                         </div>
                       </div>
@@ -722,16 +956,16 @@ const meta = useMemo(() => {
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <DialogTitle className="text-base font-semibold text-[#333C4D] md:text-lg">
-                    Preview de transacoes importadas
+                    {tr('previewDialog.title')}
                   </DialogTitle>
                   {previewMeta?.formatId?.endsWith('_AI') && (
                     <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
-                      IA aplicada
+                      {tr('previewDialog.aiApplied')}
                     </span>
                   )}
                 </div>
                 <p className="text-xs text-slate-500 md:text-sm">
-                  Revise, categorize ou renomeie antes de finalizar.
+                  {tr('previewDialog.subtitle')}
                 </p>
                 {previewWarnings.length > 0 && (
                   <ul className="mt-2 flex flex-col gap-1 text-[11px] text-amber-700">
@@ -741,14 +975,14 @@ const meta = useMemo(() => {
                   </ul>
                 )}
                 {importedTransactions.length === 0 && (
-                  <p className="mt-2 text-xs font-semibold text-red-600">
-                    Nenhuma transação encontrada
+                  <p className="mt-2 text-xs font-semibold text-red-400">
+                    {tr('previewDialog.noneFound')}
                   </p>
                 )}
               </div>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <span className="rounded-full bg-secondary/30 px-3 py-1 text-xs font-semibold text-[#333C4D]">
-                  {importedTransactions.length} novas
+                  {tr('previewDialog.newCount', { count: importedTransactions.length })}
                 </span>
                 <button
                   type="button"
@@ -756,19 +990,19 @@ const meta = useMemo(() => {
                   disabled={isImporting || importedTransactions.length === 0}
                   className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isImporting ? 'Importando...' : 'Confirmar importacao'}
+                  {isImporting ? tr('previewDialog.importing') : tr('previewDialog.confirmImport')}
                 </button>
                 <button
                   type="button"
                   onClick={handleClosePreview}
                   className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
                 >
-                  Fechar
+                  {tr('close')}
                 </button>
               </div>
             </div>
             <div className="border-t border-gray-200 px-4 py-3 text-xs text-slate-500 md:px-6">
-              Dica: duplo clique na descricao para editar. Use o select de categoria para ajustar.
+              {tr('previewDialog.tip')}
             </div>
           </DialogPanel>
         </div>
@@ -778,10 +1012,14 @@ const meta = useMemo(() => {
         <div className="fixed inset-0 bg-black/40" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
           <DialogPanel className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-xl">
-            <DialogTitle className="text-lg font-semibold text-gray-800">Renomear descrições iguais?</DialogTitle>
+            <DialogTitle className="text-lg font-semibold text-gray-800">
+              {tr('bulkRename.title')}
+            </DialogTitle>
             <p className="mt-2 text-sm text-gray-600">
-              Há {bulkRenameCount} transações para esse mesmo estabelecimento/pessoa. Deseja renomear todas para
-              &quot;{bulkRenameTo}&quot;?
+              {tr('bulkRename.description', {
+                count: bulkRenameCount,
+                value: bulkRenameTo,
+              })}
             </p>
             <div className="mt-4 flex items-center justify-end gap-2">
               <button
@@ -794,7 +1032,7 @@ const meta = useMemo(() => {
                 }}
                 className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
               >
-                Cancelar
+                {tr('bulkRename.cancel')}
               </button>
               <button
                 type="button"
@@ -815,7 +1053,7 @@ const meta = useMemo(() => {
                 }}
                 className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-secondary"
               >
-                Confirmar
+                {tr('bulkRename.confirm')}
               </button>
             </div>
           </DialogPanel>
@@ -826,10 +1064,14 @@ const meta = useMemo(() => {
         <div className="fixed inset-0 bg-black/40" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
           <DialogPanel className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-xl">
-            <DialogTitle className="text-lg font-semibold text-gray-800">Alterar categoria em massa?</DialogTitle>
+            <DialogTitle className="text-lg font-semibold text-gray-800">
+              {tr('bulkCategory.title')}
+            </DialogTitle>
             <p className="mt-2 text-sm text-gray-600">
-              Há {bulkCategoryCount} transações com a descrição &quot;{bulkCategoryTargetDesc}&quot;. Deseja aplicar a
-              categoria selecionada para todas?
+              {tr('bulkCategory.description', {
+                count: bulkCategoryCount,
+                description: bulkCategoryTargetDesc,
+              })}
             </p>
             <div className="mt-4 flex items-center justify-end gap-2">
               <button
@@ -842,7 +1084,7 @@ const meta = useMemo(() => {
                 }}
                 className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
               >
-                Cancelar
+                {tr('bulkCategory.cancel')}
               </button>
               <button
                 type="button"
@@ -879,24 +1121,52 @@ const meta = useMemo(() => {
                 }}
                 className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-secondary"
               >
-                Confirmar
+                {tr('bulkCategory.confirm')}
               </button>
             </div>
           </DialogPanel>
         </div>
       </Dialog>
-      <Header
-        title="Transações Financeiras"
-        subtitle="Seus últimos movimentos financeiros"
-        asFilter
-        importTransations
-        onImportClick={handleImportClick}
-        importLoading={isPreviewLoading || isImporting}
-        onApplyFilters={() => setCurrentPage(1)}
-        // ⚠️ se você quer filtrar por categorias, o ideal é listar categorias do endpoint de categorias,
-        // mas mantendo seu comportamento atual:
-        dataToFilter={Array.from(new Set(displayedTransactions.map((t) => t.category))).filter(Boolean) as any}
-      />
+      <div data-onboarding-target="transacoes-filtros">
+        <Header
+          title={tr('title')}
+          subtitle={tr('subtitle')}
+          asFilter
+          importTransations
+          canWriteTransactions={!isAdvisorReadOnly}
+          onImportClick={handleImportClick}
+          importLoading={isPreviewLoading || isImporting}
+          onApplyFilters={() => setCurrentPage(1)}
+          rightContent={
+            <PageOnboardingTour
+              steps={onboardingSteps}
+              storageKeyBase="flynance:dashboard:onboarding:transacoes:v1"
+              triggerLabel={tr('guideButton')}
+            />
+          }
+          inlineFilterSlot={
+            showActorContext && authorOptions.length > 1 ? (
+              <div className="w-full min-w-[220px] md:max-w-[220px]">
+                <select
+                  value={selectedAuthorId}
+                  onChange={(event) => setSelectedAuthorId(event.target.value)}
+                  className="h-10 w-full rounded-xl border border-slate-700 bg-[#252525] px-3 text-sm text-white outline-none transition focus:border-slate-500 md:border-slate-200 md:bg-white md:text-slate-700"
+                  aria-label={tr('authorFilter.label')}
+                >
+                  {authorOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null
+          }
+          // ⚠️ se você quer filtrar por categorias, o ideal é listar categorias do endpoint de categorias,
+          // mas mantendo seu comportamento atual:
+          dataToFilter={Array.from(new Set(displayedTransactions.map((t) => t.category))).filter(Boolean) as any}
+        />
+      </div>
 
       <input
         ref={fileInputRef}
@@ -905,19 +1175,23 @@ const meta = useMemo(() => {
         className="hidden"
         onChange={handleFileChange}
       />
+      {isAdvisorReadOnly && (
+        <div className="w-full rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-700">
+          {tr('readOnlyBanner')}
+        </div>
+      )}
       {showCsvTip && (
         <div className="w-full rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
           <div className="flex items-start justify-between gap-3">
             <p className="font-medium">
-              Indicamos pedir ao aplicativo do banco o arquivo <span className="font-semibold">.csv</span> para a
-              importação dos dados 😊
+              {tr('csvTip')} <span className="font-semibold">.csv</span>
             </p>
             <button
               type="button"
               onClick={() => setShowCsvTip(false)}
               className="rounded-md px-2 py-1 text-xs font-semibold text-sky-900 hover:bg-sky-100"
             >
-              Fechar
+              {tr('close')}
             </button>
           </div>
         </div>
@@ -930,18 +1204,26 @@ const meta = useMemo(() => {
 
       {isRefreshing && (
         <div className="w-full rounded-md border border-secondary/40 bg-secondary/10 px-4 py-2 text-xs text-secondary">
-          Atualizando transações...
+          {tr('refreshing')}
         </div>
       )}
 
-      <section className="flex flex-col gap-4 lg:gap-0 overflow-auto">
+      <section className="flex flex-col gap-4 lg:gap-0 overflow-auto" data-onboarding-target="transacoes-lista">
         <TransactionTable
           transactions={displayedTransactions}
+          getActorLabel={getTransactionActorLabel}
+          showActor={showActorContext}
           selectedIds={selectedIds}
           selectAll={selectAll}
+          canWrite={!isAdvisorReadOnly}
+          canWriteTransaction={canWriteTransaction}
           onToggleSelectAll={toggleSelectAll}
           onToggleSelectRow={toggleSelectRow}
           onEdit={(t) => {
+            if (isAdvisorReadOnly) {
+              notifyReadOnly()
+              return
+            }
             setSelectedTransaction(t)
             setDrawerOpen(true)
           }}
@@ -953,36 +1235,47 @@ const meta = useMemo(() => {
 
         <TransactionCardList
           transactions={displayedTransactions}
+          getActorLabel={getTransactionActorLabel}
+          showActor={showActorContext}
           selectedIds={selectedIds}
+          canWrite={!isAdvisorReadOnly}
+          canWriteTransaction={canWriteTransaction}
           onToggleSelectRow={toggleSelectRow}
           onEdit={(t) => {
+            if (isAdvisorReadOnly) {
+              notifyReadOnly()
+              return
+            }
             setSelectedTransaction(t)
             setDrawerOpen(true)
           }}
           onDelete={handleDeleteSingle}
         />
 
-        <div className="flex items-center justify-between lg:flex-row flex-col gap-4">
+        <div className="flex items-center justify-between lg:flex-row flex-col gap-4" data-onboarding-target="transacoes-resumo">
           <div className="flex flex-wrap items-center justify-between gap-2 px-1">
             <span className="text-sm text-muted-foreground">
               {totalFiltered > 0 ? (
                 <>
-                  Exibindo <span className="font-medium">{startIndex}–{endIndex}</span> de{' '}
-                  <span className="font-medium">{totalFiltered}</span> transações
+                  {tr('showingRange', {
+                    start: startIndex,
+                    end: endIndex,
+                    total: totalFiltered,
+                  })}
                 </>
               ) : (
-                <>Nenhuma transação encontrada</>
+                <>{tr('noneFound')}</>
               )}
               {isFiltered && totalAll > 0 && (
                 <>
                   {' '}
-                  (de <span className="font-medium">{totalAll}</span> no total)
+                  {tr('ofTotal', { total: totalAll })}
                 </>
               )}
             </span>
           </div>
               
-      {selectedIds.size > 0 && (
+      {!isAdvisorReadOnly && selectedIds.size > 0 && (
         <div className="flex flex-wrap gap-2">
          {/*  {selectedCategories.map((item) => (
             <div
@@ -998,7 +1291,7 @@ const meta = useMemo(() => {
               onClick={requestDeleteSelected}
               className="px-4 py-2 bg-red-500 text-white text-sm rounded hover:bg-red-600"
             >
-              Deletar seleção ({selectedIds.size})
+              {tr('deleteSelection', { count: selectedIds.size })}
             </button>
           </div>
         </div>
@@ -1027,13 +1320,13 @@ const meta = useMemo(() => {
               handleDeleteSingle(deleteConfirmIds[0])
             }
           }}
-          title={deleteConfirmMode === 'bulk' ? 'Excluir transações' : 'Excluir transação'}
+          title={deleteConfirmMode === 'bulk' ? tr('deleteBulkTitle') : tr('deleteSingleTitle')}
           description={
             deleteConfirmMode === 'bulk'
-              ? `Tem certeza que deseja excluir ${deleteConfirmIds.length} transação(ções)?`
-              : 'Tem certeza que deseja excluir esta transação?'
+              ? tr('deleteBulkDescription', { count: deleteConfirmIds.length })
+              : tr('deleteSingleDescription')
           }
-          confirmLabel={deleteConfirmMode === 'bulk' ? 'Excluir seleção' : 'Excluir'}
+          confirmLabel={deleteConfirmMode === 'bulk' ? tr('deleteBulkConfirm') : tr('deleteSingleConfirm')}
         />
 
         {selectedTransaction && (
@@ -1044,10 +1337,15 @@ const meta = useMemo(() => {
               setDrawerOpen(false)
             }}
             initialData={selectedTransaction}
+            readOnly={isAdvisorReadOnly}
           />
         )}
       </section>
     </section>
   )
 }
+
+
+
+
 

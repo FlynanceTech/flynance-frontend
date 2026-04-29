@@ -4,6 +4,7 @@
 import React from "react";
 
 import { usePlans } from "@/hooks/query/usePlan";
+import { findCouplePlan } from "@/services/houses";
 import { PlanCard, UiPlan } from "../planos/plancard";
 import { mapPlanToUi } from "../planos/utils";
 
@@ -12,9 +13,19 @@ export default function PricingSection() {
   const { data, isLoading, error } = usePlans();
 
   const allowedSlugs = new Set(["essencial-mensal", "essencial-anual-lancamento"]);
-  const visiblePlans = data
-    ? data.filter((plan) => plan.isFeatured && allowedSlugs.has(plan.slug))
-    : [];
+  const visiblePlans = React.useMemo(() => {
+    if (!data) return [];
+
+    const basePlans = data.filter((plan) => plan.isFeatured && allowedSlugs.has(plan.slug));
+    const couplePlan = findCouplePlan(data);
+
+    if (!couplePlan || basePlans.some((plan) => plan.id === couplePlan.id)) {
+      return basePlans;
+    }
+
+    return [...basePlans, couplePlan];
+  }, [data]);
+
   const uiPlans: UiPlan[] = visiblePlans.map(mapPlanToUi);
 
   return (
@@ -41,9 +52,9 @@ export default function PricingSection() {
 
         {/* LISTA DE PLANOS */}
         {!isLoading && data && (
-          <div className="w-full flex flex-col md:flex-row gap-8 items-center justify-center">
+          <div className="w-full flex flex-col md:flex-row gap-8 items-stretch justify-center">
             {uiPlans.map((plan) => (
-              <PlanCard key={plan.id} plan={plan} />
+              <PlanCard key={plan.id} plan={plan} benefitLimit={8} />
             ))}
           </div>
         )}

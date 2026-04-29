@@ -11,16 +11,14 @@ import {
 } from 'recharts'
 import { categoriaCores } from '@/utils/categoriesIcone'
 import { Transaction } from '@/types/Transaction'
+import { formatCurrency } from '@/utils/formatter'
 
 interface IncomeChartProps {
   transactions?: Transaction[]
   isLoading: boolean
 }
 
-const formatter = new Intl.NumberFormat('pt-BR', {
-  style: 'currency',
-  currency: 'BRL',
-}).format
+const formatter = (value: number) => formatCurrency(value)
 
 export default function IncomeChart({ transactions, isLoading }:IncomeChartProps) {
 

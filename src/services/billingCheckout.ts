@@ -1,0 +1,128 @@
+import axios from 'axios'
+import {
+  clearBillingCheckoutSession,
+  readBillingCheckoutToken,
+} from '@/lib/authSession'
+
+const billingCheckoutApi = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5555/api',
+  withCredentials: false,
+})
+
+export type BillingCheckoutSubscriptionPayload = {
+  userId?: string
+  planId: string
+  paymentMethodId: string
+  promoCode?: string
+  annualBilling?: 'UPFRONT' | 'INSTALLMENTS'
+}
+
+export class BillingCheckoutTokenError extends Error {
+  constructor(message = 'Sessao de checkout expirada. Refaca a validacao para continuar.') {
+    super(message)
+    this.name = 'BillingCheckoutTokenError'
+  }
+}
+
+function requireBillingCheckoutToken(): string {
+  const billingCheckoutToken = readBillingCheckoutToken()
+  if (!billingCheckoutToken) {
+    throw new BillingCheckoutTokenError()
+  }
+
+  return billingCheckoutToken
+}
+
+function isBillingCheckoutTokenApiError(error: unknown): boolean {
+  if (!axios.isAxiosError(error)) return false
+
+  const status = error.response?.status
+  const message = String(
+    error.response?.data?.message ??
+      error.response?.data?.error ??
+      error.message ??
+      ''
+  ).toLowerCase()
+
+  if ((status === 401 || status === 403) && message.includes('token')) {
+    return true
+  }
+
+  return (
+    message.includes('billing checkout token') ||
+    message.includes('checkout token') ||
+    message.includes('token expired') ||
+    message.includes('token invalido') ||
+    message.includes('token inválido') ||
+    message.includes('invalid token') ||
+    message.includes('expired token')
+  )
+}
+
+function getBillingCheckoutHeaders(billingCheckoutToken: string) {
+  return {
+    'x-billing-checkout-token': billingCheckoutToken,
+  }
+}
+
+export function isBillingCheckoutTokenError(error: unknown): boolean {
+  return error instanceof BillingCheckoutTokenError || isBillingCheckoutTokenApiError(error)
+}
+
+export function clearBillingCheckoutOnInvalidToken(error: unknown): boolean {
+  if (!isBillingCheckoutTokenError(error)) return false
+  clearBillingCheckoutSession()
+  return true
+}
+
+export async function createBillingCheckoutSetupIntent(userId?: string): Promise<{
+  clientSecret: string
+  customerId?: string | null
+}> {
+  const billingCheckoutToken = requireBillingCheckoutToken()
+  const body: Record<string, unknown> = { billingCheckoutToken }
+  if (userId) body.userId = userId
+
+  const response = await billingCheckoutApi.post(
+    '/billing/setup-intent',
+    body,
+    {
+      headers: getBillingCheckoutHeaders(billingCheckoutToken),
+    }
+  )
+
+  const data = response.data ?? {}
+  const clientSecret =
+    data.clientSecret ??
+    data.client_secret ??
+    data?.setupIntent?.client_secret ??
+    data?.setup_intent?.client_secret
+
+  if (!clientSecret || typeof clientSecret !== 'string') {
+    throw new Error('Nao foi possivel iniciar o pagamento.')
+  }
+
+  return {
+    clientSecret,
+    customerId: data.customerId ?? data.customer_id ?? null,
+  }
+}
+
+export async function createBillingCheckoutSubscription(
+  payload: BillingCheckoutSubscriptionPayload
+): Promise<void> {
+  const billingCheckoutToken = requireBillingCheckoutToken()
+
+  await billingCheckoutApi.post(
+    '/billing/subscription',
+    {
+      ...payload,
+      billingCheckoutToken,
+    },
+    {
+      headers: getBillingCheckoutHeaders(billingCheckoutToken),
+    }
+  )
+}
+
+export { billingCheckoutApi }

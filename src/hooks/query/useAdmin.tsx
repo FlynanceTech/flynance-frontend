@@ -1,10 +1,12 @@
-'use client'
+﻿'use client'
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import {
   acceptAdvisorInvite,
   AdminPlan,
+  AdminUser,
+  AdminUserTesterUpdate,
   AdminPlansParams,
   AdminLeadsParams,
   createAdvisorInvite,
@@ -26,10 +28,12 @@ import {
   getAdminMetrics,
   getAdminPlanById,
   getAdminPlans,
+  getAdminUsers,
   getAdvisorInvites,
   getStripeCoupons,
   getStripeProducts,
   revokeAdvisorInvite,
+  updateAdminUserTester,
   updateAdminPlan,
   UpsertAdminPlanPayload,
 } from '@/services/admin'
@@ -39,6 +43,7 @@ const adminKeys = {
   advisorInvites: (params?: { page?: number; limit?: number }) =>
     ['admin', 'advisor-invites', params ?? {}] as const,
   leads: (params?: AdminLeadsParams) => ['admin', 'leads', params ?? {}] as const,
+  users: ['admin', 'users'] as const,
   plans: (params?: AdminPlansParams) => ['admin', 'plans', params ?? {}] as const,
   plan: (planId?: string) => ['admin', 'plans', 'detail', planId ?? ''] as const,
   coupons: ['admin', 'billing', 'coupons'] as const,
@@ -114,6 +119,41 @@ export function useAdminLeads(params: AdminLeadsParams) {
   })
 }
 
+export function useAdminUsers() {
+  return useQuery({
+    queryKey: adminKeys.users,
+    queryFn: getAdminUsers,
+    staleTime: 20_000,
+    retry: 1,
+  })
+}
+
+export function useUpdateAdminUserTester() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ userId, isTester }: { userId: string; isTester: boolean }) =>
+      updateAdminUserTester(userId, isTester),
+    onSuccess: (result: AdminUserTesterUpdate) => {
+      qc.setQueryData(adminKeys.users, (current: AdminUser[] | undefined) =>
+        (current ?? []).map((user) =>
+          user.id === result.id ? { ...user, isTester: result.isTester } : user
+        )
+      )
+      qc.invalidateQueries({ queryKey: adminKeys.users })
+      toast.success(
+        result.isTester
+          ? 'Acesso tester liberado com sucesso.'
+          : 'Acesso tester removido com sucesso.'
+      )
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : 'Erro ao atualizar permissao tester.'
+      )
+    },
+  })
+}
+
 export function useAdminPlans(params?: AdminPlansParams) {
   return useQuery({
     queryKey: adminKeys.plans(params),
@@ -138,9 +178,14 @@ export function useCreateAdminPlan() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (payload: UpsertAdminPlanPayload) => createAdminPlan(payload),
-    onSuccess: () => {
+    onSuccess: (plan: AdminPlan) => {
       qc.invalidateQueries({ queryKey: ['admin', 'plans'] })
-      toast.success('Plano criado.')
+      qc.setQueryData(adminKeys.plan(plan.id), plan)
+      toast.success(
+        plan.stripeProductId
+          ? `Plano criado com sucesso e produto Stripe vinculado (${plan.stripeProductId}).`
+          : 'Plano criado com sucesso.'
+      )
     },
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : 'Erro ao criar plano.')

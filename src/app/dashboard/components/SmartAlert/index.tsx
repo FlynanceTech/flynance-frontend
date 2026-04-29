@@ -2,6 +2,7 @@
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
 import { Bell, TrendingDown, Flag, X } from 'lucide-react'
 import React, { useState } from 'react'
+import { formatCurrency } from '@/utils/formatter'
 
 const metaPrincipal = {
   titulo: 'Viagem para o Chile',
@@ -44,8 +45,8 @@ export default function SmartAlert() {
 
         <div className="space-y-2">
           <p className='text-sm text-gray-800 flex items-center gap-2 font-medium'>
-            <TrendingDown size={16} className="text-red-500" />
-            Limite mensal em <strong>{limiteGasto.categoria}</strong>: R$ {limiteGasto.limite.toFixed(2)}
+            <TrendingDown size={16} className="text-red-400" />
+            Limite mensal em <strong>{limiteGasto.categoria}</strong>: {formatCurrency(limiteGasto.limite)}
           </p>
           <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
             <div
@@ -54,7 +55,7 @@ export default function SmartAlert() {
             />
           </div>
           <p className={`text-xs ${excessoGasto ? 'text-red-700' : 'text-gray-500'}`}>
-            R$ {limiteGasto.gastoAtual.toFixed(2)} de R$ {limiteGasto.limite.toFixed(2)} ({gastoPercentual}%)
+            {formatCurrency(limiteGasto.gastoAtual)} de {formatCurrency(limiteGasto.limite)} ({gastoPercentual}%)
           </p>
        
         </div>
@@ -85,14 +86,14 @@ export default function SmartAlert() {
                 />
               </div>
               <p className='text-xs text-gray-500'>
-                R$ {metaPrincipal.valorAtual.toFixed(2)} de R$ {metaPrincipal.valorMeta.toFixed(2)} ({progressoMeta}%)
+                {formatCurrency(metaPrincipal.valorAtual)} de {formatCurrency(metaPrincipal.valorMeta)} ({progressoMeta}%)
               </p>
             </div>
 
             <div className="space-y-2">
               <p className='text-sm text-gray-800 flex items-center gap-2 font-medium'>
-                <TrendingDown size={16} className="text-red-500" />
-                Limite mensal em <strong>{limiteGasto.categoria}</strong>: R$ {limiteGasto.limite.toFixed(2)}
+                <TrendingDown size={16} className="text-red-400" />
+                Limite mensal em <strong>{limiteGasto.categoria}</strong>: {formatCurrency(limiteGasto.limite)}
               </p>
               <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div
@@ -101,11 +102,11 @@ export default function SmartAlert() {
                 />
               </div>
               <p className={`text-xs ${excessoGasto ? 'text-yellow-700' : 'text-gray-500'}`}>
-                R$ {limiteGasto.gastoAtual.toFixed(2)} de R$ {limiteGasto.limite.toFixed(2)} ({gastoPercentual}%)
+                {formatCurrency(limiteGasto.gastoAtual)} de {formatCurrency(limiteGasto.limite)} ({gastoPercentual}%)
               </p>
               {excessoGasto && (
                 <p className='bg-[#FFE26C] text-sm text-[#333C4D] px-4 py-1 rounded-md'>
-                  Você gastou R$ {ultrapassagem.toFixed(2)} ({excessoPercentual}%) a mais que o limite estipulado.
+                  Você gastou {formatCurrency(ultrapassagem)} ({excessoPercentual}%) a mais que o limite estipulado.
                 </p>
               )}
             </div>

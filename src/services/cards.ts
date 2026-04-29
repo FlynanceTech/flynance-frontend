@@ -1,6 +1,7 @@
 // src/services/cards.ts
 
 import api from '@/lib/axios'
+import { FinancialDataScope, withFinancialScope } from '@/lib/financialScope'
 import { getErrorMessage } from '@/utils/getErrorMessage'
 
 export type CardBrand = 'VISA' | 'MASTERCARD' | 'ELO' | 'AMEX' | 'HIPERCARD' | 'OTHER'
@@ -87,9 +88,9 @@ export const createCard = async (data: CreditCardDTO): Promise<CreditCardRespons
 }
 
 /** Read (list) */
-export const getCards = async (): Promise<CreditCardResponse[]> => {
+export const getCards = async (scope?: FinancialDataScope): Promise<CreditCardResponse[]> => {
   try {
-    const res = await api.get('/cards')
+    const res = await api.get('/cards', { params: withFinancialScope(undefined, scope) })
     return res.data
   } catch (e: unknown) {
     const msg = getErrorMessage(e, 'Erro ao buscar cartões.')
@@ -123,9 +124,15 @@ export const deleteCard = async (id: string): Promise<{ message: string }> => {
 }
 
 /** Summary (fatura atual do cartão) */
-export const getCardSummary = async (id: string, tz?: string): Promise<CardSummaryResponse> => {
+export const getCardSummary = async (
+  id: string,
+  tz?: string,
+  scope?: FinancialDataScope
+): Promise<CardSummaryResponse> => {
   try {
-    const res = await api.get(`/cards/${id}/summary`, { params: tz ? { tz } : undefined })
+    const res = await api.get(`/cards/${id}/summary`, {
+      params: withFinancialScope(tz ? { tz } : undefined, scope),
+    })
     return res.data
   } catch (e: unknown) {
     const msg = getErrorMessage(e, 'Erro ao carregar resumo do cartão.')

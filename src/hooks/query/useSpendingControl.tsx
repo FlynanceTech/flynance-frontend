@@ -11,6 +11,7 @@ import {
   getFavoriteControls,
 } from '@/services/controls'
 import { useAdvisorActing } from '@/stores/useAdvisorActing'
+import { useFinancialScope } from '@/hooks/useFinancialScope'
 
 export interface ControlWithProgress extends ControlResponse {
   spent: number
@@ -38,11 +39,12 @@ export function useControls(id?: string, date?: Date) {
   const dateKey = date ? date.toISOString().split('T')[0] : 'current'
   const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
   const actingContextKey = activeClientId ?? 'self'
+  const { scope, scopeKey } = useFinancialScope()
 
   const controlsQuery = useQuery<ControlWithProgress[]>({
-    queryKey: ['controls', actingContextKey, { withProgress: true, date: dateKey }],
+    queryKey: ['controls', actingContextKey, scopeKey, { withProgress: true, date: dateKey }],
     queryFn: async () => {
-      const list = (await getAllControls(true, date)) as ControlWithProgress[]
+      const list = (await getAllControls(true, date, scope)) as ControlWithProgress[]
       if (!date || !Array.isArray(list) || list.length === 0) {
         return list
       }
@@ -52,7 +54,7 @@ export function useControls(id?: string, date?: Date) {
       const enriched = await Promise.all(
         list.map(async (control) => {
           try {
-            return (await getControlsById(control.id, date)) as ControlWithProgress
+            return (await getControlsById(control.id, date, scope)) as ControlWithProgress
           } catch {
             return control
           }
@@ -64,14 +66,14 @@ export function useControls(id?: string, date?: Date) {
   })
 
   const controlsByIdQuery = useQuery({
-    queryKey: ['controls', actingContextKey, id, date?.toISOString()],
-    queryFn: () => getControlsById(id as string, date),
+    queryKey: ['controls', actingContextKey, scopeKey, id, date?.toISOString()],
+    queryFn: () => getControlsById(id as string, date, scope),
     enabled: !!id,
   })
 
   const favoritesQuery = useQuery({
-    queryKey: ['controls', actingContextKey, 'favorites'],
-    queryFn: () => getFavoriteControls(),
+    queryKey: ['controls', actingContextKey, scopeKey, 'favorites'],
+    queryFn: () => getFavoriteControls(scope),
   })
 
   const createMutation = useMutation({

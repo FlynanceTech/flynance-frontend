@@ -18,6 +18,10 @@ export function isAdvisorRole(role: unknown): boolean {
   return ADVISOR_ROLES.has(normalized)
 }
 
-export function canActAsClientRole(role: unknown): boolean {
+export function canAccessAdvisorRole(role: unknown): boolean {
   return isAdvisorRole(role) || isAdminRole(role)
+}
+
+export function canActAsClientRole(role: unknown): boolean {
+  return canAccessAdvisorRole(role)
 }
