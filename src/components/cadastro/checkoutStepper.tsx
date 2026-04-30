@@ -22,7 +22,7 @@ import {
   createBillingCheckoutSubscription,
   isBillingCheckoutTokenError,
 } from "@/services/billingCheckout";
-import { captureLead, updateLeadBilling } from "@/services/leads";
+import { captureLead, isExistingAccountCheckoutError, updateLeadBilling } from "@/services/leads";
 import { useSignupStore } from "@/stores/useSignupStore";
 import { useUserSession } from "@/stores/useUserSession";
 
@@ -543,6 +543,10 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
   ): Promise<UserDTO> {
     if (!base?.id) return base;
 
+    if (typeof window !== "undefined" && !localStorage.getItem("token")) {
+      return base;
+    }
+
     const currentName = (base as any).name ?? "";
     const currentEmail = normalizeEmail((base as any).email ?? "");
     const currentPhoneDigits = normalizePhoneIdentity((base as any).phone ?? "");
@@ -727,7 +731,10 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
 
     const t = setTimeout(() => {
       captureOrUpdateLead()
-        .catch((err) => console.error("Auto-lead error:", err));
+        .catch((err) => {
+          if (isExistingAccountCheckoutError(err)) return;
+          console.error("Auto-lead error:", err);
+        });
     }, 400);
 
     return () => clearTimeout(t);
@@ -813,6 +820,37 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
 
     const next = `/cadastro/checkout?${qs.toString()}`;
     router.replace(`/login?next=${encodeURIComponent(next)}`);
+  }
+
+  function getExistingAccountIdentifierType(err: unknown): "email" | "phone" | "email_phone" {
+    if (!axios.isAxiosError(err)) return "email";
+    const value = String(err.response?.data?.identifierType ?? "").toLowerCase();
+    if (value === "phone" || value === "email_phone") return value;
+    return "email";
+  }
+
+  function redirectExistingAccountToLogin(identifierType: "email" | "phone" | "email_phone" = "email") {
+    clearBillingCheckoutSession();
+    setLoading(false);
+    setError("Este e-mail já possui uma conta. Faça login para finalizar sua assinatura.");
+
+    if (typeof window !== "undefined") {
+      const useWhatsapp = identifierType === "phone";
+      window.sessionStorage.setItem("flynance_login_method", useWhatsapp ? "whatsapp" : "email");
+      window.sessionStorage.setItem(
+        "flynance_login_identifier",
+        useWhatsapp ? formSnapshot.phoneE164 : formSnapshot.emailNorm
+      );
+    }
+
+    const qs = new URLSearchParams();
+    if (plan.slug) qs.set("plano", plan.slug);
+    if (revalidate) qs.set("revalidate", revalidate);
+
+    const next = `/cadastro/checkout?${qs.toString()}`;
+    router.replace(
+      `/login?next=${encodeURIComponent(next)}&reason=checkout_existing_account`
+    );
   }
 
   // ---------------------------
@@ -916,17 +954,25 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
         activeUserId = ensuredUser.id;
       } else {
         // Novo usuário — captura lead e envia billing sem precisar de userId
-        await captureOrUpdateLead();
-        await updateLeadBilling({
-          cpfCnpj: formSnapshot.cpfDigits || undefined,
-          postalCode: form.postalCode || undefined,
-          address: form.address || undefined,
-          addressNumber: form.addressNumber || undefined,
-          addressComplement: form.addressComplement || undefined,
-          district: form.district || undefined,
-          city: form.city || undefined,
-          state: form.state || undefined,
-        });
+        try {
+          await captureOrUpdateLead();
+          await updateLeadBilling({
+            cpfCnpj: formSnapshot.cpfDigits || undefined,
+            postalCode: form.postalCode || undefined,
+            address: form.address || undefined,
+            addressNumber: form.addressNumber || undefined,
+            addressComplement: form.addressComplement || undefined,
+            district: form.district || undefined,
+            city: form.city || undefined,
+            state: form.state || undefined,
+          });
+        } catch (err) {
+          if (isExistingAccountCheckoutError(err)) {
+            redirectExistingAccountToLogin(getExistingAccountIdentifierType(err));
+            return;
+          }
+          throw err;
+        }
       }
 
       // 1) SetupIntent — token identifica lead ou user
