@@ -4,7 +4,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   getCreditCardCharges,
   createCreditCardCharge,
+  updateCreditCardCharge,
+  deleteCreditCardCharge,
   type CreateCreditCardChargeDTO,
+  type UpdateCreditCardChargeDTO,
 } from '@/services/creditCardCharges'
 
 export interface UseCreditCardChargesParams {
@@ -38,8 +41,26 @@ export function useCreditCardCharges(params: UseCreditCardChargesParams = {}) {
     },
   })
 
+  const updateChargeMutation = useMutation({
+    mutationFn: ({ chargeId, data }: { chargeId: string; data: UpdateCreditCardChargeDTO }) =>
+      updateCreditCardCharge(chargeId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['credit-card-charges'] })
+    },
+  })
+
+  const deleteChargeMutation = useMutation({
+    mutationFn: (chargeId: string) => deleteCreditCardCharge(chargeId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['credit-card-charges'] })
+      qc.invalidateQueries({ queryKey: ['future-forecast'] })
+    },
+  })
+
   return {
     chargesQuery,
     createChargeMutation,
+    updateChargeMutation,
+    deleteChargeMutation,
   }
 }

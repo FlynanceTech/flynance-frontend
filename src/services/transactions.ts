@@ -23,6 +23,7 @@ export interface TransactionDTO {
   origin: 'DASHBOARD' | 'TEXT' | 'IMAGE' | 'AUDIO' | 'CHATBOT'
   paymentType: PaymentType
   cardId?: string
+  installmentCount?: number
 }
 
 const ADVISOR_READ_ONLY_BACKEND_MESSAGE = 'advisor has read-only permission for this client'

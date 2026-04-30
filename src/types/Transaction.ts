@@ -42,6 +42,13 @@ export interface Transaction {
   origin: TransactionOrigin
   category: Category 
   paymentType: PaymentType
+  cardId?: string | null
+  card?: {
+    id: string
+    name?: string | null
+    last4?: string | null
+  } | null
+  installmentCount?: number | null
   confidence?: 'LOW' | 'MEDIUM' | 'HIGH'
   matchedKeyword?: string
 }

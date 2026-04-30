@@ -24,6 +24,7 @@ export interface CreditCardChargeItem {
   status: 'posted' | 'voided' | 'refunded' | 'disputed' | string
   category: { id: string; name: string; color: string; icon: string } | null
   creditCard: { id: string; name: string; last4: string | null } | null
+  createdByUser: { id: string; name: string | null; email: string | null } | null
   installments: CreditCardChargeInstallmentItem[]
 }
 
@@ -70,6 +71,36 @@ export async function getCreditCardCharges(params: {
   } catch (e: unknown) {
     const msg = getErrorMessage(e, 'Erro ao buscar gastos de cartão.')
     console.error('Erro ao buscar gastos de cartão:', msg)
+    throw new Error(msg)
+  }
+}
+
+export interface UpdateCreditCardChargeDTO {
+  description?: string
+  categoryId?: string
+  purchaseDate?: string
+}
+
+export async function updateCreditCardCharge(
+  chargeId: string,
+  data: UpdateCreditCardChargeDTO
+): Promise<CreditCardChargeItem> {
+  try {
+    const response = await api.put(`/cards/charges/${chargeId}`, data)
+    return response.data
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, 'Erro ao atualizar gasto no cartão.')
+    console.error('Erro ao atualizar gasto:', msg)
+    throw new Error(msg)
+  }
+}
+
+export async function deleteCreditCardCharge(chargeId: string): Promise<void> {
+  try {
+    await api.delete(`/cards/charges/${chargeId}`)
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, 'Erro ao excluir gasto no cartão.')
+    console.error('Erro ao excluir gasto:', msg)
     throw new Error(msg)
   }
 }

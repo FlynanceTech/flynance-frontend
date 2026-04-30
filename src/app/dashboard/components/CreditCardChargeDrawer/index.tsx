@@ -6,7 +6,7 @@ import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { NumericFormat } from 'react-number-format'
-import { useState, useEffect, useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import Select from 'react-select'
 import type { StylesConfig } from 'react-select'
 import { CategorySelect } from '../CategorySelect'
@@ -16,14 +16,13 @@ import { useCardMutations } from '@/hooks/query/useCreditCards'
 import { useCreditCardCharges } from '@/hooks/query/useCreditCardCharges'
 import { Button } from '@/components/ui/button'
 import type { CreateCategoryDraft } from '../Categories/createCategoryModal'
+import type { CreditCardChargeItem } from '@/services/creditCardCharges'
 
-const schema = z.object({
+const createSchema = z.object({
   cardId: z.string().min(1, 'Selecione um cartão'),
   description: z.string().min(1, 'Descrição obrigatória'),
   categoryId: z.string().min(1, 'Categoria obrigatória'),
-  value: z
-    .number({ invalid_type_error: 'Informe um valor válido' })
-    .positive('Valor deve ser maior que zero'),
+  value: z.number({ invalid_type_error: 'Informe um valor válido' }).positive('Valor deve ser maior que zero'),
   purchaseDate: z
     .string()
     .min(1, 'Data obrigatória')
@@ -31,15 +30,33 @@ const schema = z.object({
   installmentCount: z.number().int().min(1).max(240),
 })
 
-type FormData = z.infer<typeof schema>
+const editSchema = z.object({
+  description: z.string().min(1, 'Descrição obrigatória'),
+  categoryId: z.string().min(1, 'Categoria obrigatória'),
+  purchaseDate: z
+    .string()
+    .min(1, 'Data obrigatória')
+    .refine((v) => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(v), 'Formato de data inválido'),
+})
+
+type CreateFormData = z.infer<typeof createSchema>
+type EditFormData = z.infer<typeof editSchema>
+type FormData = CreateFormData
 
 interface Props {
   open: boolean
   onClose: () => void
+  initialData?: CreditCardChargeItem
 }
 
 function nowDateTimeLocalValue() {
   const d = new Date()
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+  return local.toISOString().slice(0, 16)
+}
+
+function isoToDateTimeLocalValue(iso: string) {
+  const d = new Date(iso)
   const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
   return local.toISOString().slice(0, 16)
 }
@@ -92,9 +109,10 @@ const selectStyles: StylesConfig<any, false> = {
   noOptionsMessage: (base) => ({ ...base, color: 'hsl(var(--muted-foreground))' }),
 }
 
-export default function CreditCardChargeDrawer({ open, onClose }: Props) {
+export default function CreditCardChargeDrawer({ open, onClose, initialData }: Props) {
+  const isEditing = Boolean(initialData)
   const { cardQuery } = useCardMutations()
-  const { createChargeMutation } = useCreditCardCharges()
+  const { createChargeMutation, updateChargeMutation } = useCreditCardCharges()
 
   const {
     categoriesQuery: { data: categories = [] },
@@ -102,15 +120,11 @@ export default function CreditCardChargeDrawer({ open, onClose }: Props) {
   } = useCategories()
 
   const cards = cardQuery.data ?? []
-
   const cardOptions = useMemo<CardOption[]>(
     () =>
       cards
         .filter((c) => c.isActive)
-        .map((c) => ({
-          value: c.id,
-          label: c.last4 ? `${c.name} •••• ${c.last4}` : c.name,
-        })),
+        .map((c) => ({ value: c.id, label: c.last4 ? `${c.name} •••• ${c.last4}` : c.name })),
     [cards]
   )
 
@@ -123,7 +137,7 @@ export default function CreditCardChargeDrawer({ open, onClose }: Props) {
     watch,
     formState: { errors },
   } = useForm<FormData>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(isEditing ? (editSchema as any) : createSchema),
     defaultValues: {
       cardId: '',
       description: '',
@@ -135,7 +149,17 @@ export default function CreditCardChargeDrawer({ open, onClose }: Props) {
   })
 
   useEffect(() => {
-    if (open) {
+    if (!open) return
+    if (initialData) {
+      reset({
+        cardId: initialData.cardId,
+        description: initialData.description,
+        categoryId: initialData.category?.id ?? '',
+        value: initialData.amountTotal,
+        purchaseDate: isoToDateTimeLocalValue(initialData.purchaseDate),
+        installmentCount: initialData.installmentCount,
+      })
+    } else {
       reset({
         cardId: cardOptions[0]?.value ?? '',
         description: '',
@@ -145,7 +169,7 @@ export default function CreditCardChargeDrawer({ open, onClose }: Props) {
         installmentCount: 1,
       })
     }
-  }, [open, cardOptions, reset])
+  }, [open, initialData, cardOptions, reset])
 
   const categoryId = watch('categoryId')
   const selectedCardId = watch('cardId')
@@ -161,17 +185,26 @@ export default function CreditCardChargeDrawer({ open, onClose }: Props) {
   )
 
   const handleCreateCategory = async (draft: CreateCategoryDraft): Promise<CategoryResponse> => {
-    const payload: CategoryDTO = {
-      name: draft.name,
-      type: draft.type,
-      color: draft.color,
-      icon: draft.icon,
-      keywords: draft.keywords,
-    }
+    const payload: CategoryDTO = { name: draft.name, type: draft.type, color: draft.color, icon: draft.icon, keywords: draft.keywords }
     return createCategoryMutation.mutateAsync(payload)
   }
 
   const onSubmit = (data: FormData) => {
+    if (isEditing && initialData) {
+      updateChargeMutation.mutate(
+        {
+          chargeId: initialData.id,
+          data: {
+            description: data.description,
+            categoryId: data.categoryId,
+            purchaseDate: dateTimeLocalToISOZ(data.purchaseDate),
+          },
+        },
+        { onSuccess: () => { reset(); onClose() } }
+      )
+      return
+    }
+
     createChargeMutation.mutate(
       {
         cardId: data.cardId,
@@ -183,14 +216,11 @@ export default function CreditCardChargeDrawer({ open, onClose }: Props) {
           installmentCount: data.installmentCount,
         },
       },
-      {
-        onSuccess: () => {
-          reset()
-          onClose()
-        },
-      }
+      { onSuccess: () => { reset(); onClose() } }
     )
   }
+
+  const isPending = createChargeMutation.isPending || updateChargeMutation.isPending
 
   return (
     <Dialog open={open} onClose={onClose} className="relative z-50">
@@ -199,36 +229,38 @@ export default function CreditCardChargeDrawer({ open, onClose }: Props) {
         <DialogPanel className="bg-white w-4/5 max-w-md h-full rounded-l-xl shadow-lg p-6 space-y-6 overflow-y-auto">
           <div className="flex justify-between items-center">
             <DialogTitle className="text-lg font-semibold text-gray-800">
-              Nova Compra no Cartão
+              {isEditing ? 'Editar Compra' : 'Nova Compra no Cartão'}
             </DialogTitle>
             <button onClick={onClose} className="text-gray-500 hover:text-gray-700 cursor-pointer" aria-label="Fechar">
               <X size={20} />
             </button>
           </div>
 
-          <form key="cc-charge-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {/* Cartão */}
-            <div className="flex flex-col gap-2">
-              <label className="block text-sm text-gray-700 mb-1">Cartão</label>
-              <Controller
-                name="cardId"
-                control={control}
-                render={({ field }) => (
-                  <Select<CardOption, false>
-                    instanceId="cc-charge-card-select"
-                    value={selectedCardOption}
-                    options={cardOptions}
-                    onChange={(opt) => field.onChange(opt?.value ?? '')}
-                    isSearchable={false}
-                    placeholder="Selecione um cartão"
-                    noOptionsMessage={() => 'Nenhum cartão cadastrado'}
-                    menuPortalTarget={typeof window !== 'undefined' ? document.body : null}
-                    styles={selectStyles}
-                  />
-                )}
-              />
-              {errors.cardId && <span className="text-red-400 text-xs">{errors.cardId.message}</span>}
-            </div>
+          <form key={initialData?.id ?? 'new'} onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {/* Cartão — só na criação */}
+            {!isEditing && (
+              <div className="flex flex-col gap-2">
+                <label className="block text-sm text-gray-700 mb-1">Cartão</label>
+                <Controller
+                  name="cardId"
+                  control={control}
+                  render={({ field }) => (
+                    <Select<CardOption, false>
+                      instanceId="cc-charge-card-select"
+                      value={selectedCardOption}
+                      options={cardOptions}
+                      onChange={(opt) => field.onChange(opt?.value ?? '')}
+                      isSearchable={false}
+                      placeholder="Selecione um cartão"
+                      noOptionsMessage={() => 'Nenhum cartão cadastrado'}
+                      menuPortalTarget={typeof window !== 'undefined' ? document.body : null}
+                      styles={selectStyles}
+                    />
+                  )}
+                />
+                {errors.cardId && <span className="text-red-400 text-xs">{errors.cardId.message}</span>}
+              </div>
+            )}
 
             {/* Descrição */}
             <div className="flex flex-col gap-2">
@@ -263,50 +295,49 @@ export default function CreditCardChargeDrawer({ open, onClose }: Props) {
               {errors.categoryId && <span className="text-red-400 text-xs">{errors.categoryId.message}</span>}
             </div>
 
-            {/* Valor */}
-            <div className="flex flex-col gap-2">
-              <label className="block text-sm text-gray-700 mb-1">Valor total</label>
-              <Controller
-                name="value"
-                control={control}
-                render={({ field }) => (
-                  <NumericFormat
-                    value={field.value ?? ''}
-                    thousandSeparator="."
-                    decimalSeparator=","
-                    prefix="R$ "
-                    allowNegative={false}
-                    placeholder="R$ 0,00"
-                    className="outline-none w-full border border-gray-200 rounded-full px-4 py-2 shadow text-sm"
-                    onValueChange={(values) => field.onChange(values.floatValue ?? undefined)}
+            {/* Valor e parcelas — só na criação */}
+            {!isEditing && (
+              <>
+                <div className="flex flex-col gap-2">
+                  <label className="block text-sm text-gray-700 mb-1">Valor total</label>
+                  <Controller
+                    name="value"
+                    control={control}
+                    render={({ field }) => (
+                      <NumericFormat
+                        value={field.value ?? ''}
+                        thousandSeparator="."
+                        decimalSeparator=","
+                        prefix="R$ "
+                        allowNegative={false}
+                        placeholder="R$ 0,00"
+                        className="outline-none w-full border border-gray-200 rounded-full px-4 py-2 shadow text-sm"
+                        onValueChange={(values) => field.onChange(values.floatValue ?? undefined)}
+                      />
+                    )}
                   />
-                )}
-              />
-              {errors.value && <span className="text-red-400 text-xs">{errors.value.message}</span>}
-            </div>
+                  {errors.value && <span className="text-red-400 text-xs">{errors.value.message}</span>}
+                </div>
 
-            {/* Parcelas */}
-            <div className="flex flex-col gap-2">
-              <label className="block text-sm text-gray-700 mb-1">Número de parcelas</label>
-              <div className="relative">
-                <input
-                  type="number"
-                  min={1}
-                  max={240}
-                  {...register('installmentCount', { valueAsNumber: true })}
-                  className="w-full border border-gray-300 rounded-full shadow px-4 py-2 text-sm"
-                  placeholder="1"
-                />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">
-                  x
-                </span>
-              </div>
-              {errors.installmentCount && (
-                <span className="text-red-400 text-xs">{errors.installmentCount.message}</span>
-              )}
-            </div>
+                <div className="flex flex-col gap-2">
+                  <label className="block text-sm text-gray-700 mb-1">Número de parcelas</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min={1}
+                      max={240}
+                      {...register('installmentCount', { valueAsNumber: true })}
+                      className="w-full border border-gray-300 rounded-full shadow px-4 py-2 text-sm"
+                      placeholder="1"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">x</span>
+                  </div>
+                  {errors.installmentCount && <span className="text-red-400 text-xs">{errors.installmentCount.message}</span>}
+                </div>
+              </>
+            )}
 
-            {/* Data da compra */}
+            {/* Data */}
             <div className="flex flex-col gap-2">
               <label className="block text-sm text-gray-700 mb-1">Data da compra</label>
               <input
@@ -317,17 +348,15 @@ export default function CreditCardChargeDrawer({ open, onClose }: Props) {
               {errors.purchaseDate && <span className="text-red-400 text-xs">{errors.purchaseDate.message}</span>}
             </div>
 
-            <Button
-              type="submit"
-              disabled={createChargeMutation.isPending}
-              variant="default"
-            >
-              {createChargeMutation.isPending ? 'Registrando...' : 'Registrar Compra'}
+            <Button type="submit" disabled={isPending} variant="default">
+              {isPending ? 'Salvando...' : isEditing ? 'Salvar Alterações' : 'Registrar Compra'}
             </Button>
 
-            {createChargeMutation.isError && (
+            {(createChargeMutation.isError || updateChargeMutation.isError) && (
               <p className="text-xs text-red-500">
-                {(createChargeMutation.error as Error)?.message ?? 'Erro ao registrar compra.'}
+                {(createChargeMutation.error as Error)?.message ??
+                  (updateChargeMutation.error as Error)?.message ??
+                  'Erro ao salvar compra.'}
               </p>
             )}
           </form>
