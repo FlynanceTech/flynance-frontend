@@ -15,6 +15,7 @@ export type CaptureLeadInput = {
   name: string
   email: string
   phone: string
+  cpfCnpj?: string
   origin?: 'ORGANIC' | 'CAMPAIGN' | 'INFLUENCER'
   originRef?: string
 }

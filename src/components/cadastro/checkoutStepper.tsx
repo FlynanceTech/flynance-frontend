@@ -698,6 +698,7 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
       name: formSnapshot.name,
       email: formSnapshot.emailNorm,
       phone: formSnapshot.phoneE164,
+      cpfCnpj: formSnapshot.cpfDigits || undefined,
       origin,
       originRef: originRef || undefined,
     });
@@ -822,25 +823,34 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
     router.replace(`/login?next=${encodeURIComponent(next)}`);
   }
 
-  function getExistingAccountIdentifierType(err: unknown): "email" | "phone" | "email_phone" {
+  function getExistingAccountIdentifierType(err: unknown): "email" | "phone" | "cpf" | "email_phone" {
     if (!axios.isAxiosError(err)) return "email";
     const value = String(err.response?.data?.identifierType ?? "").toLowerCase();
-    if (value === "phone" || value === "email_phone") return value;
+    if (value === "phone" || value === "cpf" || value === "email_phone") return value;
     return "email";
   }
 
-  function redirectExistingAccountToLogin(identifierType: "email" | "phone" | "email_phone" = "email") {
+  function redirectExistingAccountToLogin(identifierType: "email" | "phone" | "cpf" | "email_phone" = "email") {
     clearBillingCheckoutSession();
     setLoading(false);
-    setError("Este e-mail já possui uma conta. Faça login para finalizar sua assinatura.");
+    setError(
+      identifierType === "cpf"
+        ? "Este CPF já possui uma conta. Faça login com o e-mail ou WhatsApp cadastrado para finalizar sua assinatura."
+        : "Este e-mail ou WhatsApp já possui uma conta. Faça login para finalizar sua assinatura."
+    );
 
     if (typeof window !== "undefined") {
       const useWhatsapp = identifierType === "phone";
-      window.sessionStorage.setItem("flynance_login_method", useWhatsapp ? "whatsapp" : "email");
-      window.sessionStorage.setItem(
-        "flynance_login_identifier",
-        useWhatsapp ? formSnapshot.phoneE164 : formSnapshot.emailNorm
-      );
+      if (identifierType === "cpf") {
+        window.sessionStorage.removeItem("flynance_login_method");
+        window.sessionStorage.removeItem("flynance_login_identifier");
+      } else {
+        window.sessionStorage.setItem("flynance_login_method", useWhatsapp ? "whatsapp" : "email");
+        window.sessionStorage.setItem(
+          "flynance_login_identifier",
+          useWhatsapp ? formSnapshot.phoneE164 : formSnapshot.emailNorm
+        );
+      }
     }
 
     const qs = new URLSearchParams();
@@ -849,7 +859,7 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
 
     const next = `/cadastro/checkout?${qs.toString()}`;
     router.replace(
-      `/login?next=${encodeURIComponent(next)}&reason=checkout_existing_account`
+      `/login?next=${encodeURIComponent(next)}&reason=checkout_existing_account&identifierType=${identifierType}`
     );
   }
 

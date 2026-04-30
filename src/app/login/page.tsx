@@ -48,9 +48,12 @@ function LoginContent() {
   const nextRoute =
     rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/dashboard'
   const reason = searchParams.get('reason')
+  const identifierType = searchParams.get('identifierType')
   const checkoutLoginNotice =
     reason === 'checkout_existing_account'
-      ? 'Este e-mail já possui uma conta. Faça login para finalizar sua assinatura.'
+      ? identifierType === 'cpf'
+        ? 'Este CPF já possui uma conta. Faça login com o e-mail ou WhatsApp cadastrado para finalizar sua assinatura.'
+        : 'Este e-mail ou WhatsApp já possui uma conta. Faça login para finalizar sua assinatura.'
       : ''
 
   const [method, setMethod] = useState<LoginMethod>('email')
