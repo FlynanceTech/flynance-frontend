@@ -19,6 +19,44 @@ export type FutureStatus = 'pending' | 'overdue' | 'settled' | 'canceled'
 export type FutureEditableInstallmentStatus = 'pending' | 'canceled'
 export type FuturePlanStatus = 'active' | 'completed' | 'canceled'
 
+export type FutureItemSourceType = 'installment_plan' | 'credit_card_statement_installment'
+export type FutureItemStatus = 'pending' | 'overdue' | 'open' | 'invoiced'
+
+export interface FutureItem {
+  id: string
+  sourceType: FutureItemSourceType
+  description: string | null
+  type: 'INCOME' | 'EXPENSE' | null
+  paymentType: string | null
+  amount: number
+  dueDate: string
+  category: { id: string; name: string } | null
+  card: { id: string; name: string; last4: string | null } | null
+  status: FutureItemStatus
+  installmentNumber: number
+  installmentCount: number | null
+  statement: {
+    id: string
+    cycleKey: string
+    dueAt: string
+    closingAt: string
+    status: 'open' | 'invoiced' | 'paid' | string
+  } | null
+}
+
+export interface InvoiceGroup {
+  card: { id: string; name: string; last4: string | null } | null
+  statement: {
+    id: string
+    cycleKey: string
+    dueAt: string
+    closingAt: string
+    status: string
+  } | null
+  items: FutureItem[]
+  totalAmount: number
+}
+
 export interface CreateInstallmentPlanDTO {
   type: FutureType
   paymentType: FuturePaymentType
@@ -124,20 +162,40 @@ export interface FutureInstallmentPlansResponse {
 export interface FutureForecastTotals {
   toPay: number
   toReceive: number
-  overdueToPay: number
-  overdueToReceive: number
   pendingCount: number
-  overdueCount: number
+  // new fields from /future/forecast
+  creditCardCount?: number
+  installmentPlanCount?: number
+  // backward-compat fields (may not be present in new API)
+  overdueToPay?: number
+  overdueToReceive?: number
+  overdueCount?: number
 }
 
 export interface FutureForecastResponse {
   period: { start: string; end: string }
   totals: FutureForecastTotals
-  upcoming: FutureInstallment[]
+  upcoming: FutureItem[]
 }
 
-function parseMeta(payload: any, page = 1, limit = 10) {
-  const metaRaw = payload?.meta ?? payload?.pagination ?? {}
+export type FutureForecast = FutureForecastResponse
+
+type ApiRecord = Record<string, unknown>
+
+function asRecord(value: unknown): ApiRecord {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as ApiRecord)
+    : {}
+}
+
+function nullableString(value: unknown): string | null {
+  if (value === null || value === undefined || value === '') return null
+  return String(value)
+}
+
+function parseMeta(payload: unknown, page = 1, limit = 10) {
+  const payloadRecord = asRecord(payload)
+  const metaRaw = asRecord(payloadRecord.meta ?? payloadRecord.pagination)
   const total = Number(metaRaw.total ?? 0)
   const pageOut = Number(metaRaw.page ?? page)
   const limitOut = Number(metaRaw.limit ?? limit)
@@ -154,67 +212,70 @@ function parseMeta(payload: any, page = 1, limit = 10) {
   }
 }
 
-function parsePlan(row: any): FutureInstallmentPlan | null {
+function parsePlan(row: unknown): FutureInstallmentPlan | null {
   if (!row) return null
-  const id = String(row.id ?? '')
+  const record = asRecord(row)
+  const id = String(record.id ?? '')
   if (!id) return null
 
   return {
     id,
-    status: (row.status ?? null) as FuturePlanStatus | string | null,
-    type: (row.type ?? 'EXPENSE') as FutureType,
-    paymentType: (row.paymentType ?? 'OTHER') as FuturePaymentType,
-    cardId: row.cardId ?? null,
-    categoryId: row.categoryId ?? null,
-    description: String(row.description ?? 'Sem descricao'),
-    totalAmount: Number(row.totalAmount ?? row.amount ?? 0),
-    installmentCount: Number(row.installmentCount ?? row.totalInstallments ?? 1),
-    firstDueDate: String(row.firstDueDate ?? row.firstDueAt ?? ''),
-    intervalMonths: Number(row.intervalMonths ?? 1),
-    notes: row.notes ?? null,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
+    status: (record.status ?? null) as FuturePlanStatus | string | null,
+    type: (record.type ?? 'EXPENSE') as FutureType,
+    paymentType: (record.paymentType ?? 'OTHER') as FuturePaymentType,
+    cardId: nullableString(record.cardId),
+    categoryId: nullableString(record.categoryId),
+    description: String(record.description ?? 'Sem descricao'),
+    totalAmount: Number(record.totalAmount ?? record.amount ?? 0),
+    installmentCount: Number(record.installmentCount ?? record.totalInstallments ?? 1),
+    firstDueDate: String(record.firstDueDate ?? record.firstDueAt ?? ''),
+    intervalMonths: Number(record.intervalMonths ?? 1),
+    notes: nullableString(record.notes),
+    createdAt: typeof record.createdAt === 'string' ? record.createdAt : undefined,
+    updatedAt: typeof record.updatedAt === 'string' ? record.updatedAt : undefined,
   }
 }
 
-function parseInstallment(row: any): FutureInstallment | null {
+function parseInstallment(row: unknown): FutureInstallment | null {
   if (!row) return null
 
-  const plan = row.plan ?? row.installmentPlan ?? {}
-  const id = String(row.id ?? '')
+  const record = asRecord(row)
+  const plan = asRecord(record.plan ?? record.installmentPlan)
+  const id = String(record.id ?? '')
   if (!id) return null
 
-  const type = (row.type ?? plan.type ?? 'EXPENSE') as FutureType
-  const status = (row.status ?? 'pending') as FutureStatus
+  const type = (record.type ?? plan.type ?? 'EXPENSE') as FutureType
+  const status = (record.status ?? 'pending') as FutureStatus
 
-  const amountRaw = row.amount ?? row.value ?? row.installmentAmount ?? row.expectedAmount ?? 0
+  const amountRaw = record.amount ?? record.value ?? record.installmentAmount ?? record.expectedAmount ?? 0
   const installmentNumberRaw =
-    row.installmentNumber ?? row.number ?? row.currentInstallment ?? row.parcel ?? 1
+    record.installmentNumber ?? record.number ?? record.currentInstallment ?? record.parcel ?? 1
   const installmentCountRaw =
-    row.installmentCount ?? row.totalInstallments ?? plan.installmentCount ?? row.total ?? 1
+    record.installmentCount ?? record.totalInstallments ?? plan.installmentCount ?? record.total ?? 1
 
   return {
     id,
-    planId: row.planId ?? plan.id ?? null,
-    description: String(row.description ?? plan.description ?? 'Sem descricao'),
+    planId: nullableString(record.planId ?? plan.id),
+    description: String(record.description ?? plan.description ?? 'Sem descricao'),
     type,
-    paymentType: (row.paymentType ?? plan.paymentType ?? null) as FuturePaymentType | null,
-    categoryId: row.categoryId ?? plan.categoryId ?? null,
-    cardId: row.cardId ?? plan.cardId ?? null,
+    paymentType: (record.paymentType ?? plan.paymentType ?? null) as FuturePaymentType | null,
+    categoryId: nullableString(record.categoryId ?? plan.categoryId),
+    cardId: nullableString(record.cardId ?? plan.cardId),
     installmentNumber: Number(installmentNumberRaw || 1),
     installmentCount: Number(installmentCountRaw || 1),
     amount: Number(amountRaw || 0),
-    dueDate: String(row.dueDate ?? row.dueAt ?? ''),
+    dueDate: String(record.dueDate ?? record.dueAt ?? ''),
     status,
-    paidAt: row.paidAt ?? row.settledAt ?? null,
+    paidAt: nullableString(record.paidAt ?? record.settledAt),
   }
 }
 
-function parseInstallmentsPayload(payload: any, page = 1, limit = 10): FutureInstallmentsResponse {
+function parseInstallmentsPayload(payload: unknown, page = 1, limit = 10): FutureInstallmentsResponse {
+  const payloadRecord = asRecord(payload)
   const listRaw =
-    payload?.installments ??
-    payload?.data ??
-    payload?.items ??
+    payloadRecord.installments ??
+    payloadRecord.data ??
+    payloadRecord.items ??
     (Array.isArray(payload) ? payload : [])
 
   const installments = (Array.isArray(listRaw) ? listRaw : [])
@@ -229,12 +290,13 @@ function parseInstallmentsPayload(payload: any, page = 1, limit = 10): FutureIns
   return { installments, meta }
 }
 
-function parsePlansPayload(payload: any, page = 1, limit = 50): FutureInstallmentPlansResponse {
+function parsePlansPayload(payload: unknown, page = 1, limit = 50): FutureInstallmentPlansResponse {
+  const payloadRecord = asRecord(payload)
   const listRaw =
-    payload?.plans ??
-    payload?.installmentPlans ??
-    payload?.data ??
-    payload?.items ??
+    payloadRecord.plans ??
+    payloadRecord.installmentPlans ??
+    payloadRecord.data ??
+    payloadRecord.items ??
     (Array.isArray(payload) ? payload : [])
 
   const plans = (Array.isArray(listRaw) ? listRaw : [])
@@ -427,4 +489,39 @@ export async function getFutureForecast(params?: {
     console.error('Erro ao carregar previsao de futuros:', msg)
     throw new Error(msg)
   }
+}
+
+export function groupCreditCardInvoices(upcoming: FutureItem[]): InvoiceGroup[] {
+  const creditCardItems = upcoming.filter(
+    (i) => i.sourceType === 'credit_card_statement_installment'
+  )
+  const invoiceGroups = new Map<string, InvoiceGroup>()
+
+  for (const item of creditCardItems) {
+    const key = `${item.card?.id ?? 'unknown'}__${item.statement?.cycleKey ?? 'unknown'}`
+    if (!invoiceGroups.has(key)) {
+      invoiceGroups.set(key, {
+        card: item.card,
+        statement: item.statement,
+        items: [],
+        totalAmount: 0,
+      })
+    }
+    const group = invoiceGroups.get(key)!
+    group.items.push(item)
+    group.totalAmount += item.amount
+  }
+
+  return [...invoiceGroups.values()]
+    .map((group) => ({
+      ...group,
+      items: [...group.items].sort(
+        (a, b) => Number(a.installmentNumber || 0) - Number(b.installmentNumber || 0)
+      ),
+    }))
+    .sort(
+      (a, b) =>
+        new Date(a.statement?.dueAt ?? 0).getTime() -
+        new Date(b.statement?.dueAt ?? 0).getTime()
+    )
 }

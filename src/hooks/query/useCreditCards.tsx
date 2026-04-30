@@ -20,9 +20,10 @@ export function useCardMutations(cardId?: string, tz?: string) {
     const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
     const actingContextKey = activeClientId ?? 'self'
     const { scope, scopeKey } = useFinancialScope()
+    const listKey = cardKeys.list(actingContextKey, scopeKey)
 
     const cardQuery = useQuery<CreditCardResponse[]>({
-        queryKey: cardKeys.list(actingContextKey, scopeKey),
+        queryKey: listKey,
         queryFn: () => getCards(scope),
         staleTime: 60_000,
       });
@@ -38,7 +39,32 @@ export function useCardMutations(cardId?: string, tz?: string) {
 
     const createCardMutation = useMutation({
         mutationFn: (data: CreditCardDTO) => createCard(data),
-        onSuccess: () => {
+        onMutate: async (data) => {
+        await qc.cancelQueries({ queryKey: listKey })
+        const previous = qc.getQueryData<CreditCardResponse[]>(listKey)
+        const optimisticCard: CreditCardResponse = {
+            id: `optimistic-${Date.now()}`,
+            userId: 'optimistic',
+            name: data.name,
+            brand: data.brand,
+            last4: data.last4 ?? null,
+            limit: data.limit,
+            closingDay: data.closingDay,
+            dueDay: data.dueDay,
+            timezone: data.timezone ?? null,
+            isActive: true,
+            createdAt: new Date().toISOString(),
+        }
+        qc.setQueryData<CreditCardResponse[]>(listKey, (current) => [
+            optimisticCard,
+            ...(current ?? []),
+        ])
+        return { previous }
+        },
+        onError: (_error, _variables, context) => {
+        if (context?.previous) qc.setQueryData(listKey, context.previous)
+        },
+        onSettled: () => {
         qc.invalidateQueries({ queryKey: ['cards'] })
         },
     })
@@ -46,6 +72,21 @@ export function useCardMutations(cardId?: string, tz?: string) {
     const updateCardMutation = useMutation({
         mutationFn: ({ id, data }: { id: string; data: CreditCardUpdateDTO }) =>
         updateCard(id, data),
+        onMutate: async ({ id, data }) => {
+        await qc.cancelQueries({ queryKey: listKey })
+        const previous = qc.getQueryData<CreditCardResponse[]>(listKey)
+        qc.setQueryData<CreditCardResponse[]>(listKey, (current) => {
+            const cards = current ?? []
+            if (data.isActive === false) {
+            return cards.filter((card) => card.id !== id)
+            }
+            return cards.map((card) => (card.id === id ? { ...card, ...data } : card))
+        })
+        return { previous }
+        },
+        onError: (_error, _variables, context) => {
+        if (context?.previous) qc.setQueryData(listKey, context.previous)
+        },
         onSuccess: (updated: CreditCardResponse) => {
         qc.invalidateQueries({ queryKey: ['cards'] })
         qc.invalidateQueries({ queryKey: cardKeys.card(updated.id, actingContextKey, scopeKey) })
@@ -55,7 +96,18 @@ export function useCardMutations(cardId?: string, tz?: string) {
 
     const deleteCardMutation = useMutation({
         mutationFn: (id: string) => deleteCard(id),
-        onSuccess: () => {
+        onMutate: async (id) => {
+        await qc.cancelQueries({ queryKey: listKey })
+        const previous = qc.getQueryData<CreditCardResponse[]>(listKey)
+        qc.setQueryData<CreditCardResponse[]>(listKey, (current) =>
+            (current ?? []).filter((card) => card.id !== id)
+        )
+        return { previous }
+        },
+        onError: (_error, _variables, context) => {
+        if (context?.previous) qc.setQueryData(listKey, context.previous)
+        },
+        onSettled: () => {
         qc.invalidateQueries({ queryKey: ['cards'] })
         },
     })

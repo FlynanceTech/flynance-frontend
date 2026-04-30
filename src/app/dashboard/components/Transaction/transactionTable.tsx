@@ -181,6 +181,17 @@ export function TransactionTable({
                   <div role="cell" className="min-w-0 pr-4">
                     <div className="truncate text-sm font-medium text-gray-900 dark:text-white">{description}</div>
 
+                    {tx.card && (
+                      <div className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-400 dark:text-zinc-500">
+                        <span className="truncate">
+                          {tx.card.last4 ? `${tx.card.name} ••${tx.card.last4}` : tx.card.name}
+                        </span>
+                        {(tx.installmentCount ?? 1) > 1 && (
+                          <span className="shrink-0 font-medium">{tx.installmentCount}x</span>
+                        )}
+                      </div>
+                    )}
+
                     <div className="lg:hidden mt-0.5 flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400 ">
                       {showActor && (
                         <>

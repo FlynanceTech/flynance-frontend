@@ -7,13 +7,14 @@ import { useTransactionFilter } from '@/stores/useFilter'
 import { Pagination } from '../components/Pagination'
 import { Skeleton } from '../components/skeleton'
 import TransactionDrawer from '../components/TransactionDrawer'
+import CreditCardChargeDrawer from '../components/CreditCardChargeDrawer'
 import { TransactionTable } from '../components/Transaction/transactionTable'
 import { TransactionCardList } from '../components/Transaction/TransactionCardList'
-import { CategoryType, Transaction } from '@/types/Transaction'
+import { Category, CategoryType, Transaction } from '@/types/Transaction'
 import { useTranscation } from '@/hooks/query/useTransaction'
 import { useUserSession } from '@/stores/useUserSession'
 import { useCategories } from '@/hooks/query/useCategory'
-import { TrashIcon } from 'lucide-react'
+import { CreditCard, Pencil, Trash2, TrashIcon } from 'lucide-react'
 import DeleteConfirmModal from '../components/DeleteConfirmModal'
 import { CategorySelect } from '../components/CategorySelect'
 import Select from 'react-select'
@@ -21,8 +22,10 @@ import type { StylesConfig } from 'react-select'
 import type { CategoryResponse } from '@/services/category'
 import PageOnboardingTour, { type PageOnboardingStep } from '@/components/onboarding/PageOnboardingTour'
 import { useAdvisorActing } from '@/stores/useAdvisorActing'
+import { useCreditCardCharges } from '@/hooks/query/useCreditCardCharges'
+import type { CreditCardChargeItem } from '@/services/creditCardCharges'
 import toast from 'react-hot-toast'
-import { ADVISOR_READ_ONLY_FRIENDLY_MESSAGE } from '@/services/transactions'
+import { ADVISOR_READ_ONLY_FRIENDLY_MESSAGE, type PaymentType } from '@/services/transactions'
 import { isAdvisorReadOnlyTransactionAccess } from '@/utils/transactionWriteAccess'
 import { formatCurrency } from '@/utils/formatter'
 import { useLocale, useTranslations } from 'next-intl'
@@ -54,6 +57,7 @@ const typeSelectStyles: StylesConfig<TypeOption, false> = {
 
 const PAGE_SIZE = 10
 const CSV_TIP_AUTO_CLOSE_MS = 8000
+const CASHFLOW_PAYMENT_TYPES = new Set<PaymentType>(['PIX', 'DEBIT_CARD', 'MONEY', 'CASH'])
 function createTransactionsOnboardingSteps(
   tr: (key: string, values?: Record<string, string | number | Date>) => string
 ): ReadonlyArray<PageOnboardingStep> {
@@ -111,15 +115,29 @@ function getKnownActorLabel(params: {
   return null
 }
 
-function isCouplePlanLike(plan: any) {
-  if (!plan) return false
+type PlanLike = {
+  slug?: unknown
+  name?: unknown
+  description?: unknown
+  features?: unknown
+}
+
+function isCouplePlanLike(plan: unknown) {
+  if (!plan || typeof plan !== 'object') return false
+
+  const planData = plan as PlanLike
 
   const text = [
-    plan?.slug,
-    plan?.name,
-    plan?.description,
-    ...(Array.isArray(plan?.features)
-      ? plan.features.flatMap((feature: any) => [feature?.label, feature?.key, feature?.value])
+    planData.slug,
+    planData.name,
+    planData.description,
+    ...(Array.isArray(planData.features)
+      ? planData.features.flatMap((feature) => {
+          const item = feature && typeof feature === 'object'
+            ? (feature as { label?: unknown; key?: unknown; value?: unknown })
+            : null
+          return item ? [item.label, item.key, item.value] : []
+        })
       : []),
   ]
     .filter(Boolean)
@@ -136,6 +154,65 @@ function isCouplePlanLike(plan: any) {
     /\bhouse\b/,
     /\b2\s*(usuarios|pessoas|people|members)\b/,
   ].some((pattern) => pattern.test(text))
+}
+
+function getTransactionsFromQueryData(data: unknown): Transaction[] {
+  if (!data) return []
+  if (Array.isArray(data)) return data as Transaction[]
+  if (typeof data !== 'object') return []
+
+  const transactions = (data as { transactions?: unknown }).transactions
+  return Array.isArray(transactions) ? (transactions as Transaction[]) : []
+}
+
+function getMetaFromQueryData(data: unknown) {
+  if (!data || Array.isArray(data) || typeof data !== 'object') return undefined
+  return (data as { meta?: { total?: number; totalPages?: number } }).meta
+}
+
+function formatChargeCardLabel(charge: CreditCardChargeItem) {
+  if (!charge.creditCard) return '-'
+  return charge.creditCard.last4
+    ? `${charge.creditCard.name} ••${charge.creditCard.last4}`
+    : charge.creditCard.name
+}
+
+function creditCardChargeToTransaction(charge: CreditCardChargeItem): Transaction {
+  const category: Category = charge.category
+    ? {
+        id: charge.category.id,
+        name: charge.category.name,
+        color: charge.category.color,
+        icon: (charge.category.icon || 'circle') as Category['icon'],
+        type: 'EXPENSE',
+      }
+    : {
+        id: '',
+        name: 'Sem categoria',
+        color: '#CBD5E1',
+        icon: 'circle' as Category['icon'],
+        type: 'EXPENSE',
+      }
+
+  return {
+    id: charge.id,
+    userId: charge.userId,
+    createdByUserId: charge.createdByUser?.id ?? charge.userId,
+    createdByUser: charge.createdByUser,
+    user: null,
+    updatedByUser: null,
+    value: charge.amountTotal,
+    description: charge.description,
+    categoryId: charge.category?.id ?? '',
+    category,
+    date: charge.purchaseDate,
+    type: 'EXPENSE',
+    origin: 'DASHBOARD',
+    paymentType: 'CREDIT_CARD',
+    cardId: charge.cardId,
+    card: charge.creditCard,
+    installmentCount: charge.installmentCount,
+  }
 }
 
 export default function TransactionsPage() {
@@ -167,12 +244,17 @@ export default function TransactionsPage() {
   const [selectedAuthorId, setSelectedAuthorId] = useState<string>('ALL')
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [chargeDrawerOpen, setChargeDrawerOpen] = useState(false)
+  const [editingCharge, setEditingCharge] = useState<CreditCardChargeItem | null>(null)
+  const [deletingChargeId, setDeletingChargeId] = useState<string | null>(null)
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [selectAll, setSelectAll] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [deleteConfirmIds, setDeleteConfirmIds] = useState<string[]>([])
   const [deleteConfirmMode, setDeleteConfirmMode] = useState<'single' | 'bulk'>('single')
+
+  const [activeTab, setActiveTab] = useState<'all' | 'credit_card'>('all')
 
   const [sortState, setSortState] = useState<{
     field: 'date' | 'value' | null
@@ -182,7 +264,7 @@ export default function TransactionsPage() {
   const sortField = sortState.field
   const sortDirection = sortState.direction
 
-  // filtros globais (o hook useTranscation já lê do zustand e manda pro backend)
+  // filtros globais (o hook useTranscation ja le do zustand e manda pro backend)
   const selectedCategories = useTransactionFilter((s) => s.appliedSelectedCategories)
   const searchTerm = useTransactionFilter((s) => s.appliedSearchTerm)
   const dateRange = useTransactionFilter((s) => s.appliedDateRange)
@@ -193,20 +275,28 @@ export default function TransactionsPage() {
 
   const typeFilter = useTransactionFilter((s) => s.appliedTypeFilter)
 
-  const { transactionsQuery, deleteMutation, updateMutation, createMutation, importMutation, importPreviewMutation, importConfirmMutation } = useTranscation({
-  userId,
-  page: currentPage,
-  limit: PAGE_SIZE,
-  filters: {
-    userIds: selectedAuthorId !== 'ALL' ? [selectedAuthorId] : undefined,
-  },
-})
+  const { transactionsQuery, deleteMutation, updateMutation, createMutation, importPreviewMutation, importConfirmMutation } = useTranscation({
+    userId,
+    page: currentPage,
+    limit: PAGE_SIZE,
+    filters: {
+      userIds: selectedAuthorId !== 'ALL' ? [selectedAuthorId] : undefined,
+      excludePaymentType: 'CREDIT_CARD',
+    },
+    enabled: activeTab === 'all',
+  })
+
+  const { chargesQuery, deleteChargeMutation } = useCreditCardCharges({
+    page: currentPage,
+    limit: PAGE_SIZE,
+    enabled: activeTab === 'credit_card',
+  })
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [importedTransactions, setImportedTransactions] = useState<Transaction[]>([])
   const [importError, setImportError] = useState<string | null>(null)
   const [isImporting, setIsImporting] = useState(false)
-  const [importFile, setImportFile] = useState<File | null>(null)
+  const [, setImportFile] = useState<File | null>(null)
   const [isPreviewLoading, setIsPreviewLoading] = useState(false)
   const [showCsvTip, setShowCsvTip] = useState(true)
   const [previewOpen, setPreviewOpen] = useState(false)
@@ -266,12 +356,12 @@ export default function TransactionsPage() {
     [houseContext?.members]
   )
 
-  const apiTransactions: Transaction[] = useMemo(() => {
-    const data: any = transactionsQuery.data
-    if (!data) return []
-    if (Array.isArray(data)) return data
-    return Array.isArray(data.transactions) ? data.transactions : []
-  }, [transactionsQuery.data])
+  const apiTransactions = useMemo(
+    () => getTransactionsFromQueryData(transactionsQuery.data),
+    [transactionsQuery.data]
+  )
+
+  const apiCharges = chargesQuery.data?.charges ?? []
 
   const hasCoupleContext =
     houseContext?.status === 'COUPLE' ||
@@ -311,6 +401,17 @@ export default function TransactionsPage() {
       })
       .filter((option): option is AuthorOption => Boolean(option?.value))
 
+    const chargeActorOptions = apiCharges
+      .map((charge) => {
+        const actorId = charge.createdByUser?.id ?? charge.userId ?? ''
+        const actorLabel =
+          charge.createdByUser?.name?.trim() ||
+          charge.createdByUser?.email?.trim() ||
+          null
+        return actorId && actorLabel ? { value: actorId, label: actorLabel } : null
+      })
+      .filter((option): option is AuthorOption => Boolean(option?.value))
+
     const fallbackCurrentUserOption =
       currentUser?.id && !memberOptions.some((option) => option.value === currentUser.id)
         ? [
@@ -326,10 +427,11 @@ export default function TransactionsPage() {
       ...fallbackCurrentUserOption,
       ...memberOptions,
       ...transactionActorOptions,
+      ...chargeActorOptions,
     ].filter(
         (option, index, options) => options.findIndex((item) => item.value === option.value) === index
     )
-  }, [activeHouseMembers, apiTransactions, showActorContext, tr, user?.userData?.user])
+  }, [activeHouseMembers, apiCharges, apiTransactions, showActorContext, tr, user?.userData?.user])
 
   const authorLabelById = useMemo(() => {
     return new Map(authorOptions.map((option) => [option.value, option.label]))
@@ -390,8 +492,8 @@ export default function TransactionsPage() {
       setPreviewMeta(meta)
       setImportFile(file)
       setPreviewOpen(true)
-    } catch (err: any) {
-      setImportError(err?.message ?? 'Erro ao pré-visualizar transacoes.')
+    } catch (err: unknown) {
+      setImportError(err instanceof Error ? err.message : 'Erro ao pré-visualizar transações.')
     } finally {
       setIsPreviewLoading(false)
       e.target.value = ''
@@ -411,8 +513,8 @@ export default function TransactionsPage() {
       setImportedTransactions([])
       setImportFile(null)
       setPreviewOpen(false)
-    } catch (err: any) {
-      setImportError(err?.message ?? 'Erro ao importar transacoes.')
+    } catch (err: unknown) {
+      setImportError(err instanceof Error ? err.message : 'Erro ao importar transacoes.')
     } finally {
       setIsImporting(false)
     }
@@ -492,14 +594,13 @@ export default function TransactionsPage() {
       setBulkCategoryOpen(true)
     }
   }
-const meta = useMemo(() => {
-  const data: any = transactionsQuery.data
-  return data && !Array.isArray(data) ? data.meta : undefined
-}, [transactionsQuery.data])
+  const meta = useMemo(() => getMetaFromQueryData(transactionsQuery.data), [transactionsQuery.data])
 
-  // ✅ Se backend já filtra por categoria/search/days, aqui fica só ordenação local (opcional)
+  // Se backend ja filtra por categoria/search/days, aqui fica so ordenacao local (opcional)
   const displayedTransactions = useMemo(() => {
-    let result = apiTransactions
+    let result = apiTransactions.filter((transaction) =>
+      CASHFLOW_PAYMENT_TYPES.has(transaction.paymentType)
+    )
 
     if (selectedAuthorId !== 'ALL') {
       result = result.filter(
@@ -524,9 +625,72 @@ const meta = useMemo(() => {
     }
 
     return result
-  }, [apiTransactions, sortField, sortDirection])
+  }, [apiTransactions, selectedAuthorId, sortField, sortDirection])
 
-  // ✅ totalPages agora vem do backend
+  const displayedCharges = useMemo(() => {
+    let result = apiCharges
+
+    if (selectedAuthorId !== 'ALL') {
+      result = result.filter(
+        (charge) => (charge.createdByUser?.id ?? charge.userId) === selectedAuthorId
+      )
+    }
+
+    if (sortField) {
+      result = [...result].sort((a, b) => {
+        let compare = 0
+
+        if (sortField === 'date') {
+          compare = new Date(a.purchaseDate).getTime() - new Date(b.purchaseDate).getTime()
+        }
+
+        if (sortField === 'value') {
+          compare = (a.amountTotal ?? 0) - (b.amountTotal ?? 0)
+        }
+
+        return sortDirection === 'asc' ? compare : -compare
+      })
+    }
+
+    return result
+  }, [apiCharges, selectedAuthorId, sortField, sortDirection])
+
+  const displayedCreditCardTransactions = useMemo(
+    () => displayedCharges.map(creditCardChargeToTransaction),
+    [displayedCharges]
+  )
+
+  const chargeById = useMemo(() => {
+    return new Map(apiCharges.map((charge) => [charge.id, charge]))
+  }, [apiCharges])
+
+  const activeDisplayedTransactions =
+    activeTab === 'credit_card' ? displayedCreditCardTransactions : displayedTransactions
+
+  const activeCategoriesToFilter = useMemo<Category[]>(() => {
+    const unique = new Map<string, Category>()
+    if (activeTab === 'credit_card') {
+      displayedCharges.forEach((charge) => {
+        if (!charge.category?.id) return
+        unique.set(charge.category.id, {
+          id: charge.category.id,
+          name: charge.category.name,
+          color: charge.category.color,
+          icon: (charge.category.icon || 'circle') as Category['icon'],
+          type: 'EXPENSE',
+        })
+      })
+    } else {
+      activeDisplayedTransactions.forEach((transaction) => {
+        if (transaction.category?.id) {
+          unique.set(transaction.category.id, transaction.category)
+        }
+      })
+    }
+    return Array.from(unique.values())
+  }, [activeDisplayedTransactions, activeTab, displayedCharges])
+
+  // totalPages agora vem do backend
   const totalPages = meta?.totalPages ?? 1
   const totalAll = meta?.total ?? apiTransactions.length
   const totalFiltered =
@@ -535,6 +699,16 @@ const meta = useMemo(() => {
   const startIndex =
     totalFiltered === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1
   const endIndex = Math.min(currentPage * PAGE_SIZE, totalFiltered)
+
+  const creditCardTotalPages = chargesQuery.data?.meta?.totalPages ?? 1
+  const creditCardTotalAll = chargesQuery.data?.meta?.total ?? apiCharges.length
+  const creditCardTotalFiltered =
+    selectedAuthorId === 'ALL'
+      ? chargesQuery.data?.meta?.total ?? displayedCharges.length
+      : displayedCharges.length
+  const creditCardStartIndex =
+    creditCardTotalFiltered === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1
+  const creditCardEndIndex = Math.min(currentPage * PAGE_SIZE, creditCardTotalFiltered)
 
   const isFiltered =
     selectedCategories.length > 0 ||
@@ -567,7 +741,7 @@ const meta = useMemo(() => {
 
   const toggleSelectAll = () => {
     if (isAdvisorReadOnly) return
-    const currentIds = displayedTransactions.filter(canWriteTransaction).map((item) => item.id)
+    const currentIds = activeDisplayedTransactions.filter(canWriteTransaction).map((item) => item.id)
     setSelectedIds(selectAll ? new Set() : new Set(currentIds))
     setSelectAll(!selectAll)
   }
@@ -579,7 +753,11 @@ const meta = useMemo(() => {
     }
     const idsToDelete = ids ?? Array.from(selectedIds)
     try {
-      await Promise.all(idsToDelete.map((id) => deleteMutation.mutateAsync(id)))
+      if (activeTab === 'credit_card') {
+        await Promise.all(idsToDelete.map((id) => deleteChargeMutation.mutateAsync(id)))
+      } else {
+        await Promise.all(idsToDelete.map((id) => deleteMutation.mutateAsync(id)))
+      }
       setSelectedIds(new Set())
       setSelectAll(false)
     } catch (err) {
@@ -593,7 +771,11 @@ const meta = useMemo(() => {
       return
     }
     try {
-      await deleteMutation.mutateAsync(id)
+      if (activeTab === 'credit_card') {
+        await deleteChargeMutation.mutateAsync(id)
+      } else {
+        await deleteMutation.mutateAsync(id)
+      }
       setSelectedIds((prev) => {
         const updated = new Set(prev)
         updated.delete(id)
@@ -628,14 +810,17 @@ const meta = useMemo(() => {
 
   const isRefreshing =
     transactionsQuery.isFetching ||
+    chargesQuery.isFetching ||
     deleteMutation.isPending ||
+    deleteChargeMutation.isPending ||
     updateMutation.isPending ||
     createMutation.isPending
 
   if (!userId) return <SkeletonSection />
-  if (transactionsQuery.isLoading) return <SkeletonSection />
+  if (activeTab === 'all' && transactionsQuery.isLoading) return <SkeletonSection />
+  if (activeTab === 'credit_card' && chargesQuery.isLoading) return <SkeletonSection />
 
-  if (transactionsQuery.error) {
+  if (activeTab === 'all' && transactionsQuery.error) {
     return (
       <section className="w-full h-full px-4 lg:pl-0 lg:pr-8 flex flex-col gap-4 pt-4 md:pt-0">
         <Header
@@ -970,7 +1155,7 @@ const meta = useMemo(() => {
                 {previewWarnings.length > 0 && (
                   <ul className="mt-2 flex flex-col gap-1 text-[11px] text-amber-700">
                     {previewWarnings.map((warning, idx) => (
-                      <li key={`${warning}-${idx}`}>• {warning}</li>
+                      <li key={`${warning}-${idx}`}>- {warning}</li>
                     ))}
                   </ul>
                 )}
@@ -1105,8 +1290,8 @@ const meta = useMemo(() => {
                               name: nextCategory.name,
                               color: nextCategory.color,
                               icon: nextCategory.icon,
-                              type: nextCategory.type as CategoryType,
-                            } as any,
+                              type: nextCategory.type === 'INCOME' ? 'INCOME' : 'EXPENSE',
+                            },
                             categoryId: nextCategory.id,
                             type: nextCategory.type as CategoryType,
                           }
@@ -1162,9 +1347,9 @@ const meta = useMemo(() => {
               </div>
             ) : null
           }
-          // ⚠️ se você quer filtrar por categorias, o ideal é listar categorias do endpoint de categorias,
+          // se voce quer filtrar por categorias, o ideal e listar categorias do endpoint de categorias,
           // mas mantendo seu comportamento atual:
-          dataToFilter={Array.from(new Set(displayedTransactions.map((t) => t.category))).filter(Boolean) as any}
+          dataToFilter={activeCategoriesToFilter}
         />
       </div>
 
@@ -1208,6 +1393,200 @@ const meta = useMemo(() => {
         </div>
       )}
 
+      <div className="flex items-center justify-between border-b border-gray-200">
+        <div className="flex gap-1">
+          <button
+            type="button"
+            onClick={() => { setActiveTab('all'); setCurrentPage(1); setSelectedIds(new Set()); setSelectAll(false) }}
+            className={`flex items-center gap-1.5 pb-2.5 px-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'all'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Pix / Débito / Dinheiro
+          </button>
+          <button
+            type="button"
+            onClick={() => { setActiveTab('credit_card'); setCurrentPage(1); setSelectedIds(new Set()); setSelectAll(false) }}
+            className={`flex items-center gap-1.5 pb-2.5 px-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'credit_card'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <CreditCard className="w-4 h-4" />
+            Cartão de Crédito
+          </button>
+        </div>
+        {activeTab === 'credit_card' && !isAdvisorReadOnly && (
+          <button
+            type="button"
+            onClick={() => {
+              setEditingCharge(null)
+              setChargeDrawerOpen(true)
+            }}
+            className="mb-1 flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-secondary"
+          >
+            + Nova Compra
+          </button>
+        )}
+      </div>
+
+      {activeTab === 'credit_card' && (
+        <section className="flex flex-col gap-4 lg:gap-0 overflow-auto" data-onboarding-target="transacoes-lista">
+          {chargesQuery.isLoading && (
+            <div className="w-full bg-white rounded-xl border border-gray-200 p-8">
+              <Skeleton type="table" rows={6} />
+            </div>
+          )}
+          {chargesQuery.isError && (
+            <p className="text-sm text-red-400 px-1">Erro ao carregar gastos do cartão.</p>
+          )}
+          {!chargesQuery.isLoading && !chargesQuery.isError && (
+            <>
+              <TransactionTable
+                transactions={displayedCreditCardTransactions}
+                getActorLabel={getTransactionActorLabel}
+                showActor={showActorContext}
+                selectedIds={selectedIds}
+                selectAll={selectAll}
+                canWrite={!isAdvisorReadOnly}
+                canWriteTransaction={canWriteTransaction}
+                onToggleSelectAll={toggleSelectAll}
+                onToggleSelectRow={toggleSelectRow}
+                onEdit={(t) => {
+                  if (isAdvisorReadOnly) {
+                    notifyReadOnly()
+                    return
+                  }
+                  const charge = chargeById.get(t.id)
+                  if (!charge) return
+                  setEditingCharge(charge)
+                  setChargeDrawerOpen(true)
+                }}
+                onDelete={requestDeleteSingle}
+                sortField={sortField}
+                sortDirection={sortDirection}
+                onSortChange={handleSortChange}
+              />
+
+              <TransactionCardList
+                transactions={displayedCreditCardTransactions}
+                getActorLabel={getTransactionActorLabel}
+                showActor={showActorContext}
+                selectedIds={selectedIds}
+                canWrite={!isAdvisorReadOnly}
+                canWriteTransaction={canWriteTransaction}
+                onToggleSelectRow={toggleSelectRow}
+                onEdit={(t) => {
+                  if (isAdvisorReadOnly) {
+                    notifyReadOnly()
+                    return
+                  }
+                  const charge = chargeById.get(t.id)
+                  if (!charge) return
+                  setEditingCharge(charge)
+                  setChargeDrawerOpen(true)
+                }}
+                onDelete={handleDeleteSingle}
+              />
+
+              <div className="flex items-center justify-between lg:flex-row flex-col gap-4" data-onboarding-target="transacoes-resumo">
+                <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+                  <span className="text-sm text-muted-foreground">
+                    {creditCardTotalFiltered > 0 ? (
+                      <>
+                        {tr('showingRange', {
+                          start: creditCardStartIndex,
+                          end: creditCardEndIndex,
+                          total: creditCardTotalFiltered,
+                        })}
+                      </>
+                    ) : (
+                      <>Nenhum gasto de cartão encontrado.</>
+                    )}
+                    {isFiltered && creditCardTotalAll > 0 && (
+                      <>
+                        {' '}
+                        {tr('ofTotal', { total: creditCardTotalAll })}
+                      </>
+                    )}
+                  </span>
+                </div>
+
+                {!isAdvisorReadOnly && selectedIds.size > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    <div className="flex justify-end">
+                      <button
+                        onClick={requestDeleteSelected}
+                        className="px-4 py-2 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+                      >
+                        {tr('deleteSelection', { count: selectedIds.size })}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {creditCardTotalPages > 1 && (
+                  <div className="lg:mt-4 flex justify-center pb-24 lg:pb-0">
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={creditCardTotalPages}
+                      onChange={(page) => setCurrentPage(page)}
+                    />
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          <CreditCardChargeDrawer
+            open={chargeDrawerOpen}
+            initialData={editingCharge ?? undefined}
+            onClose={() => {
+              setChargeDrawerOpen(false)
+              setEditingCharge(null)
+            }}
+          />
+
+          <DeleteConfirmModal
+            isOpen={deleteConfirmOpen}
+            onClose={() => {
+              setDeleteConfirmOpen(false)
+              setDeleteConfirmIds([])
+            }}
+            onConfirm={() => {
+              if (deleteConfirmMode === 'bulk') {
+                handleDeleteSelected(deleteConfirmIds)
+              } else if (deleteConfirmIds[0]) {
+                handleDeleteSingle(deleteConfirmIds[0])
+              }
+            }}
+            title={deleteConfirmMode === 'bulk' ? tr('deleteBulkTitle') : tr('deleteSingleTitle')}
+            description={
+              deleteConfirmMode === 'bulk'
+                ? tr('deleteBulkDescription', { count: deleteConfirmIds.length })
+                : tr('deleteSingleDescription')
+            }
+            confirmLabel={deleteConfirmMode === 'bulk' ? tr('deleteBulkConfirm') : tr('deleteSingleConfirm')}
+          />
+
+          {selectedTransaction && (
+            <TransactionDrawer
+              open={drawerOpen}
+              onClose={() => {
+                setSelectedTransaction(null)
+                setDrawerOpen(false)
+              }}
+              initialData={selectedTransaction}
+              readOnly={isAdvisorReadOnly}
+            />
+          )}
+        </section>
+      )}
+
+      {activeTab === 'all' && (
       <section className="flex flex-col gap-4 lg:gap-0 overflow-auto" data-onboarding-target="transacoes-lista">
         <TransactionTable
           transactions={displayedTransactions}
@@ -1341,11 +1720,8 @@ const meta = useMemo(() => {
           />
         )}
       </section>
+      )}
     </section>
   )
 }
-
-
-
-
 

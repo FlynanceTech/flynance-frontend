@@ -23,6 +23,7 @@ export interface TransactionDTO {
   origin: 'DASHBOARD' | 'TEXT' | 'IMAGE' | 'AUDIO' | 'CHATBOT'
   paymentType: PaymentType
   cardId?: string
+  installmentCount?: number
 }
 
 const ADVISOR_READ_ONLY_BACKEND_MESSAGE = 'advisor has read-only permission for this client'
@@ -60,6 +61,8 @@ export type TransactionFilters = {
   categoryIds?: string[] // no request vira "a,b,c"
   userIds?: string[]
   type?: 'ALL' | 'INCOME' | 'EXPENSE'
+  paymentType?: PaymentType
+  excludePaymentType?: PaymentType
 }
 
 export type GetTransactionParams = {
@@ -129,6 +132,14 @@ export async function getTransaction({
 
     if (filters.type && filters.type !== 'ALL') {
       params.set('type', filters.type)
+    }
+
+    if (filters.paymentType) {
+      params.set('paymentType', filters.paymentType)
+    }
+
+    if (filters.excludePaymentType) {
+      params.set('excludePaymentType', filters.excludePaymentType)
     }
 
   }
