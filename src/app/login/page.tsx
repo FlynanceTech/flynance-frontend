@@ -47,6 +47,11 @@ function LoginContent() {
   const rawNext = searchParams.get('next')
   const nextRoute =
     rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/dashboard'
+  const reason = searchParams.get('reason')
+  const checkoutLoginNotice =
+    reason === 'checkout_existing_account'
+      ? 'Este e-mail já possui uma conta. Faça login para finalizar sua assinatura.'
+      : ''
 
   const [method, setMethod] = useState<LoginMethod>('email')
   const [identifier, setIdentifier] = useState('')
@@ -215,6 +220,11 @@ function LoginContent() {
                   <h2 className="font-semibold text-xl lg:text-2xl text-primary mt-4 hidden lg:block">
                     {t('signInWith')}
                   </h2>
+                  {checkoutLoginNotice && (
+                    <p className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
+                      {checkoutLoginNotice}
+                    </p>
+                  )}
                   <div className="flex gap-4 items-center w-full">
                     <button
                       type="button"
