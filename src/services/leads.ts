@@ -65,6 +65,24 @@ export async function captureLead(input: CaptureLeadInput): Promise<CaptureLeadR
   }
 }
 
+export function isExistingAccountCheckoutError(error: unknown): boolean {
+  if (!axios.isAxiosError(error)) return false
+
+  const status = error.response?.status
+  const data = error.response?.data ?? {}
+  const code = String(data?.code ?? '').toUpperCase()
+  const message = String(data?.message ?? data?.error ?? error.message ?? '').toLowerCase()
+
+  return (
+    status === 409 &&
+    (code === 'CHECKOUT_ACCOUNT_EXISTS' ||
+      message.includes('faça login') ||
+      message.includes('faca login') ||
+      message.includes('já possui uma conta') ||
+      message.includes('ja possui uma conta'))
+  )
+}
+
 export async function updateLeadBilling(input: LeadBillingInput): Promise<void> {
   const token = readBillingCheckoutToken()
   if (!token) throw new BillingCheckoutTokenError()
