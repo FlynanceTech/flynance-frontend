@@ -22,8 +22,6 @@ import {
   isSidebarPathActive,
 } from './sidebar.config'
 
-const MAX_OPEN_SECTIONS = 3
-
 type SidebarProps = {
   collapsed?: boolean
   onCollapsedChange?: (next: boolean) => void
@@ -69,7 +67,6 @@ export default function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) 
   const [internalCollapsed, setInternalCollapsed] = useState(false)
   const [viewportHeight, setViewportHeight] = useState(1080)
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({})
-  const [sectionOpenOrder, setSectionOpenOrder] = useState<string[]>([])
   const sectionsCollapsed = collapsed ?? internalCollapsed
 
   const setSectionsCollapsed = (next: boolean | ((current: boolean) => boolean)) => {
@@ -127,19 +124,12 @@ export default function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) 
       return acc
     }, [])
 
-    while (nextOpenIds.length > MAX_OPEN_SECTIONS) {
-      const removableIndex = nextOpenIds.findIndex((id) => !activeSectionIds.has(id))
-      if (removableIndex === -1) break
-      nextOpenIds.splice(removableIndex, 1)
-    }
-
     const nextState = sections.reduce<Record<string, boolean>>((acc, section) => {
       acc[section.id] = nextOpenIds.includes(section.id)
       return acc
     }, {})
 
     setOpenSections(nextState)
-    setSectionOpenOrder(nextOpenIds)
   }, [activeSectionIds, sections])
 
   useEffect(() => {
@@ -152,69 +142,23 @@ export default function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) 
     return () => window.removeEventListener('resize', syncViewportHeight)
   }, [])
 
-  const openSectionWithLimit = (sectionId: string) => {
-    setOpenSections((current) => {
-      const currentOpenIds = Object.entries(current)
-        .filter(([, isOpen]) => isOpen)
-        .map(([id]) => id)
-
-      const nextOrderBase = sectionOpenOrder.filter(
-        (id) => currentOpenIds.includes(id) && id !== sectionId
-      )
-      const nextOrder = [...nextOrderBase, sectionId]
-      const nextState = { ...current, [sectionId]: true }
-
-      while (nextOrder.length > MAX_OPEN_SECTIONS) {
-        const closableId = nextOrder.find((id) => !activeSectionIds.has(id) && id !== sectionId)
-        if (!closableId) break
-        nextState[closableId] = false
-        nextOrder.splice(nextOrder.indexOf(closableId), 1)
-      }
-
-      setSectionOpenOrder(nextOrder)
-      return nextState
-    })
+  const openSection = (sectionId: string) => {
+    setOpenSections((current) => ({
+      ...current,
+      [sectionId]: true,
+    }))
   }
 
   const handleToggleSection = (sectionId: string) => {
-    const isActiveSection = activeSectionIds.has(sectionId)
-
-    setOpenSections((current) => {
-      const isCurrentlyOpen = current[sectionId] !== false
-
-      if (isCurrentlyOpen) {
-        if (isActiveSection) return current
-
-        setSectionOpenOrder((order) => order.filter((id) => id !== sectionId))
-        return {
-          ...current,
-          [sectionId]: false,
-        }
-      }
-
-      const currentOpenIds = Object.entries(current)
-        .filter(([, isOpen]) => isOpen)
-        .map(([id]) => id)
-
-      const nextOrderBase = sectionOpenOrder.filter((id) => currentOpenIds.includes(id) && id !== sectionId)
-      const nextOrder = [...nextOrderBase, sectionId]
-      const nextState = { ...current, [sectionId]: true }
-
-      while (nextOrder.length > MAX_OPEN_SECTIONS) {
-        const closableId = nextOrder.find((id) => !activeSectionIds.has(id))
-        if (!closableId) break
-        nextState[closableId] = false
-        nextOrder.splice(nextOrder.indexOf(closableId), 1)
-      }
-
-      setSectionOpenOrder(nextOrder)
-      return nextState
-    })
+    setOpenSections((current) => ({
+      ...current,
+      [sectionId]: current[sectionId] !== true,
+    }))
   }
 
   const handleCollapsedSectionClick = (sectionId: string) => {
     setSectionsCollapsed(false)
-    openSectionWithLimit(sectionId)
+    openSection(sectionId)
   }
 
   const handleLogout = async () => {
@@ -265,7 +209,7 @@ export default function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) 
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col justify-between pt-4">
-          <nav className="min-h-0 flex-1 overflow-hidden">
+          <nav className="min-h-0 flex-1 overflow-y-auto">
             <div className="space-y-4">
               {sections.map((section) => {
                 const isOpen =
