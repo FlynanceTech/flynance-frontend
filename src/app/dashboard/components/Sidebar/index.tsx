@@ -4,7 +4,7 @@ import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
-import { PanelLeftClose, PanelLeftOpen, Moon, Sun } from 'lucide-react'
+import { LogOut, PanelLeftClose, PanelLeftOpen, Moon, Sun } from 'lucide-react'
 
 import logoFlynance from '../../../../../assets/Logo/PNG/Logo Fly principal colorida.png'
 import logoFlynanceWhite from '../../../../../assets/Logo/PNG/Logo Fly principal branca.png'
@@ -92,8 +92,8 @@ export default function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) 
       education: t('education'),
       clients: t('clients'),
       profile: t('profile'),
+      notifications: t('notifications'),
       admin: t('admin'),
-      logout: t('logout'),
     }), {
       isAdmin,
       canAccessAdvisor,
@@ -151,9 +151,6 @@ export default function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) 
     window.addEventListener('resize', syncViewportHeight)
     return () => window.removeEventListener('resize', syncViewportHeight)
   }, [])
-
-  const navigationSections = sections.filter((section) => section.id !== 'actions')
-  const actionSection = sections.find((section) => section.id === 'actions') ?? null
 
   const openSectionWithLimit = (sectionId: string) => {
     setOpenSections((current) => {
@@ -270,7 +267,7 @@ export default function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) 
         <div className="flex min-h-0 flex-1 flex-col justify-between pt-4">
           <nav className="min-h-0 flex-1 overflow-hidden">
             <div className="space-y-4">
-              {navigationSections.map((section) => {
+              {sections.map((section) => {
                 const isOpen =
                   !sectionsCollapsed &&
                   !forcedCollapsedSections.has(section.id) &&
@@ -304,12 +301,6 @@ export default function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) 
 
           <footer className="mt-4 shrink-0 border-t border-slate-200 pt-4 dark:border-white/10">
             <div className="space-y-3">
-              <div className={clsx('px-1', sectionsCollapsed && 'sr-only')}>
-                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-zinc-500">
-                  Tema
-                </span>
-              </div>
-
               <button
                 type="button"
                 onClick={() => {
@@ -344,27 +335,23 @@ export default function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) 
                 ) : null}
               </button>
 
-              {actionSection ? (
-                <SidebarSection
-                  title={actionSection.title}
-                  icon={actionSection.icon}
-                  collapsible={false}
-                  open
-                  collapsed={sectionsCollapsed}
-                  items={actionSection.items.map((item) => ({
-                    ...item,
-                    active: false,
-                    onClick: () => {
-                      if (item.action === 'logout') {
-                        void handleLogout()
-                      }
-                    },
-                  }))}
-                  onCollapsedClick={() => {
+              <div className="flex justify-center pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
                     void handleLogout()
                   }}
-                />
-              ) : null}
+                  className={clsx(
+                    'flex items-center justify-center gap-2 rounded-xl text-sm text-[#333C4D] transition hover:bg-red-50 hover:text-red-500 dark:text-white dark:hover:bg-red-500/10 dark:hover:text-red-400',
+                    sectionsCollapsed ? 'h-11 w-11' : 'px-4 py-2'
+                  )}
+                  aria-label={t('logout')}
+                  title={t('logout')}
+                >
+                  <LogOut size={18} />
+                  {!sectionsCollapsed ? <span className="font-medium">{t('logout')}</span> : null}
+                </button>
+              </div>
             </div>
           </footer>
         </div>

@@ -9,6 +9,7 @@ import UserPreferencesCard from '@/components/perfil/UserPreferencesCard'
 import { useUserSession } from '@/stores/useUserSession'
 import { LogOut } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 import PageOnboardingTour, { type PageOnboardingStep } from '@/components/onboarding/PageOnboardingTour'
 import { useTranslations } from 'next-intl'
 
@@ -16,6 +17,28 @@ export default function ProfilePage() {
   const router = useRouter()
   const t = useTranslations('profile')
   const { logout } = useUserSession()
+
+  useEffect(() => {
+    const scrollToHashTarget = (attempt = 0) => {
+      const targetId = window.location.hash.replace('#', '')
+      if (!targetId) return
+
+      const element = document.getElementById(targetId)
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        return
+      }
+      if (attempt < 10) {
+        window.setTimeout(() => scrollToHashTarget(attempt + 1), 100)
+      }
+    }
+
+    const handleHashChange = () => scrollToHashTarget()
+
+    scrollToHashTarget()
+    window.addEventListener('hashchange', handleHashChange)
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [])
 
   const profileOnboardingSteps: ReadonlyArray<PageOnboardingStep> = [
     {
