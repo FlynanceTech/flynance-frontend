@@ -1,19 +1,20 @@
 'use client'
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, Info, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CreditCard, Info, X } from 'lucide-react'
 
 import Header from './components/Header/overview'
-import { SpendingControl } from './components/SpendingControl'
 import ComparisonChart from './components/ComparisonChart'
 import CategorySpendingDistribution from './components/CategorySpendingDistribution'
 import InstallPrompt from '@/components/cadastro/InstallPrompt/InstallPrompt'
+import SpendingControl from './components/SpendingControl'
 
 import FinanceStatus from './components/FincanceStatus'
 
 import { useUserSession } from '@/stores/useUserSession'
 import { useTransactionFilter } from '@/stores/useFilter'
 import { useTranscation } from '@/hooks/query/useTransaction'
+import { useCardMutations } from '@/hooks/query/useCreditCards'
 import { getBrowserTimezone, toFutureRangeFromDays } from '@/utils/transactionPeriod'
 import { useLocale, useTranslations } from 'next-intl'
 
@@ -124,6 +125,69 @@ function computeFinanceStatusFromTransactions(transactions: any[]) {
       totalBalance: balance,
     },
   }
+}
+
+
+function InvoiceDueDateReminder() {
+  const { cardQuery } = useCardMutations()
+  const cards = (cardQuery.data ?? []).filter((c) => c.isActive !== false)
+
+  if (cardQuery.isLoading) {
+    return (
+      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm animate-pulse">
+        <div className="h-4 w-36 bg-gray-200 rounded mb-3" />
+        <div className="space-y-2">
+          {[1, 2].map((i) => <div key={i} className="h-5 bg-gray-100 rounded" />)}
+        </div>
+      </div>
+    )
+  }
+
+  if (cards.length === 0) return null
+
+  const today = new Date()
+
+  const reminders = cards
+    .map((card) => {
+      const dueDay = Number(card.dueDay || 1)
+      const year = today.getFullYear()
+      const month = today.getMonth()
+      const day = today.getDate()
+      const nextDue = day < dueDay
+        ? new Date(year, month, dueDay)
+        : new Date(year, month + 1, dueDay)
+      const diffDays = Math.ceil((nextDue.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+      return { card, nextDue, diffDays }
+    })
+    .sort((a, b) => a.diffDays - b.diffDays)
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="flex items-center gap-2 mb-3">
+        <CreditCard className="h-4 w-4 text-gray-500" />
+        <h3 className="text-sm font-semibold text-gray-700">Vencimento de faturas</h3>
+      </div>
+      <div className="flex flex-col gap-2.5">
+        {reminders.map(({ card, nextDue, diffDays }) => (
+          <div key={card.id} className="flex items-center justify-between gap-2 text-sm">
+            <span className="text-gray-700 truncate font-medium">
+              {card.name}{card.last4 ? ` •• ${card.last4}` : ''}
+            </span>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-gray-500 text-xs">
+                {nextDue.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+              </span>
+              {diffDays <= 5 && (
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${diffDays <= 1 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                  {diffDays === 0 ? 'Hoje' : diffDays === 1 ? 'Amanhã' : `${diffDays}d`}
+                </span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 export default function Dashboard() {
@@ -417,21 +481,19 @@ export default function Dashboard() {
           />
         </div>
 
-        <section className="grid md:grid-cols-4 grid-cols-1 gap-4 lg:gap-4 w-full">
-          <div className="md:col-span-4 flex gap-4 flex-col w-full">
-            <div className="flex flex-col lg:grid lg:grid-cols-5 lg:gap-4">
-              <div className="lg:col-span-3" data-onboarding-target="comparison-chart">
-                <ComparisonChart transactions={transactions} isLoading={isTxLoading} periodTag={periodLabel} />
-              </div>
-
-              <div className="lg:col-span-2 h-full" data-onboarding-target="spending-control">
-                <SpendingControl />
-              </div>
+        <section className="flex flex-col gap-4 w-full">
+          <div className="flex flex-col lg:grid lg:grid-cols-5 gap-4">
+            <div className="lg:col-span-3" data-onboarding-target="comparison-chart">
+              <ComparisonChart transactions={transactions} isLoading={isTxLoading} periodTag={periodLabel} />
             </div>
-
-            <div className="flex flex-col lg:flex-row gap-4 h-full" data-onboarding-target="category-distribution">
-              <CategorySpendingDistribution transactions={transactions} isLoading={isTxLoading} periodTag={periodLabel} />
+            <div className="lg:col-span-2 flex flex-col gap-4" data-onboarding-target="spending-control">
+              <SpendingControl />
+              <InvoiceDueDateReminder />
             </div>
+          </div>
+
+          <div data-onboarding-target="category-distribution">
+            <CategorySpendingDistribution transactions={transactions} isLoading={isTxLoading} periodTag={periodLabel} />
           </div>
         </section>
 

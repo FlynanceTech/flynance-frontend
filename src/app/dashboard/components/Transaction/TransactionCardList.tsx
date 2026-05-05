@@ -107,12 +107,22 @@ export function TransactionCardList({
                     }).format(new Date(item.date))}
                   </span>
 
-                  <span className="rounded-full border border-slate-200 bg-white px-2 py-1 text-slate-700">
-                    {paymentLabel(item.paymentType)}
-                  </span>
-                  <span className="rounded-full border border-slate-200 bg-white px-2 py-1 text-slate-700">
-                    {originLabel(item.origin)}
-                  </span>
+                  {item.card ? (
+                    <span className="rounded-full border border-indigo-100 bg-indigo-50 px-2 py-1 text-indigo-700">
+                      {item.card.last4 ? `${item.card.name} ••${item.card.last4}` : item.card.name}
+                      {(item.installmentCount ?? 1) > 1 && ` · ${item.installmentCount}x`}
+                    </span>
+                  ) : (
+                    <span className="rounded-full border border-slate-200 bg-white px-2 py-1 text-slate-700">
+                      {paymentLabel(item.paymentType)}
+                    </span>
+                  )}
+
+                  {!item.card && (
+                    <span className="rounded-full border border-slate-200 bg-white px-2 py-1 text-slate-700">
+                      {originLabel(item.origin)}
+                    </span>
+                  )}
                   {showActor && (
                     <span className="rounded-full border border-slate-200 bg-white px-2 py-1 text-slate-700">
                       {actorLabel}

@@ -58,25 +58,31 @@ export default function SidebarSection({
 
   return (
     <section className="space-y-2">
-      <div className="flex items-center justify-between gap-2 px-1">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-zinc-500">
-          {title}
-        </span>
-        {collapsible ? (
-          <button
-            type="button"
-            onClick={onToggle}
-            aria-expanded={open}
-            aria-label={open ? `Recolher ${title}` : `Expandir ${title}`}
-            className="inline-flex h-6 w-6 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:text-zinc-500 dark:hover:bg-white/6 dark:hover:text-zinc-200"
-          >
+      {collapsible ? (
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          aria-label={open ? `Recolher ${title}` : `Expandir ${title}`}
+          className="flex w-full items-center justify-between gap-2 rounded-md px-1 py-1 text-left transition hover:bg-slate-100/70 dark:hover:bg-white/6"
+        >
+          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-zinc-500">
+            {title}
+          </span>
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full text-slate-400 dark:text-zinc-500">
             <ChevronDown
               size={14}
               className={clsx('transition-transform duration-200', open ? 'rotate-0' : '-rotate-90')}
             />
-          </button>
-        ) : null}
-      </div>
+          </span>
+        </button>
+      ) : (
+        <div className="flex items-center justify-between gap-2 px-1">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-zinc-500">
+            {title}
+          </span>
+        </div>
+      )}
 
       <div
         className={clsx(
@@ -92,7 +98,6 @@ export default function SidebarSection({
                 label={item.label}
                 icon={item.icon}
                 active={item.active}
-                isAction={item.action === 'logout'}
                 onClick={item.onClick}
               />
             ))}

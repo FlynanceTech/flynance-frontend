@@ -492,7 +492,7 @@ export default function UserPreferencesCard() {
           )}
         </div>
 
-        <div className="rounded-xl p-3">
+        <div id="notifications" className="rounded-xl p-3 scroll-mt-4">
           <div className="flex items-center justify-between gap-3">
             <p className="inline-flex items-center gap-2 text-sm font-medium text-foreground">
               <Bell className="h-4 w-4" /> {t('notifications.title')}

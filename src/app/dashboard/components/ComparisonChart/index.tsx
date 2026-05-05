@@ -134,7 +134,7 @@ export default function ComparisonChart({ transactions = [], isLoading = false, 
   }
 
   return (
-    <div ref={containerRef} className="relative h-full w-full rounded-xl border border-gray-200 bg-white p-4 shadow">
+    <div ref={containerRef} className="relative w-full h-full rounded-xl border border-gray-200 bg-white p-4 shadow">
       <div className="flex items-center justify-between lg:px-4 lg:pt-4">
         <div className="grid grid-cols-3 w-full items-start gap-2 lg:flex lg:flex-row lg:justify-between">
           <div className="flex w-full flex-col col-span-2">

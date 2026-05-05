@@ -18,6 +18,7 @@ import { useAdvisorActing } from '@/stores/useAdvisorActing'
 import { getBrowserTimezone, toFutureRangeFromDays } from '@/utils/transactionPeriod'
 import toast from 'react-hot-toast'
 import { useFinancialScope } from '@/hooks/useFinancialScope'
+import type { Transaction } from '@/types/Transaction'
 
 type Primitive = string | number | boolean
 type FilterValue = Primitive | Primitive[] | undefined
@@ -28,6 +29,7 @@ type UseTransactionParams = {
   limit?: number
   filters?: Record<string, FilterValue>
   useGlobalFilters?: boolean
+  enabled?: boolean
 }
 
 type ImportPayload = {
@@ -39,7 +41,7 @@ type ImportConfirmPayload = {
   userId: string
   payload: {
     mode: 'import'
-    transactions: any[]
+    transactions: Transaction[]
   }
 }
 
@@ -113,7 +115,7 @@ export function useTranscation(params: UseTransactionParams) {
         filters: mergedFilters,
         scope,
       }),
-    enabled: Boolean(params.userId || activeClientId),
+    enabled: (params.enabled ?? true) && Boolean(params.userId || activeClientId),
     staleTime: 30_000,
     retry: 1,
   })
