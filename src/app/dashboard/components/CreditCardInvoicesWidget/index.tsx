@@ -94,7 +94,7 @@ export default function CreditCardInvoicesWidget() {
         <div>
           <h2 className="text-lg font-bold text-gray-800">Faturas dos cartões</h2>
           <p className="mt-1 text-xs font-medium text-gray-500">
-            Valor atual das faturas cadastradas
+            Valor atual das faturas dos seus cartões
           </p>
         </div>
         <button
@@ -111,8 +111,8 @@ export default function CreditCardInvoicesWidget() {
       {cards.length === 0 ? (
         <div className="flex min-h-[210px] flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-slate-50/70 px-5 py-8 text-center">
           <WalletCards className="mb-3 h-8 w-8 text-gray-400" />
-          <p className="text-sm font-semibold text-gray-700">Nenhum cartão cadastrado.</p>
-          <p className="mt-1 text-xs text-gray-500">Cadastre cartões para acompanhar as faturas aqui.</p>
+          <p className="text-sm font-semibold text-gray-700">Nenhum cartão nomeado.</p>
+          <p className="mt-1 text-xs text-gray-500">Nomeie cartões para acompanhar as faturas aqui.</p>
           <button
             type="button"
             onClick={() => setDrawerOpen(true)}
