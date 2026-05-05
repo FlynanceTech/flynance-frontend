@@ -406,7 +406,7 @@ export default function TransactionDrawer({
                           onChange={(opt) => field.onChange(opt?.value ?? '')}
                           isSearchable={false}
                           placeholder="Selecione um cartão"
-                          noOptionsMessage={() => 'Nenhum cartão cadastrado'}
+                          noOptionsMessage={() => 'Nenhum cartão nomeado'}
                           menuPortalTarget={typeof window !== 'undefined' ? document.body : null}
                           styles={cardSelectStyles}
                         />
