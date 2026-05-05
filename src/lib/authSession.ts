@@ -35,6 +35,12 @@ export function persistAuthToken(token: string): void {
   window.localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, value)
 }
 
+export function readPersistedAuthToken(): string | null {
+  if (typeof window === 'undefined') return null
+  const token = String(window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) ?? '').trim()
+  return token || null
+}
+
 export function clearPersistedAuthToken(): void {
   if (typeof window === 'undefined') return
   window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY)
@@ -158,8 +164,24 @@ export function readBillingCheckoutSession(): BillingCheckoutSession | null {
   }
 }
 
+function readBillingCheckoutTokenFromUrl(): string | null {
+  if (typeof window === 'undefined') return null
+
+  const params = new URLSearchParams(window.location.search)
+  const token = String(
+    params.get('billingCheckoutToken') ??
+      params.get('checkoutToken') ??
+      ''
+  ).trim()
+
+  if (!token) return null
+
+  persistBillingCheckoutToken(token)
+  return token
+}
+
 export function readBillingCheckoutToken(): string | null {
-  return readBillingCheckoutSession()?.token ?? null
+  return readBillingCheckoutSession()?.token ?? readBillingCheckoutTokenFromUrl()
 }
 
 export function syncBillingCheckoutSessionIdentity(identity: BillingCheckoutIdentity): void {

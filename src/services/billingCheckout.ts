@@ -1,6 +1,7 @@
 import axios from 'axios'
 import {
   clearBillingCheckoutSession,
+  readPersistedAuthToken,
   readBillingCheckoutToken,
 } from '@/lib/authSession'
 
@@ -31,6 +32,32 @@ function requireBillingCheckoutToken(): string {
   }
 
   return billingCheckoutToken
+}
+
+function authFromAppToken(appToken: string) {
+  return {
+    headers: { Authorization: `Bearer ${appToken}` },
+    billingCheckoutToken: null as string | null,
+  }
+}
+
+function readBillingRequestAuth(preferAppToken = false) {
+  const appToken = readPersistedAuthToken()
+  if (preferAppToken && appToken) {
+    return authFromAppToken(appToken)
+  }
+
+  const billingCheckoutToken = readBillingCheckoutToken()
+  if (billingCheckoutToken) {
+    return {
+      headers: getBillingCheckoutHeaders(billingCheckoutToken),
+      billingCheckoutToken,
+    }
+  }
+
+  if (appToken) return authFromAppToken(appToken)
+
+  throw new BillingCheckoutTokenError()
 }
 
 function isBillingCheckoutTokenApiError(error: unknown): boolean {
@@ -79,15 +106,16 @@ export async function createBillingCheckoutSetupIntent(userId?: string): Promise
   clientSecret: string
   customerId?: string | null
 }> {
-  const billingCheckoutToken = requireBillingCheckoutToken()
-  const body: Record<string, unknown> = { billingCheckoutToken }
+  const auth = readBillingRequestAuth(Boolean(userId))
+  const body: Record<string, unknown> = {}
+  if (auth.billingCheckoutToken) body.billingCheckoutToken = auth.billingCheckoutToken
   if (userId) body.userId = userId
 
   const response = await billingCheckoutApi.post(
     '/billing/setup-intent',
     body,
     {
-      headers: getBillingCheckoutHeaders(billingCheckoutToken),
+      headers: auth.headers,
     }
   )
 
@@ -111,16 +139,16 @@ export async function createBillingCheckoutSetupIntent(userId?: string): Promise
 export async function createBillingCheckoutSubscription(
   payload: BillingCheckoutSubscriptionPayload
 ): Promise<void> {
-  const billingCheckoutToken = requireBillingCheckoutToken()
+  const auth = readBillingRequestAuth(Boolean(payload.userId))
 
   await billingCheckoutApi.post(
     '/billing/subscription',
     {
       ...payload,
-      billingCheckoutToken,
+      ...(auth.billingCheckoutToken ? { billingCheckoutToken: auth.billingCheckoutToken } : {}),
     },
     {
-      headers: getBillingCheckoutHeaders(billingCheckoutToken),
+      headers: auth.headers,
     }
   )
 }
