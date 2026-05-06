@@ -153,4 +153,32 @@ export async function createBillingCheckoutSubscription(
   )
 }
 
+export type BillingCheckoutProfileInput = {
+  name?: string
+  phone?: string
+  cpfCnpj?: string
+}
+
+/**
+ * Atualiza perfil do usuário/lead via PUT /billing/checkout/profile.
+ * Usa billingCheckoutToken (checkout público) ou JWT (usuário logado).
+ * Nunca envia email — troca de email exige fluxo autenticado dedicado.
+ */
+export async function updateBillingCheckoutProfile(
+  data: BillingCheckoutProfileInput,
+  userId?: string
+): Promise<void> {
+  const auth = readBillingRequestAuth(Boolean(userId))
+
+  const body: Record<string, unknown> = {}
+  if (data.name !== undefined) body.name = data.name
+  if (data.phone !== undefined) body.phone = data.phone
+  if (data.cpfCnpj !== undefined) body.cpfCnpj = data.cpfCnpj
+  if (auth.billingCheckoutToken) body.billingCheckoutToken = auth.billingCheckoutToken
+
+  await billingCheckoutApi.put('/billing/checkout/profile', body, {
+    headers: auth.headers,
+  })
+}
+
 export { billingCheckoutApi }
