@@ -317,6 +317,11 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         currentUser: 'Voce',
         unknownMember: 'Membro nao identificado',
       },
+      cardFilter: {
+        label: 'Filtrar por cartao',
+        all: 'Todos os cartoes',
+        empty: 'Nenhum cartao ativo',
+      },
     },
     transactionTable: {
       selectAllAria: 'Selecionar todas as transacoes desta pagina',
@@ -2675,6 +2680,11 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         currentUser: 'You',
         unknownMember: 'Unknown member',
       },
+      cardFilter: {
+        label: 'Filter by card',
+        all: 'All cards',
+        empty: 'No active card',
+      },
     },
     transactionTable: {
       selectAllAria: 'Select all transactions on this page',
@@ -5021,6 +5031,11 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         all: 'Todos de la casa',
         currentUser: 'Tu',
         unknownMember: 'Miembro no identificado',
+      },
+      cardFilter: {
+        label: 'Filtrar por tarjeta',
+        all: 'Todas las tarjetas',
+        empty: 'Ninguna tarjeta activa',
       },
     },
     transactionTable: {

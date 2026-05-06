@@ -161,13 +161,19 @@ export default function CreditCardManagerDrawer({
   }
 
   const handleDeleteCard = async (cardId: string) => {
-    const confirmed = window.confirm('Excluir este cartão? Esta ação depende das permissões do backend.')
+    const confirmed = window.confirm(
+      'Excluir este cartão? Se ele já tiver faturas, gastos ou parcelas vinculadas, será arquivado para manter o histórico financeiro.'
+    )
     if (!confirmed) return
 
     try {
-      await deleteCardMutation.mutateAsync(cardId)
+      const result = await deleteCardMutation.mutateAsync(cardId)
       onCardRemoved(cardId)
-      toast.success('Cartão excluído')
+      toast.success(
+        result.action === 'archived'
+          ? 'Cartão arquivado porque já possui histórico financeiro'
+          : 'Cartão excluído'
+      )
     } catch (error) {
       toast.error(getErrorText(error, 'Erro ao excluir cartão'))
     }
