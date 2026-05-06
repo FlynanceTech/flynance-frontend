@@ -26,11 +26,9 @@ import { captureLead, isExistingAccountCheckoutError, updateLeadBilling } from "
 import { useSignupStore } from "@/stores/useSignupStore";
 import { useUserSession } from "@/stores/useUserSession";
 
-import { UserDTO } from "@/types/user";
 import { PlansResponse } from "@/types/plan";
 
-import api from "@/lib/axios"; // axiosInstance com token
-import { getUsers } from "@/services/users"; // fallback (lista)
+import api from "@/lib/axios";
 
 // Stripe
 import { loadStripe } from "@stripe/stripe-js";
@@ -128,22 +126,6 @@ function getErrorMessage(err: unknown): string {
   }
   return "Erro inesperado.";
 }
-
-const isUserNotFoundError = (err: unknown) => {
-  if (!axios.isAxiosError(err)) return false;
-
-  const status = err.response?.status;
-  const msg = (err.response?.data?.message ?? err.message ?? "").toString().toLowerCase();
-
-  if (status === 404 && msg.includes("user")) return true;
-
-  return (
-    msg.includes("user not found") ||
-    msg.includes("usuário não encontrado") ||
-    msg.includes("usuario nao encontrado") ||
-    msg.includes("user not exists")
-  );
-};
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("pt-BR", {
@@ -244,19 +226,11 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
   const [cardCvcComplete, setCardCvcComplete] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
 
-  const { createMutation, updateMutation } = useUsers();
+  const { createMutation } = useUsers();
   const signupData = useSignupStore((state) => state.data);
   const { user, fetchAccount } = useUserSession();
 
-  const [userFly, setUserFly] = useState<UserDTO | undefined>(undefined);
-  const [leadCreated, setLeadCreated] = useState(false);
-
-  // anti-loop de create
   const lastLeadKeyRef = useRef<string | null>(null);
-
-  // debounce de sync
-  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastSyncedKeyRef = useRef<string | null>(null);
 
   // 🔒 Bloqueia acesso via URL (?step=2)
   useEffect(() => {
@@ -358,9 +332,6 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
       city: (sessionUser as any).city ?? prev.city,
       state: (sessionUser as any).state ?? prev.state,
     }));
-
-    setUserFly(sessionUser);
-    setLeadCreated(true);
   }, [user, formSnapshot.emailNorm, formSnapshot.phoneDigitsComparable]);
 
   const isAnnual = plan.slug?.toLowerCase().includes("anual");
@@ -401,26 +372,12 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
   const inputClasses =
     "p-3 border border-gray-300 rounded-md w-full focus:outline focus:outline-2 focus:outline-secondary focus:outline-offset-2";
 
-  // ---------------------------
-  // helpers de erro / conflitos
-  // ---------------------------
-  const isAlreadyRegisteredError = (err: unknown) => {
-    if (!axios.isAxiosError(err)) return false;
-
-    const status = err.response?.status;
-    const msg = (err.response?.data?.message ?? "").toString().toLowerCase();
-
-    if (status === 409) return true;
-    return msg.includes("já cadastrado") || msg.includes("ja cadastrado");
-  };
-
   useEffect(() => {
-    const hasCheckoutIdentity = Boolean(formSnapshot.emailNorm || formSnapshot.phoneDigitsComparable || userFly?.id);
+    const hasCheckoutIdentity = Boolean(formSnapshot.emailNorm || formSnapshot.phoneDigitsComparable);
     if (!hasCheckoutIdentity) return;
 
     if (
       doesBillingCheckoutSessionMatchIdentity({
-        userId: userFly?.id,
         email: formSnapshot.emailNorm,
         phone: formSnapshot.phoneE164,
       })
@@ -429,265 +386,7 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
     }
 
     clearBillingCheckoutSession();
-  }, [userFly?.id, formSnapshot.emailNorm, formSnapshot.phoneDigitsComparable, formSnapshot.phoneE164]);
-
-  useEffect(() => {
-    if (!userFly?.id) return;
-
-    const sameEmail =
-      Boolean(formSnapshot.emailNorm) &&
-      normalizeEmail((userFly as any).email) === formSnapshot.emailNorm;
-    const samePhone =
-      Boolean(formSnapshot.phoneDigitsComparable) &&
-      normalizePhoneIdentity((userFly as any).phone) === formSnapshot.phoneDigitsComparable;
-
-    if (sameEmail || samePhone) return;
-
-    setUserFly(undefined);
-    setLeadCreated(false);
-    lastLeadKeyRef.current = null;
-    lastSyncedKeyRef.current = null;
-  }, [userFly, formSnapshot.emailNorm, formSnapshot.phoneDigitsComparable]);
-
-  // ---------------------------
-  // 2) GET helper (tenta e retorna null em 404)
-  // ---------------------------
-  async function safeGet<T>(path: string, params?: Record<string, any>) {
-    try {
-      const res = await api.get<T>(path, params ? { params } : undefined);
-      return res.data as any;
-    } catch (err: any) {
-      if (axios.isAxiosError(err) && err.response?.status === 404) return null;
-      throw err;
-    }
-  }
-
-  // ---------------------------
-  // 3) Busca usuário (fallbacks)
-  // ---------------------------
-  async function findUserByPhoneAny(phoneE164: string): Promise<UserDTO | null> {
-    const e164 = normalizeDigits(phoneE164);
-    if (!e164) return null;
-
-    const national = e164.startsWith("55") ? e164.slice(2) : e164;
-
-    const candidates: Array<() => Promise<UserDTO | null>> = [
-      async () => (await safeGet<UserDTO>("/user/by-phone", { phone: e164 })) as any,
-      async () => (await safeGet<UserDTO>("/user/byPhone", { phone: e164 })) as any,
-      async () => (await safeGet<UserDTO>(`/user/phone/${e164}`)) as any,
-      async () => (await safeGet<UserDTO>(`/user/by-phone/${e164}`)) as any,
-
-      async () => (await safeGet<UserDTO>("/user/by-phone", { phone: national })) as any,
-      async () => (await safeGet<UserDTO>("/user/byPhone", { phone: national })) as any,
-      async () => (await safeGet<UserDTO>(`/user/phone/${national}`)) as any,
-      async () => (await safeGet<UserDTO>(`/user/by-phone/${national}`)) as any,
-    ];
-
-    for (const fn of candidates) {
-      const u = await fn();
-      if (u && (u as any).id) return u as any;
-    }
-    return null;
-  }
-
-  async function findUserByEmailAny(emailNorm: string): Promise<UserDTO | null> {
-    if (!emailNorm) return null;
-
-    const candidates: Array<() => Promise<UserDTO | null>> = [
-      async () => (await safeGet<UserDTO>(`/user/by-email/${emailNorm}`)) as any,
-    ];
-
-    for (const fn of candidates) {
-      const u = await fn();
-      if (u && (u as any).id) return u as any;
-    }
-    return null;
-  }
-
-  async function findExistingUserByPhoneOrEmail(
-    phoneE164: string,
-    emailNorm: string
-  ): Promise<UserDTO | null> {
-    const byEmail = await findUserByEmailAny(emailNorm);
-    if (byEmail?.id) return byEmail;
-
-    const byPhone = await findUserByPhoneAny(phoneE164);
-    if (byPhone?.id) return byPhone;
-
-    try {
-      const list = await getUsers();
-      const phoneDigits = normalizePhoneIdentity(phoneE164);
-      const found =
-        list.find((u) => normalizeEmail((u as any).email) === emailNorm) ??
-        list.find((u) => normalizePhoneIdentity((u as any).phone) === phoneDigits) ??
-        null;
-
-      return (found as any) ?? null;
-    } catch {
-      return null;
-    }
-  }
-
-  // ---------------------------
-  // 4) Atualiza dados no user (somente o que mudou)
-  // ---------------------------
-  async function syncUserWithFormIfNeeded(
-    base: UserDTO,
-    snap: {
-      name: string;
-      email: string;
-      emailNorm: string;
-      phoneE164: string;
-      cpfDigits: string;
-    }
-  ): Promise<UserDTO> {
-    if (!base?.id) return base;
-
-    if (typeof window !== "undefined" && !localStorage.getItem("token")) {
-      return base;
-    }
-
-    const currentName = (base as any).name ?? "";
-    const currentEmail = normalizeEmail((base as any).email ?? "");
-    const currentPhoneDigits = normalizePhoneIdentity((base as any).phone ?? "");
-    const currentCpf = normalizeDigits((base as any).cpfCnpj ?? "");
-
-    const patch: any = {};
-
-    if (snap.name && snap.name !== currentName) patch.name = snap.name;
-    if (snap.emailNorm && snap.emailNorm !== currentEmail) patch.email = snap.emailNorm;
-
-    const snapPhoneDigits = normalizePhoneIdentity(snap.phoneE164);
-    if (snapPhoneDigits && snapPhoneDigits !== currentPhoneDigits) patch.phone = snap.phoneE164;
-
-    if (snap.cpfDigits && snap.cpfDigits.length >= 11 && snap.cpfDigits !== currentCpf) {
-      patch.cpfCnpj = snap.cpfDigits;
-    }
-
-    if (Object.keys(patch).length === 0) return base;
-
-    const updated = await updateMutation.mutateAsync({ id: base.id, data: patch });
-    return { ...(base as any), ...(updated as any) } as any;
-  }
-
-  // ---------------------------
-  // 5) Resolve user (create-or-get) + sync
-  // ---------------------------
-  async function resolveUserAndSync(): Promise<UserDTO> {
-    const sessionUser =
-      doesCheckoutFormMatchUser(user?.userData?.user, {
-        emailNorm: formSnapshot.emailNorm,
-        phoneDigitsComparable: formSnapshot.phoneDigitsComparable,
-      })
-        ? user?.userData?.user
-        : null;
-    const snap = {
-      name: formSnapshot.name,
-      email: formSnapshot.email,
-      emailNorm: formSnapshot.emailNorm,
-      phoneE164: formSnapshot.phoneE164,
-      cpfDigits: formSnapshot.cpfDigits,
-    };
-
-    if (!snap.name || !isValidEmail(snap.email) || !isValidWhatsAppBR(snap.phoneE164)) {
-      throw new Error("Preencha nome, e-mail e WhatsApp válido para continuar.");
-    }
-
-    const canReuseUserFly =
-      userFly?.id &&
-      (normalizeEmail((userFly as any).email) === snap.emailNorm ||
-        normalizePhoneIdentity((userFly as any).phone) === normalizePhoneIdentity(snap.phoneE164));
-
-    if (canReuseUserFly && userFly?.id) {
-      try {
-        const synced = await syncUserWithFormIfNeeded(userFly, snap);
-        setUserFly(synced);
-        return synced;
-      } catch (err) {
-        if (isAlreadyRegisteredError(err)) {
-          const existing = await findExistingUserByPhoneOrEmail(snap.phoneE164, snap.emailNorm);
-          if (!existing?.id) {
-            throw new Error("E-mail ou WhatsApp já estão em uso. Use outro e-mail/WhatsApp ou faça login.");
-          }
-
-          try {
-            const syncedExisting = await syncUserWithFormIfNeeded(existing, snap);
-            setUserFly(syncedExisting);
-            return syncedExisting;
-          } catch {
-            setUserFly(existing);
-            return existing;
-          }
-        }
-        throw err;
-      }
-    }
-
-    if (sessionUser?.id) {
-      try {
-        const synced = await syncUserWithFormIfNeeded(sessionUser, snap);
-        setUserFly(synced);
-        return synced;
-      } catch (err) {
-        if (isAlreadyRegisteredError(err)) {
-          const existing = await findExistingUserByPhoneOrEmail(snap.phoneE164, snap.emailNorm);
-          if (!existing?.id) {
-            throw new Error("E-mail ou WhatsApp já estão em uso. Use outro e-mail/WhatsApp ou faça login.");
-          }
-
-          try {
-            const syncedExisting = await syncUserWithFormIfNeeded(existing, snap);
-            setUserFly(syncedExisting);
-            return syncedExisting;
-          } catch {
-            setUserFly(existing);
-            return existing;
-          }
-        }
-        throw err;
-      }
-    }
-
-    try {
-      const { origin, originRef } = readOriginAttribution();
-      const created = await createMutation.mutateAsync({
-        name: snap.name,
-        email: snap.emailNorm,
-        phone: snap.phoneE164,
-        origin,
-        originRef: originRef || undefined,
-      });
-
-      const u = created?.user as UserDTO | undefined;
-      if (!u?.id) throw new Error("Não foi possível criar o usuário.");
-
-      try {
-        const synced = await syncUserWithFormIfNeeded(u, snap);
-        setUserFly(synced);
-        return synced;
-      } catch {
-        setUserFly(u);
-        return u;
-      }
-    } catch (err) {
-      if (isAlreadyRegisteredError(err)) {
-        const existing = await findExistingUserByPhoneOrEmail(snap.phoneE164, snap.emailNorm);
-        if (!existing?.id) {
-          throw new Error("E-mail ou WhatsApp já estão em uso. Use outro e-mail/WhatsApp ou faça login.");
-        }
-
-        try {
-          const syncedExisting = await syncUserWithFormIfNeeded(existing, snap);
-          setUserFly(syncedExisting);
-          return syncedExisting;
-        } catch {
-          setUserFly(existing);
-          return existing;
-        }
-      }
-      throw err;
-    }
-  }
+  }, [formSnapshot.emailNorm, formSnapshot.phoneDigitsComparable, formSnapshot.phoneE164]);
 
   // ---------------------------
   // 5b) Captura/atualiza lead (fluxo sem JWT)
@@ -701,27 +400,19 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
       origin,
       originRef: originRef || undefined,
     });
-    setLeadCreated(true);
   }
 
   // ---------------------------
   // 6) Auto-lead
   // ---------------------------
   useEffect(() => {
-    if (leadCreated) return;
-
-    const sessionUser =
-      doesCheckoutFormMatchUser(user?.userData?.user, {
-        emailNorm: formSnapshot.emailNorm,
-        phoneDigitsComparable: formSnapshot.phoneDigitsComparable,
-      })
-        ? user?.userData?.user
-        : null;
-    if (sessionUser?.id) {
-      setUserFly(sessionUser);
-      setLeadCreated(true);
-      return;
-    }
+    const sessionUser = doesCheckoutFormMatchUser(user?.userData?.user, {
+      emailNorm: formSnapshot.emailNorm,
+      phoneDigitsComparable: formSnapshot.phoneDigitsComparable,
+    })
+      ? user?.userData?.user
+      : null;
+    if (sessionUser?.id) return;
 
     if (!isMinDataValid) return;
 
@@ -740,7 +431,6 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    leadCreated,
     user?.userData?.user,
     isMinDataValid,
     formSnapshot.name,
@@ -748,43 +438,6 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
     formSnapshot.phoneE164,
     formSnapshot.phoneDigitsComparable,
   ]);
-
-  // ---------------------------
-  // 7) Auto-sync (debounced)
-  // ---------------------------
-  useEffect(() => {
-    if (!userFly?.id) return;
-
-    const ok = !!formSnapshot.name && isValidEmail(formSnapshot.email) && isValidWhatsAppBR(formSnapshot.phoneE164);
-    if (!ok) return;
-
-    const syncKey = `${userFly.id}|${formSnapshot.name}|${formSnapshot.emailNorm}|${normalizeDigits(
-      formSnapshot.phoneE164
-    )}|${formSnapshot.cpfDigits}`;
-    if (lastSyncedKeyRef.current === syncKey) return;
-
-    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
-
-    syncTimerRef.current = setTimeout(() => {
-      syncUserWithFormIfNeeded(userFly, {
-        name: formSnapshot.name,
-        email: formSnapshot.email,
-        emailNorm: formSnapshot.emailNorm,
-        phoneE164: formSnapshot.phoneE164,
-        cpfDigits: formSnapshot.cpfDigits,
-      })
-        .then((synced) => {
-          lastSyncedKeyRef.current = syncKey;
-          setUserFly(synced);
-        })
-        .catch((err) => console.error("Auto-sync error:", err));
-    }, 650);
-
-    return () => {
-      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userFly?.id, formSnapshot.name, formSnapshot.emailNorm, formSnapshot.phoneE164, formSnapshot.cpfDigits]);
 
   type BillingPeriod = "MONTHLY" | "ANNUAL";
 
@@ -857,13 +510,7 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
   // Stripe helpers
   // ---------------------------
   async function createSetupIntent(userId?: string): Promise<{ clientSecret: string; customerId?: string | null }> {
-    return createBillingCheckoutSetupIntent(userId); /*
-
-
-      throw new Error("Não foi possível iniciar o pagamento (SetupIntent sem clientSecret).");
-    }
-
-    return { clientSecret, customerId: data.customerId ?? data.customer_id ?? null }; */
+    return createBillingCheckoutSetupIntent(userId);
   }
 
   async function confirmCardSetup(clientSecret: string) {
@@ -949,9 +596,14 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
       let activeUserId: string | undefined;
 
       if (sessionUser?.id) {
-        // Usuário já autenticado — resolve/sync via PUT /user/:id (tem JWT)
-        let ensuredUser = await resolveUserAndSync();
-        activeUserId = ensuredUser.id;
+        activeUserId = sessionUser.id;
+        if (formSnapshot.cpfDigits) {
+          try {
+            await api.patch('/users/me/billing', { cpfCnpj: formSnapshot.cpfDigits });
+          } catch {
+            // best-effort: CPF sync não bloqueia o checkout
+          }
+        }
       } else {
         // Novo usuário — captura lead e envia billing sem precisar de userId
         try {
@@ -987,23 +639,7 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
           return;
         }
 
-        if (activeUserId && isUserNotFoundError(err)) {
-          const ensuredUser = await resolveUserAndSync();
-          activeUserId = ensuredUser.id;
-          try {
-            ({ clientSecret } = await createSetupIntent(activeUserId));
-          } catch (retryErr) {
-            if (isBillingCheckoutTokenError(retryErr)) {
-              redirectToCheckoutValidation(
-                "Sua validacao de checkout expirou. Faca login novamente para continuar."
-              );
-              return;
-            }
-            throw retryErr;
-          }
-        } else {
-          throw err;
-        }
+        throw err;
       }
 
       // 2) Confirmar cartão no Stripe (gera pm_...)
@@ -1031,23 +667,7 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
           return;
         }
 
-        if (activeUserId && isUserNotFoundError(err)) {
-          const ensuredUser = await resolveUserAndSync();
-          payload.userId = ensuredUser.id;
-          try {
-            await createBillingCheckoutSubscription(payload);
-          } catch (retryErr) {
-            if (isBillingCheckoutTokenError(retryErr)) {
-              redirectToCheckoutValidation(
-                "Sua validacao de checkout expirou. Faca login novamente para continuar."
-              );
-              return;
-            }
-            throw retryErr;
-          }
-        } else {
-          throw err;
-        }
+        throw err;
       }
 
       setLoading(false);
