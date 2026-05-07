@@ -7,6 +7,7 @@ import {
   isCoupleHouseActive,
   resolveFinancialScopeKey,
 } from '@/lib/financialScope'
+import { FEATURES } from '@/config/features'
 import { useAdvisorActing } from '@/stores/useAdvisorActing'
 import { useFinancialScopeStore } from '@/stores/useFinancialScope'
 import { useUserSession } from '@/stores/useUserSession'
@@ -21,7 +22,8 @@ export function useFinancialScope() {
   const setScopeForUser = useFinancialScopeStore((state) => state.setScopeForUser)
   const selectedScope = getScopeForUser(currentUserId)
 
-  const canSelectScope = !activeClientId && isCoupleHouseActive(houseContext)
+  const canSelectScope =
+    FEATURES.COUPLE_ACCOUNT && !activeClientId && isCoupleHouseActive(houseContext)
   const scope = canSelectScope ? selectedScope : undefined
   const scopeKey = resolveFinancialScopeKey(canSelectScope, scope)
 

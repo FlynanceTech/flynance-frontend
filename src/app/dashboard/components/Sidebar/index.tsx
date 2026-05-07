@@ -35,11 +35,8 @@ function buildAutoCollapsedSet(params: {
   const { height, activeSectionIds } = params
 
   const thresholds: Array<{ id: string; maxHeight: number }> = [
-    { id: 'settings', maxHeight: 920 },
-    { id: 'professional', maxHeight: 880 },
-    { id: 'education', maxHeight: 840 },
-    { id: 'financial-life', maxHeight: 800 },
-    { id: 'planning', maxHeight: 740 },
+    { id: 'admin', maxHeight: 760 },
+    { id: 'professional', maxHeight: 720 },
   ]
 
   thresholds.forEach(({ id, maxHeight }) => {
@@ -89,7 +86,6 @@ export default function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) 
       education: t('education'),
       clients: t('clients'),
       profile: t('profile'),
-      notifications: t('notifications'),
       admin: t('admin'),
     }), {
       isAdmin,

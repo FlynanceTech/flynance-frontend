@@ -231,6 +231,7 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
   const { user, fetchAccount } = useUserSession();
 
   const lastLeadKeyRef = useRef<string | null>(null);
+  const hydratedSessionUserIdRef = useRef<string | null>(null);
 
   // 🔒 Bloqueia acesso via URL (?step=2)
   useEffect(() => {
@@ -309,28 +310,37 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
   }, [formSnapshot]);
 
   useEffect(() => {
-    if (!user?.userData?.user) return;
+    if (!user?.userData?.user) {
+      hydratedSessionUserIdRef.current = null;
+      return;
+    }
 
     const sessionUser = user.userData.user;
+    const sessionUserId = String(sessionUser.id || "").trim();
+    if (!sessionUserId) return;
+    if (hydratedSessionUserIdRef.current === sessionUserId) return;
+
     const hasCheckoutIdentity = Boolean(formSnapshot.emailNorm || formSnapshot.phoneDigitsComparable);
 
     if (hasCheckoutIdentity && !doesCheckoutFormMatchUser(sessionUser, formSnapshot)) {
       return;
     }
 
+    hydratedSessionUserIdRef.current = sessionUserId;
+
     setForm((prev) => ({
       ...prev,
-      name: sessionUser.name ?? prev.name,
-      email: normalizeEmail((sessionUser as any).email ?? prev.email),
-      phone: (sessionUser as any).phone ?? prev.phone,
-      cpf: (sessionUser as any).cpfCnpj ?? prev.cpf,
-      postalCode: (sessionUser as any).postalCode ?? prev.postalCode,
-      address: (sessionUser as any).address ?? prev.address,
-      addressNumber: (sessionUser as any).addressNumber ?? prev.addressNumber,
-      addressComplement: (sessionUser as any).addressComplement ?? prev.addressComplement,
-      district: (sessionUser as any).district ?? prev.district,
-      city: (sessionUser as any).city ?? prev.city,
-      state: (sessionUser as any).state ?? prev.state,
+      name: prev.name || sessionUser.name || "",
+      email: prev.email || normalizeEmail((sessionUser as any).email ?? ""),
+      phone: prev.phone || (sessionUser as any).phone || "",
+      cpf: prev.cpf || (sessionUser as any).cpfCnpj || "",
+      postalCode: prev.postalCode || (sessionUser as any).postalCode || "",
+      address: prev.address || (sessionUser as any).address || "",
+      addressNumber: prev.addressNumber || (sessionUser as any).addressNumber || "",
+      addressComplement: prev.addressComplement || (sessionUser as any).addressComplement || "",
+      district: prev.district || (sessionUser as any).district || "",
+      city: prev.city || (sessionUser as any).city || "",
+      state: prev.state || (sessionUser as any).state || "",
     }));
   }, [user, formSnapshot.emailNorm, formSnapshot.phoneDigitsComparable]);
 
@@ -758,7 +768,6 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
                     value={form.email}
                     onChange={handleChange}
                     className={inputClasses}
-                    disabled={loading}
                   />
 
                   <input
@@ -767,7 +776,6 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
                     value={form.phone}
                     onChange={handleChange}
                     className={inputClasses}
-                    disabled={loading}
                     inputMode="numeric"
                   />
 

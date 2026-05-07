@@ -1,12 +1,13 @@
 // src/app/cadastro/checkout/page.tsx
 'use client'
 import React, { useEffect } from "react";
+import Link from "next/link";
 import CheckoutStepper from "@/components/cadastro/checkoutStepper";
 import CheckoutHeader from "@/components/cadastro/CheckoutHeader";
-import { CHECKOUT_STEPS } from "@/components/cadastro/checkoutSteps";
 import { usePlanBySlug } from "@/hooks/query/usePlan";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { parseOriginFromUrl, saveOriginAttribution } from "@/utils/originAttribution";
+import { isPlanCheckoutDisabled } from "@/config/featureAccess";
 
 
 export function CheckoutPageClient() {
@@ -50,13 +51,6 @@ export function CheckoutPageClient() {
     }
   }, [plano, planoSlug, router, searchParams]);
 
-  const stepParam = searchParams.get("step");
-  const rawStep = stepParam ? Number(stepParam) : 0;
-  const step = Number.isNaN(rawStep)
-    ? 0
-    : Math.min(Math.max(rawStep, 0), CHECKOUT_STEPS.length - 1);
-
-
   if (!plano) return null;
 
   if (isLoading) {
@@ -92,6 +86,30 @@ export function CheckoutPageClient() {
           planos.
         </p>
       </div>
+    );
+  }
+
+  if (isPlanCheckoutDisabled(data)) {
+    return (
+      <>
+        <CheckoutHeader />
+        <main className="px-4 pb-16">
+          <div className="mx-auto mt-[-4rem] w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-[0_20px_60px_rgba(15,23,42,0.14)]">
+            <h1 className="text-2xl font-semibold text-[#333C4D]">
+              Plano em atualização
+            </h1>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Estamos preparando uma nova experiência para o plano casal da Flynance.
+            </p>
+            <Link
+              href="/#pricing"
+              className="mt-6 inline-flex h-11 items-center justify-center rounded-full bg-primary px-5 text-sm font-semibold text-white transition hover:bg-secondary hover:text-black"
+            >
+              Voltar aos planos
+            </Link>
+          </div>
+        </main>
+      </>
     );
   }
 

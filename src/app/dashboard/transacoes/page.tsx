@@ -24,6 +24,7 @@ import PageOnboardingTour, { type PageOnboardingStep } from '@/components/onboar
 import { useAdvisorActing } from '@/stores/useAdvisorActing'
 import { useCreditCardCharges } from '@/hooks/query/useCreditCardCharges'
 import type { CreditCardChargeItem } from '@/services/creditCardCharges'
+import { useCardMutations } from '@/hooks/query/useCreditCards'
 import toast from 'react-hot-toast'
 import { ADVISOR_READ_ONLY_FRIENDLY_MESSAGE, type PaymentType } from '@/services/transactions'
 import { isAdvisorReadOnlyTransactionAccess } from '@/utils/transactionWriteAccess'
@@ -34,6 +35,7 @@ import type { HouseMember } from '@/types/house'
 
 type TypeOption = { value: CategoryType; label: string }
 type AuthorOption = { value: string; label: string }
+type CardFilterOption = { value: string; label: string }
 
 const typeSelectStyles: StylesConfig<TypeOption, false> = {
   control: (base, state) => ({
@@ -177,6 +179,10 @@ function formatChargeCardLabel(charge: CreditCardChargeItem) {
     : charge.creditCard.name
 }
 
+function formatCardFilterLabel(card: { name: string; last4?: string | null }) {
+  return card.last4 ? `${card.name} final ${card.last4}` : card.name
+}
+
 function creditCardChargeToTransaction(charge: CreditCardChargeItem): Transaction {
   const category: Category = charge.category
     ? {
@@ -255,6 +261,7 @@ export default function TransactionsPage() {
   const [deleteConfirmMode, setDeleteConfirmMode] = useState<'single' | 'bulk'>('single')
 
   const [activeTab, setActiveTab] = useState<'all' | 'credit_card'>('all')
+  const [selectedCardId, setSelectedCardId] = useState<string>('ALL')
 
   const [sortState, setSortState] = useState<{
     field: 'date' | 'value' | null
@@ -286,7 +293,9 @@ export default function TransactionsPage() {
     enabled: activeTab === 'all',
   })
 
+  const { cardQuery } = useCardMutations()
   const { chargesQuery, deleteChargeMutation } = useCreditCardCharges({
+    cardId: selectedCardId !== 'ALL' ? selectedCardId : undefined,
     page: currentPage,
     limit: PAGE_SIZE,
     enabled: activeTab === 'credit_card',
@@ -361,7 +370,31 @@ export default function TransactionsPage() {
     [transactionsQuery.data]
   )
 
-  const apiCharges = chargesQuery.data?.charges ?? []
+  const apiCharges = useMemo(
+    () => chargesQuery.data?.charges ?? [],
+    [chargesQuery.data?.charges]
+  )
+
+  const cardFilterOptions = useMemo<CardFilterOption[]>(
+    () =>
+      (cardQuery.data ?? [])
+        .filter((card) => card.isActive !== false)
+        .map((card) => ({
+          value: card.id,
+          label: formatCardFilterLabel(card),
+        })),
+    [cardQuery.data]
+  )
+
+  useEffect(() => {
+    if (selectedCardId === 'ALL' || cardQuery.isLoading) return
+    if (cardFilterOptions.some((option) => option.value === selectedCardId)) return
+
+    setSelectedCardId('ALL')
+    setCurrentPage(1)
+    setSelectedIds(new Set())
+    setSelectAll(false)
+  }, [cardFilterOptions, cardQuery.isLoading, selectedCardId])
 
   const hasCoupleContext =
     houseContext?.status === 'COUPLE' ||
@@ -727,6 +760,13 @@ export default function TransactionsPage() {
       return { field: null, direction: 'asc' }
     })
     setCurrentPage(1)
+  }
+
+  const handleCardFilterChange = (nextCardId: string) => {
+    setSelectedCardId(nextCardId)
+    setCurrentPage(1)
+    setSelectedIds(new Set())
+    setSelectAll(false)
   }
 
   const toggleSelectRow = (id: string) => {
@@ -1393,7 +1433,7 @@ export default function TransactionsPage() {
         </div>
       )}
 
-      <div className="flex items-center justify-between border-b border-gray-200">
+      <div className="flex flex-col gap-3 border-b border-gray-200 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex gap-1">
           <button
             type="button"
@@ -1419,17 +1459,41 @@ export default function TransactionsPage() {
             Cartão de Crédito
           </button>
         </div>
-        {activeTab === 'credit_card' && !isAdvisorReadOnly && (
-          <button
-            type="button"
-            onClick={() => {
-              setEditingCharge(null)
-              setChargeDrawerOpen(true)
-            }}
-            className="mb-1 flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-secondary"
-          >
-            + Nova Compra
-          </button>
+        {activeTab === 'credit_card' && (
+          <div className="flex flex-wrap items-center gap-2 pb-2 sm:justify-end">
+            <label htmlFor="transaction-card-filter" className="sr-only">
+              {tr('cardFilter.label')}
+            </label>
+            <select
+              id="transaction-card-filter"
+              value={selectedCardId}
+              onChange={(event) => handleCardFilterChange(event.target.value)}
+              disabled={cardQuery.isLoading || cardFilterOptions.length === 0}
+              className="h-9 min-w-[190px] rounded-full border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+              aria-label={tr('cardFilter.label')}
+            >
+              <option value="ALL">
+                {cardFilterOptions.length > 0 ? tr('cardFilter.all') : tr('cardFilter.empty')}
+              </option>
+              {cardFilterOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            {!isAdvisorReadOnly && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingCharge(null)
+                  setChargeDrawerOpen(true)
+                }}
+                className="flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-secondary"
+              >
+                + Nova Compra
+              </button>
+            )}
+          </div>
         )}
       </div>
 

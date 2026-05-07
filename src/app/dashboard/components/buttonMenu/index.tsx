@@ -42,7 +42,6 @@ export default function BottomMenu() {
       education: t('education'),
       clients: t('clients'),
       profile: t('profile'),
-      notifications: t('notifications'),
       admin: t('admin'),
     }),
     {

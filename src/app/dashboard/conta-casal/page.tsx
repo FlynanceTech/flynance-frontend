@@ -17,6 +17,8 @@ import {
 } from '@/hooks/query/useHouse'
 import { useUserSession } from '@/stores/useUserSession'
 import type { HouseInvite } from '@/types/house'
+import { FEATURES } from '@/config/features'
+import FeatureUnavailable from '../components/FeatureUnavailable'
 
 import { CouplePlanUpgradeCard } from './components/CouplePlanUpgradeCard'
 import { HouseEmptyState } from './components/HouseEmptyState'
@@ -58,6 +60,14 @@ function getHouseInviteStorageKey(houseId?: string | null) {
 }
 
 export default function CoupleAccountPage() {
+  if (!FEATURES.COUPLE_ACCOUNT) {
+    return <FeatureUnavailable />
+  }
+
+  return <CoupleAccountPageContent />
+}
+
+function CoupleAccountPageContent() {
   const t = useTranslations('coupleAccountPage')
   const user = useUserSession((state) => state.user)
   const houseQuery = useHouseContext(Boolean(user?.userData?.user?.id))
