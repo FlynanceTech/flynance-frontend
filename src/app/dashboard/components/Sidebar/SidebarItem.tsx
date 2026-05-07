@@ -21,10 +21,10 @@ export default function SidebarItem({
       type="button"
       onClick={onClick}
       className={clsx(
-        'group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-all duration-200',
+        'group relative flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-all duration-200',
         active
           ? 'bg-secondary/20 text-primary shadow-[inset_0_0_0_1px_rgba(10,120,177,0.12)] dark:bg-[#F4C542]/14 dark:text-[#F4C542]'
-          : 'text-[#5A687C] hover:bg-slate-100/80 hover:text-[#223043] dark:text-zinc-300 dark:hover:bg-white/6 dark:hover:text-white'
+          : 'text-[#5A687C] hover:bg-[#F1F5F9CC] hover:text-[#223043] dark:text-zinc-300 dark:hover:bg-[rgba(255,255,255,0.10)] dark:hover:text-white'
       )}
     >
       <span

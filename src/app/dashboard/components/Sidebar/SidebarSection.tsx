@@ -44,10 +44,10 @@ export default function SidebarSection({
           title={title}
           aria-label={title}
           className={clsx(
-            'flex h-11 w-11 items-center justify-center rounded-2xl border transition-all duration-200',
+            'flex h-11 w-11 cursor-pointer items-center justify-center rounded-2xl border transition-all duration-200',
             active
               ? 'border-[#BFE0F5] bg-[#F3FAFF] text-primary shadow-[inset_0_0_0_1px_rgba(10,120,177,0.1)] dark:border-[#F4C542]/25 dark:bg-[#F4C542]/12 dark:text-[#F4C542]'
-              : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-zinc-300 dark:hover:bg-white/10 dark:hover:text-white'
+              : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-zinc-300 dark:hover:bg-[rgba(255,255,255,0.10)] dark:hover:text-white'
           )}
         >
           <Icon size={18} />
@@ -64,7 +64,7 @@ export default function SidebarSection({
           onClick={onToggle}
           aria-expanded={open}
           aria-label={open ? `Recolher ${title}` : `Expandir ${title}`}
-          className="flex w-full items-center justify-between gap-2 rounded-md px-1 py-1 text-left transition hover:bg-slate-100/70 dark:hover:bg-white/6"
+          className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-md px-1 py-1 text-left transition hover:bg-[#F1F5F9B3] dark:hover:bg-[rgba(255,255,255,0.10)]"
         >
           <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-zinc-500">
             {title}
