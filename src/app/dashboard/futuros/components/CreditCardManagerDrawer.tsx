@@ -294,14 +294,14 @@ function CreditCardList({
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-primary">
           <CreditCardIcon className="h-8 w-8" />
         </div>
-        <h3 className="mt-5 text-base font-extrabold text-slate-950">Você ainda não tem cartões cadastrados.</h3>
+        <h3 className="mt-5 text-base font-extrabold text-slate-950">Você ainda não tem cartões nomeados.</h3>
         <button
           type="button"
           onClick={onNewCard}
           className="mt-6 inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-extrabold text-white shadow-[0_12px_26px_rgba(0,102,163,0.24)] transition-colors hover:bg-secondary"
         >
           <Plus className="h-4 w-4" />
-          Cadastrar primeiro cartão
+          Nomear primeiro cartão
         </button>
       </div>
     )

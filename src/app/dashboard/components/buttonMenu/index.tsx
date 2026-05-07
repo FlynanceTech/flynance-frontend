@@ -43,7 +43,6 @@ export default function BottomMenu() {
       clients: t('clients'),
       profile: t('profile'),
       admin: t('admin'),
-      logout: t('logout'),
     }),
     {
       isAdmin,

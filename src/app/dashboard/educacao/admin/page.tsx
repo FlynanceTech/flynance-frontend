@@ -8,6 +8,9 @@ import { Plus } from "lucide-react";
 import { CoursesGrid } from "@/components/admin/CoursesGrid";
 import { CourseFormDrawer } from "@/components/admin/CourseFormDrawer";
 import { LessonFormDrawer } from "@/components/admin/LessonFormDrawer";
+import { FEATURES } from "@/config/features";
+import DashboardAdminGuard from "../../components/DashboardAdminGuard";
+import FeatureUnavailable from "../../components/FeatureUnavailable";
 
 import {
   Course,
@@ -28,6 +31,14 @@ import {
 import { useTranslations } from "next-intl";
 
 export default function AdminPage(): JSX.Element {
+  return (
+    <DashboardAdminGuard>
+      {FEATURES.EDUCATION ? <EducationAdminPageContent /> : <FeatureUnavailable />}
+    </DashboardAdminGuard>
+  );
+}
+
+function EducationAdminPageContent(): JSX.Element {
   const t = useTranslations('educationAdminPage')
   const { toast } = useToast();
 

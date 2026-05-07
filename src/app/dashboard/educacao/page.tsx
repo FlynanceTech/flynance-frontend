@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -28,6 +28,8 @@ import { useCourses } from '@/hooks/query/useCourses'
 import type { Course, CourseCategory, CourseLevel } from '@/types/course'
 import { useLastWatch } from '@/hooks/useLastWatch'
 import PageOnboardingTour, { type PageOnboardingStep } from '@/components/onboarding/PageOnboardingTour'
+import { FEATURES } from '@/config/features'
+import FeatureUnavailable from '../components/FeatureUnavailable'
 
 type TranslatorFn = (key: string, values?: Record<string, string | number | Date>) => string
 
@@ -65,8 +67,15 @@ function levelLabel(level: CourseLevel, t: TranslatorFn) {
 }
 
 export default function Page() {
+  if (!FEATURES.EDUCATION) {
+    return <FeatureUnavailable />
+  }
+
+  return <EducationPageContent />
+}
+
+function EducationPageContent() {
   const t = useTranslations('educationPage')
-  const locale = useLocale()
   const { last } = useLastWatch()
   const { data, isLoading } = useCourses()
   const onboardingSteps = useMemo(() => buildEducationOnboardingSteps(t), [t])

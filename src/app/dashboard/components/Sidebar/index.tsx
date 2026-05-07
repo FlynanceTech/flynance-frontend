@@ -4,7 +4,7 @@ import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
-import { PanelLeftClose, PanelLeftOpen, Moon, Sun } from 'lucide-react'
+import { LogOut, PanelLeftClose, PanelLeftOpen, Moon, Sun } from 'lucide-react'
 
 import logoFlynance from '../../../../../assets/Logo/PNG/Logo Fly principal colorida.png'
 import logoFlynanceWhite from '../../../../../assets/Logo/PNG/Logo Fly principal branca.png'
@@ -22,8 +22,6 @@ import {
   isSidebarPathActive,
 } from './sidebar.config'
 
-const MAX_OPEN_SECTIONS = 3
-
 type SidebarProps = {
   collapsed?: boolean
   onCollapsedChange?: (next: boolean) => void
@@ -37,11 +35,8 @@ function buildAutoCollapsedSet(params: {
   const { height, activeSectionIds } = params
 
   const thresholds: Array<{ id: string; maxHeight: number }> = [
-    { id: 'settings', maxHeight: 920 },
-    { id: 'professional', maxHeight: 880 },
-    { id: 'education', maxHeight: 840 },
-    { id: 'financial-life', maxHeight: 800 },
-    { id: 'planning', maxHeight: 740 },
+    { id: 'admin', maxHeight: 760 },
+    { id: 'professional', maxHeight: 720 },
   ]
 
   thresholds.forEach(({ id, maxHeight }) => {
@@ -69,7 +64,6 @@ export default function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) 
   const [internalCollapsed, setInternalCollapsed] = useState(false)
   const [viewportHeight, setViewportHeight] = useState(1080)
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({})
-  const [sectionOpenOrder, setSectionOpenOrder] = useState<string[]>([])
   const sectionsCollapsed = collapsed ?? internalCollapsed
 
   const setSectionsCollapsed = (next: boolean | ((current: boolean) => boolean)) => {
@@ -93,7 +87,6 @@ export default function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) 
       clients: t('clients'),
       profile: t('profile'),
       admin: t('admin'),
-      logout: t('logout'),
     }), {
       isAdmin,
       canAccessAdvisor,
@@ -127,19 +120,12 @@ export default function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) 
       return acc
     }, [])
 
-    while (nextOpenIds.length > MAX_OPEN_SECTIONS) {
-      const removableIndex = nextOpenIds.findIndex((id) => !activeSectionIds.has(id))
-      if (removableIndex === -1) break
-      nextOpenIds.splice(removableIndex, 1)
-    }
-
     const nextState = sections.reduce<Record<string, boolean>>((acc, section) => {
       acc[section.id] = nextOpenIds.includes(section.id)
       return acc
     }, {})
 
     setOpenSections(nextState)
-    setSectionOpenOrder(nextOpenIds)
   }, [activeSectionIds, sections])
 
   useEffect(() => {
@@ -152,72 +138,23 @@ export default function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) 
     return () => window.removeEventListener('resize', syncViewportHeight)
   }, [])
 
-  const navigationSections = sections.filter((section) => section.id !== 'actions')
-  const actionSection = sections.find((section) => section.id === 'actions') ?? null
-
-  const openSectionWithLimit = (sectionId: string) => {
-    setOpenSections((current) => {
-      const currentOpenIds = Object.entries(current)
-        .filter(([, isOpen]) => isOpen)
-        .map(([id]) => id)
-
-      const nextOrderBase = sectionOpenOrder.filter(
-        (id) => currentOpenIds.includes(id) && id !== sectionId
-      )
-      const nextOrder = [...nextOrderBase, sectionId]
-      const nextState = { ...current, [sectionId]: true }
-
-      while (nextOrder.length > MAX_OPEN_SECTIONS) {
-        const closableId = nextOrder.find((id) => !activeSectionIds.has(id) && id !== sectionId)
-        if (!closableId) break
-        nextState[closableId] = false
-        nextOrder.splice(nextOrder.indexOf(closableId), 1)
-      }
-
-      setSectionOpenOrder(nextOrder)
-      return nextState
-    })
+  const openSection = (sectionId: string) => {
+    setOpenSections((current) => ({
+      ...current,
+      [sectionId]: true,
+    }))
   }
 
   const handleToggleSection = (sectionId: string) => {
-    const isActiveSection = activeSectionIds.has(sectionId)
-
-    setOpenSections((current) => {
-      const isCurrentlyOpen = current[sectionId] !== false
-
-      if (isCurrentlyOpen) {
-        if (isActiveSection) return current
-
-        setSectionOpenOrder((order) => order.filter((id) => id !== sectionId))
-        return {
-          ...current,
-          [sectionId]: false,
-        }
-      }
-
-      const currentOpenIds = Object.entries(current)
-        .filter(([, isOpen]) => isOpen)
-        .map(([id]) => id)
-
-      const nextOrderBase = sectionOpenOrder.filter((id) => currentOpenIds.includes(id) && id !== sectionId)
-      const nextOrder = [...nextOrderBase, sectionId]
-      const nextState = { ...current, [sectionId]: true }
-
-      while (nextOrder.length > MAX_OPEN_SECTIONS) {
-        const closableId = nextOrder.find((id) => !activeSectionIds.has(id))
-        if (!closableId) break
-        nextState[closableId] = false
-        nextOrder.splice(nextOrder.indexOf(closableId), 1)
-      }
-
-      setSectionOpenOrder(nextOrder)
-      return nextState
-    })
+    setOpenSections((current) => ({
+      ...current,
+      [sectionId]: current[sectionId] !== true,
+    }))
   }
 
   const handleCollapsedSectionClick = (sectionId: string) => {
     setSectionsCollapsed(false)
-    openSectionWithLimit(sectionId)
+    openSection(sectionId)
   }
 
   const handleLogout = async () => {
@@ -268,9 +205,9 @@ export default function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) 
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col justify-between pt-4">
-          <nav className="min-h-0 flex-1 overflow-hidden">
+          <nav className="min-h-0 flex-1 overflow-y-auto">
             <div className="space-y-4">
-              {navigationSections.map((section) => {
+              {sections.map((section) => {
                 const isOpen =
                   !sectionsCollapsed &&
                   !forcedCollapsedSections.has(section.id) &&
@@ -304,12 +241,6 @@ export default function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) 
 
           <footer className="mt-4 shrink-0 border-t border-slate-200 pt-4 dark:border-white/10">
             <div className="space-y-3">
-              <div className={clsx('px-1', sectionsCollapsed && 'sr-only')}>
-                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-zinc-500">
-                  Tema
-                </span>
-              </div>
-
               <button
                 type="button"
                 onClick={() => {
@@ -344,27 +275,23 @@ export default function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) 
                 ) : null}
               </button>
 
-              {actionSection ? (
-                <SidebarSection
-                  title={actionSection.title}
-                  icon={actionSection.icon}
-                  collapsible={false}
-                  open
-                  collapsed={sectionsCollapsed}
-                  items={actionSection.items.map((item) => ({
-                    ...item,
-                    active: false,
-                    onClick: () => {
-                      if (item.action === 'logout') {
-                        void handleLogout()
-                      }
-                    },
-                  }))}
-                  onCollapsedClick={() => {
+              <div className="flex justify-center pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
                     void handleLogout()
                   }}
-                />
-              ) : null}
+                  className={clsx(
+                    'flex items-center justify-center gap-2 rounded-xl text-sm text-[#333C4D] transition hover:bg-red-50 hover:text-red-500 dark:text-white dark:hover:bg-red-500/10 dark:hover:text-red-400',
+                    sectionsCollapsed ? 'h-11 w-11' : 'px-4 py-2'
+                  )}
+                  aria-label={t('logout')}
+                  title={t('logout')}
+                >
+                  <LogOut size={18} />
+                  {!sectionsCollapsed ? <span className="font-medium">{t('logout')}</span> : null}
+                </button>
+              </div>
             </div>
           </footer>
         </div>
