@@ -42,6 +42,12 @@ export interface CreditCardUpdateDTO {
   isActive?: boolean
 }
 
+export interface DeleteCardResponse {
+  message?: string
+  action?: 'deleted' | 'archived'
+  linkedRecords?: Record<string, number>
+}
+
 /** ---- Summary (fatura atual) ---- */
 export interface CardSummaryCategory {
   categoryId: string | null
@@ -112,10 +118,10 @@ export const updateCard = async (id: string, data: CreditCardUpdateDTO): Promise
 }
 
 /** Delete */
-export const deleteCard = async (id: string): Promise<{ message: string }> => {
+export const deleteCard = async (id: string): Promise<DeleteCardResponse> => {
   try {
     const res = await api.delete(`/cards/${id}`)
-    return res.data
+    return res.data && typeof res.data === 'object' ? res.data : { action: 'deleted' }
   } catch (e: unknown) {
     const msg = getErrorMessage(e, 'Erro ao deletar cartão.')
     console.error('Erro ao deletar cartão:', msg)
