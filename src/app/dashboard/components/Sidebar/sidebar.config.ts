@@ -3,7 +3,6 @@
 import type { LucideIcon } from 'lucide-react'
 import {
   BarChart3,
-  Bell,
   BookOpenCheck,
   ClipboardList,
   Clock3,
@@ -16,6 +15,8 @@ import {
   Users,
 } from 'lucide-react'
 
+import { FEATURES, type FeatureFlag } from '@/config/features'
+
 export const DESKTOP_SIDEBAR_EXPANDED_OFFSET_CLASS = 'lg:pl-[20rem]'
 export const DESKTOP_SIDEBAR_COLLAPSED_OFFSET_CLASS = 'lg:pl-[7rem]'
 
@@ -24,6 +25,7 @@ export type SidebarItemConfig = {
   label: string
   icon: LucideIcon
   path?: string
+  featureFlag?: FeatureFlag
   requiresAdmin?: boolean
   requiresAdvisor?: boolean
 }
@@ -49,7 +51,6 @@ type SidebarTranslations = {
   education: string
   clients: string
   profile: string
-  notifications: string
   admin: string
 }
 
@@ -82,7 +83,7 @@ export function buildSidebarSections(t: SidebarTranslations): SidebarSectionConf
   return [
     {
       id: 'overview',
-      title: 'Visao Geral',
+      title: 'Visão Geral',
       icon: LayoutDashboard,
       collapsible: true,
       defaultOpen: true,
@@ -143,6 +144,7 @@ export function buildSidebarSections(t: SidebarTranslations): SidebarSectionConf
           label: t.reports,
           icon: BarChart3,
           path: '/dashboard/relatorios',
+          featureFlag: 'REPORTS_V1',
         },
       ],
     },
@@ -159,12 +161,13 @@ export function buildSidebarSections(t: SidebarTranslations): SidebarSectionConf
           label: t.coupleAccount,
           icon: House,
           path: '/dashboard/conta-casal',
+          featureFlag: 'COUPLE_ACCOUNT',
         },
       ],
     },
     {
       id: 'education',
-      title: 'Educacao',
+      title: 'Educação',
       icon: BookOpenCheck,
       collapsible: true,
       defaultOpen: false,
@@ -175,6 +178,7 @@ export function buildSidebarSections(t: SidebarTranslations): SidebarSectionConf
           label: t.education,
           icon: BookOpenCheck,
           path: '/dashboard/educacao',
+          featureFlag: 'EDUCATION',
         },
       ],
     },
@@ -197,10 +201,10 @@ export function buildSidebarSections(t: SidebarTranslations): SidebarSectionConf
     },
     {
       id: 'settings',
-      title: 'Configuracoes',
+      title: 'Configurações',
       icon: User,
       collapsible: true,
-      defaultOpen: false,
+      defaultOpen: true,
       autoCollapsePriority: 10,
       items: [
         {
@@ -209,12 +213,16 @@ export function buildSidebarSections(t: SidebarTranslations): SidebarSectionConf
           icon: User,
           path: '/dashboard/perfil',
         },
-        {
-          id: 'notifications',
-          label: t.notifications,
-          icon: Bell,
-          path: '/dashboard/perfil#notifications',
-        },
+      ],
+    },
+    {
+      id: 'admin',
+      title: 'Admin',
+      icon: ShieldCheck,
+      collapsible: true,
+      defaultOpen: true,
+      autoCollapsePriority: 5,
+      items: [
         {
           id: 'admin',
           label: t.admin,
@@ -238,6 +246,7 @@ export function filterSidebarSections(
     .map((section) => ({
       ...section,
       items: section.items.filter((item) => {
+        if (item.featureFlag && !FEATURES[item.featureFlag]) return false
         if (item.requiresAdmin && !permissions.isAdmin) return false
         if (item.requiresAdvisor && !permissions.canAccessAdvisor) return false
         return true

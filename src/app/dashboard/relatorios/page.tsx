@@ -19,6 +19,8 @@ import InsightsSection from './components/InsightsSection'
 import CompareSection from './components/CompareSection'
 import { badgeForScore } from './components/utils'
 import PageOnboardingTour, { type PageOnboardingStep } from '@/components/onboarding/PageOnboardingTour'
+import { FEATURES } from '@/config/features'
+import FeatureUnavailable from '../components/FeatureUnavailable'
 
 function createReportsOnboardingSteps(
   t: (key: string, values?: Record<string, string | number | Date>) => string
@@ -53,6 +55,14 @@ function createReportsOnboardingSteps(
 }
 
 export default function ReportsPage() {
+  if (!FEATURES.REPORTS_V1) {
+    return <FeatureUnavailable />
+  }
+
+  return <ReportsV1Page />
+}
+
+function ReportsV1Page() {
   const t = useTranslations('reports.page')
   const onboardingSteps = useMemo(() => createReportsOnboardingSteps(t), [t])
   const currentYear = new Date().getFullYear()

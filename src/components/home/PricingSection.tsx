@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React from "react";
@@ -7,16 +6,22 @@ import { usePlans } from "@/hooks/query/usePlan";
 import { findCouplePlan } from "@/services/houses";
 import { PlanCard, UiPlan } from "../planos/plancard";
 import { mapPlanToUi } from "../planos/utils";
+import { FEATURES } from "@/config/features";
 
+const LANDING_ALLOWED_PLAN_SLUGS = new Set(["essencial-mensal", "essencial-anual-lancamento"]);
 
 export default function PricingSection() {
   const { data, isLoading, error } = usePlans();
 
-  const allowedSlugs = new Set(["essencial-mensal", "essencial-anual-lancamento"]);
   const visiblePlans = React.useMemo(() => {
     if (!data) return [];
 
-    const basePlans = data.filter((plan) => plan.isFeatured && allowedSlugs.has(plan.slug));
+    const basePlans = data.filter((plan) => plan.isFeatured && LANDING_ALLOWED_PLAN_SLUGS.has(plan.slug));
+
+    if (!FEATURES.COUPLE_ACCOUNT) {
+      return basePlans;
+    }
+
     const couplePlan = findCouplePlan(data);
 
     if (!couplePlan || basePlans.some((plan) => plan.id === couplePlan.id)) {

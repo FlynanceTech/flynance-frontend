@@ -13,6 +13,8 @@ import { cn } from '@/lib/utils'
 import { useCourse } from '@/hooks/query/useCourses'
 import type { Course, Lesson } from '@/types/course'
 import { LessonPlayerYouTube } from '@/components/education/LessonPlayerYouTube'
+import { FEATURES } from '@/config/features'
+import FeatureUnavailable from '../../components/FeatureUnavailable'
 
 function StarRating({
   value,
@@ -78,6 +80,14 @@ function getYouTubeId(url: string): string | undefined {
 }
 
 export default function Page() {
+  if (!FEATURES.EDUCATION) {
+    return <FeatureUnavailable />
+  }
+
+  return <EducationLessonPageContent />
+}
+
+function EducationLessonPageContent() {
   const t = useTranslations('educationLessonPage')
   const params = useParams<{ slug: string }>()
   const search = useSearchParams()
