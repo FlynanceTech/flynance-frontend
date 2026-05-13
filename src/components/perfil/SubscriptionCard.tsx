@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { cancelSignature, undoCancelSignature } from '@/services/payment'
 import { useRouter } from 'next/navigation'
 import { useUserSession } from '@/stores/useUserSession'
+import { persistAuthToken, readPersistedAuthToken } from '@/lib/authSession'
 import {
   billingKeys,
   useBillingSubscriptionSummary,
@@ -567,15 +568,33 @@ const SubscriptionCard = () => {
           {isActive && !isCancelled && !scheduledToCancel && (
             <>
               {!confirmingCancel ? (
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="w-full sm:w-auto"
-                  onClick={() => setConfirmingCancel(true)}
-                  disabled={loadingCancel}
-                >
-                  {t('actions.cancelSubscription')}
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="w-full sm:w-auto"
+                    onClick={() => setConfirmingCancel(true)}
+                    disabled={loadingCancel}
+                  >
+                    {t('actions.cancelSubscription')}
+                  </Button>
+                  <Button
+                    variant="default"
+                    size="lg"
+                    className="w-full sm:w-auto"
+                    onClick={() => {
+                      const token = readPersistedAuthToken()
+                      if (!token) {
+                        toast.error(t('toasts.sessionExpired'))
+                        return
+                      }
+                      persistAuthToken(token)
+                      router.push('/WinbackPage/planos')
+                    }}
+                  >
+                    {t('actions.changeSubscription')}
+                  </Button>
+                </div>
               ) : (
                 <div className="rounded-xl border border-red-300 bg-red-50 p-3 space-y-3">
                   <p className="text-xs text-slate-700">
