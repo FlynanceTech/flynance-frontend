@@ -1111,18 +1111,30 @@ function PlanResume({
 
   return (
     <div className="bg-white rounded-md shadow-md flex flex-col h-full overflow-hidden">
-      <div className="flex rounded-lg">
+      <div className="flex bg-slate-100">
         <button
           type="button"
           onClick={() => onChangePeriod("MONTHLY")}
-          className={clsx("flex-1 py-2 text-sm md:text-sm font-semibold", !isAnnual ? "bg-primary text-white " : "bg-white text-primary")}
+          aria-pressed={!isAnnual}
+          className={clsx(
+            "flex-1 py-2 text-sm md:text-sm font-semibold transition-colors",
+            !isAnnual
+              ? "bg-white text-primary"
+              : "bg-slate-100 text-slate-500 hover:text-slate-700"
+          )}
         >
           Mensal
         </button>
         <button
           type="button"
           onClick={() => onChangePeriod("ANNUAL")}
-          className={clsx("flex-1 py-2 text-sm md:text-sm font-semibold", isAnnual ? "bg-primary text-white " : "bg-white text-primary")}
+          aria-pressed={isAnnual}
+          className={clsx(
+            "flex-1 py-2 text-sm md:text-sm font-semibold transition-colors",
+            isAnnual
+              ? "bg-white text-primary"
+              : "bg-slate-100 text-slate-500 hover:text-slate-700"
+          )}
         >
           Anual
         </button>

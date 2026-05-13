@@ -847,6 +847,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           cancelling: 'Cancelando...',
           redirecting: 'Redirecionando...',
           reactivateSubscription: 'Reativar assinatura',
+          changeSubscription: 'Alterar assinatura',
         },
         status: {
           active: 'Ativa',
@@ -870,6 +871,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           cancelUndoError: 'Erro ao desfazer cancelamento.',
           stripeMissingFrontendKey:
             'Stripe nao configurado no frontend (NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY).',
+          sessionExpired: 'Sessao expirada. Faca login novamente para alterar a assinatura.',
         },
         changeCardModal: {
           title: 'Trocar cartao',
@@ -1100,6 +1102,21 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       headerTitle: 'Planos da Flynance',
       heroTitle: 'Escolha seu plano e comece a economizar',
       loadError: 'Ocorreu um erro ao carregar os planos. Tente novamente mais tarde.',
+      changePlanModal: {
+        title: 'Confirmar troca de plano',
+        description: 'Voce esta prestes a trocar sua assinatura para o plano {planName}.',
+        nextBillingNote:
+          'A mudanca sera aplicada na proxima cobranca. Voce continua usando o plano atual ate o fim do ciclo vigente.',
+        cancel: 'Cancelar',
+        confirm: 'Confirmar troca',
+        processing: 'Processando...',
+        confirmingPayment: 'Confirmando pagamento...',
+        success: 'Troca de plano agendada para a proxima cobranca.',
+        error: 'Erro ao trocar o plano. Tente novamente.',
+        stripeNotReady: 'Stripe nao esta pronto. Recarregue a pagina e tente novamente.',
+        confirmPaymentError:
+          'Nao foi possivel confirmar o pagamento da troca de plano. Verifique seu cartao e tente novamente.',
+      },
     },
     winbackPage: {
       cycle: {
@@ -3206,6 +3223,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           cancelling: 'Cancelling...',
           redirecting: 'Redirecting...',
           reactivateSubscription: 'Reactivate subscription',
+          changeSubscription: 'Change subscription',
         },
         status: {
           active: 'Active',
@@ -3229,6 +3247,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           cancelUndoError: 'Error undoing cancellation.',
           stripeMissingFrontendKey:
             'Stripe is not configured on frontend (NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY).',
+          sessionExpired: 'Session expired. Sign in again to change your subscription.',
         },
         changeCardModal: {
           title: 'Change card',
@@ -3455,6 +3474,21 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       headerTitle: 'Flynance Plans',
       heroTitle: 'Choose your plan and start saving',
       loadError: 'An error occurred while loading plans. Try again later.',
+      changePlanModal: {
+        title: 'Confirm plan change',
+        description: 'You are about to switch your subscription to the {planName} plan.',
+        nextBillingNote:
+          'The change will take effect on your next billing cycle. You keep your current plan until the end of the current cycle.',
+        cancel: 'Cancel',
+        confirm: 'Confirm change',
+        processing: 'Processing...',
+        confirmingPayment: 'Confirming payment...',
+        success: 'Plan change scheduled for the next billing cycle.',
+        error: 'Error changing plan. Try again.',
+        stripeNotReady: 'Stripe is not ready. Reload the page and try again.',
+        confirmPaymentError:
+          'We could not confirm the payment for this plan change. Check your card and try again.',
+      },
     },
     winbackPage: {
       cycle: {
@@ -5561,6 +5595,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           cancelling: 'Cancelando...',
           redirecting: 'Redirigiendo...',
           reactivateSubscription: 'Reactivar suscripcion',
+          changeSubscription: 'Cambiar suscripcion',
         },
         status: {
           active: 'Activa',
@@ -5584,6 +5619,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           cancelUndoError: 'Error al deshacer la cancelacion.',
           stripeMissingFrontendKey:
             'Stripe no esta configurado en frontend (NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY).',
+          sessionExpired: 'Sesion expirada. Inicia sesion de nuevo para cambiar la suscripcion.',
         },
         changeCardModal: {
           title: 'Cambiar tarjeta',
@@ -5814,6 +5850,21 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       headerTitle: 'Planes de Flynance',
       heroTitle: 'Elige tu plan y empieza a ahorrar',
       loadError: 'Ocurrio un error al cargar los planes. Intentalo mas tarde.',
+      changePlanModal: {
+        title: 'Confirmar cambio de plan',
+        description: 'Estas a punto de cambiar tu suscripcion al plan {planName}.',
+        nextBillingNote:
+          'El cambio se aplicara en el proximo cobro. Seguiras con tu plan actual hasta el fin del ciclo vigente.',
+        cancel: 'Cancelar',
+        confirm: 'Confirmar cambio',
+        processing: 'Procesando...',
+        confirmingPayment: 'Confirmando pago...',
+        success: 'Cambio de plan programado para el proximo cobro.',
+        error: 'Error al cambiar el plan. Intentalo de nuevo.',
+        stripeNotReady: 'Stripe no esta listo. Recarga la pagina e intentalo de nuevo.',
+        confirmPaymentError:
+          'No pudimos confirmar el pago del cambio de plan. Revisa tu tarjeta e intentalo de nuevo.',
+      },
     },
     winbackPage: {
       cycle: {
