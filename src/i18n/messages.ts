@@ -53,6 +53,10 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       apply: 'Aplicar',
       applying: 'Aplicando...',
       applied: 'Aplicado',
+      accountType: {
+        individual: 'Conta Individual',
+        couple: 'Conta Conjunta',
+      },
     },
     financialScope: {
       label: 'Contexto financeiro',
@@ -2437,6 +2441,10 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       apply: 'Apply',
       applying: 'Applying...',
       applied: 'Applied',
+      accountType: {
+        individual: 'Individual Account',
+        couple: 'Joint Account',
+      },
     },
     financialScope: {
       label: 'Financial context',
@@ -4804,6 +4812,10 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       apply: 'Aplicar',
       applying: 'Aplicando...',
       applied: 'Aplicado',
+      accountType: {
+        individual: 'Cuenta Individual',
+        couple: 'Cuenta Conjunta',
+      },
     },
     financialScope: {
       label: 'Contexto financiero',

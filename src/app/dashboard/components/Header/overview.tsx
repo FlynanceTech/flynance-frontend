@@ -17,6 +17,15 @@ import { useAdvisorActing } from '@/stores/useAdvisorActing'
 import { isAdvisorReadOnlyTransactionAccess } from '@/utils/transactionWriteAccess'
 import type { Category } from '@/types/Transaction'
 import { useFinancialScope } from '@/hooks/useFinancialScope'
+import { FEATURES } from '@/config/features'
+import { isCoupleHouseActive } from '@/lib/financialScope'
+
+function toFirstName(fullName?: string | null) {
+  if (!fullName) return ''
+  const first = fullName.trim().split(/\s+/)[0] ?? ''
+  if (!first) return ''
+  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase()
+}
 
 interface HeaderProps {
   title?: string
@@ -99,8 +108,16 @@ export default function Header({
   const canCreateTransactions = Boolean(newTransation && canWriteTransactions)
 
   const { user } = useUserSession()
-  const firstName =
-    user?.userData?.user?.name?.split(' ')[0]?.toLowerCase()?.replace(/^\w/, (c) => c.toUpperCase()) ?? ''
+  const firstName = toFirstName(user?.userData?.user?.name)
+
+  const houseContext = user?.houseContext ?? null
+  const isCouple = FEATURES.COUPLE_ACCOUNT && isCoupleHouseActive(houseContext) && !activeClientId
+  const otherMember = houseContext?.isOwner ? houseContext?.partner : houseContext?.owner
+  const partnerFirstName = isCouple ? toFirstName(otherMember?.name) : ''
+  const showBothNames = isCouple && scope !== 'me' && Boolean(partnerFirstName)
+  const greetingName = showBothNames ? `${firstName} & ${partnerFirstName}` : firstName
+  const showAccountTypeBadge = FEATURES.COUPLE_ACCOUNT && !activeClientId
+  const accountTypeLabel = isCouple ? t('accountType.couple') : t('accountType.individual')
 
   const mode = useTransactionFilter((s) => s.mode)
   const dateRange = useTransactionFilter((s) => s.dateRange)
@@ -236,9 +253,23 @@ export default function Header({
     <header className="flex flex-col px-6 pt-6">
       <div className="flex flex-col gap-2">
         <div className="grid grid-cols-3 items-center">
-          <h3 className="col-span-1 text-[1.7rem] font-bold text-[#333C4D] lg:text-[2rem]">
-            {t('greeting', { name: firstName })}
-          </h3>
+          <div className="col-span-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <h3 className="text-[1.7rem] font-bold text-[#333C4D] lg:text-[2rem]">
+              {t('greeting', { name: greetingName })}
+            </h3>
+            {showAccountTypeBadge && (
+              <span
+                className={
+                  'inline-flex w-fit items-center rounded-full px-3 py-0.5 text-xs font-medium ' +
+                  (isCouple
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : 'bg-slate-100 text-slate-600')
+                }
+              >
+                {accountTypeLabel}
+              </span>
+            )}
+          </div>
 
           <div className="col-span-2 flex w-full items-center justify-end gap-2">
             {rightContent}
