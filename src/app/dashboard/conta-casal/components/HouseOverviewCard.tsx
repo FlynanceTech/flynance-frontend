@@ -1,12 +1,16 @@
 'use client'
 
-import { Crown, HeartHandshake, House } from 'lucide-react'
+import { useState } from 'react'
+import { Crown, HeartHandshake, House, Pencil } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useUpdateHouseName } from '@/hooks/query/useHouse'
 import type { HouseContext } from '@/types/house'
 
+import { EditHouseNameDialog } from './EditHouseNameDialog'
 import { formatHouseDate, getHouseMemberDisplayName } from './house-utils'
 
 type HouseOverviewCardProps = {
@@ -16,6 +20,15 @@ type HouseOverviewCardProps = {
 export function HouseOverviewCard({ house }: HouseOverviewCardProps) {
   const t = useTranslations('coupleAccountPage')
   const locale = useLocale()
+  const [isEditOpen, setEditOpen] = useState(false)
+  const updateHouseName = useUpdateHouseName()
+  const canEditName = house.role === 'OWNER'
+
+  function handleConfirmRename(name: string) {
+    updateHouseName.mutate(name, {
+      onSuccess: () => setEditOpen(false),
+    })
+  }
 
   return (
     <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#121212]">
@@ -44,11 +57,24 @@ export function HouseOverviewCard({ house }: HouseOverviewCardProps) {
 
       <CardContent className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2">
-          <article className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-white/10 dark:bg-white/5">
+          <article className="relative rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-white/10 dark:bg-white/5">
             <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-zinc-400">{t('houseCard.fields.name')}</p>
-            <p className="mt-1 text-sm font-semibold text-[#333C4D] dark:text-white">
+            <p className="mt-1 pr-8 text-sm font-semibold text-[#333C4D] dark:text-white">
               {house.name || t('houseCard.fallbacks.unnamedHouse')}
             </p>
+            {canEditName && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-2 top-2 h-8 w-8 text-slate-500 hover:text-[#2F6E91] dark:text-zinc-400 dark:hover:text-[#F4C542]"
+                onClick={() => setEditOpen(true)}
+                aria-label={t('houseCard.editNameAction')}
+                title={t('houseCard.editNameAction')}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
           </article>
 
           <article className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-white/10 dark:bg-white/5">
@@ -93,6 +119,18 @@ export function HouseOverviewCard({ house }: HouseOverviewCardProps) {
           </div>
         </div>
       </CardContent>
+
+      {canEditName && (
+        <EditHouseNameDialog
+          open={isEditOpen}
+          onOpenChange={(next) => {
+            if (!updateHouseName.isPending) setEditOpen(next)
+          }}
+          currentName={house.name}
+          onConfirm={handleConfirmRename}
+          isPending={updateHouseName.isPending}
+        />
+      )}
     </Card>
   )
 }

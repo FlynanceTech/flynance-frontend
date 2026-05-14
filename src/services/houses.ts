@@ -380,6 +380,23 @@ export async function createHouse(payload: CreateHousePayload): Promise<HouseCon
   }
 }
 
+export async function updateHouseName(name: string): Promise<HouseContext | null> {
+  const trimmed = String(name ?? '').trim()
+  if (!trimmed) {
+    throw new Error('Informe um nome valido para a conta de casal.')
+  }
+  if (trimmed.length > 120) {
+    throw new Error('O nome da conta de casal deve ter no maximo 120 caracteres.')
+  }
+
+  try {
+    const response = await api.patch('/houses/me', { name: trimmed })
+    return toHouseContext(response.data)
+  } catch (error: unknown) {
+    throw new Error(toHouseErrorMessage(error, 'Erro ao renomear a conta de casal.'))
+  }
+}
+
 export async function createHouseInvite(): Promise<HouseInvite | null> {
   try {
     const response = await api.post('/houses/me/invites', {})
