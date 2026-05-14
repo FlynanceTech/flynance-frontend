@@ -39,6 +39,11 @@ export type HouseInvite = {
   status: HouseInviteStatus
   createdAt: string | null
   expiresAt: string | null
+  acceptedAt: string | null
+  revokedAt: string | null
+  acceptedByUserId: string | null
+  acceptedByName: string | null
+  acceptedByEmail: string | null
 }
 
 export type HouseContext = {
