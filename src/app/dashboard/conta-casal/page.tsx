@@ -153,6 +153,11 @@ function CoupleAccountPageContent() {
     (user?.userData?.signature?.plan as any)?.name ??
     (user?.userData?.signature?.plan as any)?.title ??
     null
+  const currentPlanPriceCentsRaw = (user?.userData?.signature?.plan as any)?.priceCents
+  const currentPlanPriceCents =
+    typeof currentPlanPriceCentsRaw === 'number' && Number.isFinite(currentPlanPriceCentsRaw)
+      ? currentPlanPriceCentsRaw
+      : null
   const hasActiveSignature = user?.userData?.hasActiveSignature ?? false
   const canManageHouse = house?.role === 'OWNER'
   const counterpartMember = house ? getCounterpartMember(house) : null
@@ -302,6 +307,7 @@ function CoupleAccountPageContent() {
             <CouplePlanUpgradeCard
               plan={couplePlan}
               currentPlanName={currentPlanName}
+              currentPlanPriceCents={currentPlanPriceCents}
               hasActiveSignature={hasActiveSignature}
               isCurrentCouplePlan={isCurrentCouplePlan}
               isLoadingPlans={couplePlanQuery.isLoading}
@@ -321,6 +327,7 @@ function CoupleAccountPageContent() {
               <CouplePlanUpgradeCard
                 plan={couplePlan}
                 currentPlanName={currentPlanName}
+                currentPlanPriceCents={currentPlanPriceCents}
                 hasActiveSignature={hasActiveSignature}
                 isCurrentCouplePlan={isCurrentCouplePlan}
                 isLoadingPlans={couplePlanQuery.isLoading}

@@ -49,15 +49,15 @@ function upsertInviteInHouseContext(
 ): HouseContext | null | undefined {
   if (!currentHouse || !invite) return currentHouse
 
-  const remainingInvites = currentHouse.pendingInvites.filter(
+  const remainingHistory = currentHouse.invites.filter(
     (currentInvite) => currentInvite.id !== invite.id
   )
-  const nextInvites = [invite, ...remainingInvites]
+  const nextInvites = [invite, ...remainingHistory]
 
   return {
     ...currentHouse,
-    pendingInvites: nextInvites,
     invites: nextInvites,
+    pendingInvites: nextInvites.filter((item) => item.status === 'PENDING'),
   }
 }
 

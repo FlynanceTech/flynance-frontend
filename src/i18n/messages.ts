@@ -2112,15 +2112,15 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       refreshing: 'Atualizando...',
       retry: 'Tentar novamente',
       loadError: {
-        title: 'Nao foi possivel carregar a conta de casal',
-        description: 'Atualize a pagina e tente novamente em instantes.',
+        title: 'Não foi possível carregar a conta de casal',
+        description: 'Atualize a página e tente novamente em instantes.',
       },
       roles: {
         OWNER: 'Titular',
         PARTNER: 'Parceiro(a)',
       },
       statuses: {
-        SOLO: 'Aguardando conexao',
+        SOLO: 'Aguardando conexão',
         COUPLE: 'Casal conectado',
       },
       inviteStatuses: {
@@ -2133,37 +2133,37 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       emptyState: {
         title: 'Crie sua conta de casal',
         description:
-          'Centralize convites, acompanhe o parceiro e compartilhe a mesma visao financeira.',
+          'Centralize convites, acompanhe o parceiro e compartilhe a mesma visão financeira.',
         features: {
-          sharedTitle: 'Espaco compartilhado',
+          sharedTitle: 'Espaço compartilhado',
           sharedDescription:
-            'Voces passam a acompanhar a conta do casal dentro do mesmo ambiente.',
-          historyTitle: 'Historico em conjunto',
+            'Vocês passam a acompanhar a conta do casal dentro do mesmo ambiente.',
+          historyTitle: 'Histórico em conjunto',
           historyDescription:
-            'Acompanhe a evolucao da conta e saiba quando o vinculo foi criado.',
+            'Acompanhe a evolução da conta e saiba quando o vínculo foi criado.',
           notificationTitle: 'Convite simples',
           notificationDescription:
             'Gere um link de convite para conectar seu parceiro em poucos passos.',
         },
         form: {
           nameLabel: 'Nome da conta de casal',
-          namePlaceholder: 'Ex: Casa da Ana e Joao',
-          helper: 'Escolha um nome facil de identificar para a conta compartilhada.',
-          notice: 'So e possivel ter uma conta de casal ativa por usuario.',
+          namePlaceholder: 'Ex: Casa da Ana e João',
+          helper: 'Escolha um nome fácil de identificar para a conta compartilhada.',
+          notice: 'Só é possível ter uma conta de casal ativa por usuário.',
           create: 'Criar conta de casal',
           creating: 'Criando conta...',
           nameMin: 'Informe pelo menos 2 caracteres.',
-          nameMax: 'Use no maximo 80 caracteres.',
+          nameMax: 'Use no máximo 80 caracteres.',
         },
       },
       upgradeCard: {
         title: 'Plano casal',
         description:
-          'Ative o Plano Casal, ou mude o seu plano atual para unificar os orcamentos.',
-        loadingPlans: 'Carregando plano disponivel...',
-        noPlanTitle: 'Plano casal indisponivel',
+          'Ative o Plano Casal, ou mude o seu plano atual para unificar os orçamentos.',
+        loadingPlans: 'Carregando plano disponível...',
+        noPlanTitle: 'Plano casal indisponível',
         noPlanDescription:
-          'Nao encontramos um plano elegivel para habilitar a conta de casal agora.',
+          'Não encontramos um plano elegível para habilitar a conta de casal agora.',
         noPlanHint:
           'Se o problema persistir, atualize os planos cadastrados no admin.',
         periods: {
@@ -2173,14 +2173,16 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         },
         activeBadge: 'Plano atual',
         currentPlan: 'Plano atual: {planName}',
-        ownerNoteTitle: 'Voce pode gerenciar a assinatura',
+        ownerNoteTitle: 'Você pode gerenciar a assinatura',
         ownerNoteDescription:
-          'Como titular da conta de casal, voce pode iniciar a assinatura ou trocar de plano.',
+          'Como titular da conta de casal, você pode iniciar a assinatura ou trocar de plano.',
         partnerNoteTitle: 'Somente o titular pode alterar o plano',
         partnerNoteDescription:
-          'Peca para o titular da conta de casal fazer a contratacao ou troca do plano.',
+          'Peça para o titular da conta de casal fazer a contratação ou troca do plano.',
         prorationNote:
-          'A mudanca para o plano casal pode gerar ajuste proporcional na cobranca imediata, e o valor padrao do plano sera aplicado no proximo vencimento.',
+          'A mudança para o plano casal gerará o ajuste adicional de {differenceAmount}, e será cobrado de imediato no seu cartão de crédito. O plano casal será cobrado ao valor padrão de {couplePlanPrice} no próximo vencimento.',
+        prorationNoteSimple:
+          'O plano casal será cobrado ao valor padrão de {couplePlanPrice} no próximo vencimento. A diferença em relação ao seu plano atual será cobrada de imediato no cartão.',
         processing: 'Processando...',
         actions: {
           changePlan: 'Trocar para plano casal',
@@ -2188,7 +2190,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         },
       },
       houseCard: {
-        title: 'Visao da conta',
+        title: 'Visão da conta',
         description: 'Dados principais da sua conta de casal.',
         fields: {
           name: 'Nome',
@@ -2198,15 +2200,15 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         },
         fallbacks: {
           unnamedHouse: 'Conta sem nome',
-          ownerMissing: 'Titular nao identificado',
-          notLinkedYet: 'Ainda nao vinculado',
+          ownerMissing: 'Titular não identificado',
+          notLinkedYet: 'Ainda não vinculado',
         },
-        ownerNoteTitle: 'Voce e o administrador da conta!',
+        ownerNoteTitle: 'Você é o administrador da conta!',
         ownerNoteDescription:
-          'Voce pode convidar e remover pessoas da sua conta de casal quando quiser. Para convidar, basta gerar um link.',
-        partnerNoteTitle: 'Voce participa da conta',
+          'Você pode convidar e remover pessoas da sua conta de casal quando quiser. Para convidar, basta gerar um link.',
+        partnerNoteTitle: 'Você participa da conta',
         partnerNoteDescription:
-          'Voce acompanha a conta compartilhada e acessa as informacoes ja conectadas.',
+          'Você acompanha a conta compartilhada e acessa as informações já conectadas.',
         editNameAction: 'Editar nome da conta',
       },
       editNameDialog: {
@@ -2220,30 +2222,30 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       },
       partnerCard: {
         title: 'Parceiro conectado',
-        description: 'Veja quem esta vinculado a sua conta de casal.',
+        description: 'Veja quem está vinculado à sua conta de casal.',
         fallbacks: {
-          noName: 'Nome nao informado',
-          noEmail: 'E-mail nao informado',
+          noName: 'Nome não informado',
+          noEmail: 'E-mail não informado',
         },
         ownerConnectedTitle: 'Titular conectado',
         ownerConnectedDescription:
-          'Este usuario criou e administra a conta de casal.',
+          'Este usuário criou e administra a conta de casal.',
         partnerConnectedTitle: 'Parceiro conectado',
         partnerConnectedDescription:
-          'Este usuario aceitou o convite e ja faz parte da conta de casal.',
+          'Este usuário aceitou o convite e já faz parte da conta de casal.',
         actions: {
           remove: 'Remover parceiro',
           removing: 'Removendo...',
         },
-        emptyTitle: 'Ninguem esta conectado.',
+        emptyTitle: 'Ninguém está conectado.',
         emptyOwnerDescription:
-          'Aguarde a conexao.',
+          'Aguarde a conexão.',
         emptyPartnerDescription:
-          'Aguarde a conexao.',
+          'Aguarde a conexão.',
       },
       invitesCard: {
         title: 'Convites',
-        ownerDescription: 'Convide seu parceiro(a) atraves do link.',
+        ownerDescription: 'Convide seu parceiro(a) através do link.',
         partnerDescription:
           'Acompanhe o status dos convites gerados pelo titular.',
         actions: {
@@ -2257,13 +2259,14 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           expiresAt: 'Expira em',
           token: 'Token',
         },
-        emptyOwner: 'Nenhum convite gerado ate agora.',
-        emptyPartner: 'Nenhum convite disponivel no momento.',
-        linkUnavailable: 'Link indisponivel',
-        tokenUnavailable: 'Token indisponivel',
-        copyUnavailable: 'Nao foi possivel montar o link do convite.',
+        emptyOwner: 'Nenhum convite gerado até agora.',
+        emptyPartner: 'Nenhum convite disponível no momento.',
+        linkUnavailable: 'Link indisponível',
+        tokenUnavailable: 'Token indisponível',
+        copyUnavailable: 'Não foi possível montar o link do convite.',
         copySuccess: 'Link do convite copiado.',
-        copyError: 'Nao foi possivel copiar o link do convite.',
+        copyError: 'Não foi possível copiar o link do convite.',
+        acceptedBy: 'Aceito por {name} em {date}.',
       },
       removePartnerDialog: {
         title: 'Remover parceiro',
@@ -4645,6 +4648,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         copyUnavailable: 'Could not build the invite link.',
         copySuccess: 'Invite link copied.',
         copyError: 'Could not copy the invite link.',
+        acceptedBy: 'Accepted by {name} on {date}.',
       },
       removePartnerDialog: {
         title: 'Remove partner',
@@ -7037,6 +7041,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         copyUnavailable: 'No se pudo montar el link de la invitacion.',
         copySuccess: 'Link de la invitacion copiado.',
         copyError: 'No se pudo copiar el link de la invitacion.',
+        acceptedBy: 'Aceptado por {name} el {date}.',
       },
       removePartnerDialog: {
         title: 'Remover pareja',
