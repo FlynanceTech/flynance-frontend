@@ -2207,6 +2207,16 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         partnerNoteTitle: 'Voce participa da conta',
         partnerNoteDescription:
           'Voce acompanha a conta compartilhada e acessa as informacoes ja conectadas.',
+        editNameAction: 'Editar nome da conta',
+      },
+      editNameDialog: {
+        title: 'Editar nome da conta',
+        description: 'Atualize o nome da sua conta de casal.',
+        label: 'Nome da conta',
+        placeholder: 'Ex.: Manu & David',
+        cancel: 'Cancelar',
+        save: 'Salvar',
+        saving: 'Salvando...',
       },
       partnerCard: {
         title: 'Parceiro conectado',
@@ -4579,6 +4589,16 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         partnerNoteTitle: 'You are part of the account',
         partnerNoteDescription:
           'You can follow the shared account and access the connected information.',
+        editNameAction: 'Edit account name',
+      },
+      editNameDialog: {
+        title: 'Edit account name',
+        description: 'Update the name of your couple account.',
+        label: 'Account name',
+        placeholder: 'E.g. Manu & David',
+        cancel: 'Cancel',
+        save: 'Save',
+        saving: 'Saving...',
       },
       partnerCard: {
         title: 'Connected partner',
@@ -6960,6 +6980,16 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         partnerNoteTitle: 'Tu formas parte de la cuenta',
         partnerNoteDescription:
           'Puedes seguir la cuenta compartida y acceder a la informacion ya conectada.',
+        editNameAction: 'Editar nombre de la cuenta',
+      },
+      editNameDialog: {
+        title: 'Editar nombre de la cuenta',
+        description: 'Actualiza el nombre de tu cuenta en pareja.',
+        label: 'Nombre de la cuenta',
+        placeholder: 'Ej.: Manu & David',
+        cancel: 'Cancelar',
+        save: 'Guardar',
+        saving: 'Guardando...',
       },
       partnerCard: {
         title: 'Pareja conectada',

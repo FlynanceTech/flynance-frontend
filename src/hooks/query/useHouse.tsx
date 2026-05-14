@@ -18,6 +18,7 @@ import {
   getHouseContext,
   hasHouseContextInAuthMePayload,
   removeHousePartner,
+  updateHouseName,
 } from '@/services/houses'
 import { useUserSession } from '@/stores/useUserSession'
 import type { CreateHousePayload, HouseContext, HouseInvite } from '@/types/house'
@@ -126,6 +127,23 @@ export function useAcceptHouseInvite() {
     },
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : 'Erro ao aceitar convite.')
+    },
+  })
+}
+
+export function useUpdateHouseName() {
+  const queryClient = useQueryClient()
+  const fetchAccount = useUserSession((state) => state.fetchAccount)
+
+  return useMutation({
+    mutationFn: (name: string) => updateHouseName(name),
+    onSuccess: async (house) => {
+      queryClient.setQueryData(houseKeys.me, house ?? null)
+      await refreshHouseQueries(fetchAccount, queryClient)
+      toast.success('Nome da conta de casal atualizado.')
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Erro ao renomear a conta de casal.')
     },
   })
 }
