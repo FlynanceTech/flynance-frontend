@@ -439,6 +439,49 @@ export async function createHouseInvite(): Promise<HouseInvite | null> {
   }
 }
 
+export async function deleteHouseInvite(inviteId: string): Promise<HouseContext | null> {
+  const safeInviteId = String(inviteId ?? '').trim()
+  if (!safeInviteId) {
+    throw new Error('Convite invalido.')
+  }
+
+  try {
+    const response = await api.delete(`/houses/me/invites/${encodeURIComponent(safeInviteId)}`)
+    return toHouseContext(response.data)
+  } catch (error: unknown) {
+    throw new Error(toHouseErrorMessage(error, 'Erro ao excluir convite da conta casal.'))
+  }
+}
+
+export type HouseInvitePreview = {
+  houseId: string
+  houseName: string | null
+  ownerName: string | null
+  ownerEmail: string | null
+  expiresAt: string | null
+}
+
+export async function getHouseInvitePreview(token: string): Promise<HouseInvitePreview | null> {
+  const safeToken = String(token ?? '').trim()
+  if (!safeToken) return null
+
+  try {
+    const response = await api.get(`/houses/invites/${encodeURIComponent(safeToken)}`)
+    const invite = response.data?.invite ?? response.data ?? null
+    if (!invite || typeof invite !== 'object') return null
+
+    return {
+      houseId: String(invite.houseId ?? ''),
+      houseName: toOptionalString(invite.houseName),
+      ownerName: toOptionalString(invite.ownerName),
+      ownerEmail: toOptionalString(invite.ownerEmail),
+      expiresAt: toIsoDate(invite.expiresAt),
+    }
+  } catch {
+    return null
+  }
+}
+
 export async function acceptHouseInvite(token: string): Promise<HouseContext | null> {
   const safeToken = String(token ?? '').trim()
   if (safeToken.length < 6) {
@@ -517,11 +560,15 @@ function scoreCouplePlan(plan: PlansResponse): number {
 }
 
 export function findCouplePlan(plans: PlansResponse[]): PlansResponse | null {
+  return findCouplePlans(plans)[0] ?? null
+}
+
+export function findCouplePlans(plans: PlansResponse[]): PlansResponse[] {
   const candidates = plans
     .filter((plan) => plan.isActive && plan.isPublic)
     .map((plan) => ({ plan, score: scoreCouplePlan(plan) }))
     .filter((item) => item.score > 0)
-    .sort((a, b) => b.score - a.score)
+    .sort((a, b) => b.score - a.score || a.plan.priceCents - b.plan.priceCents)
 
-  return candidates[0]?.plan ?? null
+  return candidates.map((item) => item.plan)
 }

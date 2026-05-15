@@ -21,6 +21,7 @@ import {
 import { useCategories } from '@/hooks/query/useCategory'
 import { useCategoryStore } from '@/stores/useCategoryStore'
 import { formatCurrency } from '@/utils/formatter'
+import { getActorFirstName } from '@/utils/actorName'
 
 function toCurrency(v) {
   return formatCurrency(Number(v || 0))
@@ -30,6 +31,11 @@ function truncateLabel(value, maxChars) {
   if (!value) return ''
   if (value.length <= maxChars) return value
   return `${value.slice(0, Math.max(0, maxChars - 3)).trim()}...`
+}
+
+function formatDateWithActor(date, locale, actorName) {
+  const formattedDate = new Date(date).toLocaleDateString(locale)
+  return actorName ? `${formattedDate} • ${actorName}` : formattedDate
 }
 
 const CustomRect = (props) => {
@@ -292,7 +298,7 @@ export default function CategorySpendingDistribution({ transactions, isLoading, 
                         {tx.description || t('defaultTransaction')}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {new Date(tx.date).toLocaleDateString(locale)}
+                        {formatDateWithActor(tx.date, locale, getActorFirstName(tx))}
                       </p>
                     </div>
                     <span className="text-gray-900 font-semibold">

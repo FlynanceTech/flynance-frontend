@@ -5,6 +5,7 @@ import { Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import type { Transaction } from '@/types/Transaction'
 import { formatCurrency } from '@/utils/formatter'
+import { toFirstName } from '@/utils/actorName'
 
 type SortField = 'date' | 'value' | null
 type SortDirection = 'asc' | 'desc'
@@ -149,6 +150,7 @@ export function TransactionTable({
               const value = Number(tx.value ?? 0)
               const description = tx.description || t('noDescription')
               const actorLabel = getActorLabel(tx)
+              const actorFirstName = toFirstName(actorLabel) || actorLabel
 
               return (
                 <div
@@ -195,7 +197,7 @@ export function TransactionTable({
                     <div className="lg:hidden mt-0.5 flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400 ">
                       {showActor && (
                         <>
-                          <span className="truncate max-w-[140px]">{actorLabel}</span>
+                          <span className="truncate max-w-[140px]">{actorFirstName}</span>
                           <span className="opacity-60">.</span>
                         </>
                       )}
@@ -210,7 +212,7 @@ export function TransactionTable({
 
                   {showActor && (
                     <div role="cell" className="min-w-0 pr-4 text-sm text-gray-700 dark:text-zinc-200">
-                      <span className="block truncate">{actorLabel}</span>
+                      <span className="block truncate">{actorFirstName}</span>
                     </div>
                   )}
 

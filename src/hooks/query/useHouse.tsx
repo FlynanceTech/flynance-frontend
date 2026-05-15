@@ -13,8 +13,10 @@ import {
   acceptHouseInvite,
   createHouse,
   createHouseInvite,
+  deleteHouseInvite,
   extractHouseContextFromAuthMePayload,
   findCouplePlan,
+  findCouplePlans,
   getHouseContext,
   hasHouseContextInAuthMePayload,
   removeHousePartner,
@@ -76,6 +78,7 @@ export function useHouseContext(enabled = true) {
     initialData: authHasHouseContext ? initialHouseContext ?? null : undefined,
     staleTime: 0,
     refetchOnWindowFocus: true,
+    refetchInterval: enabled ? 15000 : false,
     retry: 1,
   })
 }
@@ -110,6 +113,25 @@ export function useCreateHouseInvite() {
     },
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : 'Erro ao gerar convite.')
+    },
+  })
+}
+
+export function useDeleteHouseInvite() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (inviteId: string): Promise<HouseContext | null> => deleteHouseInvite(inviteId),
+    onSuccess: async (house) => {
+      queryClient.setQueryData(houseKeys.me, house ?? null)
+      await queryClient.invalidateQueries({
+        queryKey: houseKeys.me,
+        refetchType: 'active',
+      })
+      toast.success('Convite excluido.')
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Erro ao excluir convite.')
     },
   })
 }
@@ -172,10 +194,15 @@ export function useCouplePlan() {
     () => findCouplePlan(plansQuery.data ?? []),
     [plansQuery.data]
   )
+  const couplePlans = useMemo(
+    () => findCouplePlans(plansQuery.data ?? []),
+    [plansQuery.data]
+  )
 
   return {
     ...plansQuery,
     couplePlan,
+    couplePlans,
   }
 }
 

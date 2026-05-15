@@ -55,7 +55,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       applied: 'Aplicado',
       accountType: {
         individual: 'Conta Individual',
-        couple: 'Conta Conjunta',
+        couple: 'Conta Casal',
       },
     },
     financialScope: {
@@ -1184,6 +1184,13 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       enter: 'Entrar',
       followUs: 'Nos siga nas redes sociais',
       loadingLogin: 'Carregando login...',
+      coupleInviteNotice: {
+        title: 'Agora voce faz parte da conta conjunta na Fly!',
+        titleWithOwner: 'Agora voce faz parte da conta conjunta de {ownerName} na Fly!',
+        description:
+          'Faca o login com seu numero de telefone e comece a registrar seus gastos em conjunto.',
+        cta: 'Vamos la!',
+      },
       errors: {
         missingEmail: 'Informe seu e-mail.',
         missingWhatsapp: 'Informe seu numero de WhatsApp.',
@@ -2171,6 +2178,16 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           MONTHLY: 'Mensal',
           YEARLY: 'Anual',
         },
+        carousel: {
+          previous: 'Plano anterior',
+          next: 'Proximo plano',
+          goTo: 'Ver plano {index}',
+        },
+        benefits: {
+          sharedDashboard: 'Dashboard compartilhado para acompanhar os gastos do casal.',
+          partnerTracking: 'Identificacao de quem realizou cada gasto.',
+          sharedAi: 'IA da Fly pronta para registrar despesas dos dois.',
+        },
         activeBadge: 'Plano atual',
         currentPlan: 'Plano atual: {planName}',
         ownerNoteTitle: 'Você pode gerenciar a assinatura',
@@ -2252,6 +2269,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           generating: 'Gerando...',
           generate: 'Gerar convite',
           copy: 'Copiar link',
+          delete: 'Excluir',
+          deleting: 'Excluindo...',
         },
         fields: {
           link: 'Link',
@@ -2456,7 +2475,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       applied: 'Applied',
       accountType: {
         individual: 'Individual Account',
-        couple: 'Joint Account',
+        couple: 'Couple Account',
       },
     },
     financialScope: {
@@ -3573,6 +3592,13 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       enter: 'Sign in',
       followUs: 'Follow us on social media',
       loadingLogin: 'Loading login...',
+      coupleInviteNotice: {
+        title: 'You are now part of a joint account on Fly!',
+        titleWithOwner: 'You are now part of {ownerName} joint account on Fly!',
+        description:
+          'Sign in with your phone number and start logging your shared expenses.',
+        cta: "Let's go!",
+      },
       errors: {
         missingEmail: 'Please provide your email.',
         missingWhatsapp: 'Please provide your WhatsApp number.',
@@ -4556,6 +4582,16 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           MONTHLY: 'Monthly',
           YEARLY: 'Yearly',
         },
+        carousel: {
+          previous: 'Previous plan',
+          next: 'Next plan',
+          goTo: 'View plan {index}',
+        },
+        benefits: {
+          sharedDashboard: 'Shared dashboard to track couple expenses.',
+          partnerTracking: 'Identification of who made each expense.',
+          sharedAi: 'Fly AI ready to log expenses for both of you.',
+        },
         activeBadge: 'Current plan',
         currentPlan: 'Current plan: {planName}',
         ownerNoteTitle: 'You can manage the subscription',
@@ -4566,6 +4602,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           'Ask the couple account owner to purchase or switch the plan.',
         prorationNote:
           'Changing plans may create a prorated adjustment on the next billing cycle.',
+        prorationNoteSimple:
+          'The couple plan will be billed at the standard price of {couplePlanPrice} on the next due date. Any difference from your current plan may be charged to your card immediately.',
         processing: 'Processing...',
         actions: {
           changePlan: 'Switch to couple plan',
@@ -4634,6 +4672,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           generating: 'Generating...',
           generate: 'Generate invite',
           copy: 'Copy link',
+          delete: 'Delete',
+          deleting: 'Deleting...',
         },
         fields: {
           link: 'Link',
@@ -4838,7 +4878,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       applied: 'Aplicado',
       accountType: {
         individual: 'Cuenta Individual',
-        couple: 'Cuenta Conjunta',
+        couple: 'Cuenta en pareja',
       },
     },
     financialScope: {
@@ -5964,6 +6004,13 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       enter: 'Entrar',
       followUs: 'Siguenos en redes sociales',
       loadingLogin: 'Cargando login...',
+      coupleInviteNotice: {
+        title: 'Ahora formas parte de una cuenta conjunta en Fly!',
+        titleWithOwner: 'Ahora formas parte de la cuenta conjunta de {ownerName} en Fly!',
+        description:
+          'Inicia sesion con tu numero de telefono y empieza a registrar sus gastos en conjunto.',
+        cta: 'Vamos!',
+      },
       errors: {
         missingEmail: 'Informa tu e-mail.',
         missingWhatsapp: 'Informa tu numero de WhatsApp.',
@@ -6948,6 +6995,16 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           MONTHLY: 'Mensual',
           YEARLY: 'Anual',
         },
+        carousel: {
+          previous: 'Plan anterior',
+          next: 'Siguiente plan',
+          goTo: 'Ver plan {index}',
+        },
+        benefits: {
+          sharedDashboard: 'Dashboard compartido para acompanar los gastos de la pareja.',
+          partnerTracking: 'Identificacion de quien realizo cada gasto.',
+          sharedAi: 'IA de Fly lista para registrar gastos de ambos.',
+        },
         activeBadge: 'Plan actual',
         currentPlan: 'Plan actual: {planName}',
         ownerNoteTitle: 'Puedes gestionar la suscripcion',
@@ -6958,6 +7015,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           'Pidele al titular de la cuenta en pareja que haga la contratacion o el cambio.',
         prorationNote:
           'El cambio de plan puede generar un ajuste prorrateado en el proximo cobro.',
+        prorationNoteSimple:
+          'El plan en pareja se cobrara al precio estandar de {couplePlanPrice} en el proximo vencimiento. Cualquier diferencia con tu plan actual puede cobrarse inmediatamente en tu tarjeta.',
         processing: 'Procesando...',
         actions: {
           changePlan: 'Cambiar al plan en pareja',
@@ -7027,6 +7086,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           generating: 'Generando...',
           generate: 'Generar invitacion',
           copy: 'Copiar link',
+          delete: 'Eliminar',
+          deleting: 'Eliminando...',
         },
         fields: {
           link: 'Link',

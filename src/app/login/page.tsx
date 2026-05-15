@@ -31,6 +31,12 @@ type LoginMethod = 'email' | 'whatsapp'
 const STORAGE_METHOD_KEY = 'flynance_login_method'
 const STORAGE_IDENTIFIER_KEY = 'flynance_login_identifier'
 
+function toDisplayFirstName(value?: string | null) {
+  const firstName = String(value ?? '').trim().split(/\s+/)[0]?.split('@')[0] ?? ''
+  if (!firstName) return ''
+  return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase()
+}
+
 function LoginContent() {
   const t = useTranslations('loginPage')
   const [code, setCode] = useState('')
@@ -48,10 +54,15 @@ function LoginContent() {
   const nextRoute =
     rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/dashboard'
   const reason = searchParams.get('reason')
+  const inviteOwnerName = searchParams.get('ownerName')
+  const inviteOwnerFirstName = toDisplayFirstName(inviteOwnerName)
   const checkoutLoginNotice =
     reason === 'checkout_existing_account'
       ? 'Este e-mail já possui uma conta. Faça login para finalizar sua assinatura.'
       : ''
+  const [showCoupleInviteNotice, setShowCoupleInviteNotice] = useState(
+    reason === 'couple_invite'
+  )
 
   const [method, setMethod] = useState<LoginMethod>('email')
   const [identifier, setIdentifier] = useState('')
@@ -186,6 +197,45 @@ function LoginContent() {
       lg:grid lg:grid-cols-2 lg:pr-8
     "
     >
+      {showCoupleInviteNotice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
+          <style>
+            {`
+              @keyframes coupleInviteNoticeIn {
+                from { opacity: 0; transform: translateY(12px) scale(.96); }
+                to { opacity: 1; transform: translateY(0) scale(1); }
+              }
+            `}
+          </style>
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="couple-invite-title"
+            className="w-full max-w-md rounded-3xl bg-white p-6 text-center shadow-2xl"
+            style={{ animation: 'coupleInviteNoticeIn 220ms ease-out' }}
+          >
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-sky-100 text-4xl">
+              🥳
+            </div>
+            <h2 id="couple-invite-title" className="mt-4 text-xl font-bold text-[#333C4D]">
+              {inviteOwnerFirstName
+                ? t('coupleInviteNotice.titleWithOwner', { ownerName: inviteOwnerFirstName })
+                : t('coupleInviteNotice.title')}
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              {t('coupleInviteNotice.description')}
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowCoupleInviteNotice(false)}
+              className="mt-6 h-11 w-full rounded-xl bg-[#0065A4] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#00558A]"
+            >
+              {t('coupleInviteNotice.cta')}
+            </button>
+          </section>
+        </div>
+      )}
+
       <section className="relative w-full h-full bg-gradient-to-r from-secondary to-primary flex items-center justify-center px-8">
         <Image src={texture} alt="texture" className="absolute z-10 max-h-screen min-h-screen" />
         <div className="flex flex-col items-center z-20 text-center">

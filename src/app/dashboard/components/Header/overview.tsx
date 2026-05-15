@@ -100,7 +100,7 @@ export default function Header({
   const tScope = useTranslations('financialScope')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [isApplyingFilters, setIsApplyingFilters] = useState(false)
-  const { canSelectScope, scope } = useFinancialScope()
+  const { canSelectScope, scope, houseContext } = useFinancialScope()
   const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
   const activePermission = useAdvisorActing((s) => s.activePermission ?? s.selectedPermission)
   const isAdvisorReadOnly = isAdvisorReadOnlyTransactionAccess(activeClientId, activePermission)
@@ -110,14 +110,15 @@ export default function Header({
   const { user } = useUserSession()
   const firstName = toFirstName(user?.userData?.user?.name)
 
-  const houseContext = user?.houseContext ?? null
   const isCouple = FEATURES.COUPLE_ACCOUNT && isCoupleHouseActive(houseContext) && !activeClientId
-  const otherMember = houseContext?.isOwner ? houseContext?.partner : houseContext?.owner
-  const partnerFirstName = isCouple ? toFirstName(otherMember?.name) : ''
-  const showBothNames = isCouple && scope !== 'me' && Boolean(partnerFirstName)
-  const greetingName = showBothNames ? `${firstName} & ${partnerFirstName}` : firstName
+  const ownerFirstName = isCouple ? toFirstName(houseContext?.owner?.name) : ''
+  const partnerFirstName = isCouple ? toFirstName(houseContext?.partner?.name) : ''
+  const coupleGreetingName = [ownerFirstName, partnerFirstName].filter(Boolean).join(' & ')
+  const showBothNames = isCouple && scope !== 'me' && Boolean(coupleGreetingName)
+  const greetingName = showBothNames ? coupleGreetingName : firstName
+  const hasCoupleAccount = FEATURES.COUPLE_ACCOUNT && Boolean(houseContext?.id) && !activeClientId
   const showAccountTypeBadge = FEATURES.COUPLE_ACCOUNT && !activeClientId
-  const accountTypeLabel = isCouple ? t('accountType.couple') : t('accountType.individual')
+  const accountTypeLabel = hasCoupleAccount ? t('accountType.couple') : t('accountType.individual')
 
   const mode = useTransactionFilter((s) => s.mode)
   const dateRange = useTransactionFilter((s) => s.dateRange)
@@ -261,7 +262,7 @@ export default function Header({
               <span
                 className={
                   'inline-flex w-fit items-center rounded-full px-3 py-0.5 text-xs font-medium ' +
-                  (isCouple
+                  (hasCoupleAccount
                     ? 'bg-emerald-100 text-emerald-700'
                     : 'bg-slate-100 text-slate-600')
                 }
