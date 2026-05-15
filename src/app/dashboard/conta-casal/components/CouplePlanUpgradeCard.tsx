@@ -10,6 +10,7 @@ import { useLocale, useTranslations } from 'next-intl'
 type CouplePlanUpgradeCardProps = {
   plan: PlansResponse | null
   currentPlanName: string | null
+  currentPlanPriceCents?: number | null
   hasActiveSignature: boolean
   isCurrentCouplePlan: boolean
   isLoadingPlans: boolean
@@ -26,9 +27,17 @@ function formatPlanPrice(plan: PlansResponse, locale: string) {
   }).format(plan.priceCents / 100)
 }
 
+function formatCurrencyFromCents(cents: number, currency: string, locale: string) {
+  return new Intl.NumberFormat(locale || 'pt-BR', {
+    style: 'currency',
+    currency: currency || 'BRL',
+  }).format(cents / 100)
+}
+
 export function CouplePlanUpgradeCard({
   plan,
   currentPlanName,
+  currentPlanPriceCents,
   hasActiveSignature,
   isCurrentCouplePlan,
   isLoadingPlans,
@@ -39,6 +48,20 @@ export function CouplePlanUpgradeCard({
 }: CouplePlanUpgradeCardProps) {
   const t = useTranslations('coupleAccountPage')
   const locale = useLocale()
+
+  const couplePlanPriceLabel = plan ? formatPlanPrice(plan, locale) : ''
+  const hasPositiveDifference =
+    plan != null &&
+    typeof currentPlanPriceCents === 'number' &&
+    Number.isFinite(currentPlanPriceCents) &&
+    plan.priceCents > currentPlanPriceCents
+  const differenceAmountLabel = hasPositiveDifference
+    ? formatCurrencyFromCents(
+        plan!.priceCents - (currentPlanPriceCents as number),
+        plan!.currency || 'BRL',
+        locale
+      )
+    : ''
 
   return (
     <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -126,7 +149,14 @@ export function CouplePlanUpgradeCard({
             {canManageUpgrade && !isCurrentCouplePlan && (
               <div className="space-y-3">
                 <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
-                  {t('upgradeCard.prorationNote')}
+                  {hasPositiveDifference
+                    ? t('upgradeCard.prorationNote', {
+                        differenceAmount: differenceAmountLabel,
+                        couplePlanPrice: couplePlanPriceLabel,
+                      })
+                    : t('upgradeCard.prorationNoteSimple', {
+                        couplePlanPrice: couplePlanPriceLabel,
+                      })}
                 </p>
                 <Button
                   type="button"

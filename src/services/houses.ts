@@ -157,6 +157,16 @@ function toHouseMembership(raw: any, isOwner = false): HouseMembership | null {
   }
 }
 
+function deriveInviteStatusFromFlags(
+  raw: any,
+  expiresAtIso: string | null
+): HouseInviteStatus {
+  if (raw?.acceptedAt) return 'ACCEPTED'
+  if (raw?.revokedAt) return 'REVOKED'
+  if (expiresAtIso && new Date(expiresAtIso).getTime() <= Date.now()) return 'EXPIRED'
+  return 'PENDING'
+}
+
 function toHouseInvite(raw: any): HouseInvite | null {
   if (!raw) return null
 
@@ -165,13 +175,27 @@ function toHouseInvite(raw: any): HouseInvite | null {
 
   if (!id) return null
 
+  const expiresAt = toIsoDate(raw?.expiresAt)
+  const acceptedAt = toIsoDate(raw?.acceptedAt)
+  const revokedAt = toIsoDate(raw?.revokedAt)
+  const status = raw?.status
+    ? normalizeInviteStatus(raw.status)
+    : deriveInviteStatusFromFlags(raw, expiresAt)
+
+  const acceptedByUser = raw?.acceptedByUser ?? raw?.acceptedBy ?? null
+
   return {
     id,
     token: toOptionalString(raw?.token),
     inviteUrl: toOptionalString(raw?.inviteUrl ?? raw?.inviteLink ?? raw?.url ?? raw?.link),
-    status: normalizeInviteStatus(raw?.status),
+    status,
     createdAt: toIsoDate(raw?.createdAt ?? raw?.generatedAt),
-    expiresAt: toIsoDate(raw?.expiresAt),
+    expiresAt,
+    acceptedAt,
+    revokedAt,
+    acceptedByUserId: toOptionalString(raw?.acceptedByUserId ?? acceptedByUser?.id),
+    acceptedByName: toOptionalString(raw?.acceptedByName ?? acceptedByUser?.name),
+    acceptedByEmail: toOptionalString(raw?.acceptedByEmail ?? acceptedByUser?.email),
   }
 }
 
@@ -186,13 +210,13 @@ function extractHouseEnvelope(raw: any): any {
 function toHouseInvites(raw: any): HouseInvite[] {
   const source = extractHouseEnvelope(raw) ?? raw
   const invitesRaw =
-    source?.pendingInvites ??
     source?.invites ??
+    source?.pendingInvites ??
     source?.houseInvites ??
-    raw?.pendingInvites ??
     raw?.invites ??
-    raw?.data?.pendingInvites ??
+    raw?.pendingInvites ??
     raw?.data?.invites ??
+    raw?.data?.pendingInvites ??
     []
 
   if (!Array.isArray(invitesRaw)) return []
@@ -317,8 +341,8 @@ export function toHouseContext(raw: unknown): HouseContext | null {
     owner,
     partner: parsed.partner,
     members: parsed.members,
-    pendingInvites: parsed.pendingInvites,
     invites: parsed.pendingInvites,
+    pendingInvites: parsed.pendingInvites.filter((invite) => invite.status === 'PENDING'),
     createdAt: parsed.house.createdAt,
     updatedAt: parsed.house.updatedAt,
     linkedAt: resolveLinkedAt(parsed.membership, parsed.partner),
@@ -377,6 +401,23 @@ export async function createHouse(payload: CreateHousePayload): Promise<HouseCon
     return house
   } catch (error: unknown) {
     throw new Error(toHouseErrorMessage(error, 'Erro ao criar a house.'))
+  }
+}
+
+export async function updateHouseName(name: string): Promise<HouseContext | null> {
+  const trimmed = String(name ?? '').trim()
+  if (!trimmed) {
+    throw new Error('Informe um nome valido para a conta de casal.')
+  }
+  if (trimmed.length > 120) {
+    throw new Error('O nome da conta de casal deve ter no maximo 120 caracteres.')
+  }
+
+  try {
+    const response = await api.patch('/houses/me', { name: trimmed })
+    return toHouseContext(response.data)
+  } catch (error: unknown) {
+    throw new Error(toHouseErrorMessage(error, 'Erro ao renomear a conta de casal.'))
   }
 }
 
