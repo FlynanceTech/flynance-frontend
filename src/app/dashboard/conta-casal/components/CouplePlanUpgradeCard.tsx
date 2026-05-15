@@ -34,6 +34,14 @@ function formatCurrencyFromCents(cents: number, currency: string, locale: string
   }).format(cents / 100)
 }
 
+function getPlanPeriodKey(period: unknown) {
+  if (period === 'WEEKLY' || period === 'MONTHLY' || period === 'YEARLY') {
+    return `upgradeCard.periods.${period}` as const
+  }
+
+  return null
+}
+
 export function CouplePlanUpgradeCard({
   plan,
   currentPlanName,
@@ -62,6 +70,8 @@ export function CouplePlanUpgradeCard({
         locale
       )
     : ''
+  const planPeriodKey = plan ? getPlanPeriodKey(plan.period) : null
+  const planPeriodFallback = plan ? String(plan.period ?? '').trim() || '-' : '-'
 
   return (
     <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -107,7 +117,7 @@ export function CouplePlanUpgradeCard({
                       variant="outline"
                       className="border-[#D7EAF5] bg-white text-xs font-medium text-[#2F6E91]"
                     >
-                      {t(`upgradeCard.periods.${plan.period}`)}
+                      {planPeriodKey ? t(planPeriodKey) : planPeriodFallback}
                     </Badge>
                   </div>
                 </div>

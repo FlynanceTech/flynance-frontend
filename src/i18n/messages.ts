@@ -4566,6 +4566,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           'Ask the couple account owner to purchase or switch the plan.',
         prorationNote:
           'Changing plans may create a prorated adjustment on the next billing cycle.',
+        prorationNoteSimple:
+          'The couple plan will be billed at the standard price of {couplePlanPrice} on the next due date. Any difference from your current plan may be charged to your card immediately.',
         processing: 'Processing...',
         actions: {
           changePlan: 'Switch to couple plan',
@@ -6958,6 +6960,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           'Pidele al titular de la cuenta en pareja que haga la contratacion o el cambio.',
         prorationNote:
           'El cambio de plan puede generar un ajuste prorrateado en el proximo cobro.',
+        prorationNoteSimple:
+          'El plan en pareja se cobrara al precio estandar de {couplePlanPrice} en el proximo vencimiento. Cualquier diferencia con tu plan actual puede cobrarse inmediatamente en tu tarjeta.',
         processing: 'Procesando...',
         actions: {
           changePlan: 'Cambiar al plan en pareja',
