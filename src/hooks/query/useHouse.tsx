@@ -16,6 +16,7 @@ import {
   deleteHouseInvite,
   extractHouseContextFromAuthMePayload,
   findCouplePlan,
+  findCouplePlans,
   getHouseContext,
   hasHouseContextInAuthMePayload,
   removeHousePartner,
@@ -193,10 +194,15 @@ export function useCouplePlan() {
     () => findCouplePlan(plansQuery.data ?? []),
     [plansQuery.data]
   )
+  const couplePlans = useMemo(
+    () => findCouplePlans(plansQuery.data ?? []),
+    [plansQuery.data]
+  )
 
   return {
     ...plansQuery,
     couplePlan,
+    couplePlans,
   }
 }
 

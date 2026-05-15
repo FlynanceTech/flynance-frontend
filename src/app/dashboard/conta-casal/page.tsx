@@ -149,7 +149,7 @@ function CoupleAccountPageContent() {
       house?.invites ?? []
     )
   }, [generatedInvites, house?.invites])
-  const couplePlan = couplePlanQuery.couplePlan
+  const couplePlans = couplePlanQuery.couplePlans
   const currentPlanId = user?.userData?.signature?.planId ?? null
   const currentPlanName =
     (user?.userData?.signature?.plan as any)?.name ??
@@ -167,11 +167,6 @@ function CoupleAccountPageContent() {
     counterpartMember,
     t('partnerCard.fallbacks.noName')
   )
-  const isCurrentCouplePlan = useMemo(() => {
-    if (!couplePlan?.id || !currentPlanId) return false
-    return couplePlan.id === currentPlanId && hasActiveSignature
-  }, [couplePlan?.id, currentPlanId, hasActiveSignature])
-
   const isInitialLoading = houseQuery.isLoading && houseQuery.data === undefined
 
   const handleRefresh = async () => {
@@ -247,13 +242,13 @@ function CoupleAccountPageContent() {
     })
   }
 
-  const handleUpgrade = async () => {
-    if (!couplePlan?.id) {
+  const handleUpgrade = async (planId: string) => {
+    if (!planId) {
       toast.error(t('upgradeCard.noPlanTitle'))
       return
     }
 
-    await upgradeMutation.mutateAsync(couplePlan.id)
+    await upgradeMutation.mutateAsync(planId)
   }
 
   const handleRemovePartner = async () => {
@@ -331,11 +326,11 @@ function CoupleAccountPageContent() {
             />
 
             <CouplePlanUpgradeCard
-              plan={couplePlan}
+              plans={couplePlans}
               currentPlanName={currentPlanName}
+              currentPlanId={currentPlanId}
               currentPlanPriceCents={currentPlanPriceCents}
               hasActiveSignature={hasActiveSignature}
-              isCurrentCouplePlan={isCurrentCouplePlan}
               isLoadingPlans={couplePlanQuery.isLoading}
               plansErrorMessage={
                 couplePlanQuery.error instanceof Error ? couplePlanQuery.error.message : null
@@ -351,11 +346,11 @@ function CoupleAccountPageContent() {
               <HouseOverviewCard house={house} />
 
               <CouplePlanUpgradeCard
-                plan={couplePlan}
+                plans={couplePlans}
                 currentPlanName={currentPlanName}
+                currentPlanId={currentPlanId}
                 currentPlanPriceCents={currentPlanPriceCents}
                 hasActiveSignature={hasActiveSignature}
-                isCurrentCouplePlan={isCurrentCouplePlan}
                 isLoadingPlans={couplePlanQuery.isLoading}
                 plansErrorMessage={
                   couplePlanQuery.error instanceof Error ? couplePlanQuery.error.message : null

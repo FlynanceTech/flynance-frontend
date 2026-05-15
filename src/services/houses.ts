@@ -560,11 +560,15 @@ function scoreCouplePlan(plan: PlansResponse): number {
 }
 
 export function findCouplePlan(plans: PlansResponse[]): PlansResponse | null {
+  return findCouplePlans(plans)[0] ?? null
+}
+
+export function findCouplePlans(plans: PlansResponse[]): PlansResponse[] {
   const candidates = plans
     .filter((plan) => plan.isActive && plan.isPublic)
     .map((plan) => ({ plan, score: scoreCouplePlan(plan) }))
     .filter((item) => item.score > 0)
-    .sort((a, b) => b.score - a.score)
+    .sort((a, b) => b.score - a.score || a.plan.priceCents - b.plan.priceCents)
 
-  return candidates[0]?.plan ?? null
+  return candidates.map((item) => item.plan)
 }
