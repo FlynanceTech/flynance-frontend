@@ -439,6 +439,35 @@ export async function createHouseInvite(): Promise<HouseInvite | null> {
   }
 }
 
+export type HouseInvitePreview = {
+  houseId: string
+  houseName: string | null
+  ownerName: string | null
+  ownerEmail: string | null
+  expiresAt: string | null
+}
+
+export async function getHouseInvitePreview(token: string): Promise<HouseInvitePreview | null> {
+  const safeToken = String(token ?? '').trim()
+  if (!safeToken) return null
+
+  try {
+    const response = await api.get(`/houses/invites/${encodeURIComponent(safeToken)}`)
+    const invite = response.data?.invite ?? response.data ?? null
+    if (!invite || typeof invite !== 'object') return null
+
+    return {
+      houseId: String(invite.houseId ?? ''),
+      houseName: toOptionalString(invite.houseName),
+      ownerName: toOptionalString(invite.ownerName),
+      ownerEmail: toOptionalString(invite.ownerEmail),
+      expiresAt: toIsoDate(invite.expiresAt),
+    }
+  } catch {
+    return null
+  }
+}
+
 export async function acceptHouseInvite(token: string): Promise<HouseContext | null> {
   const safeToken = String(token ?? '').trim()
   if (safeToken.length < 6) {

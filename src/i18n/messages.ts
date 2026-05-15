@@ -1184,6 +1184,13 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       enter: 'Entrar',
       followUs: 'Nos siga nas redes sociais',
       loadingLogin: 'Carregando login...',
+      coupleInviteNotice: {
+        title: 'Agora voce faz parte da conta conjunta na Fly!',
+        titleWithOwner: 'Agora voce faz parte da conta conjunta de {ownerName} na Fly!',
+        description:
+          'Faca o login com seu numero de telefone e comece a registrar seus gastos em conjunto.',
+        cta: 'Vamos la!',
+      },
       errors: {
         missingEmail: 'Informe seu e-mail.',
         missingWhatsapp: 'Informe seu numero de WhatsApp.',
@@ -3573,6 +3580,13 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       enter: 'Sign in',
       followUs: 'Follow us on social media',
       loadingLogin: 'Loading login...',
+      coupleInviteNotice: {
+        title: 'You are now part of a joint account on Fly!',
+        titleWithOwner: 'You are now part of {ownerName} joint account on Fly!',
+        description:
+          'Sign in with your phone number and start logging your shared expenses.',
+        cta: "Let's go!",
+      },
       errors: {
         missingEmail: 'Please provide your email.',
         missingWhatsapp: 'Please provide your WhatsApp number.',
@@ -5966,6 +5980,13 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       enter: 'Entrar',
       followUs: 'Siguenos en redes sociales',
       loadingLogin: 'Cargando login...',
+      coupleInviteNotice: {
+        title: 'Ahora formas parte de una cuenta conjunta en Fly!',
+        titleWithOwner: 'Ahora formas parte de la cuenta conjunta de {ownerName} en Fly!',
+        description:
+          'Inicia sesion con tu numero de telefono y empieza a registrar sus gastos en conjunto.',
+        cta: 'Vamos!',
+      },
       errors: {
         missingEmail: 'Informa tu e-mail.',
         missingWhatsapp: 'Informa tu numero de WhatsApp.',

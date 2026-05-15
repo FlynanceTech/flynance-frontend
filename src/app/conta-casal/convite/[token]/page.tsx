@@ -1,26 +1,39 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Toaster } from 'react-hot-toast'
 import { useTranslations } from 'next-intl'
 
 import { useAcceptHouseInvite } from '@/hooks/query/useHouse'
+import { getHouseInvitePreview, type HouseInvitePreview } from '@/services/houses'
 import { useUserSession } from '@/stores/useUserSession'
 
 export default function CoupleInviteAcceptPage() {
   const t = useTranslations('coupleInvitePage')
   const router = useRouter()
+  const searchParams = useSearchParams()
   const params = useParams<{ token: string }>()
   const token = String(params?.token ?? '').trim()
   const acceptInviteMutation = useAcceptHouseInvite()
   const { status, fetchAccount } = useUserSession()
+  const [invitePreview, setInvitePreview] = useState<HouseInvitePreview | null>(null)
+  const didAutoAccept = useRef(false)
 
   const isValidToken = token.length >= 6
+  const shouldAutoAccept = searchParams.get('autoAccept') === '1'
   const nextToLogin = useMemo(
-    () => `/login?next=${encodeURIComponent(`/conta-casal/convite/${token}`)}`,
-    [token]
+    () => {
+      const params = new URLSearchParams({
+        next: `/conta-casal/convite/${token}?autoAccept=1`,
+        reason: 'couple_invite',
+      })
+      const ownerName = String(invitePreview?.ownerName ?? '').trim()
+      if (ownerName) params.set('ownerName', ownerName)
+      return `/login?${params.toString()}`
+    },
+    [invitePreview?.ownerName, token]
   )
 
   useEffect(() => {
@@ -28,6 +41,42 @@ export default function CoupleInviteAcceptPage() {
       fetchAccount()
     }
   }, [status, fetchAccount])
+
+  useEffect(() => {
+    let cancelled = false
+    if (!isValidToken) return
+
+    getHouseInvitePreview(token).then((preview) => {
+      if (!cancelled) setInvitePreview(preview)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [isValidToken, token])
+
+  useEffect(() => {
+    if (!shouldAutoAccept || didAutoAccept.current) return
+    if (!isValidToken || status !== 'authenticated') return
+    if (acceptInviteMutation.isPending || acceptInviteMutation.isSuccess) return
+
+    didAutoAccept.current = true
+    acceptInviteMutation
+      .mutateAsync(token)
+      .then(() => {
+        router.replace('/dashboard/conta-casal')
+      })
+      .catch(() => {
+        didAutoAccept.current = false
+      })
+  }, [
+    acceptInviteMutation,
+    isValidToken,
+    router,
+    shouldAutoAccept,
+    status,
+    token,
+  ])
 
   const handleAcceptInvite = async () => {
     if (!isValidToken || acceptInviteMutation.isPending) return
