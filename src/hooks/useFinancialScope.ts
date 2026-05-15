@@ -8,6 +8,7 @@ import {
   resolveFinancialScopeKey,
 } from '@/lib/financialScope'
 import { FEATURES } from '@/config/features'
+import { useHouseContext } from '@/hooks/query/useHouse'
 import { useAdvisorActing } from '@/stores/useAdvisorActing'
 import { useFinancialScopeStore } from '@/stores/useFinancialScope'
 import { useUserSession } from '@/stores/useUserSession'
@@ -16,7 +17,8 @@ export function useFinancialScope() {
   const user = useUserSession((state) => state.user)
   const activeClientId = useAdvisorActing((state) => state.activeClientId ?? state.selectedClientId)
   const currentUserId = user?.userData?.user?.id ?? ''
-  const houseContext = user?.houseContext ?? null
+  const houseQuery = useHouseContext(FEATURES.COUPLE_ACCOUNT && Boolean(currentUserId) && !activeClientId)
+  const houseContext = houseQuery.data ?? user?.houseContext ?? null
 
   const getScopeForUser = useFinancialScopeStore((state) => state.getScopeForUser)
   const setScopeForUser = useFinancialScopeStore((state) => state.setScopeForUser)

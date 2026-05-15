@@ -7,7 +7,8 @@ export function isCoupleHouseActive(houseContext?: HouseContext | null) {
   return (
     houseContext?.status === 'COUPLE' &&
     Boolean(houseContext.owner?.id) &&
-    Boolean(houseContext.partner?.id)
+    Boolean(houseContext.partner?.id) &&
+    houseContext.partner?.active !== false
   )
 }
 

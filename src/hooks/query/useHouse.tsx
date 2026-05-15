@@ -76,6 +76,7 @@ export function useHouseContext(enabled = true) {
     initialData: authHasHouseContext ? initialHouseContext ?? null : undefined,
     staleTime: 0,
     refetchOnWindowFocus: true,
+    refetchInterval: enabled ? 15000 : false,
     retry: 1,
   })
 }

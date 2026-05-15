@@ -55,7 +55,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       applied: 'Aplicado',
       accountType: {
         individual: 'Conta Individual',
-        couple: 'Conta Conjunta',
+        couple: 'Conta Casal',
       },
     },
     financialScope: {
@@ -2456,7 +2456,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       applied: 'Applied',
       accountType: {
         individual: 'Individual Account',
-        couple: 'Joint Account',
+        couple: 'Couple Account',
       },
     },
     financialScope: {
@@ -4840,7 +4840,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       applied: 'Aplicado',
       accountType: {
         individual: 'Cuenta Individual',
-        couple: 'Cuenta Conjunta',
+        couple: 'Cuenta en pareja',
       },
     },
     financialScope: {
