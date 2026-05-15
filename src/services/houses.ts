@@ -439,6 +439,20 @@ export async function createHouseInvite(): Promise<HouseInvite | null> {
   }
 }
 
+export async function deleteHouseInvite(inviteId: string): Promise<HouseContext | null> {
+  const safeInviteId = String(inviteId ?? '').trim()
+  if (!safeInviteId) {
+    throw new Error('Convite invalido.')
+  }
+
+  try {
+    const response = await api.delete(`/houses/me/invites/${encodeURIComponent(safeInviteId)}`)
+    return toHouseContext(response.data)
+  } catch (error: unknown) {
+    throw new Error(toHouseErrorMessage(error, 'Erro ao excluir convite da conta casal.'))
+  }
+}
+
 export type HouseInvitePreview = {
   houseId: string
   houseName: string | null

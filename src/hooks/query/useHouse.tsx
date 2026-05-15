@@ -13,6 +13,7 @@ import {
   acceptHouseInvite,
   createHouse,
   createHouseInvite,
+  deleteHouseInvite,
   extractHouseContextFromAuthMePayload,
   findCouplePlan,
   getHouseContext,
@@ -111,6 +112,25 @@ export function useCreateHouseInvite() {
     },
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : 'Erro ao gerar convite.')
+    },
+  })
+}
+
+export function useDeleteHouseInvite() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (inviteId: string): Promise<HouseContext | null> => deleteHouseInvite(inviteId),
+    onSuccess: async (house) => {
+      queryClient.setQueryData(houseKeys.me, house ?? null)
+      await queryClient.invalidateQueries({
+        queryKey: houseKeys.me,
+        refetchType: 'active',
+      })
+      toast.success('Convite excluido.')
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Erro ao excluir convite.')
     },
   })
 }

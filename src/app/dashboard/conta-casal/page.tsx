@@ -12,6 +12,7 @@ import {
   useCouplePlanUpgrade,
   useCreateHouse,
   useCreateHouseInvite,
+  useDeleteHouseInvite,
   useHouseContext,
   useRemoveHousePartner,
 } from '@/hooks/query/useHouse'
@@ -74,6 +75,7 @@ function CoupleAccountPageContent() {
   const couplePlanQuery = useCouplePlan()
   const createHouseMutation = useCreateHouse()
   const createInviteMutation = useCreateHouseInvite()
+  const deleteInviteMutation = useDeleteHouseInvite()
   const removePartnerMutation = useRemoveHousePartner()
   const upgradeMutation = useCouplePlanUpgrade()
 
@@ -221,6 +223,30 @@ function CoupleAccountPageContent() {
     }
   }
 
+  const handleDeleteInvite = async (invite: HouseInvite) => {
+    try {
+      await deleteInviteMutation.mutateAsync(invite.id)
+    } catch {
+      // feedback tratado no hook
+      return
+    }
+
+    setGeneratedInvites((currentInvites) => {
+      const nextInvites = currentInvites.filter((currentInvite) => currentInvite.id !== invite.id)
+      const storageKey = getHouseInviteStorageKey(house?.id)
+
+      if (typeof window !== 'undefined' && storageKey) {
+        if (nextInvites.length === 0) {
+          window.sessionStorage.removeItem(storageKey)
+        } else {
+          window.sessionStorage.setItem(storageKey, JSON.stringify(nextInvites))
+        }
+      }
+
+      return nextInvites
+    })
+  }
+
   const handleUpgrade = async () => {
     if (!couplePlan?.id) {
       toast.error(t('upgradeCard.noPlanTitle'))
@@ -353,7 +379,9 @@ function CoupleAccountPageContent() {
                 canManageInvites={canManageHouse}
                 isGenerating={createInviteMutation.isPending}
                 baseUrl={baseUrl}
+                deletingInviteId={deleteInviteMutation.isPending ? deleteInviteMutation.variables ?? null : null}
                 onCopyInvite={handleCopyInvite}
+                onDeleteInvite={handleDeleteInvite}
                 onGenerateInvite={handleGenerateInvite}
               />
             </div>

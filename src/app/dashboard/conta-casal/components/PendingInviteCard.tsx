@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { HouseInvite } from '@/types/house'
-import { Copy, Link2, Plus } from 'lucide-react'
+import { Copy, Link2, Loader2, Plus, Trash2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useMemo } from 'react'
 
@@ -15,7 +15,9 @@ type PendingInviteCardProps = {
   canManageInvites: boolean
   isGenerating: boolean
   baseUrl?: string | null
+  deletingInviteId?: string | null
   onCopyInvite: (invite: HouseInvite) => void
+  onDeleteInvite: (invite: HouseInvite) => void
   onGenerateInvite: () => void
 }
 
@@ -32,7 +34,9 @@ export function PendingInviteCard({
   canManageInvites,
   isGenerating,
   baseUrl,
+  deletingInviteId,
   onCopyInvite,
+  onDeleteInvite,
   onGenerateInvite,
 }: PendingInviteCardProps) {
   const t = useTranslations('coupleAccountPage')
@@ -86,12 +90,13 @@ export function PendingInviteCard({
             {canManageInvites ? t('invitesCard.emptyOwner') : t('invitesCard.emptyPartner')}
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
             {sortedInvites.map((invite) => {
               const inviteLink = resolveHouseInviteLink(invite, baseUrl)
               const isPending = invite.status === 'PENDING'
               const canCopy = isPending && Boolean(inviteLink)
               const acceptedName = invite.acceptedByName || invite.acceptedByEmail
+              const isDeleting = deletingInviteId === invite.id
 
               return (
                 <article key={invite.id} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-white/10 dark:bg-white/5">
@@ -100,17 +105,37 @@ export function PendingInviteCard({
                       {t(`inviteStatuses.${invite.status}`)}
                     </Badge>
 
-                    {canManageInvites && isPending && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full sm:w-auto"
-                        onClick={() => onCopyInvite(invite)}
-                        disabled={!canCopy}
-                      >
-                        <Copy className="h-4 w-4" />
-                        {t('invitesCard.actions.copy')}
-                      </Button>
+                    {canManageInvites && (
+                      <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+                        {isPending && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="flex-1 sm:flex-none"
+                            onClick={() => onCopyInvite(invite)}
+                            disabled={!canCopy || isDeleting}
+                          >
+                            <Copy className="h-4 w-4" />
+                            {t('invitesCard.actions.copy')}
+                          </Button>
+                        )}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="flex-1 border-red-200 text-red-600 hover:bg-red-50 sm:flex-none"
+                          onClick={() => onDeleteInvite(invite)}
+                          disabled={isDeleting}
+                        >
+                          {isDeleting ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                          {isDeleting
+                            ? t('invitesCard.actions.deleting')
+                            : t('invitesCard.actions.delete')}
+                        </Button>
+                      </div>
                     )}
                   </div>
 

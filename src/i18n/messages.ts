@@ -2259,6 +2259,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           generating: 'Gerando...',
           generate: 'Gerar convite',
           copy: 'Copiar link',
+          delete: 'Excluir',
+          deleting: 'Excluindo...',
         },
         fields: {
           link: 'Link',
@@ -4650,6 +4652,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           generating: 'Generating...',
           generate: 'Generate invite',
           copy: 'Copy link',
+          delete: 'Delete',
+          deleting: 'Deleting...',
         },
         fields: {
           link: 'Link',
@@ -7052,6 +7056,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           generating: 'Generando...',
           generate: 'Generar invitacion',
           copy: 'Copiar link',
+          delete: 'Eliminar',
+          deleting: 'Eliminando...',
         },
         fields: {
           link: 'Link',
