@@ -456,7 +456,17 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
 
     const currentSlug = plan.slug.toLowerCase();
 
-    const isLancamento = currentSlug.includes("lancamento");
+    // O slug do casal não segue o padrão "*-mensal"/"*-anual" do essencial,
+    // então mapeamos o par fixo explicitamente.
+    const COUPLE_MONTHLY = "flynance-casal";
+    const COUPLE_ANNUAL = "flynance-casal-anual";
+    if (currentSlug === COUPLE_MONTHLY || currentSlug === COUPLE_ANNUAL) {
+      const targetSlug = period === "ANNUAL" ? COUPLE_ANNUAL : COUPLE_MONTHLY;
+      if (targetSlug === currentSlug) return;
+      router.push(`/cadastro/checkout?plano=${targetSlug}`);
+      return;
+    }
+
     const baseSlug = currentSlug.replace("-lancamento", "");
     let targetSlug = baseSlug;
 
