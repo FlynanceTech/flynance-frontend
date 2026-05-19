@@ -18,14 +18,18 @@ import {
   deleteInstallmentPlan,
   updateInstallment,
 } from '@/services/futureService'
+import { useFinancialScope } from '@/hooks/useFinancialScope'
 
 export function useFuturePlans(
   params: ListInstallmentPlansParams,
   options?: { enabled?: boolean }
 ) {
+  const { scope, scopeKey } = useFinancialScope()
+  const scopedParams = { ...params, scope }
+
   return useQuery({
-    queryKey: ['future-plans', params],
-    queryFn: () => getFutureInstallmentPlans(params),
+    queryKey: ['future-plans', scopeKey, params],
+    queryFn: () => getFutureInstallmentPlans(scopedParams),
     enabled: options?.enabled ?? true,
     staleTime: 30_000,
     retry: 1,
@@ -36,9 +40,12 @@ export function useFutureInstallments(
   params: ListInstallmentsParams,
   options?: { enabled?: boolean }
 ) {
+  const { scope, scopeKey } = useFinancialScope()
+  const scopedParams = { ...params, scope }
+
   return useQuery({
-    queryKey: ['future-installments', params],
-    queryFn: () => getFutureInstallments(params),
+    queryKey: ['future-installments', scopeKey, params],
+    queryFn: () => getFutureInstallments(scopedParams),
     enabled: options?.enabled ?? true,
     staleTime: 30_000,
     retry: 1,
@@ -46,9 +53,12 @@ export function useFutureInstallments(
 }
 
 export function useFutureForecast(params: { from?: string; to?: string; days?: number }) {
+  const { scope, scopeKey } = useFinancialScope()
+  const scopedParams = { ...params, scope }
+
   return useQuery({
-    queryKey: ['future-forecast', params],
-    queryFn: () => getFutureForecast(params),
+    queryKey: ['future-forecast', scopeKey, params],
+    queryFn: () => getFutureForecast(scopedParams),
     staleTime: 30_000,
     retry: 1,
   })

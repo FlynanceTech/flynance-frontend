@@ -2,6 +2,7 @@ import axios from 'axios'
 import api from '@/lib/axios'
 import { getErrorMessage } from '@/utils/getErrorMessage'
 import { resolveDisplayDescription } from '@/utils/displayDescription'
+import { FinancialDataScope, withFinancialScope } from '@/lib/financialScope'
 
 export type FutureType = 'EXPENSE' | 'INCOME'
 
@@ -97,6 +98,7 @@ export interface ListInstallmentsParams {
   to?: string
   page?: number
   limit?: number
+  scope?: FinancialDataScope
 }
 
 export interface ListInstallmentPlansParams {
@@ -105,6 +107,7 @@ export interface ListInstallmentPlansParams {
   to?: string
   page?: number
   limit?: number
+  scope?: FinancialDataScope
 }
 
 export interface FutureInstallmentPlan {
@@ -422,7 +425,9 @@ export async function getFutureInstallmentPlans(
   params: ListInstallmentPlansParams
 ): Promise<FutureInstallmentPlansResponse> {
   try {
-    const response = await api.get('/future/installment-plans', { params })
+    const response = await api.get('/future/installment-plans', {
+      params: withFinancialScope({ ...params }, params.scope),
+    })
     return parsePlansPayload(response.data, params.page ?? 1, params.limit ?? 50)
   } catch (e: unknown) {
     if (axios.isAxiosError(e) && (e.response?.status === 404 || e.response?.status === 405)) {
@@ -432,6 +437,7 @@ export async function getFutureInstallmentPlans(
         type: params.type,
         page: 1,
         limit: 1000,
+        scope: params.scope,
       })
       return derivePlansFromInstallments(
         installments.installments,
@@ -450,7 +456,9 @@ export async function getFutureInstallments(
   params: ListInstallmentsParams
 ): Promise<FutureInstallmentsResponse> {
   try {
-    const response = await api.get('/future/installments', { params })
+    const response = await api.get('/future/installments', {
+      params: withFinancialScope({ ...params }, params.scope),
+    })
     return parseInstallmentsPayload(response.data, params.page ?? 1, params.limit ?? 10)
   } catch (e: unknown) {
     const msg = getErrorMessage(e, 'Erro ao buscar parcelas futuras.')
@@ -504,9 +512,12 @@ export async function getFutureForecast(params?: {
   from?: string
   to?: string
   days?: number
+  scope?: FinancialDataScope
 }): Promise<FutureForecastResponse> {
   try {
-    const response = await api.get<FutureForecastResponse>('/future/forecast', { params })
+    const response = await api.get<FutureForecastResponse>('/future/forecast', {
+      params: withFinancialScope(params, params?.scope),
+    })
     return {
       ...response.data,
       upcoming: Array.isArray(response.data?.upcoming)

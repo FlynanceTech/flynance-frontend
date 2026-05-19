@@ -17,7 +17,6 @@ import FeedbackWidget from "@/components/widgets/feedback";
 import { AuthGuardProvider } from "@/providers/authGuardProvider";
 import { useTransactionFilter } from "@/stores/useFilter";
 import AdvisorActingPill from "./components/AdvisorActingPill";
-import FinancialScopeSwitcher from "@/components/financial/FinancialScopeSwitcher";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -80,9 +79,6 @@ function DashboardShell({
         ref={contentRef}
         className="flex min-h-0 max-h-screen flex-1 flex-col overflow-y-auto overflow-x-hidden"
       >
-        <div className="px-4 pt-4 lg:px-0 lg:pt-0">
-          <FinancialScopeSwitcher />
-        </div>
         <div className="flex align-center justify-center px-4 lg:px-0 gap-4">
           {children}
         </div>

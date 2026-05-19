@@ -18,7 +18,8 @@ import { toFutureRangeFromDays, toRangeFromDays } from '@/utils/transactionPerio
 import { useAdvisorActing } from '@/stores/useAdvisorActing'
 import { isAdvisorReadOnlyTransactionAccess } from '@/utils/transactionWriteAccess'
 import { useTranslations } from 'next-intl'
-import { useFinancialScope } from '@/hooks/useFinancialScope'
+import { usePathname } from 'next/navigation'
+import FinancialScopeSwitcher from '@/components/financial/FinancialScopeSwitcher'
 
 interface HeaderProps {
   title?: string
@@ -101,8 +102,8 @@ export default function Header({
 }: HeaderProps) {
   const tButtons = useTranslations('buttons')
   const tHeader = useTranslations('dashboardHeader')
-  const tScope = useTranslations('financialScope')
-  const { canSelectScope, scope } = useFinancialScope()
+  const pathname = usePathname()
+  const showFinancialScopeSwitcher = !pathname?.startsWith('/dashboard/perfil')
 
   const [drawerOpen, setDrawerOpen] = useState(false)
   const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
@@ -251,7 +252,10 @@ export default function Header({
         <div className="flex items-start justify-between lg:pb-2 sm:px-0">
         <div className="w-full grid grid-cols-1 gap-3 md:grid-cols-3 md:items-start mb-4">
           <div className="col-span-1 flex flex-col gap-1">
-            <h1 className="text-lg font-semibold text-[#333C4D] lg:text-2xl">{title}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-lg font-semibold text-[#333C4D] lg:text-2xl">{title}</h1>
+              {showFinancialScopeSwitcher && <FinancialScopeSwitcher />}
+            </div>
             {subtitle ? (
               <p className="whitespace-pre-line text-sm font-light text-slate-500">
                 {subtitle}
@@ -409,13 +413,6 @@ export default function Header({
             <ActiveFiltersChips />
           </div>
         ) : null}
-        {canSelectScope && (
-          <div className="pt-1">
-            <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
-              {scope === 'me' ? tScope('badge.me') : tScope('badge.house')}
-            </span>
-          </div>
-        )}
       </div>
     </header>
   )

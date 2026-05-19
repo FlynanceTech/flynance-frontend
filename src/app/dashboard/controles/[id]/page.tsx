@@ -16,6 +16,7 @@ import { useUserSession } from '@/stores/useUserSession'
 import ControlDetailsSkeleton from './ControlDetailsSkeleton'
 import { getActorFirstName } from '@/utils/actorName'
 import { resolveDisplayDescription } from '@/utils/displayDescription'
+import FinancialScopeSwitcher from '@/components/financial/FinancialScopeSwitcher'
 
 export interface Transaction {
   id: string
@@ -171,7 +172,10 @@ export default function ControlePage({
           <Link href="/dashboard/controles" aria-label={t('back')}>
             <Undo2 />
           </Link>
-          <h1 className="text-xl font-bold ">{t('title')}</h1>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <h1 className="text-xl font-bold ">{t('title')}</h1>
+            <FinancialScopeSwitcher />
+          </div>
           <button
             onClick={() => canWriteControl && setDrawerOpen(!drawerOpen)}
             aria-label={t('edit')}

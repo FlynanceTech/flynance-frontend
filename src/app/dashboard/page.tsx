@@ -17,6 +17,7 @@ import { useTranscation } from '@/hooks/query/useTransaction'
 import { useCardMutations } from '@/hooks/query/useCreditCards'
 import { getBrowserTimezone, toFutureRangeFromDays } from '@/utils/transactionPeriod'
 import { useLocale, useTranslations } from 'next-intl'
+import { useFinancialScope } from '@/hooks/useFinancialScope'
 
 const PERIOD_ZERO = {
   income: 0,
@@ -196,6 +197,7 @@ export default function Dashboard() {
   const onboardingSteps = useMemo(() => createDashboardOnboardingSteps(t), [t])
 
   const { user } = useUserSession()
+  const { canSelectScope, scope } = useFinancialScope()
   const userId = user?.userData?.user?.id ?? ''
   const onboardingStorageKey = useMemo(
     () => `${DASHBOARD_ONBOARDING_STORAGE_KEY}:${userId || 'anonymous'}`,
@@ -453,7 +455,11 @@ export default function Dashboard() {
       <div data-onboarding-target="header-filters">
         <Header
           title={t('title')}
-          subtitle={t('subtitle', { period: periodLabel })}
+          subtitle={
+            canSelectScope && scope === 'house'
+              ? t('coupleSubtitle', { period: periodLabel })
+              : t('subtitle', { period: periodLabel })
+          }
           asFilter
           showFutureFilter
           userId={userId}

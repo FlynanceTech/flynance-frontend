@@ -62,6 +62,7 @@ import CreditCardManagerDrawer, {
   type CreditCardMetrics,
   writeCreditCardColorMap,
 } from './components/CreditCardManagerDrawer'
+import FinancialScopeSwitcher from '@/components/financial/FinancialScopeSwitcher'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -1360,7 +1361,10 @@ export default function FuturosPage() {
               <CalendarDays className="h-6 w-6" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-3xl font-extrabold tracking-normal text-slate-950">Futuros</h1>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-3xl font-extrabold tracking-normal text-slate-950">Futuros</h1>
+                <FinancialScopeSwitcher />
+              </div>
               <p className="mt-2 text-sm font-extrabold text-slate-700">
                 Acompanhe seus ganhos e despesas futuras.
               </p>

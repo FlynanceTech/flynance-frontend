@@ -62,19 +62,24 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       label: 'Contexto financeiro',
       description: 'Escolha se quer ver a leitura compartilhada do casal ou apenas a sua.',
       helper: 'Listas, dashboard, detalhes e resumos acompanham esse contexto.',
+      current: 'Visualização atual: {scope}',
       options: {
         house: 'Casal',
         me: 'So eu',
+        owner: 'Titular',
+        partner: 'Parceiro(a)',
       },
       badge: {
-        house: 'Mostrando dados do casal',
-        me: 'Mostrando apenas seus dados',
+        house: 'Visualização atual: Casal',
+        me: 'Visualização atual: Individual',
       },
     },
     dashboard: {
       title: 'Seu panorama financeiro',
       subtitle:
         'Bem-vindo ao seu painel personalizado. Aqui você pode ver tudo relacionado ao seu orçamento nos {period}.',
+      coupleSubtitle:
+        'Bem-vindo ao painel personalizado do casal. Aqui vocês podem ver tudo relacionado ao orçamento conjunto nos {period}.',
       guideButton: 'Ver guia do dashboard',
       closeOnboardingAria: 'Fechar onboarding',
       closeGuideAria: 'Fechar guia',
@@ -2487,19 +2492,24 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       label: 'Financial context',
       description: 'Choose between the shared couple view and your individual view.',
       helper: 'Dashboard, lists, details and summaries follow this context.',
+      current: 'Current view: {scope}',
       options: {
         house: 'Couple',
         me: 'Only me',
+        owner: 'Owner',
+        partner: 'Partner',
       },
       badge: {
-        house: 'Showing couple data',
-        me: 'Showing only your data',
+        house: 'Current view: Couple',
+        me: 'Current view: Individual',
       },
     },
     dashboard: {
       title: 'Your financial snapshot',
       subtitle:
         'Welcome to your personalized dashboard! Here you can see everything related to your budget for {period}. I organized everything the way you asked.',
+      coupleSubtitle:
+        'Welcome to the couple dashboard. Here you can see everything related to the shared budget for {period}.',
       guideButton: 'View dashboard guide',
       closeOnboardingAria: 'Close onboarding',
       closeGuideAria: 'Close guide',
@@ -4895,19 +4905,24 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       label: 'Contexto financiero',
       description: 'Elige entre la vista compartida de la pareja y tu vista individual.',
       helper: 'Dashboard, listas, detalles y resúmenes siguen este contexto.',
+      current: 'Visualizacion actual: {scope}',
       options: {
         house: 'Pareja',
         me: 'Solo yo',
+        owner: 'Titular',
+        partner: 'Pareja',
       },
       badge: {
-        house: 'Mostrando datos de la pareja',
-        me: 'Mostrando solo tus datos',
+        house: 'Visualizacion actual: Pareja',
+        me: 'Visualizacion actual: Individual',
       },
     },
     dashboard: {
       title: 'Tu panorama financiero',
       subtitle:
         'Bienvenido a tu panel personalizado. Aquí puedes ver todo lo relacionado con tu presupuesto en {period}. Organicé todo tal como lo pediste.',
+      coupleSubtitle:
+        'Bienvenido al panel personalizado de la pareja. Aqui pueden ver todo lo relacionado con el presupuesto compartido en {period}.',
       guideButton: 'Ver guia del dashboard',
       closeOnboardingAria: 'Cerrar onboarding',
       closeGuideAria: 'Cerrar guia',
