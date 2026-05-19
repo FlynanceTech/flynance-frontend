@@ -8,13 +8,12 @@ import { Copy, Link2, Loader2, Plus, Trash2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useMemo } from 'react'
 
-import { formatHouseDate, resolveHouseInviteLink } from './house-utils'
+import { formatHouseDate } from './house-utils'
 
 type PendingInviteCardProps = {
   invites: HouseInvite[]
   canManageInvites: boolean
   isGenerating: boolean
-  baseUrl?: string | null
   deletingInviteId?: string | null
   onCopyInvite: (invite: HouseInvite) => void
   onDeleteInvite: (invite: HouseInvite) => void
@@ -33,7 +32,6 @@ export function PendingInviteCard({
   invites,
   canManageInvites,
   isGenerating,
-  baseUrl,
   deletingInviteId,
   onCopyInvite,
   onDeleteInvite,
@@ -92,9 +90,7 @@ export function PendingInviteCard({
         ) : (
           <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
             {sortedInvites.map((invite) => {
-              const inviteLink = resolveHouseInviteLink(invite, baseUrl)
               const isPending = invite.status === 'PENDING'
-              const canCopy = isPending && Boolean(inviteLink)
               const acceptedName = invite.acceptedByName || invite.acceptedByEmail
               const isDeleting = deletingInviteId === invite.id
 
@@ -113,7 +109,7 @@ export function PendingInviteCard({
                             variant="outline"
                             className="flex-1 sm:flex-none"
                             onClick={() => onCopyInvite(invite)}
-                            disabled={!canCopy || isDeleting}
+                            disabled={isDeleting}
                           >
                             <Copy className="h-4 w-4" />
                             {t('invitesCard.actions.copy')}
@@ -148,17 +144,7 @@ export function PendingInviteCard({
                     </p>
                   )}
 
-                  <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
-                    {isPending && (
-                      <div className="sm:col-span-3">
-                        <dt className="text-xs uppercase tracking-wide text-slate-500 dark:text-zinc-400">
-                          {t('invitesCard.fields.link')}
-                        </dt>
-                        <dd className="mt-1 break-all font-medium text-[#333C4D] dark:text-white">
-                          {inviteLink || t('invitesCard.linkUnavailable')}
-                        </dd>
-                      </div>
-                    )}
+                  <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
                     <div>
                       <dt className="text-xs uppercase tracking-wide text-slate-500 dark:text-zinc-400">
                         {t('invitesCard.fields.createdAt')}
@@ -175,16 +161,6 @@ export function PendingInviteCard({
                         {formatHouseDate(invite.expiresAt, locale)}
                       </dd>
                     </div>
-                    {isPending && (
-                      <div>
-                        <dt className="text-xs uppercase tracking-wide text-slate-500 dark:text-zinc-400">
-                          {t('invitesCard.fields.token')}
-                        </dt>
-                        <dd className="mt-1 font-medium text-[#333C4D] dark:text-white">
-                          {invite.token || t('invitesCard.tokenUnavailable')}
-                        </dd>
-                      </div>
-                    )}
                   </dl>
                 </article>
               )
