@@ -564,11 +564,17 @@ export function findCouplePlan(plans: PlansResponse[]): PlansResponse | null {
 }
 
 export function findCouplePlans(plans: PlansResponse[]): PlansResponse[] {
+  const canonicalCoupleSlugs = new Set(['flynance-casal', 'flynance-casal-anual'])
+  const periodOrder = { MONTHLY: 0, YEARLY: 1, WEEKLY: 2 } as const
   const candidates = plans
     .filter((plan) => plan.isActive && plan.isPublic)
+    .filter((plan) => canonicalCoupleSlugs.has(String(plan.slug ?? '').trim().toLowerCase()))
     .map((plan) => ({ plan, score: scoreCouplePlan(plan) }))
-    .filter((item) => item.score > 0)
-    .sort((a, b) => b.score - a.score || a.plan.priceCents - b.plan.priceCents)
+    .sort((a, b) => {
+      const left = periodOrder[a.plan.period as keyof typeof periodOrder] ?? 99
+      const right = periodOrder[b.plan.period as keyof typeof periodOrder] ?? 99
+      return left - right || b.score - a.score || a.plan.priceCents - b.plan.priceCents
+    })
 
   return candidates.map((item) => item.plan)
 }

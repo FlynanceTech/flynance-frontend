@@ -8,6 +8,13 @@ import { Check, ChevronLeft, ChevronRight, CreditCard, Loader2, Sparkles } from 
 import { useLocale, useTranslations } from 'next-intl'
 import { useMemo, useState } from 'react'
 
+const COUPLE_MONTHLY_SLUG = 'flynance-casal'
+const COUPLE_ANNUAL_SLUG = 'flynance-casal-anual'
+const COUPLE_PLAN_SLUGS = new Set([COUPLE_MONTHLY_SLUG, COUPLE_ANNUAL_SLUG])
+const COUPLE_MONTHLY_PRICE_CENTS = 3290
+const COUPLE_ANNUAL_TOTAL_CENTS = 32280
+const COUPLE_ANNUAL_INSTALLMENT_CENTS = 2690
+
 type CouplePlanUpgradeCardProps = {
   plans: PlansResponse[]
   currentPlanName: string | null
@@ -21,11 +28,34 @@ type CouplePlanUpgradeCardProps = {
   onUpgrade: (planId: string) => void
 }
 
-function formatPlanPrice(plan: PlansResponse, locale: string) {
-  return new Intl.NumberFormat(locale || 'pt-BR', {
-    style: 'currency',
-    currency: plan.currency || 'BRL',
-  }).format(plan.priceCents / 100)
+function normalizePlanSlug(plan: Pick<PlansResponse, 'slug'>) {
+  return String(plan.slug ?? '').trim().toLowerCase()
+}
+
+function isCanonicalCouplePlan(plan: PlansResponse) {
+  return COUPLE_PLAN_SLUGS.has(normalizePlanSlug(plan))
+}
+
+function isAnnualCouplePlan(plan: PlansResponse) {
+  return normalizePlanSlug(plan) === COUPLE_ANNUAL_SLUG
+}
+
+function getDisplayPriceCents(plan: PlansResponse) {
+  const slug = normalizePlanSlug(plan)
+  if (slug === COUPLE_MONTHLY_SLUG) return COUPLE_MONTHLY_PRICE_CENTS
+  if (slug === COUPLE_ANNUAL_SLUG) return COUPLE_ANNUAL_INSTALLMENT_CENTS
+  return plan.priceCents
+}
+
+function getPlanChargePriceCents(plan: PlansResponse) {
+  const slug = normalizePlanSlug(plan)
+  if (slug === COUPLE_MONTHLY_SLUG) return COUPLE_MONTHLY_PRICE_CENTS
+  if (slug === COUPLE_ANNUAL_SLUG) return COUPLE_ANNUAL_TOTAL_CENTS
+  return plan.priceCents
+}
+
+function formatDisplayPlanPrice(plan: PlansResponse, locale: string) {
+  return formatCurrencyFromCents(getDisplayPriceCents(plan), plan.currency || 'BRL', locale)
 }
 
 function formatCurrencyFromCents(cents: number, currency: string, locale: string) {
@@ -70,11 +100,11 @@ export function CouplePlanUpgradeCard({
   const [selectedIndex, setSelectedIndex] = useState(0)
   const visiblePlans = useMemo(
     () =>
-      [...plans].sort((a, b) => {
+      [...plans].filter(isCanonicalCouplePlan).sort((a, b) => {
         const periodOrder = { MONTHLY: 0, YEARLY: 1, WEEKLY: 2 } as const
         const left = periodOrder[a.period as keyof typeof periodOrder] ?? 99
         const right = periodOrder[b.period as keyof typeof periodOrder] ?? 99
-        return left - right || a.priceCents - b.priceCents
+        return left - right || getPlanChargePriceCents(a) - getPlanChargePriceCents(b)
       }),
     [plans]
   )
@@ -83,21 +113,28 @@ export function CouplePlanUpgradeCard({
   const hasMultiplePlans = visiblePlans.length > 1
   const isCurrentCouplePlan = Boolean(plan?.id && currentPlanId && plan.id === currentPlanId && hasActiveSignature)
 
-  const couplePlanPriceLabel = plan ? formatPlanPrice(plan, locale) : ''
+  const couplePlanPriceLabel = plan ? formatDisplayPlanPrice(plan, locale) : ''
   const hasPositiveDifference =
     plan != null &&
     typeof currentPlanPriceCents === 'number' &&
     Number.isFinite(currentPlanPriceCents) &&
-    plan.priceCents > currentPlanPriceCents
+    getPlanChargePriceCents(plan) > currentPlanPriceCents
   const differenceAmountLabel = hasPositiveDifference
     ? formatCurrencyFromCents(
-        plan!.priceCents - (currentPlanPriceCents as number),
+        getPlanChargePriceCents(plan!) - (currentPlanPriceCents as number),
         plan!.currency || 'BRL',
         locale
       )
     : ''
   const planPeriodKey = plan ? getPlanPeriodKey(plan.period) : null
   const planPeriodFallback = plan ? String(plan.period ?? '').trim() || '-' : '-'
+  const isAnnualPlan = plan ? isAnnualCouplePlan(plan) : false
+  const annualTotalLabel = plan
+    ? formatCurrencyFromCents(COUPLE_ANNUAL_TOTAL_CENTS, plan.currency || 'BRL', locale)
+    : ''
+  const annualInstallmentLabel = plan
+    ? formatCurrencyFromCents(COUPLE_ANNUAL_INSTALLMENT_CENTS, plan.currency || 'BRL', locale)
+    : ''
   const benefits = plan ? getPlanBenefits(plan, [
     t('upgradeCard.benefits.sharedDashboard'),
     t('upgradeCard.benefits.partnerTracking'),
@@ -152,8 +189,13 @@ export function CouplePlanUpgradeCard({
                   <p className="text-base font-semibold leading-5 text-[#333C4D]">{plan.name}</p>
                   <div className="flex flex-wrap items-end gap-2">
                     <p className="text-3xl font-semibold leading-none text-secondary">
-                      {formatPlanPrice(plan, locale)}
+                      {formatDisplayPlanPrice(plan, locale)}
                     </p>
+                    {isAnnualPlan && (
+                      <span className="pb-0.5 text-sm font-semibold leading-5 text-secondary">
+                        {t('upgradeCard.annualInstallmentSuffix')}
+                      </span>
+                    )}
                     <Badge
                       variant="outline"
                       className="border-[#D7EAF5] bg-white text-xs font-medium text-[#2F6E91]"
@@ -236,7 +278,12 @@ export function CouplePlanUpgradeCard({
             {canManageUpgrade && !isCurrentCouplePlan && (
               <div className="space-y-3">
                 <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
-                  {hasPositiveDifference
+                  {isAnnualPlan
+                    ? t('upgradeCard.annualBillingNote', {
+                        upfrontPrice: annualTotalLabel,
+                        installmentPrice: annualInstallmentLabel,
+                      })
+                    : hasPositiveDifference
                     ? t('upgradeCard.prorationNote', {
                         differenceAmount: differenceAmountLabel,
                         couplePlanPrice: couplePlanPriceLabel,

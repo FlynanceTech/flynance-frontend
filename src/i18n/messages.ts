@@ -62,19 +62,24 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       label: 'Contexto financeiro',
       description: 'Escolha se quer ver a leitura compartilhada do casal ou apenas a sua.',
       helper: 'Listas, dashboard, detalhes e resumos acompanham esse contexto.',
+      current: 'Visualização atual: {scope}',
       options: {
         house: 'Casal',
         me: 'So eu',
+        owner: 'Titular',
+        partner: 'Parceiro(a)',
       },
       badge: {
-        house: 'Mostrando dados do casal',
-        me: 'Mostrando apenas seus dados',
+        house: 'Visualização atual: Casal',
+        me: 'Visualização atual: Individual',
       },
     },
     dashboard: {
       title: 'Seu panorama financeiro',
       subtitle:
         'Bem-vindo ao seu painel personalizado. Aqui você pode ver tudo relacionado ao seu orçamento nos {period}.',
+      coupleSubtitle:
+        'Bem-vindo ao painel personalizado do casal. Aqui vocês podem ver tudo relacionado ao orçamento conjunto nos {period}.',
       guideButton: 'Ver guia do dashboard',
       closeOnboardingAria: 'Fechar onboarding',
       closeGuideAria: 'Fechar guia',
@@ -1034,15 +1039,17 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       back: 'Voltar',
     },
     coupleInvitePage: {
-      title: 'Convite para conta de casal',
-      subtitle: 'Oi! Voce recebeu um convite para participar de uma conta de casal na Flynance.',
-      intro: 'Voce vai ter acesso a IA da Fly no seu WhatsApp e a um painel personalizado para acompanharem a evolucao das financas.',
-      ctaText: 'E ai, vamos atualizar receitas e despesas juntos?',
+      title: 'E ai, vamos atualizar o orcamento juntos?',
+      subtitle: 'Oi! Voce foi convidado(a) para participar da conta de casal de {ownerName} na Flynance.',
+      subtitleFallback: 'Oi! Voce foi convidado(a) para participar de uma conta de casal na Flynance.',
+      fallbackOwner: 'o titular',
       whatChangesTitle: 'Ao aceitar este convite:',
       whatChanges: {
-        sharedAccess: 'voces passam a acompanhar a visao financeira compartilhada do casal;',
-        historyRule: 'as leituras financeiras podem considerar os dois membros da casa;',
-        ownerBilling: 'a assinatura e o billing continuam sob responsabilidade do titular.',
+        sharedAccess: 'Voces passam a compartilhar a mesma visao financeira,',
+        flyAi: 'Voce ganha acesso a IA da Fly no seu WhatsApp,',
+        coupleDashboard: 'Voce ganha acesso ao painel personalizado do casal,',
+        launchVisibility: 'Seus lancamentos aparecem para {ownerName} e vice-versa,',
+        ownerBilling: 'A assinatura continua somente sob responsabilidade do titular.',
       },
       termsPrefix: 'Clicando em "aceitar convite", voce concorda com os',
       termsLinkLabel: 'Termos de Uso',
@@ -2190,6 +2197,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         },
         activeBadge: 'Plano atual',
         currentPlan: 'Plano atual: {planName}',
+        annualInstallmentSuffix: 'por mês em 12x',
         ownerNoteTitle: 'Você pode gerenciar a assinatura',
         ownerNoteDescription:
           'Como titular da conta de casal, você pode iniciar a assinatura ou trocar de plano.',
@@ -2200,6 +2208,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           'A mudança para o plano casal gerará o ajuste adicional de {differenceAmount}, e será cobrado de imediato no seu cartão de crédito. O plano casal será cobrado ao valor padrão de {couplePlanPrice} no próximo vencimento.',
         prorationNoteSimple:
           'O plano casal será cobrado ao valor padrão de {couplePlanPrice} no próximo vencimento. A diferença em relação ao seu plano atual será cobrada de imediato no cartão.',
+        annualBillingNote:
+          'O Plano Casal Anual pode ser cobrado em 1 vez no valor de {upfrontPrice}, ou dividido em 12x de {installmentPrice}, como destacado no carrossel.',
         processing: 'Processando...',
         actions: {
           changePlan: 'Trocar para plano casal',
@@ -2482,19 +2492,24 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       label: 'Financial context',
       description: 'Choose between the shared couple view and your individual view.',
       helper: 'Dashboard, lists, details and summaries follow this context.',
+      current: 'Current view: {scope}',
       options: {
         house: 'Couple',
         me: 'Only me',
+        owner: 'Owner',
+        partner: 'Partner',
       },
       badge: {
-        house: 'Showing couple data',
-        me: 'Showing only your data',
+        house: 'Current view: Couple',
+        me: 'Current view: Individual',
       },
     },
     dashboard: {
       title: 'Your financial snapshot',
       subtitle:
         'Welcome to your personalized dashboard! Here you can see everything related to your budget for {period}. I organized everything the way you asked.',
+      coupleSubtitle:
+        'Welcome to the couple dashboard. Here you can see everything related to the shared budget for {period}.',
       guideButton: 'View dashboard guide',
       closeOnboardingAria: 'Close onboarding',
       closeGuideAria: 'Close guide',
@@ -3442,15 +3457,17 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       back: 'Back',
     },
     coupleInvitePage: {
-      title: 'Couple account invitation',
-      subtitle: 'Hi! You received an invitation to join a couple account on Flynance.',
-      intro: 'You will get access to Fly AI on WhatsApp and to a personalized dashboard to follow your finances together.',
-      ctaText: 'So, shall we update income and expenses together?',
+      title: 'Shall we update the budget together?',
+      subtitle: 'Hi! You were invited to join {ownerName} couple account on Flynance.',
+      subtitleFallback: 'Hi! You were invited to join a couple account on Flynance.',
+      fallbackOwner: 'the owner',
       whatChangesTitle: 'By accepting this invitation:',
       whatChanges: {
-        sharedAccess: 'you will both see the shared financial view of the household;',
-        historyRule: 'financial reads may consider both active household members;',
-        ownerBilling: 'subscription and billing remain under the owner responsibility.',
+        sharedAccess: 'You both start sharing the same financial view,',
+        flyAi: 'You get access to Fly AI on WhatsApp,',
+        coupleDashboard: 'You get access to the personalized couple dashboard,',
+        launchVisibility: 'Your entries appear to {ownerName} and vice versa,',
+        ownerBilling: 'The subscription remains solely under the owner responsibility.',
       },
       termsPrefix: 'By clicking "accept invitation", you agree to the',
       termsLinkLabel: 'Terms of Use',
@@ -4594,6 +4611,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         },
         activeBadge: 'Current plan',
         currentPlan: 'Current plan: {planName}',
+        annualInstallmentSuffix: 'per month in 12 installments',
         ownerNoteTitle: 'You can manage the subscription',
         ownerNoteDescription:
           'As the couple account owner, you can start the subscription or switch plans.',
@@ -4604,6 +4622,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           'Changing plans may create a prorated adjustment on the next billing cycle.',
         prorationNoteSimple:
           'The couple plan will be billed at the standard price of {couplePlanPrice} on the next due date. Any difference from your current plan may be charged to your card immediately.',
+        annualBillingNote:
+          'The Annual Couple Plan can be billed once at {upfrontPrice}, or split into 12 installments of {installmentPrice}, as highlighted in the carousel.',
         processing: 'Processing...',
         actions: {
           changePlan: 'Switch to couple plan',
@@ -4885,19 +4905,24 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       label: 'Contexto financiero',
       description: 'Elige entre la vista compartida de la pareja y tu vista individual.',
       helper: 'Dashboard, listas, detalles y resúmenes siguen este contexto.',
+      current: 'Visualizacion actual: {scope}',
       options: {
         house: 'Pareja',
         me: 'Solo yo',
+        owner: 'Titular',
+        partner: 'Pareja',
       },
       badge: {
-        house: 'Mostrando datos de la pareja',
-        me: 'Mostrando solo tus datos',
+        house: 'Visualizacion actual: Pareja',
+        me: 'Visualizacion actual: Individual',
       },
     },
     dashboard: {
       title: 'Tu panorama financiero',
       subtitle:
         'Bienvenido a tu panel personalizado. Aquí puedes ver todo lo relacionado con tu presupuesto en {period}. Organicé todo tal como lo pediste.',
+      coupleSubtitle:
+        'Bienvenido al panel personalizado de la pareja. Aqui pueden ver todo lo relacionado con el presupuesto compartido en {period}.',
       guideButton: 'Ver guia del dashboard',
       closeOnboardingAria: 'Cerrar onboarding',
       closeGuideAria: 'Cerrar guia',
@@ -5854,15 +5879,17 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       back: 'Volver',
     },
     coupleInvitePage: {
-      title: 'Invitacion para cuenta de pareja',
-      subtitle: 'Hola! Recibiste una invitacion para unirte a una cuenta de pareja en Flynance.',
-      intro: 'Tendras acceso a la IA de Fly en WhatsApp y a un panel personalizado para seguir juntos la evolucion de sus finanzas.',
-      ctaText: 'Entonces, actualizamos ingresos y gastos juntos?',
+      title: 'Actualizamos el presupuesto juntos?',
+      subtitle: 'Hola! Te invitaron a participar en la cuenta de pareja de {ownerName} en Flynance.',
+      subtitleFallback: 'Hola! Te invitaron a participar en una cuenta de pareja en Flynance.',
+      fallbackOwner: 'el titular',
       whatChangesTitle: 'Al aceptar esta invitacion:',
       whatChanges: {
-        sharedAccess: 'ambos pasaran a ver la vista financiera compartida del hogar;',
-        historyRule: 'las lecturas financieras pueden considerar a los dos miembros activos;',
-        ownerBilling: 'la suscripcion y el billing siguen bajo responsabilidad del titular.',
+        sharedAccess: 'Ambos pasan a compartir la misma vision financiera,',
+        flyAi: 'Tienes acceso a la IA de Fly en WhatsApp,',
+        coupleDashboard: 'Tienes acceso al panel personalizado de la pareja,',
+        launchVisibility: 'Tus registros aparecen para {ownerName} y viceversa,',
+        ownerBilling: 'La suscripcion sigue solamente bajo responsabilidad del titular.',
       },
       termsPrefix: 'Al hacer clic en "aceptar invitacion", aceptas los',
       termsLinkLabel: 'Terminos de Uso',
@@ -7007,6 +7034,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         },
         activeBadge: 'Plan actual',
         currentPlan: 'Plan actual: {planName}',
+        annualInstallmentSuffix: 'por mes en 12 cuotas',
         ownerNoteTitle: 'Puedes gestionar la suscripcion',
         ownerNoteDescription:
           'Como titular de la cuenta en pareja, puedes iniciar la suscripcion o cambiar de plan.',
@@ -7017,6 +7045,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           'El cambio de plan puede generar un ajuste prorrateado en el proximo cobro.',
         prorationNoteSimple:
           'El plan en pareja se cobrara al precio estandar de {couplePlanPrice} en el proximo vencimiento. Cualquier diferencia con tu plan actual puede cobrarse inmediatamente en tu tarjeta.',
+        annualBillingNote:
+          'El Plan en Pareja Anual puede cobrarse en 1 vez por {upfrontPrice}, o dividirse en 12 cuotas de {installmentPrice}, como se destaca en el carrusel.',
         processing: 'Procesando...',
         actions: {
           changePlan: 'Cambiar al plan en pareja',

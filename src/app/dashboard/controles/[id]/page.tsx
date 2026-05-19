@@ -15,12 +15,15 @@ import SpendingControlDrawer from '../../components/SpendingControlDrawer'
 import { useUserSession } from '@/stores/useUserSession'
 import ControlDetailsSkeleton from './ControlDetailsSkeleton'
 import { getActorFirstName } from '@/utils/actorName'
+import { resolveDisplayDescription } from '@/utils/displayDescription'
+import FinancialScopeSwitcher from '@/components/financial/FinancialScopeSwitcher'
 
 export interface Transaction {
   id: string
   userId: string
   value: number
   description: string
+  sourceDescription?: string | null
   categoryId: string
   date: string
   type: 'INCOME' | 'EXPENSE'
@@ -169,7 +172,10 @@ export default function ControlePage({
           <Link href="/dashboard/controles" aria-label={t('back')}>
             <Undo2 />
           </Link>
-          <h1 className="text-xl font-bold ">{t('title')}</h1>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <h1 className="text-xl font-bold ">{t('title')}</h1>
+            <FinancialScopeSwitcher />
+          </div>
           <button
             onClick={() => canWriteControl && setDrawerOpen(!drawerOpen)}
             aria-label={t('edit')}
@@ -242,7 +248,9 @@ export default function ControlePage({
                 className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-900"
               >
                 <div className="flex justify-between">
-                  <span className="font-semibold text-slate-900 dark:text-slate-100">{tx.description}</span>
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">
+                    {resolveDisplayDescription(tx.description, tx.sourceDescription)}
+                  </span>
                   <span className="text-slate-900 dark:text-slate-100">{formatter(tx.value)}</span>
                 </div>
                 <span className="text-sm text-slate-400 dark:text-slate-500">

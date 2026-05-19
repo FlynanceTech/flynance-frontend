@@ -23,6 +23,8 @@ export default function CoupleInviteAcceptPage() {
 
   const isValidToken = token.length >= 6
   const shouldAutoAccept = searchParams.get('autoAccept') === '1'
+  const ownerDisplayName = String(invitePreview?.ownerName ?? '').trim()
+  const ownerReference = ownerDisplayName || t('fallbackOwner')
   const nextToLogin = useMemo(
     () => {
       const params = new URLSearchParams({
@@ -100,15 +102,19 @@ export default function CoupleInviteAcceptPage() {
     <main className="min-h-screen bg-[hsl(var(--background))] px-4 py-8 text-[hsl(var(--foreground))] transition-colors">
       <section className="mx-auto w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#121212]">
         <h1 className="text-lg font-semibold text-[#333C4D] dark:text-white">{t('title')}</h1>
-        <p className="mt-2 text-sm text-slate-600 dark:text-zinc-300">{t('subtitle')}</p>
-        <p className="mt-3 text-sm text-slate-600 dark:text-zinc-300">{t('intro')}</p>
-        <p className="mt-3 text-sm font-medium text-[#333C4D] dark:text-white">{t('ctaText')}</p>
+        <p className="mt-2 text-sm text-slate-600 dark:text-zinc-300">
+          {ownerDisplayName
+            ? t('subtitle', { ownerName: ownerDisplayName })
+            : t('subtitleFallback')}
+        </p>
 
         <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-sm text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-zinc-200">
           <p className="font-semibold text-[#333C4D] dark:text-white">{t('whatChangesTitle')}</p>
           <ul className="mt-2 list-disc space-y-1 pl-5">
             <li>{t('whatChanges.sharedAccess')}</li>
-            <li>{t('whatChanges.historyRule')}</li>
+            <li>{t('whatChanges.flyAi')}</li>
+            <li>{t('whatChanges.coupleDashboard')}</li>
+            <li>{t('whatChanges.launchVisibility', { ownerName: ownerReference })}</li>
             <li>{t('whatChanges.ownerBilling')}</li>
           </ul>
         </div>

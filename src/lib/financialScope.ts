@@ -1,6 +1,6 @@
 import type { HouseContext } from '@/types/house'
 
-export type FinancialDataScope = 'house' | 'me'
+export type FinancialDataScope = 'house' | 'me' | 'owner' | 'partner'
 export type FinancialScopeKey = FinancialDataScope | 'default'
 
 export function isCoupleHouseActive(houseContext?: HouseContext | null) {
@@ -15,7 +15,7 @@ export function isCoupleHouseActive(houseContext?: HouseContext | null) {
 export function normalizeFinancialScope(
   scope?: FinancialDataScope | null
 ): FinancialDataScope | undefined {
-  if (scope === 'house' || scope === 'me') return scope
+  if (scope === 'house' || scope === 'me' || scope === 'owner' || scope === 'partner') return scope
   return undefined
 }
 

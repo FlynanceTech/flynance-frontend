@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import Link from 'next/link'
 
 import { NewTransactionButton } from '../Buttons'
 import { CategoriesSelectWithCheck } from '../CategorySelect'
@@ -19,6 +20,7 @@ import type { Category } from '@/types/Transaction'
 import { useFinancialScope } from '@/hooks/useFinancialScope'
 import { FEATURES } from '@/config/features'
 import { isCoupleHouseActive } from '@/lib/financialScope'
+import FinancialScopeSwitcher from '@/components/financial/FinancialScopeSwitcher'
 
 function toFirstName(fullName?: string | null) {
   if (!fullName) return ''
@@ -97,10 +99,9 @@ export default function Header({
   rightContent,
 }: HeaderProps) {
   const t = useTranslations('dashboardHeader')
-  const tScope = useTranslations('financialScope')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [isApplyingFilters, setIsApplyingFilters] = useState(false)
-  const { canSelectScope, scope, houseContext } = useFinancialScope()
+  const { scope, houseContext } = useFinancialScope()
   const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
   const activePermission = useAdvisorActing((s) => s.activePermission ?? s.selectedPermission)
   const isAdvisorReadOnly = isAdvisorReadOnlyTransactionAccess(activeClientId, activePermission)
@@ -114,9 +115,11 @@ export default function Header({
   const ownerFirstName = isCouple ? toFirstName(houseContext?.owner?.name) : ''
   const partnerFirstName = isCouple ? toFirstName(houseContext?.partner?.name) : ''
   const coupleGreetingName = [ownerFirstName, partnerFirstName].filter(Boolean).join(' & ')
-  const showBothNames = isCouple && scope !== 'me' && Boolean(coupleGreetingName)
-  const greetingName = showBothNames ? coupleGreetingName : firstName
-  const hasCoupleAccount = FEATURES.COUPLE_ACCOUNT && Boolean(houseContext?.id) && !activeClientId
+  const showBothNames = isCouple && scope === 'house' && Boolean(coupleGreetingName)
+  const personalGreetingName =
+    scope === 'owner' ? ownerFirstName || firstName : scope === 'partner' ? partnerFirstName || firstName : firstName
+  const greetingName = showBothNames ? coupleGreetingName : personalGreetingName
+  const hasCoupleAccount = isCouple
   const showAccountTypeBadge = FEATURES.COUPLE_ACCOUNT && !activeClientId
   const accountTypeLabel = hasCoupleAccount ? t('accountType.couple') : t('accountType.individual')
 
@@ -259,7 +262,8 @@ export default function Header({
               {t('greeting', { name: greetingName })}
             </h3>
             {showAccountTypeBadge && (
-              <span
+              <Link
+                href="/dashboard/conta-casal"
                 className={
                   'inline-flex w-fit items-center rounded-full px-3 py-0.5 text-xs font-medium ' +
                   (hasCoupleAccount
@@ -268,8 +272,9 @@ export default function Header({
                 }
               >
                 {accountTypeLabel}
-              </span>
+              </Link>
             )}
+            <FinancialScopeSwitcher />
           </div>
 
           <div className="col-span-2 flex w-full items-center justify-end gap-2">
@@ -353,11 +358,6 @@ export default function Header({
 
       <div className="flex flex-col gap-2 pt-2 md:pt-0">
         <p className="whitespace-pre-line text-sm font-light text-slate-500">{subtitle}</p>
-        {canSelectScope && (
-          <span className="inline-flex w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
-            {scope === 'me' ? tScope('badge.me') : tScope('badge.house')}
-          </span>
-        )}
       </div>
     </header>
   )
