@@ -2190,6 +2190,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         },
         activeBadge: 'Plano atual',
         currentPlan: 'Plano atual: {planName}',
+        annualInstallmentSuffix: 'por mês em 12x',
         ownerNoteTitle: 'Você pode gerenciar a assinatura',
         ownerNoteDescription:
           'Como titular da conta de casal, você pode iniciar a assinatura ou trocar de plano.',
@@ -2200,6 +2201,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           'A mudança para o plano casal gerará o ajuste adicional de {differenceAmount}, e será cobrado de imediato no seu cartão de crédito. O plano casal será cobrado ao valor padrão de {couplePlanPrice} no próximo vencimento.',
         prorationNoteSimple:
           'O plano casal será cobrado ao valor padrão de {couplePlanPrice} no próximo vencimento. A diferença em relação ao seu plano atual será cobrada de imediato no cartão.',
+        annualBillingNote:
+          'O Plano Casal Anual pode ser cobrado em 1 vez no valor de {upfrontPrice}, ou dividido em 12x de {installmentPrice}, como destacado no carrossel.',
         processing: 'Processando...',
         actions: {
           changePlan: 'Trocar para plano casal',
@@ -4594,6 +4597,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         },
         activeBadge: 'Current plan',
         currentPlan: 'Current plan: {planName}',
+        annualInstallmentSuffix: 'per month in 12 installments',
         ownerNoteTitle: 'You can manage the subscription',
         ownerNoteDescription:
           'As the couple account owner, you can start the subscription or switch plans.',
@@ -4604,6 +4608,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           'Changing plans may create a prorated adjustment on the next billing cycle.',
         prorationNoteSimple:
           'The couple plan will be billed at the standard price of {couplePlanPrice} on the next due date. Any difference from your current plan may be charged to your card immediately.',
+        annualBillingNote:
+          'The Annual Couple Plan can be billed once at {upfrontPrice}, or split into 12 installments of {installmentPrice}, as highlighted in the carousel.',
         processing: 'Processing...',
         actions: {
           changePlan: 'Switch to couple plan',
@@ -7007,6 +7013,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         },
         activeBadge: 'Plan actual',
         currentPlan: 'Plan actual: {planName}',
+        annualInstallmentSuffix: 'por mes en 12 cuotas',
         ownerNoteTitle: 'Puedes gestionar la suscripcion',
         ownerNoteDescription:
           'Como titular de la cuenta en pareja, puedes iniciar la suscripcion o cambiar de plan.',
@@ -7017,6 +7024,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           'El cambio de plan puede generar un ajuste prorrateado en el proximo cobro.',
         prorationNoteSimple:
           'El plan en pareja se cobrara al precio estandar de {couplePlanPrice} en el proximo vencimiento. Cualquier diferencia con tu plan actual puede cobrarse inmediatamente en tu tarjeta.',
+        annualBillingNote:
+          'El Plan en Pareja Anual puede cobrarse en 1 vez por {upfrontPrice}, o dividirse en 12 cuotas de {installmentPrice}, como se destaca en el carrusel.',
         processing: 'Procesando...',
         actions: {
           changePlan: 'Cambiar al plan en pareja',
