@@ -39,3 +39,14 @@ test('artefatos de sessao limpam token do app e token curto sem limpar todo o lo
   assert.match(userSessionSource, /clearAuthSessionArtifacts\(\)/)
   assert.doesNotMatch(userSessionSource, /localStorage\.clear\(\)/)
 })
+
+test('convite de conta casal e publico para preservar o motivo no login', () => {
+  const authGuardSource = readSource('src/providers/authGuardProvider.tsx')
+  const invitePageSource = readSource('src/app/conta-casal/convite/[token]/page.tsx')
+  const loginSource = readSource('src/app/login/page.tsx')
+
+  assert.match(authGuardSource, /pathname\?\.startsWith\("\/conta-casal\/convite\/"\) === true/)
+  assert.match(invitePageSource, /reason: 'couple_invite'/)
+  assert.match(loginSource, /reason === 'couple_invite'/)
+  assert.match(loginSource, /showCoupleInviteNotice/)
+})

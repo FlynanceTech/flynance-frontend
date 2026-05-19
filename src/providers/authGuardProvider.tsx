@@ -13,13 +13,21 @@ type Props = {
   children: React.ReactNode;
 };
 
+function isAuthPublicRoute(pathname: string | null) {
+  return (
+    pathname === "/login" ||
+    pathname === "/WinbackPage" ||
+    pathname?.startsWith("/conta-casal/convite/") === true
+  );
+}
+
 export function AuthGuardProvider({ children }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, status, fetchAccount } = useUserSession();
   const clearActingClient = useAdvisorActing((s) => s.clearActingClient);
 
-  const isPublicRoute = pathname === "/login" || pathname === "/WinbackPage";
+  const isPublicRoute = isAuthPublicRoute(pathname);
 
   const isRestrictedDevHost = () =>
     typeof window !== "undefined" && window.location.hostname === DEV_RESTRICTED_HOST;
