@@ -41,7 +41,9 @@ import { useLocale, useTranslations } from 'next-intl'
 import { Pagination } from '../components/Pagination'
 import { Skeleton } from '../components/skeleton'
 import DeleteConfirmModal from '../components/DeleteConfirmModal'
+import FeatureUnavailable from '../components/FeatureUnavailable'
 
+import { FEATURES } from '@/config/features'
 import { useCategories } from '@/hooks/query/useCategory'
 import { useCardMutations } from '@/hooks/query/useCreditCards'
 import { useCreditCardCharges } from '@/hooks/query/useCreditCardCharges'
@@ -1587,6 +1589,14 @@ function PayStatementConfirmModal({
 }
 
 export default function FuturosPage() {
+  if (!FEATURES.FUTURES) {
+    return <FeatureUnavailable />
+  }
+
+  return <FuturosPageContent />
+}
+
+function FuturosPageContent() {
   const t = useTranslations('futurosPage')
   const locale = useLocale()
   const { user } = useUserSession()
