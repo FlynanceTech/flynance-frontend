@@ -1,4 +1,4 @@
-export const FEATURE_COUPLE_ACCOUNT = true
+export const FEATURE_COUPLE_ACCOUNT = process.env.NODE_ENV !== 'production'
 export const FEATURE_EDUCATION = false
 export const FEATURE_REPORTS_V1 = false
 
