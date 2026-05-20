@@ -1,7 +1,7 @@
 'use client'
 
 import { AlertCircle, Loader2, RefreshCw } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useState } from 'react'
 import toast from 'react-hot-toast'
 import { useTranslations } from 'next-intl'
 
@@ -12,6 +12,7 @@ import {
   useCouplePlanUpgrade,
   useCreateHouse,
   useCreateHouseInvite,
+  useDeleteHouseInvite,
   useHouseContext,
   useRemoveHousePartner,
 } from '@/hooks/query/useHouse'
@@ -27,6 +28,12 @@ import { HousePartnerCard } from './components/HousePartnerCard'
 import { PendingInviteCard } from './components/PendingInviteCard'
 import { RemovePartnerDialog } from './components/RemovePartnerDialog'
 import { getCounterpartMember, getHouseMemberDisplayName, resolveHouseInviteLink } from './components/house-utils'
+
+type SignaturePlanLike = {
+  name?: unknown
+  title?: unknown
+  priceCents?: unknown
+}
 
 function CoupleAccountSkeleton() {
   return (
@@ -44,21 +51,6 @@ function CoupleAccountSkeleton() {
   )
 }
 
-function mergeHouseInvites(
-  currentInvites: HouseInvite[],
-  nextInvite: HouseInvite | null
-): HouseInvite[] {
-  if (!nextInvite) return currentInvites
-
-  const remainingInvites = currentInvites.filter((invite) => invite.id !== nextInvite.id)
-  return [nextInvite, ...remainingInvites]
-}
-
-function getHouseInviteStorageKey(houseId?: string | null) {
-  const safeHouseId = String(houseId ?? '').trim()
-  return safeHouseId ? `house-pending-invites:${safeHouseId}` : null
-}
-
 export default function CoupleAccountPage() {
   if (!FEATURES.COUPLE_ACCOUNT) {
     return <FeatureUnavailable />
@@ -74,86 +66,23 @@ function CoupleAccountPageContent() {
   const couplePlanQuery = useCouplePlan()
   const createHouseMutation = useCreateHouse()
   const createInviteMutation = useCreateHouseInvite()
+  const deleteInviteMutation = useDeleteHouseInvite()
   const removePartnerMutation = useRemoveHousePartner()
   const upgradeMutation = useCouplePlanUpgrade()
 
-  const [baseUrl, setBaseUrl] = useState<string>('')
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false)
-  const [generatedInvites, setGeneratedInvites] = useState<HouseInvite[]>([])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    setBaseUrl(window.location.origin)
-  }, [])
 
   const house = houseQuery.data
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-
-    const storageKey = getHouseInviteStorageKey(house?.id)
-    if (!storageKey) {
-      setGeneratedInvites([])
-      return
-    }
-
-    try {
-      const rawValue = window.sessionStorage.getItem(storageKey)
-      if (!rawValue) return
-
-      const parsedInvites = JSON.parse(rawValue)
-      if (!Array.isArray(parsedInvites)) return
-
-      setGeneratedInvites(
-        parsedInvites.filter((invite): invite is HouseInvite => {
-          return Boolean(invite && typeof invite === 'object' && typeof invite.id === 'string')
-        })
-      )
-    } catch {
-      window.sessionStorage.removeItem(storageKey)
-    }
-  }, [house?.id])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-
-    const storageKey = getHouseInviteStorageKey(house?.id)
-    if (!storageKey) return
-
-    if (!house?.invites?.length) {
-      if (generatedInvites.length > 0) {
-        window.sessionStorage.setItem(storageKey, JSON.stringify(generatedInvites))
-      }
-      return
-    }
-
-    setGeneratedInvites((currentInvites) => {
-      const remainingInvites = currentInvites.filter(
-        (generatedInvite) => !house.invites.some((houseInvite) => houseInvite.id === generatedInvite.id)
-      )
-
-      if (remainingInvites.length === 0) {
-        window.sessionStorage.removeItem(storageKey)
-      } else {
-        window.sessionStorage.setItem(storageKey, JSON.stringify(remainingInvites))
-      }
-
-      return remainingInvites
-    })
-  }, [generatedInvites, house?.id, house?.invites])
-  const visibleInvites = useMemo(() => {
-    return generatedInvites.reduce(
-      (accumulator, invite) => mergeHouseInvites(accumulator, invite),
-      house?.invites ?? []
-    )
-  }, [generatedInvites, house?.invites])
-  const couplePlan = couplePlanQuery.couplePlan
+  const visibleInvites = house?.invites ?? []
+  const couplePlans = couplePlanQuery.couplePlans
   const currentPlanId = user?.userData?.signature?.planId ?? null
+  const currentPlan = user?.userData?.signature?.plan as SignaturePlanLike | null | undefined
   const currentPlanName =
-    (user?.userData?.signature?.plan as any)?.name ??
-    (user?.userData?.signature?.plan as any)?.title ??
+    (typeof currentPlan?.name === 'string' && currentPlan.name) ||
+    (typeof currentPlan?.title === 'string' && currentPlan.title) ||
     null
-  const currentPlanPriceCentsRaw = (user?.userData?.signature?.plan as any)?.priceCents
+  const currentPlanPriceCentsRaw = currentPlan?.priceCents
   const currentPlanPriceCents =
     typeof currentPlanPriceCentsRaw === 'number' && Number.isFinite(currentPlanPriceCentsRaw)
       ? currentPlanPriceCentsRaw
@@ -165,11 +94,6 @@ function CoupleAccountPageContent() {
     counterpartMember,
     t('partnerCard.fallbacks.noName')
   )
-  const isCurrentCouplePlan = useMemo(() => {
-    if (!couplePlan?.id || !currentPlanId) return false
-    return couplePlan.id === currentPlanId && hasActiveSignature
-  }, [couplePlan?.id, currentPlanId, hasActiveSignature])
-
   const isInitialLoading = houseQuery.isLoading && houseQuery.data === undefined
 
   const handleRefresh = async () => {
@@ -181,33 +105,11 @@ function CoupleAccountPageContent() {
   }
 
   const handleGenerateInvite = async () => {
-    const invite = await createInviteMutation.mutateAsync()
-    if (!invite) return
-
-    setGeneratedInvites((currentInvites) => {
-      const nextInvites = mergeHouseInvites(currentInvites, invite)
-      const storageKey = getHouseInviteStorageKey(house?.id)
-
-      if (typeof window !== 'undefined' && storageKey) {
-        window.sessionStorage.setItem(storageKey, JSON.stringify(nextInvites))
-      }
-
-      return nextInvites
-    })
-
-    const link = resolveHouseInviteLink(invite, baseUrl)
-    if (!link) return
-
-    try {
-      await navigator.clipboard.writeText(link)
-      toast.success(t('invitesCard.copySuccess'))
-    } catch {
-      toast.error(t('invitesCard.copyError'))
-    }
+    await createInviteMutation.mutateAsync()
   }
 
   const handleCopyInvite = async (invite: HouseInvite) => {
-    const link = resolveHouseInviteLink(invite, baseUrl)
+    const link = resolveHouseInviteLink(invite)
     if (!link) {
       toast.error(t('invitesCard.copyUnavailable'))
       return
@@ -221,13 +123,21 @@ function CoupleAccountPageContent() {
     }
   }
 
-  const handleUpgrade = async () => {
-    if (!couplePlan?.id) {
+  const handleDeleteInvite = async (invite: HouseInvite) => {
+    try {
+      await deleteInviteMutation.mutateAsync(invite.id)
+    } catch {
+      // feedback tratado no hook
+    }
+  }
+
+  const handleUpgrade = async (planId: string) => {
+    if (!planId) {
       toast.error(t('upgradeCard.noPlanTitle'))
       return
     }
 
-    await upgradeMutation.mutateAsync(couplePlan.id)
+    await upgradeMutation.mutateAsync(planId)
   }
 
   const handleRemovePartner = async () => {
@@ -305,11 +215,11 @@ function CoupleAccountPageContent() {
             />
 
             <CouplePlanUpgradeCard
-              plan={couplePlan}
+              plans={couplePlans}
               currentPlanName={currentPlanName}
+              currentPlanId={currentPlanId}
               currentPlanPriceCents={currentPlanPriceCents}
               hasActiveSignature={hasActiveSignature}
-              isCurrentCouplePlan={isCurrentCouplePlan}
               isLoadingPlans={couplePlanQuery.isLoading}
               plansErrorMessage={
                 couplePlanQuery.error instanceof Error ? couplePlanQuery.error.message : null
@@ -325,11 +235,11 @@ function CoupleAccountPageContent() {
               <HouseOverviewCard house={house} />
 
               <CouplePlanUpgradeCard
-                plan={couplePlan}
+                plans={couplePlans}
                 currentPlanName={currentPlanName}
+                currentPlanId={currentPlanId}
                 currentPlanPriceCents={currentPlanPriceCents}
                 hasActiveSignature={hasActiveSignature}
-                isCurrentCouplePlan={isCurrentCouplePlan}
                 isLoadingPlans={couplePlanQuery.isLoading}
                 plansErrorMessage={
                   couplePlanQuery.error instanceof Error ? couplePlanQuery.error.message : null
@@ -352,8 +262,9 @@ function CoupleAccountPageContent() {
                 invites={visibleInvites}
                 canManageInvites={canManageHouse}
                 isGenerating={createInviteMutation.isPending}
-                baseUrl={baseUrl}
+                deletingInviteId={deleteInviteMutation.isPending ? deleteInviteMutation.variables ?? null : null}
                 onCopyInvite={handleCopyInvite}
+                onDeleteInvite={handleDeleteInvite}
                 onGenerateInvite={handleGenerateInvite}
               />
             </div>
