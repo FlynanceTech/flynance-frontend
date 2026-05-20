@@ -8,6 +8,7 @@ import { Transaction } from '@/types/Transaction'
 import { IconResolver } from '@/utils/IconResolver'
 import DeleteConfirmModal from '../DeleteConfirmModal'
 import { formatCurrency } from '@/utils/formatter'
+import { resolveDisplayDescription } from '@/utils/displayDescription'
 
 interface Props {
   transactions: Transaction[]
@@ -61,7 +62,7 @@ export function TransactionCardList({
         const categoryType = category?.type ?? item.type ?? 'EXPENSE'
         const isIncome = categoryType === 'INCOME'
         const iconName = category?.icon ?? 'circle'
-        const description = item.description ?? t('noDescription')
+        const description = resolveDisplayDescription(item.description, item.sourceDescription, t('noDescription'))
         const value = Number(item.value ?? 0)
         const categoryName = category?.name ?? t('noCategory')
         const actorLabel = getActorLabel(item)

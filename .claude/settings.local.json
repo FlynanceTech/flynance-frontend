@@ -4,7 +4,8 @@
       "Bash(npx tsc *)",
       "Read(//c/Users/jeff/ESTUDO//**)",
       "Read(//c/Users/jeff//**)",
-      "Bash(grep \"\\\\.ts$\")"
+      "Bash(grep \"\\\\.ts$\")",
+      "Bash(xargs grep -l \"crypto\\\\|CryptoJS\\\\|TweetNaCl\\\\|libsodium\")"
     ]
   }
 }
