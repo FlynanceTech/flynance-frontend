@@ -98,6 +98,8 @@ export default function SidebarSection({
                 label={item.label}
                 icon={item.icon}
                 active={item.active}
+                disabled={item.disabled}
+                disabledReason={item.disabledReason}
                 onClick={item.onClick}
               />
             ))}

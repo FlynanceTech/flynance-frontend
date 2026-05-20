@@ -13,11 +13,14 @@ import {
   acceptHouseInvite,
   createHouse,
   createHouseInvite,
+  deleteHouseInvite,
   extractHouseContextFromAuthMePayload,
   findCouplePlan,
+  findCouplePlans,
   getHouseContext,
   hasHouseContextInAuthMePayload,
   removeHousePartner,
+  updateHouseName,
 } from '@/services/houses'
 import { useUserSession } from '@/stores/useUserSession'
 import type { CreateHousePayload, HouseContext, HouseInvite } from '@/types/house'
@@ -48,15 +51,15 @@ function upsertInviteInHouseContext(
 ): HouseContext | null | undefined {
   if (!currentHouse || !invite) return currentHouse
 
-  const remainingInvites = currentHouse.pendingInvites.filter(
+  const remainingHistory = currentHouse.invites.filter(
     (currentInvite) => currentInvite.id !== invite.id
   )
-  const nextInvites = [invite, ...remainingInvites]
+  const nextInvites = [invite, ...remainingHistory]
 
   return {
     ...currentHouse,
-    pendingInvites: nextInvites,
     invites: nextInvites,
+    pendingInvites: nextInvites.filter((item) => item.status === 'PENDING'),
   }
 }
 
@@ -75,6 +78,7 @@ export function useHouseContext(enabled = true) {
     initialData: authHasHouseContext ? initialHouseContext ?? null : undefined,
     staleTime: 0,
     refetchOnWindowFocus: true,
+    refetchInterval: enabled ? 15000 : false,
     retry: 1,
   })
 }
@@ -113,6 +117,25 @@ export function useCreateHouseInvite() {
   })
 }
 
+export function useDeleteHouseInvite() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (inviteId: string): Promise<HouseContext | null> => deleteHouseInvite(inviteId),
+    onSuccess: async (house) => {
+      queryClient.setQueryData(houseKeys.me, house ?? null)
+      await queryClient.invalidateQueries({
+        queryKey: houseKeys.me,
+        refetchType: 'active',
+      })
+      toast.success('Convite excluido.')
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Erro ao excluir convite.')
+    },
+  })
+}
+
 export function useAcceptHouseInvite() {
   const queryClient = useQueryClient()
   const fetchAccount = useUserSession((state) => state.fetchAccount)
@@ -126,6 +149,23 @@ export function useAcceptHouseInvite() {
     },
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : 'Erro ao aceitar convite.')
+    },
+  })
+}
+
+export function useUpdateHouseName() {
+  const queryClient = useQueryClient()
+  const fetchAccount = useUserSession((state) => state.fetchAccount)
+
+  return useMutation({
+    mutationFn: (name: string) => updateHouseName(name),
+    onSuccess: async (house) => {
+      queryClient.setQueryData(houseKeys.me, house ?? null)
+      await refreshHouseQueries(fetchAccount, queryClient)
+      toast.success('Nome da conta de casal atualizado.')
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Erro ao renomear a conta de casal.')
     },
   })
 }
@@ -154,10 +194,15 @@ export function useCouplePlan() {
     () => findCouplePlan(plansQuery.data ?? []),
     [plansQuery.data]
   )
+  const couplePlans = useMemo(
+    () => findCouplePlans(plansQuery.data ?? []),
+    [plansQuery.data]
+  )
 
   return {
     ...plansQuery,
     couplePlan,
+    couplePlans,
   }
 }
 

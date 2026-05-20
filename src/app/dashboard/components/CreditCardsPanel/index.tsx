@@ -7,14 +7,10 @@ import CreditCard from '../CreditCard'
 import { useCardMutations } from '@/hooks/query/useCreditCards'
 import CreditCardDrawer from '../CreditCardDrawer'
 import type { CreditCardResponse } from '@/services/cards'
-import { useTranslations } from 'next-intl'
-import { useFinancialScope } from '@/hooks/useFinancialScope'
 
 const TZ = 'America/Sao_Paulo' // ajuste se quiser vir do perfil do usuário
 
 export default function CreditCardsPanel() {
-  const tScope = useTranslations('financialScope')
-  const { canSelectScope, scope } = useFinancialScope()
   // 1) lista + mutações
   const { cardQuery } = useCardMutations()
 
@@ -43,11 +39,6 @@ export default function CreditCardsPanel() {
           <span className="text-xs rounded-full bg-gray-100 px-2 py-0.5 text-gray-600">
             {cards.length}
           </span>
-          {canSelectScope && (
-            <span className="text-xs rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">
-              {scope === 'me' ? tScope('badge.me') : tScope('badge.house')}
-            </span>
-          )}
         </div>
 
         <div className="flex items-center gap-2">

@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import clsx from 'clsx'
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from '@headlessui/react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -69,7 +69,6 @@ import {
   CategoryClassification,
   CategoryClassificationBoardResponse,
   CategoryClassificationItem,
-  CategoryClassificationUpdatePayload,
   CategoryResponse,
 } from '@/services/category'
 import { useCategoryClassificationBoard } from '@/hooks/query/useCategoryClassification'
@@ -98,12 +97,21 @@ type ExpenseClassification =
 
 const ITEM_PREFIX = 'classification-item:'
 const COLUMN_PREFIX = 'classification-column:'
+const REORDER_SAVE_DEBOUNCE_MS = 350
+const REORDER_SAVED_STATUS_MS = 900
 
 type BoardState = Record<CategoryClassification, CategoryClassificationItem[]>
 type CategoryType = 'EXPENSE' | 'INCOME'
+type ReorderSaveStatus = 'idle' | 'pending' | 'saving' | 'saved'
 type CategoryFormValues = {
   name: string
   keywords: string[]
+}
+type PendingReorderSave = {
+  board: BoardState
+  rollbackBoard: BoardState
+  touchedClassifications: Set<ExpenseClassification>
+  version: number
 }
 
 type TranslatorFn = (key: string, values?: Record<string, string | number | Date>) => string
@@ -193,6 +201,11 @@ function buildBoardState(
   categories: CategoryResponse[],
   board?: CategoryClassificationBoardResponse
 ): BoardState {
+  const categoryById = new Map(
+    categories
+      .map((category) => [normalizeCategoryId(category.id), category] as const)
+      .filter((entry): entry is readonly [string, CategoryResponse] => Boolean(entry[0]))
+  )
   const byBoardId = new Map<
     string,
     { item: CategoryClassificationItem; order: number }
@@ -210,13 +223,19 @@ function buildBoardState(
       if (!normalizedCategoryId) return
       if (seenIds.has(normalizedCategoryId)) return
       seenIds.add(normalizedCategoryId)
+      const latestCategory = categoryById.get(normalizedCategoryId)
 
       byBoardId.set(normalizedCategoryId, {
         item: {
           ...item,
+          ...(latestCategory ?? {}),
           id: normalizedCategoryId,
           classification,
-          keywords: Array.isArray(item.keywords) ? item.keywords : [],
+          keywords: Array.isArray(latestCategory?.keywords)
+            ? latestCategory.keywords
+            : Array.isArray(item.keywords)
+            ? item.keywords
+            : [],
           hasCustomClassification: Boolean(item.hasCustomClassification),
         },
         order: item.classificationOrder ?? index + 1,
@@ -311,58 +330,20 @@ function getSkippedIds(
     .filter((id): id is string => Boolean(id))
 }
 
-function getBoardValidIds(board: BoardState) {
-  const ids = new Set<string>()
-  for (const classification of CLASSIFICATION_ORDER) {
-    for (const item of board[classification]) {
-      const normalizedCategoryId = normalizeCategoryId(item.id)
-      if (!normalizedCategoryId) continue
-      ids.add(normalizedCategoryId)
-    }
-  }
-  return ids
-}
-
-function sanitizeClassificationItems(
-  items: CategoryClassificationUpdatePayload['items'],
-  validIds: ReadonlySet<string>,
-  blockedCategoryIds?: ReadonlySet<string>
-) {
-  const sentIds = new Set<string>()
-  const invalidIds = new Set<string>()
-  const itemsValidos: CategoryClassificationUpdatePayload['items'] = []
-
-  for (const item of items) {
-    const normalizedCategoryId = normalizeCategoryId(item.categoryId)
-    if (!normalizedCategoryId) continue
-    if (!validIds.has(normalizedCategoryId)) {
-      invalidIds.add(normalizedCategoryId)
-      continue
-    }
-    if (blockedCategoryIds?.has(normalizedCategoryId)) {
-      invalidIds.add(normalizedCategoryId)
-      continue
-    }
-    if (sentIds.has(normalizedCategoryId)) continue
-
-    sentIds.add(normalizedCategoryId)
-    itemsValidos.push({
-      ...item,
-      categoryId: normalizedCategoryId,
-    })
-  }
-
-  return {
-    itemsValidos,
-    idsInvalidos: Array.from(invalidIds),
-  }
-}
-
 function getExpenseItems(
   board: BoardState,
   classification: ExpenseClassification
 ) {
   return board[classification].filter((item) => item.type === 'EXPENSE')
+}
+
+function getExpenseCategoryIds(
+  board: BoardState,
+  classification: ExpenseClassification
+) {
+  return getExpenseItems(board, classification)
+    .map((item) => normalizeCategoryId(item.id))
+    .filter((id): id is string => Boolean(id))
 }
 
 function findItemPosition(board: BoardState, categoryId: string) {
@@ -480,33 +461,6 @@ function preserveMissingSourceItems(
   return cloned
 }
 
-function boardToPayload(
-  board: BoardState
-): CategoryClassificationUpdatePayload {
-  const items: CategoryClassificationUpdatePayload['items'] = []
-  const seenIds = new Set<string>()
-
-  for (const classification of CLASSIFICATION_ORDER) {
-    let order = 1
-
-    for (const item of board[classification]) {
-      const normalizedCategoryId = normalizeCategoryId(item.id)
-      if (!normalizedCategoryId) continue
-      if (seenIds.has(normalizedCategoryId)) continue
-
-      seenIds.add(normalizedCategoryId)
-      items.push({
-        categoryId: normalizedCategoryId,
-        classification,
-        order,
-      })
-      order += 1
-    }
-  }
-
-  return { items }
-}
-
 type CardLabels = {
   incomeTypeLabel: string
   expenseTypeLabel: string
@@ -528,6 +482,49 @@ function updateCategoryColorInBoard(board: BoardState, categoryId: string, color
     next[classification] = board[classification].map((item) =>
       item.id === categoryId ? { ...item, color } : item
     )
+  }
+
+  return next
+}
+
+function createOptimisticKeywords(categoryId: string, keywords: string[]) {
+  return keywords
+    .map((name) => name.trim())
+    .filter(Boolean)
+    .map((name, index) => ({
+      id: `${categoryId}:keyword:${index}:${name}`,
+      name,
+      categoryId,
+    }))
+}
+
+function updateCategoryInBoard(
+  board: BoardState,
+  categoryId: string,
+  patch: Partial<CategoryClassificationItem>
+): BoardState {
+  const next = createEmptyBoardState()
+
+  for (const classification of CLASSIFICATION_ORDER) {
+    next[classification] = board[classification].map((item) =>
+      item.id === categoryId ? { ...item, ...patch, id: item.id } : item
+    )
+  }
+
+  return next
+}
+
+function removeCategoryFromBoard(board: BoardState, categoryId: string): BoardState {
+  const next = createEmptyBoardState()
+
+  for (const classification of CLASSIFICATION_ORDER) {
+    next[classification] = board[classification]
+      .filter((item) => item.id !== categoryId)
+      .map((item, index) => ({
+        ...item,
+        classification,
+        classificationOrder: index + 1,
+      }))
   }
 
   return next
@@ -769,7 +766,7 @@ function ExpenseClassificationColumn({
   canDragItem: (item: CategoryClassificationItem) => boolean
   colorSavingIds: ReadonlySet<string>
 }) {
-  const droppable = useDroppable({
+  const { setNodeRef, isOver } = useDroppable({
     id: toColumnId(classification),
     disabled,
   })
@@ -780,11 +777,11 @@ function ExpenseClassificationColumn({
 
   return (
     <section
-      ref={droppable.setNodeRef}
+      ref={setNodeRef}
       className={`flex h-[min(68vh,620px)] min-h-[320px] flex-col rounded-2xl border bg-slate-50/70 p-3 transition lg:h-[min(70vh,720px)] lg:min-h-[380px] ${
         forbidden
           ? 'border-red-200 bg-red-50/70'
-          : droppable.isOver
+          : isOver
           ? 'border-primary'
           : 'border-slate-200'
       }`}
@@ -918,8 +915,8 @@ export default function CategoriasPage() {
   } = useCategories()
   const {
     boardQuery: { data, isLoading, isError, error, refetch },
-    saveBoardMutation,
-    saveCategoryClassificationMutation,
+    boardQueryKey,
+    reorderColumnMutation,
   } = useCategoryClassificationBoard()
 
   const [board, setBoard] = useState<BoardState>(() => createEmptyBoardState())
@@ -933,8 +930,14 @@ export default function CategoriasPage() {
   const [color, setColor] = useState('#22C55E')
   const [icon, setIcon] = useState<IconName>('Wallet')
   const [boardSourceCategoryIds, setBoardSourceCategoryIds] = useState<string[]>([])
-  const [sessionSkippedCategoryIds, setSessionSkippedCategoryIds] = useState<string[]>([])
   const [colorSavingIds, setColorSavingIds] = useState<Set<string>>(new Set())
+  const [reorderSaveStatus, setReorderSaveStatus] = useState<ReorderSaveStatus>('idle')
+  const pendingReorderSaveRef = useRef<PendingReorderSave | null>(null)
+  const reorderDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const savedStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const reorderSaveInFlightRef = useRef(false)
+  const reorderSaveVersionRef = useRef(0)
+  const localReorderActiveRef = useRef(false)
 
   const drawerSchema = useMemo(
     () =>
@@ -959,26 +962,33 @@ export default function CategoriasPage() {
     },
   })
 
-  const sessionSkippedCategoryIdSet = useMemo(
-    () => new Set(sessionSkippedCategoryIds),
-    [sessionSkippedCategoryIds]
-  )
   const boardSourceCategoryIdSet = useMemo(
     () => new Set(boardSourceCategoryIds),
     [boardSourceCategoryIds]
   )
 
   useEffect(() => {
+    if (localReorderActiveRef.current) return
+
     const nextBoard = buildBoardState(categories, data)
     setBoard(nextBoard)
 
     const sourceIds = getBoardSourceIds(data)
     setBoardSourceCategoryIds(Array.from(sourceIds))
 
-    setSessionSkippedCategoryIds((previousIds) =>
-      previousIds.filter((id) => !sourceIds.has(id))
-    )
   }, [categories, data])
+
+  useEffect(
+    () => () => {
+      if (reorderDebounceTimerRef.current) {
+        clearTimeout(reorderDebounceTimerRef.current)
+      }
+      if (savedStatusTimerRef.current) {
+        clearTimeout(savedStatusTimerRef.current)
+      }
+    },
+    []
+  )
 
   useEffect(() => {
     setValue('keywords', keywords, { shouldValidate: isSubmitted })
@@ -1056,8 +1066,11 @@ export default function CategoriasPage() {
   }, [editingCategory?.type, selectedTab])
 
   const drawerSubmitting = createMutation.isPending || updateMutation.isPending
-  const classificationSaving =
-    saveBoardMutation.isPending || saveCategoryClassificationMutation.isPending
+  const showReorderSaveStatus = reorderSaveStatus !== 'idle'
+  const reorderSaveStatusLabel =
+    reorderSaveStatus === 'saved'
+      ? t('classification.saved')
+      : t('classification.saving')
   const canManageCategory = (category: Pick<CategoryResponse, 'userId'>) =>
     Boolean(category.userId && category.userId === currentUserId)
   const canDragCategory = (category: Pick<CategoryResponse, 'type'>) =>
@@ -1117,14 +1130,40 @@ export default function CategoriasPage() {
       type: effectiveDrawerType,
     }
 
+    let previousBoardForRollback: BoardState | null = null
+
     try {
       if (editingCategory?.id) {
-        await updateMutation.mutateAsync({ id: editingCategory.id, data: payload })
+        const categoryId = editingCategory.id
+        previousBoardForRollback = board
+
+        setBoard((current) =>
+          updateCategoryInBoard(current, categoryId, {
+            name: payload.name,
+            color: payload.color,
+            icon: payload.icon,
+            type: payload.type,
+            keywords: createOptimisticKeywords(categoryId, payload.keywords),
+          } as Partial<CategoryClassificationItem>)
+        )
+        closeDrawer()
+
+        const updated = await updateMutation.mutateAsync({ id: categoryId, data: payload })
+        setBoard((current) =>
+          updateCategoryInBoard(current, categoryId, {
+            ...updated,
+            keywords: Array.isArray(updated.keywords) ? updated.keywords : [],
+          } as Partial<CategoryClassificationItem>)
+        )
+        return
       } else {
         await createMutation.mutateAsync(payload)
       }
       closeDrawer()
     } catch (e) {
+      if (previousBoardForRollback) {
+        setBoard(previousBoardForRollback)
+      }
       toast.error(
         getErrorMessage(
           e,
@@ -1229,14 +1268,20 @@ export default function CategoriasPage() {
 
   const handleConfirmDeleteCategory = async () => {
     if (!categoryToDelete) return
+    const deletingCategory = categoryToDelete
+    const previousBoard = board
 
     try {
-      await deleteMutation.mutateAsync(categoryToDelete.id)
-      if (editingCategory?.id === categoryToDelete.id) {
+      setBoard((current) => removeCategoryFromBoard(current, deletingCategory.id))
+      setCategoryToDelete(null)
+
+      await deleteMutation.mutateAsync(deletingCategory.id)
+      if (editingCategory?.id === deletingCategory.id) {
         closeDrawer()
       }
-      setCategoryToDelete(null)
     } catch (e) {
+      setBoard(previousBoard)
+      setCategoryToDelete(deletingCategory)
       toast.error(getErrorMessage(e, t('classification.deleteError')))
     }
   }
@@ -1248,6 +1293,8 @@ export default function CategoriasPage() {
       fallbackBoard?: BoardState
     }
   ) => {
+    queryClient.setQueryData(boardQueryKey, response)
+
     const skippedIds = getSkippedIds(response)
     const responseSourceIds = getBoardSourceIds(response)
     const attemptedCategoryIds = options?.attemptedCategoryIds ?? new Set<string>()
@@ -1271,20 +1318,112 @@ export default function CategoriasPage() {
     }
     setBoardSourceCategoryIds(Array.from(responseSourceIds))
 
-    setSessionSkippedCategoryIds((previousIds) => {
-      const nextBlockedIds = new Set(previousIds)
-      for (const skippedId of removableSkippedIds) {
-        nextBlockedIds.add(skippedId)
-      }
-      for (const sourceId of responseSourceIds) {
-        nextBlockedIds.delete(sourceId)
-      }
-      return Array.from(nextBlockedIds)
-    })
-
     if (skippedIds.length > 0) {
       toast.error('Algumas categorias nao puderam ser salvas e foram removidas da sessao.')
     }
+  }
+
+  const flushPendingReorderSave = async () => {
+    const pending = pendingReorderSaveRef.current
+    if (!pending || reorderSaveInFlightRef.current) return
+
+    pendingReorderSaveRef.current = null
+    reorderSaveInFlightRef.current = true
+    setReorderSaveStatus('saving')
+
+    try {
+      let latestResponse: CategoryClassificationBoardResponse | null = null
+      const attemptedCategoryIds = new Set<string>()
+
+      for (const classification of pending.touchedClassifications) {
+        const categoryIds = getExpenseCategoryIds(pending.board, classification)
+        if (categoryIds.length === 0) continue
+
+        categoryIds.forEach((categoryId) => attemptedCategoryIds.add(categoryId))
+        latestResponse = await reorderColumnMutation.mutateAsync({
+          classification,
+          categoryIds,
+        })
+      }
+
+      if (pending.version === reorderSaveVersionRef.current) {
+        if (latestResponse) {
+          applyBoardResponse(latestResponse, {
+            attemptedCategoryIds,
+            fallbackBoard: pending.board,
+          })
+        } else {
+          setBoard(pending.board)
+        }
+
+        localReorderActiveRef.current = false
+        setReorderSaveStatus('saved')
+
+        if (savedStatusTimerRef.current) {
+          clearTimeout(savedStatusTimerRef.current)
+        }
+        savedStatusTimerRef.current = setTimeout(() => {
+          setReorderSaveStatus('idle')
+        }, REORDER_SAVED_STATUS_MS)
+      }
+    } catch (e) {
+      if (pending.version === reorderSaveVersionRef.current) {
+        setBoard(pending.rollbackBoard)
+        localReorderActiveRef.current = false
+        setReorderSaveStatus('idle')
+        toast.error(getErrorMessage(e, t('classification.saveError')))
+      }
+    } finally {
+      reorderSaveInFlightRef.current = false
+
+      if (pendingReorderSaveRef.current) {
+        if (reorderDebounceTimerRef.current) {
+          clearTimeout(reorderDebounceTimerRef.current)
+        }
+        reorderDebounceTimerRef.current = setTimeout(() => {
+          void flushPendingReorderSave()
+        }, REORDER_SAVE_DEBOUNCE_MS)
+      }
+    }
+  }
+
+  const scheduleReorderSave = ({
+    nextBoard,
+    rollbackBoard,
+    touchedClassifications,
+  }: {
+    nextBoard: BoardState
+    rollbackBoard: BoardState
+    touchedClassifications: ReadonlyArray<ExpenseClassification>
+  }) => {
+    localReorderActiveRef.current = true
+    reorderSaveVersionRef.current += 1
+
+    const existing = pendingReorderSaveRef.current
+    pendingReorderSaveRef.current = {
+      board: nextBoard,
+      rollbackBoard: existing?.rollbackBoard ?? rollbackBoard,
+      touchedClassifications: new Set([
+        ...(existing?.touchedClassifications ?? []),
+        ...touchedClassifications,
+      ]),
+      version: reorderSaveVersionRef.current,
+    }
+
+    if (savedStatusTimerRef.current) {
+      clearTimeout(savedStatusTimerRef.current)
+      savedStatusTimerRef.current = null
+    }
+
+    setReorderSaveStatus((current) => (current === 'saving' ? current : 'pending'))
+
+    if (reorderDebounceTimerRef.current) {
+      clearTimeout(reorderDebounceTimerRef.current)
+    }
+
+    reorderDebounceTimerRef.current = setTimeout(() => {
+      void flushPendingReorderSave()
+    }, REORDER_SAVE_DEBOUNCE_MS)
   }
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -1295,13 +1434,12 @@ export default function CategoriasPage() {
     setActiveCategoryId(categoryId)
   }
 
-  const handleDragEnd = async (event: DragEndEvent) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     setActiveCategoryId(null)
 
     const activeId = parseItemId(String(event.active.id))
-    const normalizedActiveId = normalizeCategoryId(activeId ?? '')
     const overRaw = event.over ? String(event.over.id) : null
-    if (!activeId || !normalizedActiveId || !overRaw) return
+    if (!activeId || !overRaw) return
 
     const source = findExpensePosition(board, activeId)
     if (!source) return
@@ -1345,48 +1483,14 @@ export default function CategoriasPage() {
     )
     setBoard(optimisticBoard)
 
-    try {
-      if (!boardSourceCategoryIdSet.has(normalizedActiveId)) {
-        const patchResponse = await saveCategoryClassificationMutation.mutateAsync({
-          categoryId: normalizedActiveId,
-          payload: {
-            classification: targetClassification,
-            order: targetVisibleIndex + 1,
-          },
-        })
-        applyBoardResponse(patchResponse, {
-          attemptedCategoryIds: new Set([normalizedActiveId]),
-          fallbackBoard: optimisticBoard,
-        })
-        return
-      }
-
-      const payload = boardToPayload(optimisticBoard)
-      const { itemsValidos } = sanitizeClassificationItems(
-        payload.items,
-        boardSourceCategoryIdSet,
-        sessionSkippedCategoryIdSet
-      )
-      const containsMovedCategory = itemsValidos.some(
-        (entry) => entry.categoryId === normalizedActiveId
-      )
-
-      if (!containsMovedCategory) {
-        setBoard(previousBoard)
-        toast.error(t('classification.saveError'))
-        return
-      }
-
-      const updatedBoard = await saveBoardMutation.mutateAsync({ items: itemsValidos })
-
-      applyBoardResponse(updatedBoard, {
-        attemptedCategoryIds: new Set(itemsValidos.map((entry) => entry.categoryId)),
-        fallbackBoard: optimisticBoard,
-      })
-    } catch (e) {
-      setBoard(previousBoard)
-      toast.error(getErrorMessage(e, t('classification.saveError')))
-    }
+    scheduleReorderSave({
+      nextBoard: optimisticBoard,
+      rollbackBoard: previousBoard,
+      touchedClassifications:
+        source.classification === targetClassification
+          ? [targetClassification]
+          : [source.classification, targetClassification],
+    })
   }
 
   return (
@@ -1477,9 +1581,22 @@ export default function CategoriasPage() {
               <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">
                 {t('classification.tip')}
               </span>
-              {classificationSaving ? (
-                <span className="rounded-full bg-amber-100 px-3 py-1 font-semibold text-amber-800">
-                  {t('classification.saving')}
+              {showReorderSaveStatus ? (
+                <span
+                  aria-live="polite"
+                  className={clsx(
+                    'inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold transition-opacity',
+                    reorderSaveStatus === 'saved'
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-amber-100 text-amber-800'
+                  )}
+                >
+                  {reorderSaveStatus === 'saved' ? (
+                    <Check size={12} />
+                  ) : (
+                    <span className="h-2 w-2 rounded-full bg-current opacity-70" />
+                  )}
+                  {reorderSaveStatusLabel}
                 </span>
               ) : null}
             </div>
@@ -1539,7 +1656,7 @@ export default function CategoriasPage() {
                           onColorChange={handleInlineColorChange}
                           items={expenseItemsByColumn[classification]}
                           activeItemType={activeItem?.type ?? null}
-                          disabled={classificationSaving}
+                          disabled={false}
                           emptyPlaceholder={t('classification.emptyPlaceholder')}
                           canManageItem={canManageCategory}
                           canDragItem={canDragCategory}

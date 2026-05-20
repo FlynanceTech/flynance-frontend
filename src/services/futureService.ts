@@ -1,6 +1,8 @@
 import axios from 'axios'
 import api from '@/lib/axios'
 import { getErrorMessage } from '@/utils/getErrorMessage'
+import { resolveDisplayDescription } from '@/utils/displayDescription'
+import { FinancialDataScope, withFinancialScope } from '@/lib/financialScope'
 
 export type FutureType = 'EXPENSE' | 'INCOME'
 
@@ -96,6 +98,7 @@ export interface ListInstallmentsParams {
   to?: string
   page?: number
   limit?: number
+  scope?: FinancialDataScope
 }
 
 export interface ListInstallmentPlansParams {
@@ -104,6 +107,7 @@ export interface ListInstallmentPlansParams {
   to?: string
   page?: number
   limit?: number
+  scope?: FinancialDataScope
 }
 
 export interface FutureInstallmentPlan {
@@ -193,6 +197,14 @@ function nullableString(value: unknown): string | null {
   return String(value)
 }
 
+function readableDescription(
+  primary: unknown,
+  fallback?: unknown,
+  emptyLabel = 'Sem descricao'
+) {
+  return resolveDisplayDescription(primary, fallback, emptyLabel)
+}
+
 function parseMeta(payload: unknown, page = 1, limit = 10) {
   const payloadRecord = asRecord(payload)
   const metaRaw = asRecord(payloadRecord.meta ?? payloadRecord.pagination)
@@ -215,6 +227,8 @@ function parseMeta(payload: unknown, page = 1, limit = 10) {
 function parsePlan(row: unknown): FutureInstallmentPlan | null {
   if (!row) return null
   const record = asRecord(row)
+  const category = asRecord(record.category)
+  const card = asRecord(record.creditCard ?? record.card)
   const id = String(record.id ?? '')
   if (!id) return null
 
@@ -225,7 +239,7 @@ function parsePlan(row: unknown): FutureInstallmentPlan | null {
     paymentType: (record.paymentType ?? 'OTHER') as FuturePaymentType,
     cardId: nullableString(record.cardId),
     categoryId: nullableString(record.categoryId),
-    description: String(record.description ?? 'Sem descricao'),
+    description: readableDescription(record.description, category.name ?? card.name),
     totalAmount: Number(record.totalAmount ?? record.amount ?? 0),
     installmentCount: Number(record.installmentCount ?? record.totalInstallments ?? 1),
     firstDueDate: String(record.firstDueDate ?? record.firstDueAt ?? ''),
@@ -241,6 +255,8 @@ function parseInstallment(row: unknown): FutureInstallment | null {
 
   const record = asRecord(row)
   const plan = asRecord(record.plan ?? record.installmentPlan)
+  const category = asRecord(record.category ?? plan.category)
+  const card = asRecord(record.creditCard ?? record.card ?? plan.creditCard ?? plan.card)
   const id = String(record.id ?? '')
   if (!id) return null
 
@@ -256,7 +272,7 @@ function parseInstallment(row: unknown): FutureInstallment | null {
   return {
     id,
     planId: nullableString(record.planId ?? plan.id),
-    description: String(record.description ?? plan.description ?? 'Sem descricao'),
+    description: readableDescription(record.description, plan.description ?? category.name ?? card.name),
     type,
     paymentType: (record.paymentType ?? plan.paymentType ?? null) as FuturePaymentType | null,
     categoryId: nullableString(record.categoryId ?? plan.categoryId),
@@ -288,6 +304,17 @@ function parseInstallmentsPayload(payload: unknown, page = 1, limit = 10): Futur
   }
 
   return { installments, meta }
+}
+
+function normalizeFutureItemDescription(item: FutureItem): FutureItem {
+  return {
+    ...item,
+    description: readableDescription(
+      item.description,
+      item.category?.name ?? item.card?.name ?? null,
+      'Lançamento futuro'
+    ),
+  }
 }
 
 function parsePlansPayload(payload: unknown, page = 1, limit = 50): FutureInstallmentPlansResponse {
@@ -398,7 +425,9 @@ export async function getFutureInstallmentPlans(
   params: ListInstallmentPlansParams
 ): Promise<FutureInstallmentPlansResponse> {
   try {
-    const response = await api.get('/future/installment-plans', { params })
+    const response = await api.get('/future/installment-plans', {
+      params: withFinancialScope({ ...params }, params.scope),
+    })
     return parsePlansPayload(response.data, params.page ?? 1, params.limit ?? 50)
   } catch (e: unknown) {
     if (axios.isAxiosError(e) && (e.response?.status === 404 || e.response?.status === 405)) {
@@ -408,6 +437,7 @@ export async function getFutureInstallmentPlans(
         type: params.type,
         page: 1,
         limit: 1000,
+        scope: params.scope,
       })
       return derivePlansFromInstallments(
         installments.installments,
@@ -426,7 +456,9 @@ export async function getFutureInstallments(
   params: ListInstallmentsParams
 ): Promise<FutureInstallmentsResponse> {
   try {
-    const response = await api.get('/future/installments', { params })
+    const response = await api.get('/future/installments', {
+      params: withFinancialScope({ ...params }, params.scope),
+    })
     return parseInstallmentsPayload(response.data, params.page ?? 1, params.limit ?? 10)
   } catch (e: unknown) {
     const msg = getErrorMessage(e, 'Erro ao buscar parcelas futuras.')
@@ -480,10 +512,18 @@ export async function getFutureForecast(params?: {
   from?: string
   to?: string
   days?: number
+  scope?: FinancialDataScope
 }): Promise<FutureForecastResponse> {
   try {
-    const response = await api.get<FutureForecastResponse>('/future/forecast', { params })
-    return response.data
+    const response = await api.get<FutureForecastResponse>('/future/forecast', {
+      params: withFinancialScope(params, params?.scope),
+    })
+    return {
+      ...response.data,
+      upcoming: Array.isArray(response.data?.upcoming)
+        ? response.data.upcoming.map(normalizeFutureItemDescription)
+        : [],
+    }
   } catch (e: unknown) {
     const msg = getErrorMessage(e, 'Erro ao carregar previsao de futuros.')
     console.error('Erro ao carregar previsao de futuros:', msg)

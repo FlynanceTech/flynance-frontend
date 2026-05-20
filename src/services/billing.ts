@@ -89,6 +89,18 @@ export type ChangeBillingSubscriptionPlanPayload = {
   planId: string
 }
 
+export type ChangeBillingSubscriptionPlanResponse = {
+  subscriptionId: string
+  status: string
+  paymentClientSecret: string | null
+  changedPlan: boolean
+  billingMode?: string
+  preservedBillingWindow?: boolean
+  cadenceChanged?: boolean
+  skippedStripeCharge?: boolean
+  houseContext?: unknown
+}
+
 export type UpdateBillingPaymentMethodPayload = {
   paymentMethodId: string
   subscriptionId?: string
@@ -271,10 +283,30 @@ export async function createBillingSubscription(
 
 export async function changeBillingSubscriptionPlan(
   payload: ChangeBillingSubscriptionPlanPayload
-): Promise<unknown> {
+): Promise<ChangeBillingSubscriptionPlanResponse> {
   try {
     const response = await api.post('/billing/subscription/change-plan', payload)
-    return response.data ?? null
+    const data = (response.data ?? {}) as Record<string, unknown>
+    const rawClientSecret = data.paymentClientSecret
+    return {
+      subscriptionId: String(data.subscriptionId ?? ''),
+      status: String(data.status ?? ''),
+      paymentClientSecret:
+        typeof rawClientSecret === 'string' && rawClientSecret.trim()
+          ? rawClientSecret
+          : null,
+      changedPlan: Boolean(data.changedPlan),
+      billingMode: typeof data.billingMode === 'string' ? data.billingMode : undefined,
+      preservedBillingWindow:
+        typeof data.preservedBillingWindow === 'boolean'
+          ? data.preservedBillingWindow
+          : undefined,
+      cadenceChanged:
+        typeof data.cadenceChanged === 'boolean' ? data.cadenceChanged : undefined,
+      skippedStripeCharge:
+        typeof data.skippedStripeCharge === 'boolean' ? data.skippedStripeCharge : undefined,
+      houseContext: data.houseContext,
+    }
   } catch (error: unknown) {
     throw new Error(toBillingErrorMessage(error, 'Erro ao trocar o plano da assinatura.'))
   }

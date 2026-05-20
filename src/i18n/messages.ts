@@ -53,24 +53,33 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       apply: 'Aplicar',
       applying: 'Aplicando...',
       applied: 'Aplicado',
+      accountType: {
+        individual: 'Conta Individual',
+        couple: 'Conta Casal',
+      },
     },
     financialScope: {
       label: 'Contexto financeiro',
       description: 'Escolha se quer ver a leitura compartilhada do casal ou apenas a sua.',
       helper: 'Listas, dashboard, detalhes e resumos acompanham esse contexto.',
+      current: 'Visualização atual: {scope}',
       options: {
         house: 'Casal',
         me: 'So eu',
+        owner: 'Titular',
+        partner: 'Parceiro(a)',
       },
       badge: {
-        house: 'Mostrando dados do casal',
-        me: 'Mostrando apenas seus dados',
+        house: 'Visualização atual: Casal',
+        me: 'Visualização atual: Individual',
       },
     },
     dashboard: {
       title: 'Seu panorama financeiro',
       subtitle:
         'Bem-vindo ao seu painel personalizado. Aqui você pode ver tudo relacionado ao seu orçamento nos {period}.',
+      coupleSubtitle:
+        'Bem-vindo ao painel personalizado do casal. Aqui vocês podem ver tudo relacionado ao orçamento conjunto nos {period}.',
       guideButton: 'Ver guia do dashboard',
       closeOnboardingAria: 'Fechar onboarding',
       closeGuideAria: 'Fechar guia',
@@ -624,13 +633,14 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           'Veja todas as categorias de receitas e despesas cadastradas. Edite como quiser e organize suas prioridades movendo os cards.',
         tip: 'Organize as suas categorias de despesas ou receitas. Arraste as categorias entre colunas, e reordene por prioridade dentro da mesma coluna.',
         createButton: 'Criar nova categoria',
-        saving: 'Salvando...',
+        saving: 'Salvando alterações...',
+        saved: 'Alterações salvas',
         cancel: 'Cancelar',
         loadError: 'Nao foi possivel carregar o board de classificacao.',
-        saveError: 'Nao foi possivel salvar a classificacao.',
-        createError: 'Nao foi possivel criar a categoria.',
-        updateError: 'Nao foi possivel atualizar a categoria.',
-        deleteError: 'Nao foi possivel excluir a categoria.',
+        saveError: 'Nao foi possivel salvar as alteracoes. Tente novamente.',
+        createError: 'Nao foi possivel criar a categoria. Tente novamente.',
+        updateError: 'Nao foi possivel salvar a categoria. Tente novamente.',
+        deleteError: 'Nao foi possivel excluir a categoria. Tente novamente.',
         retry: 'Tentar novamente',
         invalidMove: 'Esta categoria nao pode ser movida para essa coluna.',
         defaultActionsLocked: 'Categorias padrao nao podem ser editadas ou excluidas.',
@@ -847,6 +857,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           cancelling: 'Cancelando...',
           redirecting: 'Redirecionando...',
           reactivateSubscription: 'Reativar assinatura',
+          changeSubscription: 'Alterar assinatura',
         },
         status: {
           active: 'Ativa',
@@ -870,6 +881,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           cancelUndoError: 'Erro ao desfazer cancelamento.',
           stripeMissingFrontendKey:
             'Stripe nao configurado no frontend (NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY).',
+          sessionExpired: 'Sessao expirada. Faca login novamente para alterar a assinatura.',
         },
         changeCardModal: {
           title: 'Trocar cartao',
@@ -1028,15 +1040,17 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       back: 'Voltar',
     },
     coupleInvitePage: {
-      title: 'Convite para conta de casal',
-      subtitle: 'Oi! Voce recebeu um convite para participar de uma conta de casal na Flynance.',
-      intro: 'Voce vai ter acesso a IA da Fly no seu WhatsApp e a um painel personalizado para acompanharem a evolucao das financas.',
-      ctaText: 'E ai, vamos atualizar receitas e despesas juntos?',
+      title: 'E ai, vamos atualizar o orcamento juntos?',
+      subtitle: 'Oi! Voce foi convidado(a) para participar da conta de casal de {ownerName} na Flynance.',
+      subtitleFallback: 'Oi! Voce foi convidado(a) para participar de uma conta de casal na Flynance.',
+      fallbackOwner: 'o titular',
       whatChangesTitle: 'Ao aceitar este convite:',
       whatChanges: {
-        sharedAccess: 'voces passam a acompanhar a visao financeira compartilhada do casal;',
-        historyRule: 'as leituras financeiras podem considerar os dois membros da casa;',
-        ownerBilling: 'a assinatura e o billing continuam sob responsabilidade do titular.',
+        sharedAccess: 'Voces passam a compartilhar a mesma visao financeira,',
+        flyAi: 'Voce ganha acesso a IA da Fly no seu WhatsApp,',
+        coupleDashboard: 'Voce ganha acesso ao painel personalizado do casal,',
+        launchVisibility: 'Seus lancamentos aparecem para {ownerName} e vice-versa,',
+        ownerBilling: 'A assinatura continua somente sob responsabilidade do titular.',
       },
       termsPrefix: 'Clicando em "aceitar convite", voce concorda com os',
       termsLinkLabel: 'Termos de Uso',
@@ -1100,6 +1114,21 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       headerTitle: 'Planos da Flynance',
       heroTitle: 'Escolha seu plano e comece a economizar',
       loadError: 'Ocorreu um erro ao carregar os planos. Tente novamente mais tarde.',
+      changePlanModal: {
+        title: 'Confirmar troca de plano',
+        description: 'Voce esta prestes a trocar sua assinatura para o plano {planName}.',
+        nextBillingNote:
+          'A mudanca sera aplicada na proxima cobranca. Voce continua usando o plano atual ate o fim do ciclo vigente.',
+        cancel: 'Cancelar',
+        confirm: 'Confirmar troca',
+        processing: 'Processando...',
+        confirmingPayment: 'Confirmando pagamento...',
+        success: 'Troca de plano agendada para a proxima cobranca.',
+        error: 'Erro ao trocar o plano. Tente novamente.',
+        stripeNotReady: 'Stripe nao esta pronto. Recarregue a pagina e tente novamente.',
+        confirmPaymentError:
+          'Nao foi possivel confirmar o pagamento da troca de plano. Verifique seu cartao e tente novamente.',
+      },
     },
     winbackPage: {
       cycle: {
@@ -1163,6 +1192,13 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       enter: 'Entrar',
       followUs: 'Nos siga nas redes sociais',
       loadingLogin: 'Carregando login...',
+      coupleInviteNotice: {
+        title: 'Agora voce faz parte da conta conjunta na Fly!',
+        titleWithOwner: 'Agora voce faz parte da conta conjunta de {ownerName} na Fly!',
+        description:
+          'Faca o login com seu numero de telefone e comece a registrar seus gastos em conjunto.',
+        cta: 'Vamos la!',
+      },
       errors: {
         missingEmail: 'Informe seu e-mail.',
         missingWhatsapp: 'Informe seu numero de WhatsApp.',
@@ -2091,15 +2127,15 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       refreshing: 'Atualizando...',
       retry: 'Tentar novamente',
       loadError: {
-        title: 'Nao foi possivel carregar a conta de casal',
-        description: 'Atualize a pagina e tente novamente em instantes.',
+        title: 'Não foi possível carregar a conta de casal',
+        description: 'Atualize a página e tente novamente em instantes.',
       },
       roles: {
         OWNER: 'Titular',
         PARTNER: 'Parceiro(a)',
       },
       statuses: {
-        SOLO: 'Aguardando conexao',
+        SOLO: 'Aguardando conexão',
         COUPLE: 'Casal conectado',
       },
       inviteStatuses: {
@@ -2112,37 +2148,37 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       emptyState: {
         title: 'Crie sua conta de casal',
         description:
-          'Centralize convites, acompanhe o parceiro e compartilhe a mesma visao financeira.',
+          'Centralize convites, acompanhe o parceiro e compartilhe a mesma visão financeira.',
         features: {
-          sharedTitle: 'Espaco compartilhado',
+          sharedTitle: 'Espaço compartilhado',
           sharedDescription:
-            'Voces passam a acompanhar a conta do casal dentro do mesmo ambiente.',
-          historyTitle: 'Historico em conjunto',
+            'Vocês passam a acompanhar a conta do casal dentro do mesmo ambiente.',
+          historyTitle: 'Histórico em conjunto',
           historyDescription:
-            'Acompanhe a evolucao da conta e saiba quando o vinculo foi criado.',
+            'Acompanhe a evolução da conta e saiba quando o vínculo foi criado.',
           notificationTitle: 'Convite simples',
           notificationDescription:
             'Gere um link de convite para conectar seu parceiro em poucos passos.',
         },
         form: {
           nameLabel: 'Nome da conta de casal',
-          namePlaceholder: 'Ex: Casa da Ana e Joao',
-          helper: 'Escolha um nome facil de identificar para a conta compartilhada.',
-          notice: 'So e possivel ter uma conta de casal ativa por usuario.',
+          namePlaceholder: 'Ex: Casa da Ana e João',
+          helper: 'Escolha um nome fácil de identificar para a conta compartilhada.',
+          notice: 'Só é possível ter uma conta de casal ativa por usuário.',
           create: 'Criar conta de casal',
           creating: 'Criando conta...',
           nameMin: 'Informe pelo menos 2 caracteres.',
-          nameMax: 'Use no maximo 80 caracteres.',
+          nameMax: 'Use no máximo 80 caracteres.',
         },
       },
       upgradeCard: {
         title: 'Plano casal',
         description:
-          'Ative o Plano Casal, ou mude o seu plano atual para unificar os orcamentos.',
-        loadingPlans: 'Carregando plano disponivel...',
-        noPlanTitle: 'Plano casal indisponivel',
+          'Ative o Plano Casal, ou mude o seu plano atual para unificar os orçamentos.',
+        loadingPlans: 'Carregando plano disponível...',
+        noPlanTitle: 'Plano casal indisponível',
         noPlanDescription:
-          'Nao encontramos um plano elegivel para habilitar a conta de casal agora.',
+          'Não encontramos um plano elegível para habilitar a conta de casal agora.',
         noPlanHint:
           'Se o problema persistir, atualize os planos cadastrados no admin.',
         periods: {
@@ -2150,16 +2186,31 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           MONTHLY: 'Mensal',
           YEARLY: 'Anual',
         },
+        carousel: {
+          previous: 'Plano anterior',
+          next: 'Proximo plano',
+          goTo: 'Ver plano {index}',
+        },
+        benefits: {
+          sharedDashboard: 'Dashboard compartilhado para acompanhar os gastos do casal.',
+          partnerTracking: 'Identificacao de quem realizou cada gasto.',
+          sharedAi: 'IA da Fly pronta para registrar despesas dos dois.',
+        },
         activeBadge: 'Plano atual',
         currentPlan: 'Plano atual: {planName}',
-        ownerNoteTitle: 'Voce pode gerenciar a assinatura',
+        annualInstallmentSuffix: 'por mês em 12x',
+        ownerNoteTitle: 'Você pode gerenciar a assinatura',
         ownerNoteDescription:
-          'Como titular da conta de casal, voce pode iniciar a assinatura ou trocar de plano.',
+          'Como titular da conta de casal, você pode iniciar a assinatura ou trocar de plano.',
         partnerNoteTitle: 'Somente o titular pode alterar o plano',
         partnerNoteDescription:
-          'Peca para o titular da conta de casal fazer a contratacao ou troca do plano.',
+          'Peça para o titular da conta de casal fazer a contratação ou troca do plano.',
         prorationNote:
-          'A mudanca para o plano casal pode gerar ajuste proporcional na cobranca imediata, e o valor padrao do plano sera aplicado no proximo vencimento.',
+          'A mudança para o plano casal gerará o ajuste adicional de {differenceAmount}, e será cobrado de imediato no seu cartão de crédito. O plano casal será cobrado ao valor padrão de {couplePlanPrice} no próximo vencimento.',
+        prorationNoteSimple:
+          'O plano casal será cobrado ao valor padrão de {couplePlanPrice} no próximo vencimento. A diferença em relação ao seu plano atual será cobrada de imediato no cartão.',
+        annualBillingNote:
+          'O Plano Casal Anual pode ser cobrado em 1 vez no valor de {upfrontPrice}, ou dividido em 12x de {installmentPrice}, como destacado no carrossel.',
         processing: 'Processando...',
         actions: {
           changePlan: 'Trocar para plano casal',
@@ -2167,7 +2218,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         },
       },
       houseCard: {
-        title: 'Visao da conta',
+        title: 'Visão da conta',
         description: 'Dados principais da sua conta de casal.',
         fields: {
           name: 'Nome',
@@ -2177,48 +2228,60 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         },
         fallbacks: {
           unnamedHouse: 'Conta sem nome',
-          ownerMissing: 'Titular nao identificado',
-          notLinkedYet: 'Ainda nao vinculado',
+          ownerMissing: 'Titular não identificado',
+          notLinkedYet: 'Ainda não vinculado',
         },
-        ownerNoteTitle: 'Voce e o administrador da conta!',
+        ownerNoteTitle: 'Você é o administrador da conta!',
         ownerNoteDescription:
-          'Voce pode convidar e remover pessoas da sua conta de casal quando quiser. Para convidar, basta gerar um link.',
-        partnerNoteTitle: 'Voce participa da conta',
+          'Você pode convidar e remover pessoas da sua conta de casal quando quiser. Para convidar, basta gerar um link.',
+        partnerNoteTitle: 'Você participa da conta',
         partnerNoteDescription:
-          'Voce acompanha a conta compartilhada e acessa as informacoes ja conectadas.',
+          'Você acompanha a conta compartilhada e acessa as informações já conectadas.',
+        editNameAction: 'Editar nome da conta',
+      },
+      editNameDialog: {
+        title: 'Editar nome da conta',
+        description: 'Atualize o nome da sua conta de casal.',
+        label: 'Nome da conta',
+        placeholder: 'Ex.: Manu & David',
+        cancel: 'Cancelar',
+        save: 'Salvar',
+        saving: 'Salvando...',
       },
       partnerCard: {
         title: 'Parceiro conectado',
-        description: 'Veja quem esta vinculado a sua conta de casal.',
+        description: 'Veja quem está vinculado à sua conta de casal.',
         fallbacks: {
-          noName: 'Nome nao informado',
-          noEmail: 'E-mail nao informado',
+          noName: 'Nome não informado',
+          noEmail: 'E-mail não informado',
         },
         ownerConnectedTitle: 'Titular conectado',
         ownerConnectedDescription:
-          'Este usuario criou e administra a conta de casal.',
+          'Este usuário criou e administra a conta de casal.',
         partnerConnectedTitle: 'Parceiro conectado',
         partnerConnectedDescription:
-          'Este usuario aceitou o convite e ja faz parte da conta de casal.',
+          'Este usuário aceitou o convite e já faz parte da conta de casal.',
         actions: {
           remove: 'Remover parceiro',
           removing: 'Removendo...',
         },
-        emptyTitle: 'Ninguem esta conectado.',
+        emptyTitle: 'Ninguém está conectado.',
         emptyOwnerDescription:
-          'Aguarde a conexao.',
+          'Aguarde a conexão.',
         emptyPartnerDescription:
-          'Aguarde a conexao.',
+          'Aguarde a conexão.',
       },
       invitesCard: {
         title: 'Convites',
-        ownerDescription: 'Convide seu parceiro(a) atraves do link.',
+        ownerDescription: 'Convide seu parceiro(a) através do link.',
         partnerDescription:
           'Acompanhe o status dos convites gerados pelo titular.',
         actions: {
           generating: 'Gerando...',
           generate: 'Gerar convite',
           copy: 'Copiar link',
+          delete: 'Excluir',
+          deleting: 'Excluindo...',
         },
         fields: {
           link: 'Link',
@@ -2226,13 +2289,14 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           expiresAt: 'Expira em',
           token: 'Token',
         },
-        emptyOwner: 'Nenhum convite gerado ate agora.',
-        emptyPartner: 'Nenhum convite disponivel no momento.',
-        linkUnavailable: 'Link indisponivel',
-        tokenUnavailable: 'Token indisponivel',
-        copyUnavailable: 'Nao foi possivel montar o link do convite.',
+        emptyOwner: 'Nenhum convite gerado até agora.',
+        emptyPartner: 'Nenhum convite disponível no momento.',
+        linkUnavailable: 'Link indisponível',
+        tokenUnavailable: 'Token indisponível',
+        copyUnavailable: 'Não foi possível montar o link do convite.',
         copySuccess: 'Link do convite copiado.',
-        copyError: 'Nao foi possivel copiar o link do convite.',
+        copyError: 'Não foi possível copiar o link do convite.',
+        acceptedBy: 'Aceito por {name} em {date}.',
       },
       removePartnerDialog: {
         title: 'Remover parceiro',
@@ -2420,24 +2484,33 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       apply: 'Apply',
       applying: 'Applying...',
       applied: 'Applied',
+      accountType: {
+        individual: 'Individual Account',
+        couple: 'Couple Account',
+      },
     },
     financialScope: {
       label: 'Financial context',
       description: 'Choose between the shared couple view and your individual view.',
       helper: 'Dashboard, lists, details and summaries follow this context.',
+      current: 'Current view: {scope}',
       options: {
         house: 'Couple',
         me: 'Only me',
+        owner: 'Owner',
+        partner: 'Partner',
       },
       badge: {
-        house: 'Showing couple data',
-        me: 'Showing only your data',
+        house: 'Current view: Couple',
+        me: 'Current view: Individual',
       },
     },
     dashboard: {
       title: 'Your financial snapshot',
       subtitle:
         'Welcome to your personalized dashboard! Here you can see everything related to your budget for {period}. I organized everything the way you asked.',
+      coupleSubtitle:
+        'Welcome to the couple dashboard. Here you can see everything related to the shared budget for {period}.',
       guideButton: 'View dashboard guide',
       closeOnboardingAria: 'Close onboarding',
       closeGuideAria: 'Close guide',
@@ -2983,13 +3056,14 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           'See all registered income and expense categories. Edit them however you want and organize your priorities by moving the cards.',
         tip: 'Drag categories across columns and reorder them inside each column.',
         createButton: 'Create new category',
-        saving: 'Saving...',
+        saving: 'Saving changes...',
+        saved: 'Changes saved',
         cancel: 'Cancel',
         loadError: 'Could not load the classification board.',
-        saveError: 'Could not save classification.',
-        createError: 'Could not create the category.',
-        updateError: 'Could not update the category.',
-        deleteError: 'Could not delete the category.',
+        saveError: 'Could not save changes. Try again.',
+        createError: 'Could not create the category. Try again.',
+        updateError: 'Could not save the category. Try again.',
+        deleteError: 'Could not delete the category. Try again.',
         retry: 'Try again',
         invalidMove: 'This category cannot be moved to that column.',
         defaultActionsLocked: 'Default categories cannot be edited or deleted.',
@@ -3206,6 +3280,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           cancelling: 'Cancelling...',
           redirecting: 'Redirecting...',
           reactivateSubscription: 'Reactivate subscription',
+          changeSubscription: 'Change subscription',
         },
         status: {
           active: 'Active',
@@ -3229,6 +3304,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           cancelUndoError: 'Error undoing cancellation.',
           stripeMissingFrontendKey:
             'Stripe is not configured on frontend (NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY).',
+          sessionExpired: 'Session expired. Sign in again to change your subscription.',
         },
         changeCardModal: {
           title: 'Change card',
@@ -3383,15 +3459,17 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       back: 'Back',
     },
     coupleInvitePage: {
-      title: 'Couple account invitation',
-      subtitle: 'Hi! You received an invitation to join a couple account on Flynance.',
-      intro: 'You will get access to Fly AI on WhatsApp and to a personalized dashboard to follow your finances together.',
-      ctaText: 'So, shall we update income and expenses together?',
+      title: 'Shall we update the budget together?',
+      subtitle: 'Hi! You were invited to join {ownerName} couple account on Flynance.',
+      subtitleFallback: 'Hi! You were invited to join a couple account on Flynance.',
+      fallbackOwner: 'the owner',
       whatChangesTitle: 'By accepting this invitation:',
       whatChanges: {
-        sharedAccess: 'you will both see the shared financial view of the household;',
-        historyRule: 'financial reads may consider both active household members;',
-        ownerBilling: 'subscription and billing remain under the owner responsibility.',
+        sharedAccess: 'You both start sharing the same financial view,',
+        flyAi: 'You get access to Fly AI on WhatsApp,',
+        coupleDashboard: 'You get access to the personalized couple dashboard,',
+        launchVisibility: 'Your entries appear to {ownerName} and vice versa,',
+        ownerBilling: 'The subscription remains solely under the owner responsibility.',
       },
       termsPrefix: 'By clicking "accept invitation", you agree to the',
       termsLinkLabel: 'Terms of Use',
@@ -3455,6 +3533,21 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       headerTitle: 'Flynance Plans',
       heroTitle: 'Choose your plan and start saving',
       loadError: 'An error occurred while loading plans. Try again later.',
+      changePlanModal: {
+        title: 'Confirm plan change',
+        description: 'You are about to switch your subscription to the {planName} plan.',
+        nextBillingNote:
+          'The change will take effect on your next billing cycle. You keep your current plan until the end of the current cycle.',
+        cancel: 'Cancel',
+        confirm: 'Confirm change',
+        processing: 'Processing...',
+        confirmingPayment: 'Confirming payment...',
+        success: 'Plan change scheduled for the next billing cycle.',
+        error: 'Error changing plan. Try again.',
+        stripeNotReady: 'Stripe is not ready. Reload the page and try again.',
+        confirmPaymentError:
+          'We could not confirm the payment for this plan change. Check your card and try again.',
+      },
     },
     winbackPage: {
       cycle: {
@@ -3518,6 +3611,13 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       enter: 'Sign in',
       followUs: 'Follow us on social media',
       loadingLogin: 'Loading login...',
+      coupleInviteNotice: {
+        title: 'You are now part of a joint account on Fly!',
+        titleWithOwner: 'You are now part of {ownerName} joint account on Fly!',
+        description:
+          'Sign in with your phone number and start logging your shared expenses.',
+        cta: "Let's go!",
+      },
       errors: {
         missingEmail: 'Please provide your email.',
         missingWhatsapp: 'Please provide your WhatsApp number.',
@@ -4501,8 +4601,19 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           MONTHLY: 'Monthly',
           YEARLY: 'Yearly',
         },
+        carousel: {
+          previous: 'Previous plan',
+          next: 'Next plan',
+          goTo: 'View plan {index}',
+        },
+        benefits: {
+          sharedDashboard: 'Shared dashboard to track couple expenses.',
+          partnerTracking: 'Identification of who made each expense.',
+          sharedAi: 'Fly AI ready to log expenses for both of you.',
+        },
         activeBadge: 'Current plan',
         currentPlan: 'Current plan: {planName}',
+        annualInstallmentSuffix: 'per month in 12 installments',
         ownerNoteTitle: 'You can manage the subscription',
         ownerNoteDescription:
           'As the couple account owner, you can start the subscription or switch plans.',
@@ -4511,6 +4622,10 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           'Ask the couple account owner to purchase or switch the plan.',
         prorationNote:
           'Changing plans may create a prorated adjustment on the next billing cycle.',
+        prorationNoteSimple:
+          'The couple plan will be billed at the standard price of {couplePlanPrice} on the next due date. Any difference from your current plan may be charged to your card immediately.',
+        annualBillingNote:
+          'The Annual Couple Plan can be billed once at {upfrontPrice}, or split into 12 installments of {installmentPrice}, as highlighted in the carousel.',
         processing: 'Processing...',
         actions: {
           changePlan: 'Switch to couple plan',
@@ -4537,6 +4652,16 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         partnerNoteTitle: 'You are part of the account',
         partnerNoteDescription:
           'You can follow the shared account and access the connected information.',
+        editNameAction: 'Edit account name',
+      },
+      editNameDialog: {
+        title: 'Edit account name',
+        description: 'Update the name of your couple account.',
+        label: 'Account name',
+        placeholder: 'E.g. Manu & David',
+        cancel: 'Cancel',
+        save: 'Save',
+        saving: 'Saving...',
       },
       partnerCard: {
         title: 'Connected partner',
@@ -4569,6 +4694,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           generating: 'Generating...',
           generate: 'Generate invite',
           copy: 'Copy link',
+          delete: 'Delete',
+          deleting: 'Deleting...',
         },
         fields: {
           link: 'Link',
@@ -4583,6 +4710,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         copyUnavailable: 'Could not build the invite link.',
         copySuccess: 'Invite link copied.',
         copyError: 'Could not copy the invite link.',
+        acceptedBy: 'Accepted by {name} on {date}.',
       },
       removePartnerDialog: {
         title: 'Remove partner',
@@ -4770,24 +4898,33 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       apply: 'Aplicar',
       applying: 'Aplicando...',
       applied: 'Aplicado',
+      accountType: {
+        individual: 'Cuenta Individual',
+        couple: 'Cuenta en pareja',
+      },
     },
     financialScope: {
       label: 'Contexto financiero',
       description: 'Elige entre la vista compartida de la pareja y tu vista individual.',
       helper: 'Dashboard, listas, detalles y resúmenes siguen este contexto.',
+      current: 'Visualizacion actual: {scope}',
       options: {
         house: 'Pareja',
         me: 'Solo yo',
+        owner: 'Titular',
+        partner: 'Pareja',
       },
       badge: {
-        house: 'Mostrando datos de la pareja',
-        me: 'Mostrando solo tus datos',
+        house: 'Visualizacion actual: Pareja',
+        me: 'Visualizacion actual: Individual',
       },
     },
     dashboard: {
       title: 'Tu panorama financiero',
       subtitle:
         'Bienvenido a tu panel personalizado. Aquí puedes ver todo lo relacionado con tu presupuesto en {period}. Organicé todo tal como lo pediste.',
+      coupleSubtitle:
+        'Bienvenido al panel personalizado de la pareja. Aqui pueden ver todo lo relacionado con el presupuesto compartido en {period}.',
       guideButton: 'Ver guia del dashboard',
       closeOnboardingAria: 'Cerrar onboarding',
       closeGuideAria: 'Cerrar guia',
@@ -5338,13 +5475,14 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           'Mira todas las categorías de ingresos y gastos registradas. Edítalas como quieras y organiza tus prioridades moviendo las tarjetas.',
         tip: 'Arrastra categorias entre columnas y reordena dentro de la misma columna.',
         createButton: 'Crear nueva categoria',
-        saving: 'Guardando...',
+        saving: 'Guardando cambios...',
+        saved: 'Cambios guardados',
         cancel: 'Cancelar',
         loadError: 'No se pudo cargar el tablero de clasificacion.',
-        saveError: 'No se pudo guardar la clasificacion.',
-        createError: 'No se pudo crear la categoria.',
-        updateError: 'No se pudo actualizar la categoria.',
-        deleteError: 'No se pudo eliminar la categoria.',
+        saveError: 'No se pudieron guardar los cambios. Intentalo de nuevo.',
+        createError: 'No se pudo crear la categoria. Intentalo de nuevo.',
+        updateError: 'No se pudo guardar la categoria. Intentalo de nuevo.',
+        deleteError: 'No se pudo eliminar la categoria. Intentalo de nuevo.',
         retry: 'Reintentar',
         invalidMove: 'Esta categoria no puede moverse a esa columna.',
         defaultActionsLocked: 'Las categorias por defecto no se pueden editar ni eliminar.',
@@ -5561,6 +5699,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           cancelling: 'Cancelando...',
           redirecting: 'Redirigiendo...',
           reactivateSubscription: 'Reactivar suscripcion',
+          changeSubscription: 'Cambiar suscripcion',
         },
         status: {
           active: 'Activa',
@@ -5584,6 +5723,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           cancelUndoError: 'Error al deshacer la cancelacion.',
           stripeMissingFrontendKey:
             'Stripe no esta configurado en frontend (NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY).',
+          sessionExpired: 'Sesion expirada. Inicia sesion de nuevo para cambiar la suscripcion.',
         },
         changeCardModal: {
           title: 'Cambiar tarjeta',
@@ -5742,15 +5882,17 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       back: 'Volver',
     },
     coupleInvitePage: {
-      title: 'Invitacion para cuenta de pareja',
-      subtitle: 'Hola! Recibiste una invitacion para unirte a una cuenta de pareja en Flynance.',
-      intro: 'Tendras acceso a la IA de Fly en WhatsApp y a un panel personalizado para seguir juntos la evolucion de sus finanzas.',
-      ctaText: 'Entonces, actualizamos ingresos y gastos juntos?',
+      title: 'Actualizamos el presupuesto juntos?',
+      subtitle: 'Hola! Te invitaron a participar en la cuenta de pareja de {ownerName} en Flynance.',
+      subtitleFallback: 'Hola! Te invitaron a participar en una cuenta de pareja en Flynance.',
+      fallbackOwner: 'el titular',
       whatChangesTitle: 'Al aceptar esta invitacion:',
       whatChanges: {
-        sharedAccess: 'ambos pasaran a ver la vista financiera compartida del hogar;',
-        historyRule: 'las lecturas financieras pueden considerar a los dos miembros activos;',
-        ownerBilling: 'la suscripcion y el billing siguen bajo responsabilidad del titular.',
+        sharedAccess: 'Ambos pasan a compartir la misma vision financiera,',
+        flyAi: 'Tienes acceso a la IA de Fly en WhatsApp,',
+        coupleDashboard: 'Tienes acceso al panel personalizado de la pareja,',
+        launchVisibility: 'Tus registros aparecen para {ownerName} y viceversa,',
+        ownerBilling: 'La suscripcion sigue solamente bajo responsabilidad del titular.',
       },
       termsPrefix: 'Al hacer clic en "aceptar invitacion", aceptas los',
       termsLinkLabel: 'Terminos de Uso',
@@ -5814,6 +5956,21 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       headerTitle: 'Planes de Flynance',
       heroTitle: 'Elige tu plan y empieza a ahorrar',
       loadError: 'Ocurrio un error al cargar los planes. Intentalo mas tarde.',
+      changePlanModal: {
+        title: 'Confirmar cambio de plan',
+        description: 'Estas a punto de cambiar tu suscripcion al plan {planName}.',
+        nextBillingNote:
+          'El cambio se aplicara en el proximo cobro. Seguiras con tu plan actual hasta el fin del ciclo vigente.',
+        cancel: 'Cancelar',
+        confirm: 'Confirmar cambio',
+        processing: 'Procesando...',
+        confirmingPayment: 'Confirmando pago...',
+        success: 'Cambio de plan programado para el proximo cobro.',
+        error: 'Error al cambiar el plan. Intentalo de nuevo.',
+        stripeNotReady: 'Stripe no esta listo. Recarga la pagina e intentalo de nuevo.',
+        confirmPaymentError:
+          'No pudimos confirmar el pago del cambio de plan. Revisa tu tarjeta e intentalo de nuevo.',
+      },
     },
     winbackPage: {
       cycle: {
@@ -5877,6 +6034,13 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       enter: 'Entrar',
       followUs: 'Siguenos en redes sociales',
       loadingLogin: 'Cargando login...',
+      coupleInviteNotice: {
+        title: 'Ahora formas parte de una cuenta conjunta en Fly!',
+        titleWithOwner: 'Ahora formas parte de la cuenta conjunta de {ownerName} en Fly!',
+        description:
+          'Inicia sesion con tu numero de telefono y empieza a registrar sus gastos en conjunto.',
+        cta: 'Vamos!',
+      },
       errors: {
         missingEmail: 'Informa tu e-mail.',
         missingWhatsapp: 'Informa tu numero de WhatsApp.',
@@ -6861,8 +7025,19 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           MONTHLY: 'Mensual',
           YEARLY: 'Anual',
         },
+        carousel: {
+          previous: 'Plan anterior',
+          next: 'Siguiente plan',
+          goTo: 'Ver plan {index}',
+        },
+        benefits: {
+          sharedDashboard: 'Dashboard compartido para acompanar los gastos de la pareja.',
+          partnerTracking: 'Identificacion de quien realizo cada gasto.',
+          sharedAi: 'IA de Fly lista para registrar gastos de ambos.',
+        },
         activeBadge: 'Plan actual',
         currentPlan: 'Plan actual: {planName}',
+        annualInstallmentSuffix: 'por mes en 12 cuotas',
         ownerNoteTitle: 'Puedes gestionar la suscripcion',
         ownerNoteDescription:
           'Como titular de la cuenta en pareja, puedes iniciar la suscripcion o cambiar de plan.',
@@ -6871,6 +7046,10 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           'Pidele al titular de la cuenta en pareja que haga la contratacion o el cambio.',
         prorationNote:
           'El cambio de plan puede generar un ajuste prorrateado en el proximo cobro.',
+        prorationNoteSimple:
+          'El plan en pareja se cobrara al precio estandar de {couplePlanPrice} en el proximo vencimiento. Cualquier diferencia con tu plan actual puede cobrarse inmediatamente en tu tarjeta.',
+        annualBillingNote:
+          'El Plan en Pareja Anual puede cobrarse en 1 vez por {upfrontPrice}, o dividirse en 12 cuotas de {installmentPrice}, como se destaca en el carrusel.',
         processing: 'Procesando...',
         actions: {
           changePlan: 'Cambiar al plan en pareja',
@@ -6897,6 +7076,16 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         partnerNoteTitle: 'Tu formas parte de la cuenta',
         partnerNoteDescription:
           'Puedes seguir la cuenta compartida y acceder a la informacion ya conectada.',
+        editNameAction: 'Editar nombre de la cuenta',
+      },
+      editNameDialog: {
+        title: 'Editar nombre de la cuenta',
+        description: 'Actualiza el nombre de tu cuenta en pareja.',
+        label: 'Nombre de la cuenta',
+        placeholder: 'Ej.: Manu & David',
+        cancel: 'Cancelar',
+        save: 'Guardar',
+        saving: 'Guardando...',
       },
       partnerCard: {
         title: 'Pareja conectada',
@@ -6930,6 +7119,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           generating: 'Generando...',
           generate: 'Generar invitacion',
           copy: 'Copiar link',
+          delete: 'Eliminar',
+          deleting: 'Eliminando...',
         },
         fields: {
           link: 'Link',
@@ -6944,6 +7135,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         copyUnavailable: 'No se pudo montar el link de la invitacion.',
         copySuccess: 'Link de la invitacion copiado.',
         copyError: 'No se pudo copiar el link de la invitacion.',
+        acceptedBy: 'Aceptado por {name} el {date}.',
       },
       removePartnerDialog: {
         title: 'Remover pareja',

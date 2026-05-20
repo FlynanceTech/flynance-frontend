@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import Link from 'next/link'
 
 import { NewTransactionButton } from '../Buttons'
 import { CategoriesSelectWithCheck } from '../CategorySelect'
@@ -17,6 +18,16 @@ import { useAdvisorActing } from '@/stores/useAdvisorActing'
 import { isAdvisorReadOnlyTransactionAccess } from '@/utils/transactionWriteAccess'
 import type { Category } from '@/types/Transaction'
 import { useFinancialScope } from '@/hooks/useFinancialScope'
+import { FEATURES } from '@/config/features'
+import { isCoupleHouseActive } from '@/lib/financialScope'
+import FinancialScopeSwitcher from '@/components/financial/FinancialScopeSwitcher'
+
+function toFirstName(fullName?: string | null) {
+  if (!fullName) return ''
+  const first = fullName.trim().split(/\s+/)[0] ?? ''
+  if (!first) return ''
+  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase()
+}
 
 interface HeaderProps {
   title?: string
@@ -88,10 +99,9 @@ export default function Header({
   rightContent,
 }: HeaderProps) {
   const t = useTranslations('dashboardHeader')
-  const tScope = useTranslations('financialScope')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [isApplyingFilters, setIsApplyingFilters] = useState(false)
-  const { canSelectScope, scope } = useFinancialScope()
+  const { scope, houseContext } = useFinancialScope()
   const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
   const activePermission = useAdvisorActing((s) => s.activePermission ?? s.selectedPermission)
   const isAdvisorReadOnly = isAdvisorReadOnlyTransactionAccess(activeClientId, activePermission)
@@ -99,8 +109,19 @@ export default function Header({
   const canCreateTransactions = Boolean(newTransation && canWriteTransactions)
 
   const { user } = useUserSession()
-  const firstName =
-    user?.userData?.user?.name?.split(' ')[0]?.toLowerCase()?.replace(/^\w/, (c) => c.toUpperCase()) ?? ''
+  const firstName = toFirstName(user?.userData?.user?.name)
+
+  const isCouple = FEATURES.COUPLE_ACCOUNT && isCoupleHouseActive(houseContext) && !activeClientId
+  const ownerFirstName = isCouple ? toFirstName(houseContext?.owner?.name) : ''
+  const partnerFirstName = isCouple ? toFirstName(houseContext?.partner?.name) : ''
+  const coupleGreetingName = [ownerFirstName, partnerFirstName].filter(Boolean).join(' & ')
+  const showBothNames = isCouple && scope === 'house' && Boolean(coupleGreetingName)
+  const personalGreetingName =
+    scope === 'owner' ? ownerFirstName || firstName : scope === 'partner' ? partnerFirstName || firstName : firstName
+  const greetingName = showBothNames ? coupleGreetingName : personalGreetingName
+  const hasCoupleAccount = isCouple
+  const showAccountTypeBadge = FEATURES.COUPLE_ACCOUNT && !activeClientId
+  const accountTypeLabel = hasCoupleAccount ? t('accountType.couple') : t('accountType.individual')
 
   const mode = useTransactionFilter((s) => s.mode)
   const dateRange = useTransactionFilter((s) => s.dateRange)
@@ -236,9 +257,25 @@ export default function Header({
     <header className="flex flex-col px-6 pt-6">
       <div className="flex flex-col gap-2">
         <div className="grid grid-cols-3 items-center">
-          <h3 className="col-span-1 text-[1.7rem] font-bold text-[#333C4D] lg:text-[2rem]">
-            {t('greeting', { name: firstName })}
-          </h3>
+          <div className="col-span-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <h3 className="text-[1.7rem] font-bold text-[#333C4D] lg:text-[2rem]">
+              {t('greeting', { name: greetingName })}
+            </h3>
+            {showAccountTypeBadge && (
+              <Link
+                href="/dashboard/conta-casal"
+                className={
+                  'inline-flex w-fit items-center rounded-full px-3 py-0.5 text-xs font-medium ' +
+                  (hasCoupleAccount
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : 'bg-slate-100 text-slate-600')
+                }
+              >
+                {accountTypeLabel}
+              </Link>
+            )}
+            <FinancialScopeSwitcher />
+          </div>
 
           <div className="col-span-2 flex w-full items-center justify-end gap-2">
             {rightContent}
@@ -321,11 +358,6 @@ export default function Header({
 
       <div className="flex flex-col gap-2 pt-2 md:pt-0">
         <p className="whitespace-pre-line text-sm font-light text-slate-500">{subtitle}</p>
-        {canSelectScope && (
-          <span className="inline-flex w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
-            {scope === 'me' ? tScope('badge.me') : tScope('badge.house')}
-          </span>
-        )}
       </div>
     </header>
   )

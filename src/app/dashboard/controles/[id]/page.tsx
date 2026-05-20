@@ -14,18 +14,32 @@ import MonthSelector from '../../components/MonthSelector'
 import SpendingControlDrawer from '../../components/SpendingControlDrawer'
 import { useUserSession } from '@/stores/useUserSession'
 import ControlDetailsSkeleton from './ControlDetailsSkeleton'
+import { getActorFirstName } from '@/utils/actorName'
+import { resolveDisplayDescription } from '@/utils/displayDescription'
+import FinancialScopeSwitcher from '@/components/financial/FinancialScopeSwitcher'
 
 export interface Transaction {
   id: string
   userId: string
   value: number
   description: string
+  sourceDescription?: string | null
   categoryId: string
   date: string
   type: 'INCOME' | 'EXPENSE'
   paymentType: 'CASH' | 'CREDIT_CARD' | 'PIX' | string
   origin: 'DASHBOARD' | string
   cardId?: string
+  createdByUser?: {
+    id?: string
+    name?: string | null
+    email?: string | null
+  } | null
+  user?: {
+    id?: string
+    name?: string | null
+    email?: string | null
+  } | null
 }
 
 export interface ControlWithTransactions {
@@ -63,6 +77,11 @@ function getStatus(pct: number): StatusKey {
   return 'ok'
 }
 
+function formatDateWithActor(date: string, locale: string, actorName: string) {
+  const formattedDate = new Date(date).toLocaleDateString(locale)
+  return actorName ? `${formattedDate} • ${actorName}` : formattedDate
+}
+
 export default function ControlePage({
   params,
 }: {
@@ -83,25 +102,25 @@ export default function ControlePage({
   const { spent, goal, categoryIconName, categoryName, transactions } = control
   const canWriteControl = !control.userId || control.userId === currentUserId
 
-  const chartDataMap = new Map<string, { date: string; valor: number; acumulado: number }>()
-  let acumulado = 0
-  const chartData = control.transactions
+  const chartData = [...control.transactions]
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .reduce((acc, tx) => {
+    .reduce((rows, tx) => {
       const date = format(new Date(tx.date), 'yyyy-MM-dd')
+      const last = rows.at(-1)
 
-      const existing = chartDataMap.get(date)
-      if (existing) {
-        existing.valor += tx.value
-        existing.acumulado += tx.value
-      } else {
-        acumulado += tx.value
-        const entry = { date, valor: tx.value, acumulado }
-        chartDataMap.set(date, entry)
-        acc.push(entry)
+      if (last?.date === date) {
+        return [
+          ...rows.slice(0, -1),
+          {
+            ...last,
+            valor: last.valor + tx.value,
+            acumulado: last.acumulado + tx.value,
+          },
+        ]
       }
 
-      return acc
+      const acumulado = (last?.acumulado ?? 0) + tx.value
+      return [...rows, { date, valor: tx.value, acumulado }]
     }, [] as { date: string; valor: number; acumulado: number }[])
 
   const exceeded = spent > goal
@@ -153,7 +172,10 @@ export default function ControlePage({
           <Link href="/dashboard/controles" aria-label={t('back')}>
             <Undo2 />
           </Link>
-          <h1 className="text-xl font-bold ">{t('title')}</h1>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <h1 className="text-xl font-bold ">{t('title')}</h1>
+            <FinancialScopeSwitcher />
+          </div>
           <button
             onClick={() => canWriteControl && setDrawerOpen(!drawerOpen)}
             aria-label={t('edit')}
@@ -226,11 +248,13 @@ export default function ControlePage({
                 className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-900"
               >
                 <div className="flex justify-between">
-                  <span className="font-semibold text-slate-900 dark:text-slate-100">{tx.description}</span>
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">
+                    {resolveDisplayDescription(tx.description, tx.sourceDescription)}
+                  </span>
                   <span className="text-slate-900 dark:text-slate-100">{formatter(tx.value)}</span>
                 </div>
                 <span className="text-sm text-slate-400 dark:text-slate-500">
-                  {new Date(tx.date).toLocaleDateString(locale)}
+                  {formatDateWithActor(tx.date, locale, getActorFirstName(tx))}
                 </span>
               </li>
             ))}

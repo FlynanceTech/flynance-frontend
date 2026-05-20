@@ -2,7 +2,7 @@
 
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
 import { X } from 'lucide-react'
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { NumericFormat } from 'react-number-format'
@@ -40,13 +40,14 @@ const editSchema = z.object({
 })
 
 type CreateFormData = z.infer<typeof createSchema>
-type EditFormData = z.infer<typeof editSchema>
-type FormData = CreateFormData
+type EditFormData = z.infer<typeof editSchema> & Partial<Pick<CreateFormData, 'cardId' | 'value' | 'installmentCount'>>
+type FormData = CreateFormData | EditFormData
 
 interface Props {
   open: boolean
   onClose: () => void
   initialData?: CreditCardChargeItem
+  initialCardId?: string | null
 }
 
 function nowDateTimeLocalValue() {
@@ -70,7 +71,7 @@ function dateTimeLocalToISOZ(localValue: string) {
 
 type CardOption = { value: string; label: string }
 
-const selectStyles: StylesConfig<any, false> = {
+const selectStyles: StylesConfig<CardOption, false> = {
   control: (base, state) => ({
     ...base,
     minHeight: 40,
@@ -109,7 +110,7 @@ const selectStyles: StylesConfig<any, false> = {
   noOptionsMessage: (base) => ({ ...base, color: 'hsl(var(--muted-foreground))' }),
 }
 
-export default function CreditCardChargeDrawer({ open, onClose, initialData }: Props) {
+export default function CreditCardChargeDrawer({ open, onClose, initialData, initialCardId }: Props) {
   const isEditing = Boolean(initialData)
   const { cardQuery } = useCardMutations()
   const { createChargeMutation, updateChargeMutation } = useCreditCardCharges()
@@ -119,7 +120,7 @@ export default function CreditCardChargeDrawer({ open, onClose, initialData }: P
     createMutation: createCategoryMutation,
   } = useCategories()
 
-  const cards = cardQuery.data ?? []
+  const cards = useMemo(() => cardQuery.data ?? [], [cardQuery.data])
   const cardOptions = useMemo<CardOption[]>(
     () =>
       cards
@@ -131,13 +132,11 @@ export default function CreditCardChargeDrawer({ open, onClose, initialData }: P
   const {
     register,
     handleSubmit,
-    setValue,
     reset,
     control,
-    watch,
     formState: { errors },
   } = useForm<FormData>({
-    resolver: zodResolver(isEditing ? (editSchema as any) : createSchema),
+    resolver: zodResolver(isEditing ? editSchema : createSchema),
     defaultValues: {
       cardId: '',
       description: '',
@@ -161,7 +160,9 @@ export default function CreditCardChargeDrawer({ open, onClose, initialData }: P
       })
     } else {
       reset({
-        cardId: cardOptions[0]?.value ?? '',
+        cardId: initialCardId && cardOptions.some((option) => option.value === initialCardId)
+          ? initialCardId
+          : cardOptions[0]?.value ?? '',
         description: '',
         categoryId: '',
         value: undefined,
@@ -169,10 +170,10 @@ export default function CreditCardChargeDrawer({ open, onClose, initialData }: P
         installmentCount: 1,
       })
     }
-  }, [open, initialData, cardOptions, reset])
+  }, [open, initialData, initialCardId, cardOptions, reset])
 
-  const categoryId = watch('categoryId')
-  const selectedCardId = watch('cardId')
+  const categoryId = useWatch({ control, name: 'categoryId' })
+  const selectedCardId = useWatch({ control, name: 'cardId' })
 
   const selectedCategoryObj = useMemo<CategoryResponse | null>(
     () => (categoryId ? (categories.find((c) => c.id === categoryId) ?? null) : null),
@@ -205,15 +206,17 @@ export default function CreditCardChargeDrawer({ open, onClose, initialData }: P
       return
     }
 
+    const createData = data as CreateFormData
+
     createChargeMutation.mutate(
       {
-        cardId: data.cardId,
+        cardId: createData.cardId,
         data: {
-          description: data.description,
-          categoryId: data.categoryId,
-          value: data.value,
-          purchaseDate: dateTimeLocalToISOZ(data.purchaseDate),
-          installmentCount: data.installmentCount,
+          description: createData.description,
+          categoryId: createData.categoryId,
+          value: createData.value,
+          purchaseDate: dateTimeLocalToISOZ(createData.purchaseDate),
+          installmentCount: createData.installmentCount,
         },
       },
       { onSuccess: () => { reset(); onClose() } }

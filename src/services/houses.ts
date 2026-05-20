@@ -157,6 +157,16 @@ function toHouseMembership(raw: any, isOwner = false): HouseMembership | null {
   }
 }
 
+function deriveInviteStatusFromFlags(
+  raw: any,
+  expiresAtIso: string | null
+): HouseInviteStatus {
+  if (raw?.acceptedAt) return 'ACCEPTED'
+  if (raw?.revokedAt) return 'REVOKED'
+  if (expiresAtIso && new Date(expiresAtIso).getTime() <= Date.now()) return 'EXPIRED'
+  return 'PENDING'
+}
+
 function toHouseInvite(raw: any): HouseInvite | null {
   if (!raw) return null
 
@@ -165,13 +175,27 @@ function toHouseInvite(raw: any): HouseInvite | null {
 
   if (!id) return null
 
+  const expiresAt = toIsoDate(raw?.expiresAt)
+  const acceptedAt = toIsoDate(raw?.acceptedAt)
+  const revokedAt = toIsoDate(raw?.revokedAt)
+  const status = raw?.status
+    ? normalizeInviteStatus(raw.status)
+    : deriveInviteStatusFromFlags(raw, expiresAt)
+
+  const acceptedByUser = raw?.acceptedByUser ?? raw?.acceptedBy ?? null
+
   return {
     id,
     token: toOptionalString(raw?.token),
     inviteUrl: toOptionalString(raw?.inviteUrl ?? raw?.inviteLink ?? raw?.url ?? raw?.link),
-    status: normalizeInviteStatus(raw?.status),
+    status,
     createdAt: toIsoDate(raw?.createdAt ?? raw?.generatedAt),
-    expiresAt: toIsoDate(raw?.expiresAt),
+    expiresAt,
+    acceptedAt,
+    revokedAt,
+    acceptedByUserId: toOptionalString(raw?.acceptedByUserId ?? acceptedByUser?.id),
+    acceptedByName: toOptionalString(raw?.acceptedByName ?? acceptedByUser?.name),
+    acceptedByEmail: toOptionalString(raw?.acceptedByEmail ?? acceptedByUser?.email),
   }
 }
 
@@ -186,13 +210,13 @@ function extractHouseEnvelope(raw: any): any {
 function toHouseInvites(raw: any): HouseInvite[] {
   const source = extractHouseEnvelope(raw) ?? raw
   const invitesRaw =
-    source?.pendingInvites ??
     source?.invites ??
+    source?.pendingInvites ??
     source?.houseInvites ??
-    raw?.pendingInvites ??
     raw?.invites ??
-    raw?.data?.pendingInvites ??
+    raw?.pendingInvites ??
     raw?.data?.invites ??
+    raw?.data?.pendingInvites ??
     []
 
   if (!Array.isArray(invitesRaw)) return []
@@ -317,8 +341,8 @@ export function toHouseContext(raw: unknown): HouseContext | null {
     owner,
     partner: parsed.partner,
     members: parsed.members,
-    pendingInvites: parsed.pendingInvites,
     invites: parsed.pendingInvites,
+    pendingInvites: parsed.pendingInvites.filter((invite) => invite.status === 'PENDING'),
     createdAt: parsed.house.createdAt,
     updatedAt: parsed.house.updatedAt,
     linkedAt: resolveLinkedAt(parsed.membership, parsed.partner),
@@ -380,6 +404,23 @@ export async function createHouse(payload: CreateHousePayload): Promise<HouseCon
   }
 }
 
+export async function updateHouseName(name: string): Promise<HouseContext | null> {
+  const trimmed = String(name ?? '').trim()
+  if (!trimmed) {
+    throw new Error('Informe um nome valido para a conta de casal.')
+  }
+  if (trimmed.length > 120) {
+    throw new Error('O nome da conta de casal deve ter no maximo 120 caracteres.')
+  }
+
+  try {
+    const response = await api.patch('/houses/me', { name: trimmed })
+    return toHouseContext(response.data)
+  } catch (error: unknown) {
+    throw new Error(toHouseErrorMessage(error, 'Erro ao renomear a conta de casal.'))
+  }
+}
+
 export async function createHouseInvite(): Promise<HouseInvite | null> {
   try {
     const response = await api.post('/houses/me/invites', {})
@@ -395,6 +436,49 @@ export async function createHouseInvite(): Promise<HouseInvite | null> {
     return invite
   } catch (error: unknown) {
     throw new Error(toHouseErrorMessage(error, 'Erro ao gerar convite da conta casal.'))
+  }
+}
+
+export async function deleteHouseInvite(inviteId: string): Promise<HouseContext | null> {
+  const safeInviteId = String(inviteId ?? '').trim()
+  if (!safeInviteId) {
+    throw new Error('Convite invalido.')
+  }
+
+  try {
+    const response = await api.delete(`/houses/me/invites/${encodeURIComponent(safeInviteId)}`)
+    return toHouseContext(response.data)
+  } catch (error: unknown) {
+    throw new Error(toHouseErrorMessage(error, 'Erro ao excluir convite da conta casal.'))
+  }
+}
+
+export type HouseInvitePreview = {
+  houseId: string
+  houseName: string | null
+  ownerName: string | null
+  ownerEmail: string | null
+  expiresAt: string | null
+}
+
+export async function getHouseInvitePreview(token: string): Promise<HouseInvitePreview | null> {
+  const safeToken = String(token ?? '').trim()
+  if (!safeToken) return null
+
+  try {
+    const response = await api.get(`/houses/invites/${encodeURIComponent(safeToken)}`)
+    const invite = response.data?.invite ?? response.data ?? null
+    if (!invite || typeof invite !== 'object') return null
+
+    return {
+      houseId: String(invite.houseId ?? ''),
+      houseName: toOptionalString(invite.houseName),
+      ownerName: toOptionalString(invite.ownerName),
+      ownerEmail: toOptionalString(invite.ownerEmail),
+      expiresAt: toIsoDate(invite.expiresAt),
+    }
+  } catch {
+    return null
   }
 }
 
@@ -476,11 +560,21 @@ function scoreCouplePlan(plan: PlansResponse): number {
 }
 
 export function findCouplePlan(plans: PlansResponse[]): PlansResponse | null {
+  return findCouplePlans(plans)[0] ?? null
+}
+
+export function findCouplePlans(plans: PlansResponse[]): PlansResponse[] {
+  const canonicalCoupleSlugs = new Set(['flynance-casal', 'flynance-casal-anual'])
+  const periodOrder = { MONTHLY: 0, YEARLY: 1, WEEKLY: 2 } as const
   const candidates = plans
     .filter((plan) => plan.isActive && plan.isPublic)
+    .filter((plan) => canonicalCoupleSlugs.has(String(plan.slug ?? '').trim().toLowerCase()))
     .map((plan) => ({ plan, score: scoreCouplePlan(plan) }))
-    .filter((item) => item.score > 0)
-    .sort((a, b) => b.score - a.score)
+    .sort((a, b) => {
+      const left = periodOrder[a.plan.period as keyof typeof periodOrder] ?? 99
+      const right = periodOrder[b.plan.period as keyof typeof periodOrder] ?? 99
+      return left - right || b.score - a.score || a.plan.priceCents - b.plan.priceCents
+    })
 
-  return candidates[0]?.plan ?? null
+  return candidates.map((item) => item.plan)
 }

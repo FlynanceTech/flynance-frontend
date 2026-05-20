@@ -26,6 +26,7 @@ type Props = {
   plan: UiPlan;
   revalidateSubscription?: boolean;
   benefitLimit?: number;
+  onSelect?: (plan: UiPlan) => void;
 };
 
 function parseBRLToNumber(value: string) {
@@ -54,7 +55,7 @@ function splitPrice(priceBR: string) {
   return { intPart, decPart };
 }
 
-export function PlanCard({ plan, revalidateSubscription = false, benefitLimit }: Props) {
+export function PlanCard({ plan, revalidateSubscription = false, benefitLimit, onSelect }: Props) {
   const pathname = usePathname();
 
   const {
@@ -191,15 +192,28 @@ export function PlanCard({ plan, revalidateSubscription = false, benefitLimit }:
             </div>
           </div>
 
-          <Link
-            href={pathRedirect}
-            className={clsx(
-              "mt-auto block text-center py-3 text-sm md:text-xl font-semibold rounded-full",
-              isDiscount ? "bg-white text-primary shadow-2xl" : "bg-primary text-white shadow-2xl",
-            )}
-          >
-            {finalCtaLabel}
-          </Link>
+          {onSelect ? (
+            <button
+              type="button"
+              onClick={() => onSelect(plan)}
+              className={clsx(
+                "mt-auto block w-full text-center py-3 text-sm md:text-xl font-semibold rounded-full",
+                isDiscount ? "bg-white text-primary shadow-2xl" : "bg-primary text-white shadow-2xl",
+              )}
+            >
+              {finalCtaLabel}
+            </button>
+          ) : (
+            <Link
+              href={pathRedirect}
+              className={clsx(
+                "mt-auto block text-center py-3 text-sm md:text-xl font-semibold rounded-full",
+                isDiscount ? "bg-white text-primary shadow-2xl" : "bg-primary text-white shadow-2xl",
+              )}
+            >
+              {finalCtaLabel}
+            </Link>
+          )}
         </div>
       </div>
     </div>
