@@ -48,6 +48,16 @@ export interface DeleteCardResponse {
   linkedRecords?: Record<string, number>
 }
 
+export interface PayCreditCardStatementDTO {
+  paidAt?: string
+}
+
+export interface PayCreditCardStatementResponse {
+  ok?: boolean
+  message?: string
+  statement?: unknown
+}
+
 /** ---- Summary (fatura atual) ---- */
 export interface CardSummaryCategory {
   categoryId: string | null
@@ -125,6 +135,21 @@ export const deleteCard = async (id: string): Promise<DeleteCardResponse> => {
   } catch (e: unknown) {
     const msg = getErrorMessage(e, 'Erro ao deletar cartão.')
     console.error('Erro ao deletar cartão:', msg)
+    throw new Error(msg)
+  }
+}
+
+/** Mark statement as paid */
+export const payCreditCardStatement = async (
+  statementId: string,
+  data?: PayCreditCardStatementDTO
+): Promise<PayCreditCardStatementResponse> => {
+  try {
+    const res = await api.put(`/cards/statements/${statementId}/pay`, data ?? {})
+    return res.data && typeof res.data === 'object' ? res.data : { ok: true }
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, 'Erro ao pagar fatura do cartao.')
+    console.error('Erro ao pagar fatura do cartao:', msg)
     throw new Error(msg)
   }
 }

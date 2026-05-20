@@ -25,6 +25,8 @@ export type SidebarItemConfig = {
   label: string
   icon: LucideIcon
   path?: string
+  disabled?: boolean
+  disabledReason?: string
   featureFlag?: FeatureFlag
   requiresAdmin?: boolean
   requiresAdvisor?: boolean
@@ -138,6 +140,8 @@ export function buildSidebarSections(t: SidebarTranslations): SidebarSectionConf
           label: t.future,
           icon: Clock3,
           path: '/dashboard/futuros',
+          disabled: true,
+          disabledReason: 'Em revisao',
         },
         {
           id: 'reports',

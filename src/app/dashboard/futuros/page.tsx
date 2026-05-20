@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Dialog, DialogPanel, DialogTitle, Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -8,15 +8,14 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import {
   ArrowDownRight,
   ArrowUpRight,
+  BarChart3,
   CalendarDays,
   CheckCircle2,
   ChevronDown,
   CircleDollarSign,
-  Clock3,
   CreditCard,
   Eye,
   Filter,
-  Info,
   LayoutGrid,
   MoreHorizontal,
   Pencil,
@@ -26,6 +25,16 @@ import {
   WalletCards,
   X,
 } from 'lucide-react'
+import {
+  Bar,
+  BarChart,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Treemap,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import toast from 'react-hot-toast'
 import { useLocale, useTranslations } from 'next-intl'
 
@@ -35,6 +44,7 @@ import DeleteConfirmModal from '../components/DeleteConfirmModal'
 
 import { useCategories } from '@/hooks/query/useCategory'
 import { useCardMutations } from '@/hooks/query/useCreditCards'
+import { useCreditCardCharges } from '@/hooks/query/useCreditCardCharges'
 import {
   FutureEditableInstallmentStatus,
   FutureInstallment,
@@ -53,6 +63,12 @@ import {
   useFutureMutations,
   useFuturePlans,
 } from '@/hooks/query/useFuture'
+import CreditCardChargeDrawer from '../components/CreditCardChargeDrawer'
+import type { CreditCardChargeItem } from '@/services/creditCardCharges'
+import type { CreditCardResponse } from '@/services/cards'
+import { useFinancialScope } from '@/hooks/useFinancialScope'
+import { useUserSession } from '@/stores/useUserSession'
+import type { HouseContext, HouseMember } from '@/types/house'
 import { formatCurrency } from '@/utils/formatter'
 import { Button } from '@/components/ui/button'
 import CreditCardManagerDrawer, {
@@ -253,6 +269,175 @@ function getCategoryColor(seed: string | null | undefined) {
   return colors[index]
 }
 
+const CATEGORY_HEX_COLORS = [
+  '#E11D48',
+  '#059669',
+  '#2563EB',
+  '#7C3AED',
+  '#F97316',
+  '#0891B2',
+  '#475569',
+  '#DB2777',
+]
+
+type CreditDistributionItem = {
+  id: string
+  name: string
+  value: number
+  color: string
+  percent: number
+}
+
+type CardOwnerSection = {
+  id: string
+  label: string
+  cards: CreditCardResponse[]
+}
+
+function getCategoryHexColor(seed: string | null | undefined, preferred?: string | null) {
+  if (preferred && /^#[0-9A-Fa-f]{6}$/.test(preferred)) return preferred
+  const value = seed ?? 'default'
+  const index = value.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0) % CATEGORY_HEX_COLORS.length
+  return CATEGORY_HEX_COLORS[index]
+}
+
+function formatCardDisplayName(card: { name?: string | null; last4?: string | null }) {
+  const name = card.name || 'Cartao'
+  return card.last4 ? `${name} final ${card.last4}` : name
+}
+
+function getFirstName(value: string | null | undefined) {
+  const trimmed = value?.trim()
+  if (!trimmed) return null
+  return trimmed.split(/\s+/)[0]
+}
+
+function getMemberName(member: HouseMember | null | undefined, fallback: string) {
+  return getFirstName(member?.name) || member?.email || fallback
+}
+
+function getCardOwnerSections(params: {
+  cards: CreditCardResponse[]
+  houseContext?: HouseContext | null
+  currentUserId?: string | null
+  currentUserName?: string | null
+}): CardOwnerSection[] {
+  const { cards, houseContext, currentUserId, currentUserName } = params
+  const activeMembers = (houseContext?.members ?? []).filter((member) => member.active)
+  const hasCoupleCards = houseContext?.status === 'COUPLE' && activeMembers.length > 1
+
+  if (!hasCoupleCards) {
+    return [{ id: 'me', label: 'Meus cartoes', cards }]
+  }
+
+  const memberSections = activeMembers
+    .map((member) => {
+      const memberId = member.userId ?? member.id ?? ''
+      const label = `Cartoes ${getMemberName(
+        member,
+        memberId && memberId === currentUserId ? currentUserName || 'meus' : 'usuario'
+      )}`.toUpperCase()
+
+      return {
+        id: memberId || member.role || label,
+        label,
+        cards: cards.filter((card) => card.userId === memberId),
+      }
+    })
+    .filter((section) => section.cards.length > 0)
+
+  const knownOwnerIds = new Set(activeMembers.map((member) => member.userId ?? member.id).filter(Boolean))
+  const orphanCards = cards.filter((card) => !knownOwnerIds.has(card.userId))
+
+  if (orphanCards.length) {
+    memberSections.push({
+      id: 'unassigned',
+      label: 'OUTROS CARTOES',
+      cards: orphanCards,
+    })
+  }
+
+  return memberSections.length ? memberSections : [{ id: 'house', label: 'CARTOES DA CONTA', cards }]
+}
+
+function getStatementDisplayStatus(statement: InvoiceGroup['statement'] | null | undefined) {
+  if (!statement) return 'open'
+  if (statement.status === 'paid') return 'paid'
+  const due = statement.dueAt ? new Date(statement.dueAt) : null
+  const todayEnd = new Date()
+  todayEnd.setHours(23, 59, 59, 999)
+  if (statement.status !== 'paid' && due && !Number.isNaN(due.getTime()) && due < todayEnd) {
+    return 'overdue'
+  }
+  if (statement.status === 'invoiced') return 'invoiced'
+  return 'open'
+}
+
+function addMonths(base: Date, months: number) {
+  const next = new Date(base)
+  next.setMonth(next.getMonth() + months)
+  return next
+}
+
+function getPlanMonthlyAmount(plan: FutureInstallmentPlan) {
+  const count = Math.max(1, Number(plan.installmentCount || 1))
+  return Number(plan.totalAmount || 0) / count
+}
+
+function getPlanProgress(plan: FutureInstallmentPlan) {
+  const count = Math.max(1, Number(plan.installmentCount || 1))
+  const interval = Math.max(1, Number(plan.intervalMonths || 1))
+  const first = new Date(plan.firstDueDate)
+  if (Number.isNaN(first.getTime())) {
+    return { installmentNumber: 1, nextDueDate: plan.firstDueDate }
+  }
+
+  const now = new Date()
+  const monthDiff = (now.getFullYear() - first.getFullYear()) * 12 + (now.getMonth() - first.getMonth())
+  const zeroBased = Math.max(0, Math.floor(monthDiff / interval))
+  const installmentNumber = Math.min(count, zeroBased + 1)
+  return {
+    installmentNumber,
+    nextDueDate: addMonths(first, (installmentNumber - 1) * interval).toISOString(),
+  }
+}
+
+function getCurrentMonthRange() {
+  const now = new Date()
+  const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
+  return { from: start, to: end }
+}
+
+function isWithinCurrentMonth(iso: string | null | undefined) {
+  if (!iso) return false
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return false
+  const now = new Date()
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+}
+
+function buildCreditDistribution(
+  items: Array<{ categoryId: string | null; categoryName: string; categoryColor?: string | null; amount: number }>
+) {
+  const grouped = items.reduce<Record<string, { id: string; name: string; value: number; color: string }>>((acc, item) => {
+    const id = item.categoryId || item.categoryName || 'sem-categoria'
+    const current = acc[id] ?? {
+      id,
+      name: item.categoryName || 'Sem categoria',
+      value: 0,
+      color: getCategoryHexColor(id, item.categoryColor),
+    }
+    current.value += Number(item.amount || 0)
+    acc[id] = current
+    return acc
+  }, {})
+  const total = Object.values(grouped).reduce((sum, item) => sum + item.value, 0)
+  return Object.values(grouped)
+    .sort((a, b) => b.value - a.value)
+    .map((item) => ({ ...item, percent: total > 0 ? (item.value / total) * 100 : 0 }))
+}
+
 function canEditForecastItem(item: FutureItem) {
   return (
     item.sourceType === 'installment_plan' &&
@@ -337,13 +522,15 @@ function forecastStatusLabel(status: string) {
 
 function statementStatusBadge(status: string) {
   if (status === 'paid') return 'bg-emerald-100 text-emerald-700'
+  if (status === 'overdue') return 'bg-red-100 text-red-700'
   if (status === 'invoiced') return 'bg-amber-100 text-amber-700'
   return 'bg-sky-100 text-sky-700'
 }
 
 function statementStatusLabel(status: string) {
   if (status === 'paid') return 'Paga'
-  if (status === 'invoiced') return 'Faturada'
+  if (status === 'overdue') return 'Atrasada'
+  if (status === 'invoiced') return 'Fechada'
   return 'Aberta'
 }
 
@@ -435,6 +622,7 @@ function SummaryCard({
   icon: Icon,
   tone,
   loading,
+  onClick,
 }: {
   title: string
   value: string | number
@@ -442,87 +630,42 @@ function SummaryCard({
   icon: React.ComponentType<{ className?: string }>
   tone: SummaryTone
   loading: boolean
+  onClick?: () => void
 }) {
   const classes = summaryToneClasses[tone]
-
-  return (
-    <div className={`min-h-[118px] rounded-[20px] border p-5 shadow-[0_12px_34px_rgba(15,23,42,0.05)] ${classes.card}`}>
-      <div className="flex items-start gap-4">
-        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${classes.icon}`}>
-          <Icon className="h-6 w-6" />
-        </div>
-        <div className="min-w-0">
-          <p className={`text-xs font-bold ${classes.title}`}>{title}</p>
-          {loading ? (
-            <div className={`mt-3 h-7 w-24 animate-pulse rounded-md ${classes.pulse}`} />
-          ) : (
-            <p className={`mt-2 text-2xl font-extrabold tracking-normal ${classes.value}`}>
-              {value}
-            </p>
-          )}
-          <p className="mt-2 truncate text-xs font-medium text-slate-500">{subtext}</p>
-        </div>
+  const content = (
+    <div className="flex items-start gap-4">
+      <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${classes.icon}`}>
+        <Icon className="h-6 w-6" />
+      </div>
+      <div className="min-w-0">
+        <p className={`text-xs font-bold ${classes.title}`}>{title}</p>
+        {loading ? (
+          <div className={`mt-3 h-7 w-24 animate-pulse rounded-md ${classes.pulse}`} />
+        ) : (
+          <p className={`mt-2 text-2xl font-extrabold tracking-normal ${classes.value}`}>
+            {value}
+          </p>
+        )}
+        <p className="mt-2 truncate text-xs font-medium text-slate-500">{subtext}</p>
       </div>
     </div>
   )
-}
 
-function ForecastBalanceCard({ value, loading }: { value: number; loading: boolean }) {
-  const positive = value >= 0
-  const color = positive ? '#059669' : '#E11D48'
+  const className = `min-h-[118px] w-full rounded-[20px] border p-5 text-left shadow-[0_12px_34px_rgba(15,23,42,0.05)] transition-transform ${onClick ? 'hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)]' : ''} ${classes.card}`
 
-  if (loading) {
+  if (onClick) {
     return (
-      <div className="h-[92px] animate-pulse rounded-[20px] border border-slate-200 bg-white shadow-[0_12px_34px_rgba(15,23,42,0.05)]" />
+      <button type="button" onClick={onClick} className={className}>
+        {content}
+      </button>
     )
   }
 
   return (
-    <section
-      className={`overflow-hidden rounded-[20px] border px-6 py-5 shadow-[0_12px_34px_rgba(15,23,42,0.05)] ${
-        positive
-          ? 'border-emerald-100 bg-gradient-to-r from-white via-emerald-50/70 to-white'
-          : 'border-red-100 bg-gradient-to-r from-white via-red-50/70 to-white'
-      }`}
-    >
-      <div className="grid items-center gap-5 lg:grid-cols-[1fr_auto_360px]">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-extrabold text-slate-900">Saldo futuro previsto</h2>
-            <Info className="h-4 w-4 text-slate-400" />
-          </div>
-          <p className="mt-1 text-sm font-medium text-slate-500">Receitas - Despesas futuras</p>
-        </div>
-        <p className={`text-2xl font-extrabold lg:text-center ${positive ? 'text-emerald-700' : 'text-rose-700'}`}>
-          {formatCurrencyBRL(value)}
-        </p>
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 360 72"
-          className="h-[54px] w-full max-w-[360px] justify-self-end"
-          preserveAspectRatio="none"
-        >
-          <defs>
-            <linearGradient id={positive ? 'future-positive-fill' : 'future-negative-fill'} x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor={color} stopOpacity="0.18" />
-              <stop offset="100%" stopColor={color} stopOpacity="0" />
-            </linearGradient>
-          </defs>
-          <path
-            d="M2 47 C38 46 42 48 70 43 C102 37 112 22 145 25 C170 27 177 46 207 47 C235 48 247 39 272 37 C304 35 310 18 336 24 C348 27 354 36 358 43"
-            fill="none"
-            stroke={color}
-            strokeLinecap="round"
-            strokeWidth="3"
-          />
-          <path
-            d="M2 47 C38 46 42 48 70 43 C102 37 112 22 145 25 C170 27 177 46 207 47 C235 48 247 39 272 37 C304 35 310 18 336 24 C348 27 354 36 358 43 L358 72 L2 72 Z"
-            fill={`url(#${positive ? 'future-positive-fill' : 'future-negative-fill'})`}
-          />
-          <path d="M300 53 C322 57 338 51 358 52" fill="none" stroke={color} strokeDasharray="2 4" strokeLinecap="round" strokeWidth="2" />
-        </svg>
-      </div>
-    </section>
+    <div className={className}>
+      {content}
+    </div>
   )
 }
 
@@ -813,9 +956,642 @@ function ForecastEmptyState({ onCreate }: { onCreate: () => void }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
+function CreditTreemapNode(props: {
+  x?: number
+  y?: number
+  width?: number
+  height?: number
+  depth?: number
+  name?: string
+  color?: string
+  size?: number
+}) {
+  const x = Number(props.x ?? 0)
+  const y = Number(props.y ?? 0)
+  const width = Number(props.width ?? 0)
+  const height = Number(props.height ?? 0)
+  const depth = Number(props.depth ?? 0)
+  const color = props.color || '#CBD5E1'
+  const canLabel = depth === 1 && width >= 82 && height >= 42
+  const label = props.name ?? ''
+  const maxChars = Math.max(8, Math.floor(width / 7))
+
+  return (
+    <g>
+      <rect x={x} y={y} width={width} height={height} rx={6} ry={6} fill={depth === 1 ? color : 'transparent'} stroke="#fff" strokeWidth={2} />
+      {canLabel && (
+        <text x={x + width / 2} y={y + height / 2} textAnchor="middle" dominantBaseline="middle" fill="#fff" fontSize={width >= 140 ? 12 : 10} fontWeight={700} pointerEvents="none">
+          {label.length > maxChars ? `${label.slice(0, maxChars - 3)}...` : label}
+        </text>
+      )}
+    </g>
+  )
+}
+
+function ChartTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean
+  payload?: Array<{ payload?: { name?: string; value?: number; size?: number; total?: number }; value?: number }>
+}) {
+  if (!active || !payload?.length) return null
+  const row = payload[0]?.payload
+  const value = Number(row?.value ?? row?.size ?? row?.total ?? payload[0]?.value ?? 0)
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-xl">
+      <p className="text-slate-900">{row?.name ?? 'Categoria'}</p>
+      <p className="mt-1">{formatCurrencyBRL(value)}</p>
+    </div>
+  )
+}
+
+function CreditDistributionChart({ items, height = 220 }: { items: CreditDistributionItem[]; height?: number }) {
+  if (!items.length) {
+    return (
+      <div className="flex h-[220px] items-center justify-center rounded-[16px] border border-dashed border-slate-200 bg-slate-50 text-sm font-medium text-slate-500">
+        Sem gastos categorizados nesta fatura.
+      </div>
+    )
+  }
+
+  const data = [{ name: 'credito', children: items.map((item) => ({ ...item, size: item.value })) }]
+
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <Treemap data={data} dataKey="size" nameKey="name" animationDuration={350} content={<CreditTreemapNode />}>
+        <Tooltip content={<ChartTooltip />} />
+      </Treemap>
+    </ResponsiveContainer>
+  )
+}
+
+function DistributionLegend({ items }: { items: CreditDistributionItem[] }) {
+  const total = items.reduce((sum, item) => sum + item.value, 0)
+
+  return (
+    <div className="space-y-3">
+      {items.slice(0, 6).map((item) => (
+        <div key={item.id} className="space-y-1.5">
+          <div className="flex items-center justify-between gap-3 text-xs font-bold">
+            <span className="flex min-w-0 items-center gap-2 text-slate-700">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
+              <span className="truncate">{item.name}</span>
+            </span>
+            <span className="shrink-0 text-slate-900">{formatCurrencyBRL(item.value)}</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+            <div className="h-full rounded-full" style={{ width: `${total > 0 ? Math.max(3, item.percent) : 0}%`, backgroundColor: item.color }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function CreditMonthDistributionCard({
+  total,
+  items,
+  loading,
+  onOpen,
+}: {
+  total: number
+  items: CreditDistributionItem[]
+  loading: boolean
+  onOpen: () => void
+}) {
+  return (
+    <section className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-[0_14px_38px_rgba(15,23,42,0.05)]">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(280px,1.15fr)_auto] lg:items-center">
+        <div>
+          <div className="flex items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-sky-50 text-primary">
+              <BarChart3 className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-extrabold text-slate-950">Gastos no credito este mes</h2>
+              <p className="mt-1 text-xs font-medium text-slate-500">Distribuicao consolidada das faturas vigentes.</p>
+            </div>
+          </div>
+          {loading ? <div className="mt-4 h-8 w-32 animate-pulse rounded-lg bg-slate-100" /> : <p className="mt-4 text-2xl font-extrabold text-slate-950">{formatCurrencyBRL(total)}</p>}
+        </div>
+
+        <div className="min-w-0">
+          {loading ? (
+            <div className="h-16 animate-pulse rounded-[14px] bg-slate-100" />
+          ) : items.length ? (
+            <div className="overflow-hidden rounded-full bg-slate-100">
+              <div className="flex h-4 w-full">
+                {items.slice(0, 7).map((item) => (
+                  <div key={item.id} title={`${item.name}: ${formatCurrencyBRL(item.value)}`} style={{ width: `${Math.max(4, item.percent)}%`, backgroundColor: item.color }} />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="rounded-[14px] border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500">Sem gastos no credito neste mes.</p>
+          )}
+          {!loading && items.length > 0 && <div className="mt-3"><DistributionLegend items={items.slice(0, 4)} /></div>}
+        </div>
+
+        <button type="button" onClick={onOpen} className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 text-sm font-extrabold text-slate-700 transition-colors hover:border-blue-200 hover:text-primary">
+          Ver distribuicao
+        </button>
+      </div>
+    </section>
+  )
+}
+
+function CardFilterRail({
+  sections,
+  selectedCardId,
+  cardColors,
+  onSelect,
+  onNewCard,
+}: {
+  sections: CardOwnerSection[]
+  selectedCardId: string | null
+  cardColors: Record<string, string>
+  onSelect: (cardId: string) => void
+  onNewCard: () => void
+}) {
+  return (
+    <section className="rounded-[20px] border border-slate-200 bg-white p-4 shadow-[0_12px_34px_rgba(15,23,42,0.04)]">
+      <div className="flex flex-col gap-4">
+        {sections.map((section) => (
+          <div key={section.id} className="min-w-0">
+            <p className="mb-2 px-1 text-[11px] font-extrabold tracking-[0.14em] text-slate-400">{section.label}</p>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {section.cards.map((card) => {
+                const accent = getCardAccentColor(card.id, cardColors)
+                const active = selectedCardId === card.id
+                return (
+                  <button
+                    key={card.id}
+                    type="button"
+                    onClick={() => onSelect(card.id)}
+                    className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-extrabold transition-all ${active ? 'border-transparent text-white shadow-[0_12px_24px_rgba(15,23,42,0.14)]' : 'border-slate-200 bg-white text-slate-700 hover:-translate-y-0.5 hover:border-slate-300'}`}
+                    style={active ? { backgroundColor: accent } : undefined}
+                  >
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: active ? '#fff' : accent }} />
+                    {card.name}
+                  </button>
+                )
+              })}
+              <button type="button" onClick={onNewCard} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-dashed border-slate-300 bg-slate-50 text-slate-500 transition-colors hover:border-blue-200 hover:text-primary" title="Novo cartao">
+                <Plus className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function CreditPurchaseRow({
+  item,
+  charge,
+  onEdit,
+  onDelete,
+}: {
+  item: FutureItem
+  charge?: CreditCardChargeItem | null
+  onEdit: (charge: CreditCardChargeItem) => void
+  onDelete: (charge: CreditCardChargeItem) => void
+}) {
+  const categoryName = item.category?.name ?? charge?.category?.name ?? 'Sem categoria'
+  const categoryColor = getCategoryHexColor(item.category?.id ?? charge?.category?.id ?? categoryName, charge?.category?.color)
+
+  return (
+    <div className="grid gap-3 border-t border-slate-100 px-4 py-3 first:border-t-0 md:grid-cols-[1fr_1.4fr_0.65fr_0.8fr_0.8fr_34px] md:items-center">
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: categoryColor }} />
+        <span className="truncate text-xs font-bold text-slate-600">{categoryName}</span>
+      </div>
+      <p className="truncate text-sm font-extrabold text-slate-900">{item.description ?? charge?.description ?? 'Sem descricao'}</p>
+      <p className="text-xs font-bold text-slate-500">{installmentTableLabel(item.installmentNumber, item.installmentCount)}</p>
+      <span className={`w-fit rounded-full px-2.5 py-1 text-[11px] font-extrabold ${forecastStatusBadge(item.status)}`}>{forecastStatusLabel(item.status)}</span>
+      <p className="text-sm font-extrabold text-slate-950 md:text-right">{formatCurrencyBRL(item.amount)}</p>
+      <Menu as="div" className="relative">
+        <MenuButton className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800">
+          <MoreHorizontal className="h-4 w-4" />
+        </MenuButton>
+        <MenuItems className="absolute right-0 z-20 mt-2 w-40 rounded-xl border border-slate-200 bg-white p-1 text-sm shadow-xl outline-none">
+          <MenuItem>
+            {({ focus }) => (
+              <button type="button" disabled={!charge} onClick={() => charge && onEdit(charge)} className={`w-full rounded-lg px-3 py-2 text-left font-medium disabled:cursor-not-allowed disabled:text-slate-300 ${focus ? 'bg-slate-50 text-slate-900' : 'text-slate-700'}`}>Editar compra</button>
+            )}
+          </MenuItem>
+          <MenuItem>
+            {({ focus }) => (
+              <button type="button" disabled={!charge} onClick={() => charge && onDelete(charge)} className={`w-full rounded-lg px-3 py-2 text-left font-medium disabled:cursor-not-allowed disabled:text-slate-300 ${focus ? 'bg-red-50 text-red-700' : 'text-red-600'}`}>Excluir</button>
+            )}
+          </MenuItem>
+        </MenuItems>
+      </Menu>
+    </div>
+  )
+}
+
+function InstallmentPlanRow({
+  plan,
+  onEdit,
+  onDelete,
+}: {
+  plan: FutureInstallmentPlan
+  onEdit: (plan: FutureInstallmentPlan) => void
+  onDelete: (plan: FutureInstallmentPlan) => void
+}) {
+  const progress = getPlanProgress(plan)
+  const status = normalizePlanStatus(plan.status ?? null)
+  const monthly = getPlanMonthlyAmount(plan)
+
+  return (
+    <div className="grid gap-3 border-t border-slate-100 px-4 py-3 first:border-t-0 md:grid-cols-[1.2fr_0.75fr_0.9fr_0.9fr_0.8fr_34px] md:items-center">
+      <div className="min-w-0">
+        <p className="truncate text-sm font-extrabold text-slate-900">{plan.description}</p>
+        <p className="mt-1 text-xs font-bold text-slate-500">Parcela {progress.installmentNumber} de {Number(plan.installmentCount || 1)}</p>
+      </div>
+      <span className={`w-fit rounded-full px-2.5 py-1 text-[11px] font-extrabold ${status === 'active' ? 'bg-sky-100 text-sky-700' : status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700'}`}>{status === 'active' ? 'Ativo' : status === 'completed' ? 'Concluido' : 'Cancelado'}</span>
+      <div><p className="text-sm font-extrabold text-slate-950">{formatCurrencyBRL(plan.totalAmount)}</p><p className="mt-1 text-xs font-medium text-slate-500">Total</p></div>
+      <div><p className="text-sm font-extrabold text-slate-950">{formatDateShort(progress.nextDueDate)}</p><p className="mt-1 text-xs font-medium text-slate-500">Proximo vencimento</p></div>
+      <div><p className="text-sm font-extrabold text-slate-950">{formatCurrencyBRL(monthly)}</p><p className="mt-1 text-xs font-medium text-slate-500">Por mes</p></div>
+      <Menu as="div" className="relative">
+        <MenuButton className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"><MoreHorizontal className="h-4 w-4" /></MenuButton>
+        <MenuItems className="absolute right-0 z-20 mt-2 w-40 rounded-xl border border-slate-200 bg-white p-1 text-sm shadow-xl outline-none">
+          <MenuItem>{({ focus }) => <button type="button" onClick={() => onEdit(plan)} className={`w-full rounded-lg px-3 py-2 text-left font-medium ${focus ? 'bg-slate-50 text-slate-900' : 'text-slate-700'}`}>Editar</button>}</MenuItem>
+          <MenuItem>{({ focus }) => <button type="button" onClick={() => onDelete(plan)} className={`w-full rounded-lg px-3 py-2 text-left font-medium ${focus ? 'bg-red-50 text-red-700' : 'text-red-600'}`}>Excluir</button>}</MenuItem>
+        </MenuItems>
+      </Menu>
+    </div>
+  )
+}
+
+function SelectedCardHud({
+  card,
+  ownerLabel,
+  cardColor,
+  invoiceGroup,
+  purchases,
+  installments,
+  distribution,
+  loadingPurchases,
+  payingStatement,
+  onCreateCard,
+  onCreateCharge,
+  onManageCard,
+  onPayStatement,
+  onOpenPurchases,
+  onOpenInstallments,
+  onOpenHistory,
+  onEditPurchase,
+  onDeletePurchase,
+  onEditPlan,
+  onDeletePlan,
+}: {
+  card: CreditCardResponse | null
+  ownerLabel?: string
+  cardColor: string
+  invoiceGroup: InvoiceGroup | null
+  purchases: Array<{ item: FutureItem; charge?: CreditCardChargeItem | null }>
+  installments: FutureInstallmentPlan[]
+  distribution: CreditDistributionItem[]
+  loadingPurchases: boolean
+  payingStatement: boolean
+  onCreateCard: () => void
+  onCreateCharge: () => void
+  onManageCard: (cardId?: string) => void
+  onPayStatement: () => void
+  onOpenPurchases: () => void
+  onOpenInstallments: () => void
+  onOpenHistory: () => void
+  onEditPurchase: (charge: CreditCardChargeItem) => void
+  onDeletePurchase: (charge: CreditCardChargeItem) => void
+  onEditPlan: (plan: FutureInstallmentPlan) => void
+  onDeletePlan: (plan: FutureInstallmentPlan) => void
+}) {
+  if (!card) {
+    return (
+      <section className="flex min-h-[320px] flex-col items-center justify-center rounded-[22px] border border-dashed border-slate-200 bg-white px-6 py-12 text-center shadow-[0_14px_38px_rgba(15,23,42,0.04)]">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-sky-50 text-primary"><WalletCards className="h-7 w-7" /></div>
+        <h2 className="mt-5 text-base font-extrabold text-slate-950">Nenhum cartao ativo</h2>
+        <p className="mt-2 max-w-xl text-sm font-medium text-slate-500">Cadastre um cartao para acompanhar fatura, compras, parcelamentos e historico em uma unica HUD.</p>
+        <button type="button" onClick={onCreateCard} className="mt-6 inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-extrabold text-white transition-colors hover:bg-secondary"><Plus className="h-4 w-4" />Novo cartao</button>
+      </section>
+    )
+  }
+
+  const statementStatus = getStatementDisplayStatus(invoiceGroup?.statement)
+  const invoiceTotal = invoiceGroup?.totalAmount ?? 0
+  const visiblePurchases = purchases.slice(0, 7)
+  const visibleInstallments = installments.slice(0, 7)
+
+  return (
+    <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <div className="space-y-4">
+        <article className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-[0_16px_44px_rgba(15,23,42,0.06)]">
+          <div className="h-2" style={{ backgroundColor: cardColor }} />
+          <div className="grid gap-5 p-5 lg:grid-cols-[1fr_auto] lg:items-start">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="h-3 w-3 rounded-full" style={{ backgroundColor: cardColor }} />
+                <h2 className="truncate text-xl font-extrabold text-slate-950">{formatCardDisplayName(card)}</h2>
+                {ownerLabel && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-extrabold text-slate-500">{ownerLabel}</span>}
+                <span className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold ${statementStatusBadge(statementStatus)}`}>{statementStatusLabel(statementStatus)}</span>
+              </div>
+              <p className="mt-4 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Fatura atual</p>
+              <p className="mt-1 text-4xl font-extrabold tracking-normal text-slate-950">{formatCurrencyBRL(invoiceTotal)}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[520px]">
+              <div className="rounded-[16px] bg-slate-50 px-4 py-3"><p className="text-[11px] font-bold text-slate-500">Vence</p><p className="mt-1 text-sm font-extrabold text-slate-950">{formatDateShort(invoiceGroup?.statement?.dueAt)}</p></div>
+              <div className="rounded-[16px] bg-slate-50 px-4 py-3"><p className="text-[11px] font-bold text-slate-500">Fecha</p><p className="mt-1 text-sm font-extrabold text-slate-950">{formatDateShort(invoiceGroup?.statement?.closingAt)}</p></div>
+              <div className="rounded-[16px] bg-slate-50 px-4 py-3"><p className="text-[11px] font-bold text-slate-500">Compras</p><p className="mt-1 text-sm font-extrabold text-slate-950">{purchases.length}</p></div>
+              <div className="rounded-[16px] bg-slate-50 px-4 py-3"><p className="text-[11px] font-bold text-slate-500">Parcelas</p><p className="mt-1 text-sm font-extrabold text-slate-950">{installments.length}</p></div>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 border-t border-slate-100 px-5 py-4">
+            <button type="button" onClick={onCreateCharge} className="inline-flex h-10 items-center gap-2 rounded-full bg-primary px-4 text-sm font-extrabold text-white transition-colors hover:bg-secondary"><Plus className="h-4 w-4" />Compra no credito</button>
+            <button type="button" onClick={() => onManageCard(card.id)} className="inline-flex h-10 items-center gap-2 rounded-full border border-slate-200 px-4 text-sm font-extrabold text-slate-700 transition-colors hover:border-blue-200 hover:text-primary"><WalletCards className="h-4 w-4" />Gerenciar cartao</button>
+            <button type="button" onClick={onOpenHistory} className="inline-flex h-10 items-center gap-2 rounded-full border border-slate-200 px-4 text-sm font-extrabold text-slate-700 transition-colors hover:border-blue-200 hover:text-primary"><BarChart3 className="h-4 w-4" />Ver historico</button>
+            {invoiceGroup?.statement?.id && statementStatus !== 'paid' && (
+              <button type="button" onClick={onPayStatement} disabled={payingStatement} className="inline-flex h-10 items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 text-sm font-extrabold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"><CheckCircle2 className="h-4 w-4" />{payingStatement ? 'Pagando...' : 'Pagar fatura'}</button>
+            )}
+          </div>
+        </article>
+
+        <div className="grid gap-4 2xl:grid-cols-2">
+          <article className="overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_12px_34px_rgba(15,23,42,0.04)]">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+              <div><h3 className="text-sm font-extrabold text-slate-950">Compras da fatura atual</h3><p className="mt-1 text-xs font-medium text-slate-500">Ate 7 compras recentes deste ciclo.</p></div>
+              {purchases.length > 7 && <button type="button" onClick={onOpenPurchases} className="text-xs font-extrabold text-primary hover:text-secondary">Ver todas as {purchases.length}</button>}
+            </div>
+            {loadingPurchases ? (
+              <div className="space-y-3 p-4">{[1, 2, 3].map((item) => <div key={item} className="h-12 animate-pulse rounded-xl bg-slate-100" />)}</div>
+            ) : visiblePurchases.length ? (
+              visiblePurchases.map((purchase) => <CreditPurchaseRow key={purchase.item.id} item={purchase.item} charge={purchase.charge} onEdit={onEditPurchase} onDelete={onDeletePurchase} />)
+            ) : (
+              <div className="px-5 py-8 text-sm font-medium text-slate-500">Nenhuma compra nesta fatura.</div>
+            )}
+          </article>
+
+          <article className="overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_12px_34px_rgba(15,23,42,0.04)]">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+              <div><h3 className="text-sm font-extrabold text-slate-950">Parcelamentos</h3><p className="mt-1 text-xs font-medium text-slate-500">Planos vinculados a este cartao.</p></div>
+              {installments.length > 7 && <button type="button" onClick={onOpenInstallments} className="text-xs font-extrabold text-primary hover:text-secondary">Ver todos os {installments.length}</button>}
+            </div>
+            {visibleInstallments.length ? (
+              visibleInstallments.map((plan) => <InstallmentPlanRow key={plan.id} plan={plan} onEdit={onEditPlan} onDelete={onDeletePlan} />)
+            ) : (
+              <div className="px-5 py-8 text-sm font-medium text-slate-500">Nenhum parcelamento ativo neste cartao.</div>
+            )}
+          </article>
+        </div>
+      </div>
+
+      <aside className="rounded-[22px] border border-slate-200 bg-white p-5 shadow-[0_16px_44px_rgba(15,23,42,0.05)]">
+        <div className="mb-4"><h3 className="text-sm font-extrabold text-slate-950">Distribuicao de gastos</h3><p className="mt-1 text-xs font-medium text-slate-500">O que esta consumindo a fatura selecionada.</p></div>
+        <CreditDistributionChart items={distribution} height={260} />
+        <div className="mt-5"><DistributionLegend items={distribution} /></div>
+      </aside>
+    </section>
+  )
+}
+
+function CreditDistributionModal({
+  open,
+  title,
+  items,
+  onClose,
+}: {
+  open: boolean
+  title: string
+  items: CreditDistributionItem[]
+  onClose: () => void
+}) {
+  return (
+    <Dialog open={open} onClose={onClose} className="relative z-50">
+      <div className="fixed inset-0 bg-slate-950/30" aria-hidden="true" />
+      <div className="fixed inset-0 flex items-center justify-center p-4">
+        <DialogPanel className="w-full max-w-4xl rounded-[24px] bg-white p-6 shadow-2xl">
+          <div className="mb-5 flex items-start justify-between gap-4">
+            <div><DialogTitle className="text-lg font-extrabold text-slate-950">{title}</DialogTitle><p className="mt-1 text-sm font-medium text-slate-500">Distribuicao por categoria dos gastos no credito.</p></div>
+            <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+          </div>
+          <div className="grid gap-5 lg:grid-cols-[1.3fr_0.8fr]"><CreditDistributionChart items={items} height={380} /><DistributionLegend items={items} /></div>
+        </DialogPanel>
+      </div>
+    </Dialog>
+  )
+}
+
+function PurchasesModal({
+  open,
+  purchases,
+  onClose,
+  onEdit,
+  onDelete,
+}: {
+  open: boolean
+  purchases: Array<{ item: FutureItem; charge?: CreditCardChargeItem | null }>
+  onClose: () => void
+  onEdit: (charge: CreditCardChargeItem) => void
+  onDelete: (charge: CreditCardChargeItem) => void
+}) {
+  return (
+    <Dialog open={open} onClose={onClose} className="relative z-50">
+      <div className="fixed inset-0 bg-slate-950/30" aria-hidden="true" />
+      <div className="fixed inset-0 flex items-center justify-center p-4">
+        <DialogPanel className="flex max-h-[86vh] w-full max-w-5xl flex-col overflow-hidden rounded-[24px] bg-white shadow-2xl">
+          <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
+            <div><DialogTitle className="text-lg font-extrabold text-slate-950">Compras da fatura</DialogTitle><p className="mt-1 text-sm font-medium text-slate-500">Edite ou exclua compras do ciclo atual.</p></div>
+            <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+          </div>
+          <div className="min-h-0 overflow-y-auto">
+            {purchases.length ? purchases.map((purchase) => <CreditPurchaseRow key={purchase.item.id} item={purchase.item} charge={purchase.charge} onEdit={onEdit} onDelete={onDelete} />) : <div className="px-6 py-10 text-center text-sm font-medium text-slate-500">Nenhuma compra nesta fatura.</div>}
+          </div>
+        </DialogPanel>
+      </div>
+    </Dialog>
+  )
+}
+
+function InstallmentPlansModal({
+  open,
+  plans,
+  onClose,
+  onEdit,
+  onDelete,
+  onOpenManagement,
+}: {
+  open: boolean
+  plans: FutureInstallmentPlan[]
+  onClose: () => void
+  onEdit: (plan: FutureInstallmentPlan) => void
+  onDelete: (plan: FutureInstallmentPlan) => void
+  onOpenManagement: () => void
+}) {
+  return (
+    <Dialog open={open} onClose={onClose} className="relative z-50">
+      <div className="fixed inset-0 bg-slate-950/30" aria-hidden="true" />
+      <div className="fixed inset-0 flex items-center justify-center p-4">
+        <DialogPanel className="flex max-h-[86vh] w-full max-w-5xl flex-col overflow-hidden rounded-[24px] bg-white shadow-2xl">
+          <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
+            <div><DialogTitle className="text-lg font-extrabold text-slate-950">Gerenciamento de parcelamentos</DialogTitle><p className="mt-1 text-sm font-medium text-slate-500">Parcelamentos vinculados ao cartao selecionado.</p></div>
+            <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+          </div>
+          <div className="min-h-0 overflow-y-auto">
+            {plans.length ? plans.map((plan) => <InstallmentPlanRow key={plan.id} plan={plan} onEdit={onEdit} onDelete={onDelete} />) : <div className="px-6 py-10 text-center text-sm font-medium text-slate-500">Nenhum parcelamento ativo neste cartao.</div>}
+          </div>
+          <div className="border-t border-slate-100 px-6 py-4">
+            <button type="button" onClick={onOpenManagement} className="inline-flex h-10 items-center justify-center rounded-full bg-primary px-5 text-sm font-extrabold text-white transition-colors hover:bg-secondary">Abrir gerenciamento completo</button>
+          </div>
+        </DialogPanel>
+      </div>
+    </Dialog>
+  )
+}
+
+function CardHistoryModal({
+  open,
+  title,
+  data,
+  onClose,
+}: {
+  open: boolean
+  title: string
+  data: Array<{ month: string; total: number }>
+  onClose: () => void
+}) {
+  return (
+    <Dialog open={open} onClose={onClose} className="relative z-50">
+      <div className="fixed inset-0 bg-slate-950/30" aria-hidden="true" />
+      <div className="fixed inset-0 flex items-center justify-center p-4">
+        <DialogPanel className="w-full max-w-4xl rounded-[24px] bg-white p-6 shadow-2xl">
+          <div className="mb-5 flex items-start justify-between gap-4">
+            <div><DialogTitle className="text-lg font-extrabold text-slate-950">{title}</DialogTitle><p className="mt-1 text-sm font-medium text-slate-500">Evolucao das faturas por ciclo.</p></div>
+            <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+          </div>
+          {data.length ? (
+            <ResponsiveContainer width="100%" height={360}>
+              <BarChart data={data} margin={{ top: 12, right: 12, bottom: 12, left: 0 }}>
+                <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fill: '#64748B', fontSize: 12 }} />
+                <YAxis tickLine={false} axisLine={false} width={86} tick={{ fill: '#64748B', fontSize: 12 }} tickFormatter={(value) => formatCurrencyBRL(Number(value)).replace(',00', '')} />
+                <Tooltip content={<ChartTooltip />} />
+                <Bar dataKey="total" radius={[8, 8, 0, 0]}>
+                  {data.map((entry, index) => <Cell key={`${entry.month}-${index}`} fill={index % 2 === 0 ? '#0066A3' : '#0EA5E9'} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-[260px] items-center justify-center rounded-[16px] border border-dashed border-slate-200 bg-slate-50 text-sm font-medium text-slate-500">Historico indisponivel para este cartao.</div>
+          )}
+        </DialogPanel>
+      </div>
+    </Dialog>
+  )
+}
+
+function PayStatementConfirmModal({
+  open,
+  cardName,
+  amount,
+  dueAt,
+  closingAt,
+  confirming,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean
+  cardName: string
+  amount: number
+  dueAt?: string | null
+  closingAt?: string | null
+  confirming: boolean
+  onClose: () => void
+  onConfirm: () => void
+}) {
+  return (
+    <Dialog open={open} onClose={confirming ? () => undefined : onClose} className="relative z-50">
+      <div className="fixed inset-0 bg-slate-950/35 backdrop-blur-[1px]" aria-hidden="true" />
+      <div className="fixed inset-0 flex items-center justify-center p-4">
+        <DialogPanel className="w-full max-w-lg overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-2xl">
+          <div className="border-b border-slate-100 px-6 py-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <DialogTitle className="text-lg font-extrabold text-slate-950">
+                  Confirmar pagamento da fatura
+                </DialogTitle>
+                <p className="mt-1 text-sm font-medium text-slate-500">
+                  Revise antes de marcar esta fatura como paga.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={confirming}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Fechar"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-5 px-6 py-5">
+            <div className="rounded-[18px] border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">{cardName}</p>
+              <p className="mt-2 text-3xl font-extrabold text-slate-950">{formatCurrencyBRL(amount)}</p>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="rounded-[14px] bg-white px-3 py-2">
+                  <p className="text-[11px] font-bold text-slate-500">Vencimento</p>
+                  <p className="mt-1 text-sm font-extrabold text-slate-950">{formatDateShort(dueAt)}</p>
+                </div>
+                <div className="rounded-[14px] bg-white px-3 py-2">
+                  <p className="text-[11px] font-bold text-slate-500">Fechamento</p>
+                  <p className="mt-1 text-sm font-extrabold text-slate-950">{formatDateShort(closingAt)}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[18px] border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900">
+              As compras deste ciclo entram nas transacoes, as parcelas do mes ficam pagas e as parcelas futuras continuam abertas.
+            </div>
+          </div>
+
+          <div className="flex flex-col-reverse gap-2 border-t border-slate-100 px-6 py-4 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={confirming}
+              className="inline-flex h-11 items-center justify-center rounded-full border border-slate-200 px-5 text-sm font-extrabold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={confirming}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-emerald-600 px-5 text-sm font-extrabold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              {confirming ? 'Confirmando...' : 'Confirmar pagamento'}
+            </button>
+          </div>
+        </DialogPanel>
+      </div>
+    </Dialog>
+  )
+}
+
 export default function FuturosPage() {
   const t = useTranslations('futurosPage')
   const locale = useLocale()
+  const { user } = useUserSession()
+  const { houseContext, currentUserId, scopeKey } = useFinancialScope()
+  const currentUserName = user?.userData?.user?.name ?? user?.userData?.user?.email ?? ''
+  const managementSectionRef = useRef<HTMLElement | null>(null)
 
   const planSchema = useMemo(() => buildPlanSchema(t), [t])
   const installmentEditSchema = useMemo(() => buildInstallmentEditSchema(t), [t])
@@ -837,6 +1613,15 @@ export default function FuturosPage() {
   const [cardColors, setCardColors] = useState<Record<string, string>>(() =>
     readCreditCardColorMap()
   )
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
+  const [distributionModalOpen, setDistributionModalOpen] = useState(false)
+  const [purchasesModalOpen, setPurchasesModalOpen] = useState(false)
+  const [installmentPlansModalOpen, setInstallmentPlansModalOpen] = useState(false)
+  const [historyModalOpen, setHistoryModalOpen] = useState(false)
+  const [chargeDrawerOpen, setChargeDrawerOpen] = useState(false)
+  const [editingCharge, setEditingCharge] = useState<CreditCardChargeItem | null>(null)
+  const [deleteChargeTarget, setDeleteChargeTarget] = useState<CreditCardChargeItem | null>(null)
+  const [payStatementConfirmOpen, setPayStatementConfirmOpen] = useState(false)
 
   const toggleGroup = (key: string) => {
     setClosedGroups((prev) => {
@@ -874,7 +1659,7 @@ export default function FuturosPage() {
 
   // ── Queries ─────────────────────────────────────────────────────────────────
   const { categoriesQuery } = useCategories()
-  const { cardQuery } = useCardMutations()
+  const { cardQuery, payStatementMutation } = useCardMutations()
   const {
     createPlanMutation,
     updatePlanMutation,
@@ -894,6 +1679,17 @@ export default function FuturosPage() {
     return computeForecastParams(period)
   }, [filters.from, filters.to, period])
   const forecastQuery = useFutureForecast(forecastParams)
+  const currentMonthForecastParams = useMemo(() => getCurrentMonthRange(), [])
+  const currentMonthForecastQuery = useFutureForecast(currentMonthForecastParams)
+  const {
+    chargesQuery: selectedCardChargesQuery,
+    deleteChargeMutation,
+  } = useCreditCardCharges({
+    cardId: selectedCardId ?? undefined,
+    page: 1,
+    limit: 300,
+    enabled: Boolean(selectedCardId),
+  })
 
   const plansQuery = useFuturePlans({
     from: filters.from || undefined,
@@ -922,7 +1718,6 @@ export default function FuturosPage() {
   )
 
   // ── Derived forecast data ────────────────────────────────────────────────────
-  const totals = forecastQuery.data?.totals
   const upcoming = useMemo(
     () => (forecastQuery.data?.upcoming ?? []) as FutureItem[],
     [forecastQuery.data]
@@ -977,9 +1772,36 @@ export default function FuturosPage() {
   const hasExpenseItems = creditCardGroups.length > 0 || otherCommitments.length > 0
   const hasAnyForecastItem = filteredUpcoming.length > 0
 
-  const forecastBalance = (totals?.toReceive ?? 0) - (totals?.toPay ?? 0)
-  const creditCardCount = totals?.creditCardCount ?? creditCardGroups.reduce((sum, group) => sum + group.items.length, 0)
-  const installmentPlanCount = totals?.installmentPlanCount ?? otherCommitments.length + incomeItems.length
+  const cards = useMemo(
+    () => (cardQuery.data ?? []).filter((card) => card.isActive !== false),
+    [cardQuery.data]
+  )
+  const cardOwnerSections = useMemo(
+    () => getCardOwnerSections({ cards, houseContext, currentUserId, currentUserName }),
+    [cards, currentUserId, currentUserName, houseContext]
+  )
+  const currentMonthUpcoming = useMemo(
+    () => (currentMonthForecastQuery.data?.upcoming ?? []) as FutureItem[],
+    [currentMonthForecastQuery.data]
+  )
+  const currentMonthCreditGroups = useMemo(
+    () => groupCreditCardInvoices(currentMonthUpcoming),
+    [currentMonthUpcoming]
+  )
+  const creditInvoiceTotalThisMonth = useMemo(
+    () => currentMonthCreditGroups.reduce((sum, group) => sum + Number(group.totalAmount || 0), 0),
+    [currentMonthCreditGroups]
+  )
+  const incomeTotalThisMonth = currentMonthForecastQuery.data?.totals?.toReceive ?? 0
+  const incomeCountThisMonth = currentMonthUpcoming.filter((item) => item.type === 'INCOME').length
+  const creditInstallmentTotalThisMonth = useMemo(
+    () =>
+      currentMonthUpcoming
+        .filter((item) => item.sourceType === 'installment_plan' && item.paymentType === 'CREDIT_CARD' && item.type !== 'INCOME' && isWithinCurrentMonth(item.dueDate))
+        .reduce((sum, item) => sum + Number(item.amount || 0), 0),
+    [currentMonthUpcoming]
+  )
+  const activeCreditCardCount = cards.length
   const cardMetricsById = useMemo(
     () =>
       allCreditCardGroups.reduce<Record<string, CreditCardMetrics>>((acc, group) => {
@@ -995,6 +1817,120 @@ export default function FuturosPage() {
       }, {}),
     [allCreditCardGroups]
   )
+
+  useEffect(() => {
+    if (!cards.length) {
+      setSelectedCardId(null)
+      return
+    }
+    if (selectedCardId && cards.some((card) => card.id === selectedCardId)) return
+    setSelectedCardId(cards[0].id)
+  }, [cards, scopeKey, selectedCardId])
+
+  const selectedCard = useMemo(
+    () => cards.find((card) => card.id === selectedCardId) ?? null,
+    [cards, selectedCardId]
+  )
+  const selectedCardOwnerLabel = useMemo(() => {
+    if (!selectedCard) return undefined
+    const section = cardOwnerSections.find((item) => item.cards.some((card) => card.id === selectedCard.id))
+    return section?.label
+  }, [cardOwnerSections, selectedCard])
+
+  const selectedCardGroups = useMemo(
+    () => allCreditCardGroups.filter((group) => group.card?.id === selectedCardId),
+    [allCreditCardGroups, selectedCardId]
+  )
+  const selectedInvoiceGroup = useMemo(() => {
+    if (!selectedCardGroups.length) return null
+    return (
+      selectedCardGroups.find((group) => getStatementDisplayStatus(group.statement) === 'open') ??
+      selectedCardGroups.find((group) => getStatementDisplayStatus(group.statement) === 'invoiced') ??
+      selectedCardGroups[0]
+    )
+  }, [selectedCardGroups])
+
+  const selectedCardCharges = useMemo(
+    () => selectedCardChargesQuery.data?.charges ?? [],
+    [selectedCardChargesQuery.data?.charges]
+  )
+  const chargeByStatementInstallmentId = useMemo(() => {
+    const map = new Map<string, CreditCardChargeItem>()
+    selectedCardCharges.forEach((charge) => {
+      map.set(charge.id, charge)
+      charge.installments?.forEach((installment) => {
+        map.set(installment.id, charge)
+      })
+    })
+    return map
+  }, [selectedCardCharges])
+  const selectedInvoicePurchases = useMemo(
+    () =>
+      (selectedInvoiceGroup?.items ?? []).map((item) => ({
+        item,
+        charge: chargeByStatementInstallmentId.get(item.id) ?? null,
+      })),
+    [chargeByStatementInstallmentId, selectedInvoiceGroup?.items]
+  )
+  const selectedCardInstallmentPlans = useMemo(
+    () =>
+      (plansQuery.data?.plans ?? []).filter(
+        (plan) =>
+          normalizePlanStatus(plan.status ?? null) !== 'canceled' &&
+          plan.paymentType === 'CREDIT_CARD' &&
+          plan.cardId === selectedCardId
+      ),
+    [plansQuery.data?.plans, selectedCardId]
+  )
+
+  const selectedCardDistribution = useMemo(
+    () =>
+      buildCreditDistribution(
+        selectedInvoicePurchases.map(({ item, charge }) => ({
+          categoryId: item.category?.id ?? charge?.category?.id ?? null,
+          categoryName: item.category?.name ?? charge?.category?.name ?? 'Sem categoria',
+          categoryColor: charge?.category?.color ?? null,
+          amount: Number(item.amount || 0),
+        }))
+      ),
+    [selectedInvoicePurchases]
+  )
+
+  const monthCreditDistribution = useMemo(
+    () =>
+      buildCreditDistribution(
+        currentMonthUpcoming
+          .filter((item) => item.sourceType === 'credit_card_statement_installment')
+          .map((item) => ({
+            categoryId: item.category?.id ?? null,
+            categoryName: item.category?.name ?? 'Sem categoria',
+            amount: Number(item.amount || 0),
+          }))
+      ),
+    [currentMonthUpcoming]
+  )
+
+  const selectedCardHistoryData = useMemo(() => {
+    const map = new Map<string, number>()
+    selectedCardCharges.forEach((charge) => {
+      charge.installments?.forEach((installment) => {
+        const key = installment.statementMonthKey || installment.statementDueAt?.slice(0, 7)
+        if (!key) return
+        map.set(key, (map.get(key) ?? 0) + Number(installment.amount || 0))
+      })
+    })
+    if (map.size === 0) {
+      selectedCardGroups.forEach((group) => {
+        const key = group.statement?.cycleKey
+        if (!key) return
+        map.set(key, (map.get(key) ?? 0) + Number(group.totalAmount || 0))
+      })
+    }
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-12)
+      .map(([month, total]) => ({ month: formatCycleKey(month).replace('Fatura ', ''), total }))
+  }, [selectedCardCharges, selectedCardGroups])
 
   useEffect(() => {
     if (forecastQuery.isLoading) return
@@ -1143,6 +2079,30 @@ export default function FuturosPage() {
     setCardManagerOpen(true)
   }
 
+  const openEditCardForm = (cardId?: string) => {
+    setEditingCardId(cardId ?? selectedCardId)
+    setCardManagerView('form')
+    setCardManagerOpen(true)
+  }
+
+  const openInstallmentsManagement = () => {
+    setShowManagement(true)
+    setInstallmentPlansModalOpen(false)
+    window.setTimeout(() => {
+      managementSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 80)
+  }
+
+  const openChargeDrawer = (charge?: CreditCardChargeItem | null) => {
+    setEditingCharge(charge ?? null)
+    setChargeDrawerOpen(true)
+  }
+
+  const closeChargeDrawer = () => {
+    setChargeDrawerOpen(false)
+    setEditingCharge(null)
+  }
+
   const handleCardColorSaved = (cardId: string, color: string) => {
     persistCardColors({ ...cardColors, [cardId]: color })
   }
@@ -1151,6 +2111,38 @@ export default function FuturosPage() {
     const next = { ...cardColors }
     delete next[cardId]
     persistCardColors(next)
+  }
+
+  const onDeleteCharge = async () => {
+    if (!deleteChargeTarget?.id) return
+    try {
+      await deleteChargeMutation.mutateAsync(deleteChargeTarget.id)
+      setDeleteChargeTarget(null)
+      toast.success('Compra excluida')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao excluir compra.')
+    }
+  }
+
+  const requestPaySelectedStatement = () => {
+    if (!selectedInvoiceGroup?.statement?.id) return
+    setPayStatementConfirmOpen(true)
+  }
+
+  const confirmPaySelectedStatement = async () => {
+    const statementId = selectedInvoiceGroup?.statement?.id
+    if (!statementId) return
+
+    try {
+      await payStatementMutation.mutateAsync({
+        statementId,
+        data: { paidAt: new Date().toISOString() },
+      })
+      setPayStatementConfirmOpen(false)
+      toast.success('Fatura marcada como paga')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao pagar fatura.')
+    }
   }
 
   const openCreatePlanModal = () => {
@@ -1351,6 +2343,101 @@ export default function FuturosPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
+  const filtersPanel = (
+    <section className="rounded-[20px] border border-slate-200 bg-white/95 p-4 shadow-[0_24px_70px_rgba(15,23,42,0.18)] backdrop-blur">
+      <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="text-sm font-extrabold text-slate-900">Filtros</h2>
+          <p className="mt-1 text-xs font-medium text-slate-500">Refine periodo, tipo e status sem sair da central.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowFilters(false)}
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900"
+          aria-label="Fechar filtros"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 items-end gap-3 pt-4 md:grid-cols-2 xl:grid-cols-6">
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-bold text-slate-600">{t('filters.from')}</span>
+          <input
+            type="date"
+            value={filters.from}
+            onChange={(e) => {
+              setPlanPage(1)
+              setFilters((p) => ({ ...p, from: e.target.value, page: 1 }))
+            }}
+            className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-primary"
+          />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-bold text-slate-600">{t('filters.to')}</span>
+          <input
+            type="date"
+            value={filters.to}
+            onChange={(e) => {
+              setPlanPage(1)
+              setFilters((p) => ({ ...p, to: e.target.value, page: 1 }))
+            }}
+            className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-primary"
+          />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-bold text-slate-600">{t('filters.type')}</span>
+          <select
+            value={filters.type}
+            onChange={(e) => {
+              setPlanPage(1)
+              setFilters((p) => ({ ...p, type: e.target.value as '' | FutureType, page: 1 }))
+            }}
+            className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-primary"
+          >
+            {typeOptions.map((opt) => <option key={opt.label} value={opt.value}>{opt.label}</option>)}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-bold text-slate-600">{t('filters.installmentStatus')}</span>
+          <select
+            value={filters.status}
+            onChange={(e) => {
+              setPlanPage(1)
+              setFilters((p) => ({ ...p, status: e.target.value as '' | FutureStatus, page: 1 }))
+            }}
+            className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-primary"
+          >
+            {statusOptions.map((opt) => <option key={opt.label} value={opt.value}>{opt.label}</option>)}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-bold text-slate-600">{t('filters.installmentsPerPage')}</span>
+          <select
+            value={filters.limit}
+            onChange={(e) => {
+              setPlanPage(1)
+              setFilters((p) => ({ ...p, limit: Number(e.target.value), page: 1 }))
+            }}
+            className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-primary"
+          >
+            {[10, 20, 30, 50].map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
+        <button
+          type="button"
+          onClick={() => {
+            setPlanPage(1)
+            setFilters({ from: '', to: '', type: '', status: '', page: 1, limit: 10 })
+          }}
+          className="h-11 rounded-full border border-slate-200 bg-white px-4 text-sm font-extrabold text-slate-700 transition-colors hover:border-blue-200 hover:text-primary"
+        >
+          Limpar
+        </button>
+      </div>
+    </section>
+  )
+
   return (
     <section className="min-h-full w-full bg-[#F6F9FC] px-4 pb-24 pt-6 lg:px-8 lg:pb-10">
       <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-6">
@@ -1362,26 +2449,37 @@ export default function FuturosPage() {
             <div className="min-w-0">
               <h1 className="text-3xl font-extrabold tracking-normal text-slate-950">Futuros</h1>
               <p className="mt-2 text-sm font-extrabold text-slate-700">
-                Acompanhe seus ganhos e despesas futuras.
+                Central de gestao de cartoes, faturas, compras no credito e parcelamentos.
               </p>
               <p className="mt-1 max-w-3xl text-sm font-medium text-slate-500">
-                Tudo que ainda vai vencer, organizado para você se planejar melhor.
+                Troque de cartao no filtro superior e acompanhe a HUD sem multiplicar containers.
               </p>
             </div>
           </div>
 
-          <Button
-            type="button"
-            variant="default"
-            onClick={openCreatePlanModal}
-            className="h-12 w-auto rounded-full px-5 text-sm font-extrabold shadow-[0_14px_28px_rgba(0,102,163,0.24)]"
-          >
-            <Plus className="h-4 w-4" />
-            Transação Futura
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="default"
+              onClick={() => openChargeDrawer(null)}
+              className="h-12 w-auto rounded-full px-5 text-sm font-extrabold shadow-[0_14px_28px_rgba(0,102,163,0.24)]"
+            >
+              <CreditCard className="h-4 w-4" />
+              Compra no credito
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={openCreatePlanModal}
+              className="h-12 w-auto rounded-full px-5 text-sm font-extrabold"
+            >
+              <Plus className="h-4 w-4" />
+              transação futura
+            </Button>
+          </div>
         </header>
 
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="relative z-40 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap gap-2.5">
             {(Object.keys(PERIOD_LABELS) as PeriodOption[]).map((p) => (
               <button
@@ -1416,52 +2514,88 @@ export default function FuturosPage() {
             Filtros
             <ChevronDown className={`h-4 w-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
           </button>
+
+          {showFilters && (
+            <div className="absolute left-0 right-0 top-[calc(100%+12px)] z-50 max-h-[calc(100vh-180px)] overflow-y-auto">
+              {filtersPanel}
+            </div>
+          )}
         </div>
 
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <SummaryCard
             title="A pagar"
-            value={formatCurrencyBRL(totals?.toPay ?? 0)}
-            subtext={`${Math.max(0, otherCommitments.length + creditCardCount)} itens`}
+            value={formatCurrencyBRL(creditInvoiceTotalThisMonth)}
+            subtext={`${activeCreditCardCount} ${activeCreditCardCount === 1 ? 'cartao' : 'cartoes'}`}
             icon={ArrowDownRight}
             tone="red"
-            loading={loadingCards}
+            loading={currentMonthForecastQuery.isLoading}
           />
           <SummaryCard
             title="A receber"
-            value={formatCurrencyBRL(totals?.toReceive ?? 0)}
-            subtext={`${incomeItems.length} itens`}
+            value={formatCurrencyBRL(incomeTotalThisMonth)}
+            subtext={incomeCountThisMonth > 0 ? `${incomeCountThisMonth} entradas futuras` : 'Entradas futuras'}
             icon={ArrowUpRight}
             tone="green"
-            loading={loadingCards}
+            loading={currentMonthForecastQuery.isLoading}
           />
           <SummaryCard
-            title="Pendentes"
-            value={totals?.pendingCount ?? 0}
-            subtext="Em aberto"
-            icon={Clock3}
-            tone="amber"
-            loading={loadingCards}
-          />
-          <SummaryCard
-            title="Cartão de crédito"
-            value={creditCardCount}
-            subtext="Faturas e parcelas"
+            title="Cartao de credito"
+            value={activeCreditCardCount}
+            subtext="Gerenciar cartoes"
             icon={WalletCards}
             tone="blue"
-            loading={loadingCards}
+            loading={cardQuery.isLoading}
+            onClick={openCardManagerList}
           />
           <SummaryCard
             title="Parcelamentos"
-            value={installmentPlanCount}
-            subtext="Outros compromissos"
+            value={formatCurrencyBRL(creditInstallmentTotalThisMonth)}
+            subtext={`As parcelas dos seus cartoes somam ${formatCurrencyBRL(creditInstallmentTotalThisMonth)} este mes.`}
             icon={LayoutGrid}
             tone="purple"
-            loading={loadingCards}
+            loading={currentMonthForecastQuery.isLoading}
+            onClick={openInstallmentsManagement}
           />
         </section>
 
-        <ForecastBalanceCard value={forecastBalance} loading={loadingCards} />
+        <CreditMonthDistributionCard
+          total={creditInvoiceTotalThisMonth}
+          items={monthCreditDistribution}
+          loading={currentMonthForecastQuery.isLoading}
+          onOpen={() => setDistributionModalOpen(true)}
+        />
+
+        <CardFilterRail
+          sections={cardOwnerSections}
+          selectedCardId={selectedCardId}
+          cardColors={cardColors}
+          onSelect={setSelectedCardId}
+          onNewCard={openNewCardForm}
+        />
+
+        <SelectedCardHud
+          card={selectedCard}
+          ownerLabel={selectedCardOwnerLabel}
+          cardColor={getCardAccentColor(selectedCard?.id, cardColors)}
+          invoiceGroup={selectedInvoiceGroup}
+          purchases={selectedInvoicePurchases}
+          installments={selectedCardInstallmentPlans}
+          distribution={selectedCardDistribution}
+          loadingPurchases={selectedCardChargesQuery.isLoading}
+          payingStatement={payStatementMutation.isPending}
+          onCreateCard={openNewCardForm}
+          onCreateCharge={() => openChargeDrawer(null)}
+          onManageCard={openEditCardForm}
+          onPayStatement={requestPaySelectedStatement}
+          onOpenPurchases={() => setPurchasesModalOpen(true)}
+          onOpenInstallments={() => setInstallmentPlansModalOpen(true)}
+          onOpenHistory={() => setHistoryModalOpen(true)}
+          onEditPurchase={openChargeDrawer}
+          onDeletePurchase={setDeleteChargeTarget}
+          onEditPlan={openEditPlanModal}
+          onDeletePlan={setDeletePlanTarget}
+        />
 
         {forecastQuery.isError && (
           <div className="flex flex-col gap-3 rounded-[18px] border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700 sm:flex-row sm:items-center sm:justify-between">
@@ -1476,7 +2610,7 @@ export default function FuturosPage() {
           </div>
         )}
 
-        {loadingCards ? (
+        {false && (loadingCards ? (
           <ForecastSkeleton />
         ) : !hasAnyForecastItem ? (
           <>
@@ -1623,82 +2757,13 @@ export default function FuturosPage() {
               </section>
             )}
           </>
-        )}
+        ))}
 
       {/* ────────────────────────────────────────────────────────────────────── */}
       {/* MANAGEMENT SECTION */}
       {/* ────────────────────────────────────────────────────────────────────── */}
 
-        {showFilters && (
-          <section className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-[0_14px_38px_rgba(15,23,42,0.05)]">
-            <div className="flex flex-col gap-1 pb-4">
-              <h2 className="text-sm font-extrabold text-slate-900">Filtros</h2>
-              <p className="text-xs font-medium text-slate-500">Ajustes secundários para refinar o período e a listagem.</p>
-            </div>
-            <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-2 xl:grid-cols-6">
-              <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-slate-600">{t('filters.from')}</span>
-                <input
-                  type="date"
-                  value={filters.from}
-                  onChange={(e) => { setPlanPage(1); setFilters((p) => ({ ...p, from: e.target.value, page: 1 })) }}
-                  className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-primary"
-                />
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-slate-600">{t('filters.to')}</span>
-                <input
-                  type="date"
-                  value={filters.to}
-                  onChange={(e) => { setPlanPage(1); setFilters((p) => ({ ...p, to: e.target.value, page: 1 })) }}
-                  className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-primary"
-                />
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-slate-600">{t('filters.type')}</span>
-                <select
-                  value={filters.type}
-                  onChange={(e) => { setPlanPage(1); setFilters((p) => ({ ...p, type: e.target.value as '' | FutureType, page: 1 })) }}
-                  className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-primary"
-                >
-                  {typeOptions.map((opt) => <option key={opt.label} value={opt.value}>{opt.label}</option>)}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-slate-600">{t('filters.installmentStatus')}</span>
-                <select
-                  value={filters.status}
-                  onChange={(e) => setFilters((p) => ({ ...p, status: e.target.value as '' | FutureStatus, page: 1 }))}
-                  className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-primary"
-                >
-                  {statusOptions.map((opt) => <option key={opt.label} value={opt.value}>{opt.label}</option>)}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-slate-600">{t('filters.installmentsPerPage')}</span>
-                <select
-                  value={filters.limit}
-                  onChange={(e) => setFilters((p) => ({ ...p, limit: Number(e.target.value), page: 1 }))}
-                  className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-primary"
-                >
-                  {[10, 20, 30, 50].map((n) => <option key={n} value={n}>{n}</option>)}
-                </select>
-              </label>
-              <button
-                type="button"
-                onClick={() => {
-                  setPlanPage(1)
-                  setFilters({ from: '', to: '', type: '', status: '', page: 1, limit: 10 })
-                }}
-                className="h-11 rounded-full border border-slate-200 bg-white px-4 text-sm font-extrabold text-slate-700 transition-colors hover:border-blue-200 hover:text-primary"
-              >
-                Limpar
-              </button>
-            </div>
-          </section>
-        )}
-
-        <section className="rounded-[20px] border border-slate-200 bg-white p-4 shadow-[0_14px_38px_rgba(15,23,42,0.04)]">
+        <section ref={managementSectionRef} className="rounded-[20px] border border-slate-200 bg-white p-4 shadow-[0_14px_38px_rgba(15,23,42,0.04)]">
           <button
             type="button"
             onClick={() => setShowManagement((prev) => !prev)}
@@ -1987,6 +3052,61 @@ export default function FuturosPage() {
 
       {/* ── Modals ─────────────────────────────────────────────────────────────── */}
 
+      <CreditCardChargeDrawer
+        open={chargeDrawerOpen}
+        onClose={closeChargeDrawer}
+        initialData={editingCharge ?? undefined}
+        initialCardId={selectedCardId}
+      />
+
+      <CreditDistributionModal
+        open={distributionModalOpen}
+        title="Gastos no credito este mes"
+        items={monthCreditDistribution}
+        onClose={() => setDistributionModalOpen(false)}
+      />
+
+      <PurchasesModal
+        open={purchasesModalOpen}
+        purchases={selectedInvoicePurchases}
+        onClose={() => setPurchasesModalOpen(false)}
+        onEdit={(charge) => {
+          setPurchasesModalOpen(false)
+          openChargeDrawer(charge)
+        }}
+        onDelete={setDeleteChargeTarget}
+      />
+
+      <InstallmentPlansModal
+        open={installmentPlansModalOpen}
+        plans={selectedCardInstallmentPlans}
+        onClose={() => setInstallmentPlansModalOpen(false)}
+        onEdit={(plan) => {
+          setInstallmentPlansModalOpen(false)
+          openEditPlanModal(plan)
+        }}
+        onDelete={setDeletePlanTarget}
+        onOpenManagement={openInstallmentsManagement}
+      />
+
+      <CardHistoryModal
+        open={historyModalOpen}
+        title={selectedCard ? `Historico do ${selectedCard.name}` : 'Historico do cartao'}
+        data={selectedCardHistoryData}
+        onClose={() => setHistoryModalOpen(false)}
+      />
+
+      <PayStatementConfirmModal
+        open={payStatementConfirmOpen}
+        cardName={selectedCard ? formatCardDisplayName(selectedCard) : 'Cartao'}
+        amount={selectedInvoiceGroup?.totalAmount ?? 0}
+        dueAt={selectedInvoiceGroup?.statement?.dueAt}
+        closingAt={selectedInvoiceGroup?.statement?.closingAt}
+        confirming={payStatementMutation.isPending}
+        onClose={() => setPayStatementConfirmOpen(false)}
+        onConfirm={confirmPaySelectedStatement}
+      />
+
       {/* Create/Edit plan */}
       <Dialog open={planModalOpen} onClose={closePlanModal} className="relative z-50">
         <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
@@ -2203,6 +3323,15 @@ export default function FuturosPage() {
         title={t('delete.installmentTitle')}
         description={t('delete.installmentDescription', { description: deleteInstallmentTarget?.description ?? '' })}
         confirmLabel={deleteInstallmentMutation.isPending ? t('delete.deleting') : t('delete.delete')}
+      />
+
+      <DeleteConfirmModal
+        isOpen={Boolean(deleteChargeTarget)}
+        onClose={() => setDeleteChargeTarget(null)}
+        onConfirm={onDeleteCharge}
+        title="Excluir compra"
+        description={`Excluir ${deleteChargeTarget?.description ?? 'esta compra'} da fatura?`}
+        confirmLabel={deleteChargeMutation.isPending ? 'Excluindo...' : 'Excluir'}
       />
     </section>
   )
