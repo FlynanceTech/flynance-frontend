@@ -326,7 +326,11 @@ export default function TransactionsPage() {
     fileMime?: string
     count?: number
     formatId?: string
+    detectedCardName?: string | null
+    isCreditCardStatement?: boolean
   } | null>(null)
+  const [importStep, setImportStep] = useState<'review' | 'card' | 'uncategorized'>('review')
+  const [selectedImportCardId, setSelectedImportCardId] = useState<string>('')
 
   const {
     categoriesQuery: { data: categories = [] },
@@ -493,16 +497,16 @@ export default function TransactionsPage() {
     fileInputRef.current?.click()
   }
 
-  const isValidImportFile = (file: File) => {
+  const isValidImportFileFull = (file: File) => {
     const name = file.name.toLowerCase()
-    return name.endsWith('.csv')
+    return name.endsWith('.csv') || name.endsWith('.pdf')
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (!isValidImportFile(file)) {
+    if (!isValidImportFileFull(file)) {
       setImportError(tr('invalidCsvFile'))
       e.target.value = ''
       return
@@ -524,6 +528,20 @@ export default function TransactionsPage() {
       setPreviewWarnings(warnings)
       setPreviewMeta(meta)
       setImportFile(file)
+
+      // Decide initial step based on card detection and uncategorized items
+      const isCreditCard = meta?.isCreditCardStatement || Boolean(meta?.detectedCardName)
+      const hasUncategorized = (list as Transaction[]).some((t) => !t.categoryId && !t.category?.id)
+
+      if (isCreditCard && !meta?.detectedCardName) {
+        // Credit card statement but couldn't identify which card → show card selection
+        setImportStep('card')
+      } else if (hasUncategorized) {
+        setImportStep('uncategorized')
+      } else {
+        setImportStep('review')
+      }
+
       setPreviewOpen(true)
     } catch (err: unknown) {
       setImportError(err instanceof Error ? err.message : 'Erro ao pré-visualizar transações.')
@@ -538,16 +556,23 @@ export default function TransactionsPage() {
     try {
       setIsImporting(true)
       setImportError(null)
+      const txWithCard = selectedImportCardId
+        ? importedTransactions.map((t) =>
+            t.paymentType === 'CREDIT_CARD' ? { ...t, cardId: selectedImportCardId } : t
+          )
+        : importedTransactions
       const payload = {
         mode: 'import' as const,
-        transactions: importedTransactions,
+        transactions: txWithCard,
       }
       await importConfirmMutation.mutateAsync({ userId, payload })
       setImportedTransactions([])
       setImportFile(null)
       setPreviewOpen(false)
+      setImportStep('review')
+      setSelectedImportCardId('')
     } catch (err: unknown) {
-      setImportError(err instanceof Error ? err.message : 'Erro ao importar transacoes.')
+      setImportError(err instanceof Error ? err.message : 'Erro ao importar transações.')
     } finally {
       setIsImporting(false)
     }
@@ -570,6 +595,8 @@ export default function TransactionsPage() {
     setBulkCategoryCount(0)
     setPreviewWarnings([])
     setPreviewMeta(null)
+    setImportStep('review')
+    setSelectedImportCardId('')
   }
 
   const updateImportedTransaction = (id: string, patch: Partial<Transaction>) => {
@@ -856,6 +883,35 @@ export default function TransactionsPage() {
     updateMutation.isPending ||
     createMutation.isPending
 
+  const earliestImportDate = useMemo(() => {
+    if (!importedTransactions.length) return null
+    const dates = importedTransactions.map((t) => new Date(t.date).getTime()).filter((d) => !Number.isNaN(d))
+    if (!dates.length) return null
+    return new Date(Math.min(...dates))
+  }, [importedTransactions])
+
+  const importCountBadge = useMemo(() => {
+    const count = importedTransactions.length
+    if (!count) return ''
+    if (earliestImportDate) {
+      return tr('previewDialog.newCountSince', {
+        count,
+        date: earliestImportDate.toLocaleDateString(locale),
+      })
+    }
+    return tr('previewDialog.newCount', { count })
+  }, [importedTransactions.length, earliestImportDate, locale, tr])
+
+  const uncategorizedInPreview = useMemo(
+    () => importedTransactions.filter((t) => !t.categoryId && !t.category?.id),
+    [importedTransactions]
+  )
+
+  const availableCards = useMemo(
+    () => (cardQuery.data ?? []).filter((c) => c.isActive !== false),
+    [cardQuery.data]
+  )
+
   if (!userId) return <SkeletonSection />
   if (activeTab === 'all' && transactionsQuery.isLoading) return <SkeletonSection />
   if (activeTab === 'credit_card' && chargesQuery.isLoading) return <SkeletonSection />
@@ -880,6 +936,203 @@ export default function TransactionsPage() {
         <div className="fixed inset-0 bg-black/40" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-3 md:p-6">
           <DialogPanel className="flex h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl md:h-[85vh]">
+
+            {/* ── DIALOG HEADER ── */}
+            <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-5 py-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <DialogTitle className="text-base font-semibold text-[#333C4D] md:text-lg">
+                    {importStep === 'card'
+                      ? tr('previewDialog.selectCard')
+                      : importStep === 'uncategorized'
+                      ? tr('previewDialog.uncategorizedTitle')
+                      : tr('previewDialog.title')}
+                  </DialogTitle>
+                  {previewMeta?.detectedCardName && (
+                    <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
+                      {tr('previewDialog.cardDetected', { cardName: previewMeta.detectedCardName })}
+                    </span>
+                  )}
+                  {previewMeta?.formatId?.endsWith('_AI') && (
+                    <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                      {tr('previewDialog.aiApplied')}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-0.5 text-xs text-slate-500 md:text-sm">
+                  {importStep === 'card'
+                    ? tr('previewDialog.cardNotDetected')
+                    : importStep === 'uncategorized'
+                    ? tr('previewDialog.uncategorizedSubtitle')
+                    : tr('previewDialog.subtitle')}
+                </p>
+                {previewWarnings.length > 0 && importStep === 'review' && (
+                  <ul className="mt-2 flex flex-col gap-1 text-[11px] text-amber-700">
+                    {previewWarnings.map((warning, wIdx) => (
+                      <li key={`${warning}-${wIdx}`}>- {warning}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleClosePreview}
+                className="flex-shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
+              >
+                {tr('close')}
+              </button>
+            </div>
+
+            {/* ── STEP: CARD SELECTION ── */}
+            {importStep === 'card' && (
+              <div className="flex flex-1 flex-col items-center justify-center gap-6 overflow-auto px-6 py-8">
+                {availableCards.length === 0 ? (
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-gray-700">{tr('previewDialog.noCardsRegistered')}</p>
+                    <p className="mt-1 text-xs text-slate-500">Cadastre um cartão antes de importar a fatura.</p>
+                  </div>
+                ) : (
+                  <div className="w-full max-w-sm space-y-3">
+                    {availableCards.map((card) => (
+                      <button
+                        key={card.id}
+                        type="button"
+                        onClick={() => setSelectedImportCardId(card.id)}
+                        className={[
+                          'flex w-full items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition',
+                          selectedImportCardId === card.id
+                            ? 'border-primary bg-primary/5 text-primary'
+                            : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50',
+                        ].join(' ')}
+                      >
+                        <span
+                          className="h-5 w-5 flex-shrink-0 rounded-full"
+                          style={{ backgroundColor: card.color ?? '#94A3B8' }}
+                        />
+                        <span className="flex-1 font-medium">
+                          {card.name}
+                          {card.last4 && (
+                            <span className="ml-2 text-xs font-normal text-slate-500">
+                              •••• {card.last4}
+                            </span>
+                          )}
+                        </span>
+                        {selectedImportCardId === card.id && (
+                          <span className="text-primary">✓</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const hasUncategorized = uncategorizedInPreview.length > 0
+                      setImportStep(hasUncategorized ? 'uncategorized' : 'review')
+                    }}
+                    disabled={availableCards.length > 0 && !selectedImportCardId}
+                    className="rounded-full bg-primary px-6 py-2 text-sm font-semibold text-white hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Continuar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const hasUncategorized = uncategorizedInPreview.length > 0
+                      setImportStep(hasUncategorized ? 'uncategorized' : 'review')
+                    }}
+                    className="rounded-full border border-slate-200 px-6 py-2 text-sm text-slate-600 hover:bg-slate-50"
+                  >
+                    Pular
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── STEP: UNCATEGORIZED ── */}
+            {importStep === 'uncategorized' && (
+              <div className="flex flex-1 flex-col overflow-hidden">
+                <div className="flex-1 overflow-auto px-5 py-4">
+                  {uncategorizedInPreview.length === 0 ? (
+                    <div className="flex h-full items-center justify-center">
+                      <p className="text-sm text-green-600 font-medium">Todos os gastos foram categorizados.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {uncategorizedInPreview.map((t) => {
+                        const categoryId = t.categoryId ?? t.category?.id ?? ''
+                        const categoryType = t.type ?? 'EXPENSE'
+                        const selectedCategory =
+                          t.category ?? categories.find((c) => c.id === categoryId) ?? null
+                        return (
+                          <div
+                            key={t.id}
+                            className="flex flex-col gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 sm:flex-row sm:items-center"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="truncate text-sm font-medium text-gray-800">{t.description}</p>
+                              <p className="text-xs text-slate-400">
+                                {new Date(t.date).toLocaleDateString(locale)} • {formatCurrency(Number(t.value ?? 0))}
+                              </p>
+                            </div>
+                            <div className="w-full sm:w-56">
+                              <CategorySelect
+                                value={selectedCategory as CategoryResponse | null}
+                                onChange={(value) => {
+                                  const selected = value as CategoryResponse | null
+                                  const normalizedType = selected?.type === 'INCOME' ? 'INCOME' : 'EXPENSE'
+                                  const normalizedCategory = selected
+                                    ? {
+                                        id: selected.id,
+                                        name: selected.name,
+                                        color: selected.color,
+                                        icon: selected.icon,
+                                        type: normalizedType as 'INCOME' | 'EXPENSE',
+                                      }
+                                    : undefined
+                                  updateImportedTransaction(t.id, {
+                                    category: normalizedCategory,
+                                    categoryId: selected?.id ?? '',
+                                    type: normalizedCategory?.type ?? categoryType,
+                                  })
+                                }}
+                                allowCreate={false}
+                                typeFilter={categoryType as 'INCOME' | 'EXPENSE'}
+                                closeMenuOnSelect
+                                placeholder="Selecionar categoria"
+                                className="w-full"
+                                menuPlacement="auto"
+                              />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center justify-between gap-3 border-t border-gray-100 px-5 py-4">
+                  <button
+                    type="button"
+                    onClick={() => setImportStep('review')}
+                    className="text-xs text-slate-500 hover:text-slate-700 underline"
+                  >
+                    {tr('previewDialog.proceedAnyway')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setImportStep('review')}
+                    className="rounded-full bg-primary px-6 py-2 text-sm font-semibold text-white hover:bg-secondary"
+                  >
+                    Continuar
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── STEP: REVIEW (main table) ── */}
+            {importStep === 'review' && (
+              <>
             <div className="flex-1 overflow-auto p-3 md:p-4">
               <div className="rounded-xl border border-gray-200 bg-secondary/10 p-3">
                 <div className="hidden md:block">
@@ -897,8 +1150,6 @@ export default function TransactionsPage() {
                       const categoryId = t.categoryId ?? t.category?.id ?? ''
                       const categoryType = t.type ?? t.category?.type ?? 'EXPENSE'
                       const rowIsEditing = editingPreviewId === t.id
-                      const confidence = t.confidence
-                      const matchedKeyword = t.matchedKeyword
                       const selectedCategory =
                         t.category ?? categories.find((c) => c.id === categoryId) ?? null
                       const selectedTypeOption =
@@ -939,23 +1190,11 @@ export default function TransactionsPage() {
                               {t.description}
                             </button>
                           )}
-                          {confidence && (
-                            <span
-                              className={[
-                                'mt-1 inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold',
-                                confidence === 'HIGH'
-                                  ? 'bg-emerald-100 text-emerald-700'
-                                  : confidence === 'MEDIUM'
-                                  ? 'bg-amber-100 text-amber-700'
-                                  : 'bg-gray-100 text-gray-600',
-                              ].join(' ')}
-                              title={
-                                matchedKeyword
-                                  ? tr('suggestedCategoryBy', { keyword: matchedKeyword })
-                                  : undefined
-                              }
-                            >
-                              {confidence}
+                          {t.isInstallment && (
+                            <span className="mt-0.5 inline-flex items-center rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700">
+                              {t.installmentCurrent && t.installmentTotal
+                                ? `${t.installmentCurrent}/${t.installmentTotal}`
+                                : tr('previewDialog.installmentBadge')}
                             </span>
                           )}
                         </div>
@@ -1037,8 +1276,6 @@ export default function TransactionsPage() {
                     const categoryId = t.categoryId ?? t.category?.id ?? ''
                     const categoryType = t.type ?? t.category?.type ?? 'EXPENSE'
                     const rowIsEditing = editingPreviewId === t.id
-                    const confidence = t.confidence
-                    const matchedKeyword = t.matchedKeyword
                     const selectedCategory =
                       t.category ?? categories.find((c) => c.id === categoryId) ?? null
                     const selectedTypeOption =
@@ -1093,25 +1330,6 @@ export default function TransactionsPage() {
                             </button>
                           )}
                         </div>
-                        {confidence && (
-                          <span
-                            className={[
-                              'mt-2 inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold',
-                              confidence === 'HIGH'
-                                ? 'bg-emerald-100 text-emerald-700'
-                                : confidence === 'MEDIUM'
-                                ? 'bg-amber-100 text-amber-700'
-                                : 'bg-gray-100 text-gray-600',
-                            ].join(' ')}
-                            title={
-                              matchedKeyword
-                                ? tr('suggestedCategoryBy', { keyword: matchedKeyword })
-                                : undefined
-                            }
-                          >
-                            {confidence}
-                          </span>
-                        )}
 
                         <div className="mt-2">
                           <CategorySelect
@@ -1177,58 +1395,38 @@ export default function TransactionsPage() {
               </div>
             </div>
             
-            <div className="flex flex-col gap-3 border-b border-gray-200 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-6">
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <DialogTitle className="text-base font-semibold text-[#333C4D] md:text-lg">
-                    {tr('previewDialog.title')}
-                  </DialogTitle>
-                  {previewMeta?.formatId?.endsWith('_AI') && (
-                    <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
-                      {tr('previewDialog.aiApplied')}
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-slate-500 md:text-sm">
-                  {tr('previewDialog.subtitle')}
-                </p>
-                {previewWarnings.length > 0 && (
-                  <ul className="mt-2 flex flex-col gap-1 text-[11px] text-amber-700">
-                    {previewWarnings.map((warning, idx) => (
-                      <li key={`${warning}-${idx}`}>- {warning}</li>
-                    ))}
-                  </ul>
-                )}
+            {/* ── REVIEW FOOTER ── */}
+            <div className="flex flex-col gap-3 border-t border-gray-100 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-6">
+              <div className="flex flex-col gap-1">
                 {importedTransactions.length === 0 && (
-                  <p className="mt-2 text-xs font-semibold text-red-400">
+                  <p className="text-xs font-semibold text-red-400">
                     {tr('previewDialog.noneFound')}
                   </p>
                 )}
+                {importCountBadge && (
+                  <span className="w-fit rounded-full bg-secondary/30 px-3 py-1 text-xs font-semibold text-[#333C4D]">
+                    {importCountBadge}
+                  </span>
+                )}
+                <p className="text-[11px] text-slate-400">{tr('previewDialog.tip')}</p>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <span className="rounded-full bg-secondary/30 px-3 py-1 text-xs font-semibold text-[#333C4D]">
-                  {tr('previewDialog.newCount', { count: importedTransactions.length })}
-                </span>
                 <button
                   type="button"
                   onClick={handleConfirmImport}
                   disabled={isImporting || importedTransactions.length === 0}
-                  className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-white hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isImporting ? tr('previewDialog.importing') : tr('previewDialog.confirmImport')}
                 </button>
-                <button
-                  type="button"
-                  onClick={handleClosePreview}
-                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                >
-                  {tr('close')}
-                </button>
+                {importError && (
+                  <p className="text-xs text-red-500">{importError}</p>
+                )}
               </div>
             </div>
-            <div className="border-t border-gray-200 px-4 py-3 text-xs text-slate-500 md:px-6">
-              {tr('previewDialog.tip')}
-            </div>
+              </>
+            )}
+
           </DialogPanel>
         </div>
       </Dialog>
@@ -1396,7 +1594,7 @@ export default function TransactionsPage() {
       <input
         ref={fileInputRef}
         type="file"
-        accept=".csv,text/csv,application/csv,application/vnd.ms-excel"
+        accept=".csv,.pdf,text/csv,application/csv,application/vnd.ms-excel,application/pdf"
         className="hidden"
         onChange={handleFileChange}
       />

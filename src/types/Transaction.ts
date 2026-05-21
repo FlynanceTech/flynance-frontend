@@ -52,6 +52,10 @@ export interface Transaction {
   installmentCount?: number | null
   confidence?: 'LOW' | 'MEDIUM' | 'HIGH'
   matchedKeyword?: string
+  isInstallment?: boolean
+  installmentCurrent?: number | null
+  installmentTotal?: number | null
+  transactionCode?: string | null
 }
 
 export interface User {
