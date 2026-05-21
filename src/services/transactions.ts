@@ -2,7 +2,6 @@ import api from "@/lib/axios"
 import { appendFinancialScopeToSearchParams, FinancialDataScope } from "@/lib/financialScope"
 import { Transaction } from "@/types/Transaction"
 import { getErrorMessage } from "@/utils/getErrorMessage"
-import { decryptNullable } from "@/utils/encryption"
 
 export type PaymentType =
   | 'DEBIT_CARD'
@@ -88,18 +87,6 @@ export type GetTransactionResponse<TTransaction = any> = {
   }
 }
 
-async function decryptTransaction(tx: Transaction): Promise<Transaction> {
-  const [description, sourceDescription] = await Promise.all([
-    decryptNullable(tx.description),
-    decryptNullable(tx.sourceDescription),
-  ])
-  return {
-    ...tx,
-    description: description ?? tx.description,
-    sourceDescription: sourceDescription,
-  }
-}
-
 export async function getTransaction({
   page = 1,
   limit = 10,
@@ -160,16 +147,13 @@ export async function getTransaction({
 
   // ✅ compat: se algum endpoint antigo ainda devolver array, normaliza
   if (Array.isArray(response.data)) {
-    const transactions = await Promise.all(response.data.map(decryptTransaction))
     return {
-      transactions,
-      meta: { page, limit, total: transactions.length, hasNext: false },
+      transactions: response.data,
+      meta: { page, limit, total: response.data.length, hasNext: false },
     }
   }
 
-  const data = response.data
-  const transactions = await Promise.all((data.transactions ?? []).map(decryptTransaction))
-  return { ...data, transactions }
+  return response.data
 }
 
 export const createTransaction = async (data: TransactionDTO): Promise<Transaction> => {
