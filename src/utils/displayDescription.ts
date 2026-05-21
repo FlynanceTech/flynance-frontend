@@ -1,5 +1,6 @@
 export function isEncryptedDescription(value: unknown) {
-  return /^enc:[^:\s]+:[^:\s]+$/i.test(String(value ?? '').trim())
+  // Format: enc:<iv>:<authTag>:<ciphertext>
+  return /^enc:[^:\s]+:[^:\s]+:[^:\s]+/i.test(String(value ?? '').trim())
 }
 
 export function resolveDisplayDescription(

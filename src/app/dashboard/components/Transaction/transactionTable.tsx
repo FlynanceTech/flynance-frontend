@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import type { Transaction } from '@/types/Transaction'
 import { formatCurrency } from '@/utils/formatter'
 import { toFirstName } from '@/utils/actorName'
+import { resolveDisplayDescription } from '@/utils/displayDescription'
 
 type SortField = 'date' | 'value' | null
 type SortDirection = 'asc' | 'desc'
@@ -148,7 +149,7 @@ export function TransactionTable({
               const categoryColor = tx.category?.color ?? '#CBD5E1'
               const isExpense = tx.type === 'EXPENSE'
               const value = Number(tx.value ?? 0)
-              const description = tx.description || t('noDescription')
+              const description = resolveDisplayDescription(tx.description, tx.sourceDescription, t('noDescription'))
               const actorLabel = getActorLabel(tx)
               const actorFirstName = toFirstName(actorLabel) || actorLabel
 

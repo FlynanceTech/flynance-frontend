@@ -36,6 +36,7 @@ export interface Transaction {
   } | null
   value: number
   description: string
+  sourceDescription?: string | null
   categoryId: string
   date: string 
   type: CategoryType
