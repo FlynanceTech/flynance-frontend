@@ -519,7 +519,14 @@ export default function TransactionsPage() {
       const isArrayResponse = Array.isArray(response)
       const list = isArrayResponse ? response : response?.transactions ?? []
       const warnings = !isArrayResponse && Array.isArray(response?.warnings) ? response.warnings : []
-      const meta = !isArrayResponse ? response?.meta ?? null : null
+      const meta = (!isArrayResponse ? response?.meta ?? null : null) as {
+        fileName?: string
+        fileMime?: string
+        count?: number
+        formatId?: string
+        detectedCardName?: string | null
+        isCreditCardStatement?: boolean
+      } | null
       const withIds = (list as Transaction[]).map((t, idx) => ({
         ...t,
         id: t.id ?? `import-preview-${idx}`,
@@ -1005,10 +1012,7 @@ export default function TransactionsPage() {
                             : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50',
                         ].join(' ')}
                       >
-                        <span
-                          className="h-5 w-5 flex-shrink-0 rounded-full"
-                          style={{ backgroundColor: card.color ?? '#94A3B8' }}
-                        />
+                        <span className="h-5 w-5 flex-shrink-0 rounded-full bg-slate-400" />
                         <span className="flex-1 font-medium">
                           {card.name}
                           {card.last4 && (
