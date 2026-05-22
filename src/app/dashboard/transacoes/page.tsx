@@ -973,12 +973,17 @@ export default function TransactionsPage() {
                     ? tr('previewDialog.uncategorizedSubtitle')
                     : tr('previewDialog.subtitle')}
                 </p>
-                {previewWarnings.length > 0 && importStep === 'review' && (
-                  <ul className="mt-2 flex flex-col gap-1 text-[11px] text-amber-700">
-                    {previewWarnings.map((warning, wIdx) => (
-                      <li key={`${warning}-${wIdx}`}>- {warning}</li>
-                    ))}
-                  </ul>
+                {previewWarnings.length > 0 && (
+                  <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+                    <ul className="flex flex-col gap-0.5 text-[11px] text-amber-700">
+                      {previewWarnings.map((warning, wIdx) => (
+                        <li key={`${warning}-${wIdx}`} className="flex items-start gap-1">
+                          <span className="mt-px flex-shrink-0">⚠</span>
+                          <span>{warning}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
               </div>
               <button
