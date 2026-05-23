@@ -11,7 +11,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import LegalDocsModal from "@/components/ui/LegalDocsModal";
 import whatsappIcon from "../../../public/icons/whatsapp.svg";
 
-import { useUsers } from "@/hooks/query/useUsers";
 import {
   clearBillingCheckoutSession,
   doesBillingCheckoutSessionMatchIdentity,
@@ -206,6 +205,7 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const revalidate = searchParams.get("revalidate");
+  const advisorInviteToken = (searchParams.get("advisorInviteToken") ?? "").trim();
 
   const [view, setView] = useState<ViewState>("CHECKOUT");
 
@@ -226,25 +226,30 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
   const [cardCvcComplete, setCardCvcComplete] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
 
-  const { createMutation } = useUsers();
   const signupData = useSignupStore((state) => state.data);
   const { user, fetchAccount } = useUserSession();
 
   const lastLeadKeyRef = useRef<string | null>(null);
   const hydratedSessionUserIdRef = useRef<string | null>(null);
 
+  function appendCheckoutContext(qs: URLSearchParams) {
+    if (revalidate) qs.set("revalidate", revalidate);
+    if (advisorInviteToken) qs.set("advisorInviteToken", advisorInviteToken);
+  }
+
+  function checkoutPathForPlan(slug: string) {
+    const qs = new URLSearchParams();
+    if (slug) qs.set("plano", slug);
+    appendCheckoutContext(qs);
+    return `/cadastro/checkout?${qs.toString()}`;
+  }
+
   // 🔒 Bloqueia acesso via URL (?step=2)
   useEffect(() => {
     const stepParam = searchParams.get("step");
     if (stepParam === "2") {
       const plano = searchParams.get("plano") ?? plan.slug ?? "";
-      const reval = searchParams.get("revalidate");
-
-      const qs = new URLSearchParams();
-      if (plano) qs.set("plano", plano);
-      if (reval) qs.set("revalidate", reval);
-
-      router.replace(`/cadastro/checkout?${qs.toString()}`);
+      router.replace(checkoutPathForPlan(plano));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -342,7 +347,7 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
       city: prev.city || (sessionUser as any).city || "",
       state: prev.state || (sessionUser as any).state || "",
     }));
-  }, [user, formSnapshot.emailNorm, formSnapshot.phoneDigitsComparable]);
+  }, [user, formSnapshot]);
 
   const isAnnual = plan.slug?.toLowerCase().includes("anual");
   const rawPriceNumber = Number((plan.priceCents / 100).toFixed(2));
@@ -463,7 +468,7 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
     if (currentSlug === COUPLE_MONTHLY || currentSlug === COUPLE_ANNUAL) {
       const targetSlug = period === "ANNUAL" ? COUPLE_ANNUAL : COUPLE_MONTHLY;
       if (targetSlug === currentSlug) return;
-      router.push(`/cadastro/checkout?plano=${targetSlug}`);
+      router.push(checkoutPathForPlan(targetSlug));
       return;
     }
 
@@ -479,7 +484,7 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
     }
 
     if (targetSlug === currentSlug) return;
-    router.push(`/cadastro/checkout?plano=${targetSlug}`);
+    router.push(checkoutPathForPlan(targetSlug));
   };
 
   function redirectToCheckoutValidation(message?: string) {
@@ -489,7 +494,7 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
 
     const qs = new URLSearchParams();
     if (plan.slug) qs.set("plano", plan.slug);
-    if (revalidate) qs.set("revalidate", revalidate);
+    appendCheckoutContext(qs);
 
     const next = `/cadastro/checkout?${qs.toString()}`;
     router.replace(`/login?next=${encodeURIComponent(next)}`);
@@ -518,7 +523,7 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
 
     const qs = new URLSearchParams();
     if (plan.slug) qs.set("plano", plan.slug);
-    if (revalidate) qs.set("revalidate", revalidate);
+    appendCheckoutContext(qs);
 
     const next = `/cadastro/checkout?${qs.toString()}`;
     router.replace(
@@ -676,6 +681,7 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
 
       if (activeUserId) payload.userId = activeUserId;
       if (isAnnual) payload.annualBilling = annualBilling;
+      if (advisorInviteToken) payload.advisorInviteToken = advisorInviteToken;
 
       try {
         await createBillingCheckoutSubscription(payload);
@@ -696,10 +702,9 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
 
       // remove step se houver (e garante URL limpa)
       const plano = searchParams.get("plano") ?? plan.slug ?? "";
-      const reval = searchParams.get("revalidate");
       const qs = new URLSearchParams();
       if (plano) qs.set("plano", plano);
-      if (reval) qs.set("revalidate", reval);
+      appendCheckoutContext(qs);
       router.replace(`/cadastro/checkout?${qs.toString()}`);
     } catch (err: unknown) {
       const msg = axios.isAxiosError(err)
