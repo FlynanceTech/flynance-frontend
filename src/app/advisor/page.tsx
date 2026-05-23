@@ -60,8 +60,6 @@ import {
 type AdvisorClientOptionalFields = AdvisorClient & {
   accountType?: string | null
   clientName2?: string | null
-  patrimony?: number | null
-  netWorth?: number | null
   creditSpending?: number | null
   whatsapp?: string | null
 }
@@ -77,7 +75,6 @@ type ClientFilter =
 type EnrichedClient = AdvisorClient & {
   accountType: 'INDIVIDUAL' | 'COUPLE'
   healthScore: number
-  netWorth: number
   creditSpending: number
   debtRatio: number
   consistency: number
@@ -185,7 +182,6 @@ function enrichClient(client: AdvisorClient): EnrichedClient {
   const expense = Number(client.expense || 0)
   const balance = Number(client.balance || income - expense || 0)
   const creditSpending = Number(raw.creditSpending ?? Math.max(0, expense * (0.22 + (seed % 28) / 100)))
-  const netWorth = Number(raw.netWorth ?? raw.patrimony ?? Math.max(0, balance + income * 4 + (seed % 18_000)))
   const expenseRatio = income > 0 ? expense / income : 0.78
   const debtRatio = clamp((creditSpending / Math.max(income, 1)) * 100, 0, 140)
   const activityPenalty = lastActivityDays > 14 ? 18 : lastActivityDays > 7 ? 10 : 0
@@ -200,7 +196,6 @@ function enrichClient(client: AdvisorClient): EnrichedClient {
     ...client,
     accountType,
     healthScore,
-    netWorth,
     creditSpending,
     debtRatio,
     consistency: clamp(healthScore - (lastActivityDays > 7 ? 10 : 0) + 8, 0, 100),
@@ -661,11 +656,10 @@ export default function AdvisorPage() {
                               </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+                            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                               <Metric label="Receitas" value={formatCurrency(client.income)} tone="emerald" />
                               <Metric label="Despesas" value={formatCurrency(client.expense)} tone="red" />
                               <Metric label="Saldo" value={formatCurrency(client.balance)} />
-                              <Metric label="Patrimônio" value={formatCurrency(client.netWorth)} />
                               <Metric label="Crédito" value={formatCurrency(client.creditSpending)} tone="amber" />
                             </div>
 
@@ -713,7 +707,16 @@ export default function AdvisorPage() {
 
                             <div className="flex flex-wrap gap-2">
                               <ClientAction label="Abrir Dashboard" Icon={LayoutDashboard} onClick={() => openClientDashboard(client)} />
-                              <ClientAction label="Relatórios" Icon={FileText} onClick={() => openClientDashboard(client, '/dashboard/relatorios')} />
+                              <ClientAction
+                                label="Relatórios"
+                                Icon={FileText}
+                                onClick={() =>
+                                  openClientDashboard(
+                                    client,
+                                    `/advisor/relatorio-cliente?clientId=${encodeURIComponent(client.clientUserId)}`
+                                  )
+                                }
+                              />
                               <ClientAction label="Cartões" Icon={CreditCard} onClick={() => openClientDashboard(client, '/dashboard/futuros')} />
                               <ClientAction label="WhatsApp" Icon={MessageCircle} onClick={() => openWhatsApp(client.phone)} />
                               <button
