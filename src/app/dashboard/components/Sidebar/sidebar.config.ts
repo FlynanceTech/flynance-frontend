@@ -196,7 +196,7 @@ export function buildSidebarSections(t: SidebarTranslations): SidebarSectionConf
       items: [
         {
           id: 'clients',
-          label: t.clients,
+          label: 'Advisor',
           icon: Users,
           path: '/advisor',
           requiresAdvisor: true,
