@@ -65,6 +65,7 @@ export default function PaymentTypeCard() {
 
   const rows: Row[] = data.buckets
     .slice()
+    .filter((bucket) => bucket.type !== 'CREDIT_CARD')
     .sort((a, b) => b.total - a.total)
     .map((b) => ({
       key: b.type,

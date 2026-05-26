@@ -365,6 +365,17 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       readOnly: 'Somente leitura',
       sortTip:
         'Dica: clique em {data} ou {value} para ordenar.',
+      statementPayment: {
+        viewDetails: 'Ver detalhes',
+        detailsTitle: 'Compras desta fatura',
+        detailsSubtitle: 'Itens consolidados no pagamento da fatura.',
+        itemsCount: '{count} item(ns)',
+        description: 'Descricao',
+        category: 'Categoria',
+        installment: 'Parcela',
+        date: 'Data',
+        amount: 'Valor',
+      },
     },
     transactionCard: {
       income: 'Receita',
@@ -377,6 +388,11 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       deleteAria: 'Excluir transação',
       deleteTitle: 'Excluir transação',
       deleteDescription: 'Tem certeza que deseja excluir esta transação?',
+      statementPayment: {
+        viewDetails: 'Ver detalhes',
+        detailsTitle: 'Compras desta fatura',
+        itemsCount: '{count} item(ns)',
+      },
       payment: {
         PIX: 'Pix',
         CREDIT_CARD: 'Credito',
@@ -2802,6 +2818,17 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       readOnly: 'Read only',
       sortTip:
         'Tip: click {data} or {value} to sort.',
+      statementPayment: {
+        viewDetails: 'View details',
+        detailsTitle: 'Statement purchases',
+        detailsSubtitle: 'Items consolidated in the statement payment.',
+        itemsCount: '{count} item(s)',
+        description: 'Description',
+        category: 'Category',
+        installment: 'Installment',
+        date: 'Date',
+        amount: 'Amount',
+      },
     },
     transactionCard: {
       income: 'Income',
@@ -2814,6 +2841,11 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       deleteAria: 'Delete transaction',
       deleteTitle: 'Delete transaction',
       deleteDescription: 'Are you sure you want to delete this transaction?',
+      statementPayment: {
+        viewDetails: 'View details',
+        detailsTitle: 'Statement purchases',
+        itemsCount: '{count} item(s)',
+      },
       payment: {
         PIX: 'Pix',
         CREDIT_CARD: 'Credit',
@@ -5228,6 +5260,17 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       readOnly: 'Solo lectura',
       sortTip:
         'Tip: haz clic en {data} o {value} para ordenar.',
+      statementPayment: {
+        viewDetails: 'Ver detalles',
+        detailsTitle: 'Compras de esta factura',
+        detailsSubtitle: 'Items consolidados en el pago de la factura.',
+        itemsCount: '{count} item(s)',
+        description: 'Descripcion',
+        category: 'Categoria',
+        installment: 'Cuota',
+        date: 'Fecha',
+        amount: 'Valor',
+      },
     },
     transactionCard: {
       income: 'Ingreso',
@@ -5240,6 +5283,11 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       deleteAria: 'Eliminar transaccion',
       deleteTitle: 'Eliminar transaccion',
       deleteDescription: 'Seguro que deseas eliminar esta transaccion?',
+      statementPayment: {
+        viewDetails: 'Ver detalles',
+        detailsTitle: 'Compras de esta factura',
+        itemsCount: '{count} item(s)',
+      },
       payment: {
         PIX: 'Pix',
         CREDIT_CARD: 'Credito',

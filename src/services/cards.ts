@@ -48,8 +48,21 @@ export interface DeleteCardResponse {
   linkedRecords?: Record<string, number>
 }
 
+export type StatementPaymentType =
+  | 'DEBIT_CARD'
+  | 'PIX'
+  | 'BOLETO'
+  | 'TED'
+  | 'DOC'
+  | 'MONEY'
+  | 'CASH'
+  | 'OTHER'
+
 export interface PayCreditCardStatementDTO {
   paidAt?: string
+  paymentType?: StatementPaymentType
+  transactionDate?: string
+  createTransaction?: boolean
 }
 
 export interface PayCreditCardStatementResponse {

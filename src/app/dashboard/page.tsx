@@ -18,6 +18,8 @@ import { useCardMutations } from '@/hooks/query/useCreditCards'
 import { getBrowserTimezone, toFutureRangeFromDays } from '@/utils/transactionPeriod'
 import { useLocale, useTranslations } from 'next-intl'
 import { useFinancialScope } from '@/hooks/useFinancialScope'
+import { filterEffectiveCashflowTransactions } from '@/utils/cashflowTransactions'
+import type { Transaction } from '@/types/Transaction'
 
 const PERIOD_ZERO = {
   income: 0,
@@ -89,7 +91,7 @@ function createDashboardOnboardingSteps(
   ]
 }
 
-function pad2(v: any) {
+function pad2(v: unknown) {
   return String(v).padStart(2, '0')
 }
 
@@ -100,14 +102,23 @@ function monthLabel(month: string, year: string, locale: string) {
   return new Date(Number(year), monthIndex, 1).toLocaleDateString(locale, { month: 'short', year: 'numeric' })
 }
 
-function computeFinanceStatusFromTransactions(transactions: any[]) {
-  const income = (transactions || [])
-    .filter((t: { type: string }) => t.type === 'INCOME')
-    .reduce((acc: number, t: { value: any }) => acc + Number(t.value || 0), 0)
+function getTransactionsFromQueryData(data: unknown): Transaction[] {
+  if (Array.isArray(data)) return data as Transaction[]
+  if (!data || typeof data !== 'object') return []
 
-  const expense = (transactions || [])
+  const transactions = (data as { transactions?: unknown }).transactions
+  return Array.isArray(transactions) ? (transactions as Transaction[]) : []
+}
+
+function computeFinanceStatusFromTransactions(transactions: Transaction[]) {
+  const cashflowTransactions = filterEffectiveCashflowTransactions(transactions || [])
+  const income = cashflowTransactions
+    .filter((t: { type: string }) => t.type === 'INCOME')
+    .reduce((acc: number, t: { value: unknown }) => acc + Number(t.value || 0), 0)
+
+  const expense = cashflowTransactions
     .filter((t: { type: string }) => t.type === 'EXPENSE')
-    .reduce((acc: number, t: { value: any }) => acc + Number(t.value || 0), 0)
+    .reduce((acc: number, t: { value: unknown }) => acc + Number(t.value || 0), 0)
 
   const balance = income - expense
 
@@ -218,14 +229,22 @@ export default function Dashboard() {
   const [onboardingTargetRect, setOnboardingTargetRect] = useState<SpotlightRect | null>(null)
   const [onboardingTooltipHeight, setOnboardingTooltipHeight] = useState(300)
   const onboardingTooltipRef = useRef<HTMLDivElement | null>(null)
-  useEffect(() => setHydrated(true), [])
+  useEffect(() => {
+    const timerId = window.setTimeout(() => setHydrated(true), 0)
+    return () => window.clearTimeout(timerId)
+  }, [])
 
   useEffect(() => {
     if (!hydrated || typeof window === 'undefined') return
     const completed = window.localStorage.getItem(onboardingStorageKey)
     if (completed === 'done') return
-    setOnboardingOpen(true)
-    setOnboardingStepIndex(0)
+
+    const timerId = window.setTimeout(() => {
+      setOnboardingOpen(true)
+      setOnboardingStepIndex(0)
+    }, 0)
+
+    return () => window.clearTimeout(timerId)
   }, [hydrated, onboardingStorageKey])
 
   const safeDays = Math.max(1, Number(dateRange || 30))
@@ -264,15 +283,16 @@ export default function Dashboard() {
     userId,
     page: 1,
     limit: 5000,
-    filters: periodFilters,
+    filters: {
+      ...periodFilters,
+      excludePaymentType: 'CREDIT_CARD',
+    },
     useGlobalFilters: false,
   })
   const isTxLoading = transactionsQuery.isLoading
 
   const transactions = useMemo(() => {
-    const payload = transactionsQuery.data as any
-    const list = payload?.transactions ?? payload ?? []
-    return Array.isArray(list) ? list : []
+    return filterEffectiveCashflowTransactions(getTransactionsFromQueryData(transactionsQuery.data))
   }, [transactionsQuery.data])
 
   const periodLabel = useMemo(() => {
@@ -363,8 +383,8 @@ export default function Dashboard() {
 
     const target = findOnboardingTarget(onboardingStep)
     if (!target) {
-      setOnboardingTargetRect(null)
-      return
+      const timerId = window.setTimeout(() => setOnboardingTargetRect(null), 0)
+      return () => window.clearTimeout(timerId)
     }
 
     target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
