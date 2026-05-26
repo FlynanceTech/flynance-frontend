@@ -67,7 +67,7 @@ import {
 } from '@/hooks/query/useFuture'
 import CreditCardChargeDrawer from '../components/CreditCardChargeDrawer'
 import type { CreditCardChargeItem } from '@/services/creditCardCharges'
-import type { CreditCardResponse } from '@/services/cards'
+import type { CreditCardResponse, StatementPaymentType } from '@/services/cards'
 import { useFinancialScope } from '@/hooks/useFinancialScope'
 import { useUserSession } from '@/stores/useUserSession'
 import type { HouseContext, HouseMember } from '@/types/house'
@@ -87,6 +87,13 @@ import FinancialScopeSwitcher from '@/components/financial/FinancialScopeSwitche
 type TranslatorFn = (key: string, values?: Record<string, string | number | Date>) => string
 type PeriodOption = '30d' | '60d' | '90d' | 'this_month' | 'next_month'
 type ForecastTab = 'expense' | 'income'
+
+const STATEMENT_PAYMENT_TYPE_OPTIONS: Array<{ value: StatementPaymentType; label: string }> = [
+  { value: 'PIX', label: 'Pix' },
+  { value: 'DEBIT_CARD', label: 'Debito' },
+  { value: 'MONEY', label: 'Dinheiro' },
+  { value: 'CASH', label: 'Especie' },
+]
 
 const PERIOD_LABELS: Record<PeriodOption, string> = {
   '30d': '30 dias',
@@ -365,14 +372,15 @@ function getCardOwnerSections(params: {
 
 function getStatementDisplayStatus(statement: InvoiceGroup['statement'] | null | undefined) {
   if (!statement) return 'open'
-  if (statement.status === 'paid') return 'paid'
+  const normalizedStatus = String(statement.status ?? '').toLowerCase()
+  if (normalizedStatus === 'paid') return 'paid'
   const due = statement.dueAt ? new Date(statement.dueAt) : null
   const todayEnd = new Date()
   todayEnd.setHours(23, 59, 59, 999)
-  if (statement.status !== 'paid' && due && !Number.isNaN(due.getTime()) && due < todayEnd) {
+  if (normalizedStatus !== 'paid' && due && !Number.isNaN(due.getTime()) && due < todayEnd) {
     return 'overdue'
   }
-  if (statement.status === 'invoiced') return 'invoiced'
+  if (normalizedStatus === 'invoiced') return 'invoiced'
   return 'open'
 }
 
@@ -1502,7 +1510,9 @@ function PayStatementConfirmModal({
   amount,
   dueAt,
   closingAt,
+  paymentType,
   confirming,
+  onPaymentTypeChange,
   onClose,
   onConfirm,
 }: {
@@ -1511,7 +1521,9 @@ function PayStatementConfirmModal({
   amount: number
   dueAt?: string | null
   closingAt?: string | null
+  paymentType: StatementPaymentType
   confirming: boolean
+  onPaymentTypeChange: (paymentType: StatementPaymentType) => void
   onClose: () => void
   onConfirm: () => void
 }) {
@@ -1558,8 +1570,22 @@ function PayStatementConfirmModal({
               </div>
             </div>
 
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">Forma de pagamento</span>
+              <select
+                value={paymentType}
+                onChange={(event) => onPaymentTypeChange(event.target.value as StatementPaymentType)}
+                disabled={confirming}
+                className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+              >
+                {STATEMENT_PAYMENT_TYPE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+
             <div className="rounded-[18px] border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900">
-              As compras deste ciclo entram nas transacoes, as parcelas do mes ficam pagas e as parcelas futuras continuam abertas.
+              Sera criada uma unica transacao de saida consolidada. As compras desta fatura ficam apenas como detalhes do pagamento.
             </div>
           </div>
 
@@ -1633,6 +1659,7 @@ function FuturosPageContent() {
   const [editingCharge, setEditingCharge] = useState<CreditCardChargeItem | null>(null)
   const [deleteChargeTarget, setDeleteChargeTarget] = useState<CreditCardChargeItem | null>(null)
   const [payStatementConfirmOpen, setPayStatementConfirmOpen] = useState(false)
+  const [statementPaymentType, setStatementPaymentType] = useState<StatementPaymentType>('PIX')
 
   const toggleGroup = (key: string) => {
     setClosedGroups((prev) => {
@@ -1821,7 +1848,7 @@ function FuturosPageContent() {
 
         const current = acc[cardId] ?? { openInvoices: 0, futureInstallments: 0 }
         acc[cardId] = {
-          openInvoices: current.openInvoices + (group.statement?.status === 'open' ? 1 : 0),
+          openInvoices: current.openInvoices + (String(group.statement?.status ?? '').toLowerCase() === 'open' ? 1 : 0),
           futureInstallments: current.futureInstallments + group.items.length,
         }
         return acc
@@ -2147,7 +2174,12 @@ function FuturosPageContent() {
     try {
       await payStatementMutation.mutateAsync({
         statementId,
-        data: { paidAt: new Date().toISOString() },
+        data: {
+          paidAt: new Date().toISOString(),
+          transactionDate: new Date().toISOString(),
+          paymentType: statementPaymentType,
+          createTransaction: true,
+        },
       })
       setPayStatementConfirmOpen(false)
       toast.success('Fatura marcada como paga')
@@ -3116,7 +3148,9 @@ function FuturosPageContent() {
         amount={selectedInvoiceGroup?.totalAmount ?? 0}
         dueAt={selectedInvoiceGroup?.statement?.dueAt}
         closingAt={selectedInvoiceGroup?.statement?.closingAt}
+        paymentType={statementPaymentType}
         confirming={payStatementMutation.isPending}
+        onPaymentTypeChange={setStatementPaymentType}
         onClose={() => setPayStatementConfirmOpen(false)}
         onConfirm={confirmPaySelectedStatement}
       />

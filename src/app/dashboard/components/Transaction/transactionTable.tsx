@@ -1,12 +1,13 @@
 'use client'
 
 import React, { useMemo } from 'react'
-import { Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import type { Transaction } from '@/types/Transaction'
 import { formatCurrency } from '@/utils/formatter'
 import { toFirstName } from '@/utils/actorName'
 import { resolveDisplayDescription } from '@/utils/displayDescription'
+import { getCreditCardStatementPaymentDetails } from '@/utils/cashflowTransactions'
 
 type SortField = 'date' | 'value' | null
 type SortDirection = 'asc' | 'desc'
@@ -43,6 +44,12 @@ function SortIcon({ active, direction }: { active: boolean; direction: SortDirec
   return direction === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
 }
 
+function installmentLabel(number: number | null, count: number | null) {
+  if (!number && !count) return '-'
+  if (!count || count <= 1) return '1/1'
+  return `${number ?? 1}/${count}`
+}
+
 export function TransactionTable({
   transactions,
   getActorLabel,
@@ -63,9 +70,19 @@ export function TransactionTable({
   const locale = useLocale()
   const hasData = transactions?.length > 0
   const rows = useMemo(() => transactions ?? [], [transactions])
+  const [expandedStatementIds, setExpandedStatementIds] = React.useState<Set<string>>(new Set())
   const gridCols = showActor
     ? 'grid-cols-[40px_110px_minmax(220px,1fr)_170px_220px_110px_140px_92px]'
     : 'grid-cols-[40px_110px_minmax(280px,1fr)_220px_110px_140px_92px]'
+
+  const toggleStatementDetails = (id: string) => {
+    setExpandedStatementIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   return (
     <div className="w-full hidden md:block">
@@ -152,10 +169,13 @@ export function TransactionTable({
               const description = resolveDisplayDescription(tx.description, tx.sourceDescription, t('noDescription'))
               const actorLabel = getActorLabel(tx)
               const actorFirstName = toFirstName(actorLabel) || actorLabel
+              const statementDetails = getCreditCardStatementPaymentDetails(tx)
+              const hasStatementDetails = statementDetails.length > 0
+              const statementExpanded = expandedStatementIds.has(tx.id)
 
               return (
+                <React.Fragment key={tx.id}>
                 <div
-                  key={tx.id}
                   role="row"
                   className={[
                     'grid',
@@ -242,6 +262,18 @@ export function TransactionTable({
                   </div>
 
                   <div role="cell" className="flex items-center justify-end gap-2">
+                    {hasStatementDetails && (
+                      <button
+                        type="button"
+                        onClick={() => toggleStatementDetails(tx.id)}
+                        className="h-9 w-9 rounded-full border border-sky-100 bg-sky-50 text-primary hover:bg-sky-100 flex items-center justify-center cursor-pointer"
+                        title={t('statementPayment.viewDetails')}
+                        aria-label={t('statementPayment.viewDetails')}
+                        aria-expanded={statementExpanded}
+                      >
+                        <ChevronDown className={['h-4 w-4 transition-transform', statementExpanded ? 'rotate-180' : ''].join(' ')} />
+                      </button>
+                    )}
                     {rowCanWrite ? (
                       <>
                         <button
@@ -267,6 +299,43 @@ export function TransactionTable({
                     )}
                   </div>
                 </div>
+                {hasStatementDetails && statementExpanded && (
+                  <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-4">
+                    <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+                      <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">{t('statementPayment.detailsTitle')}</p>
+                          <p className="mt-0.5 text-xs text-slate-500">{t('statementPayment.detailsSubtitle')}</p>
+                        </div>
+                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                          {t('statementPayment.itemsCount', { count: statementDetails.length })}
+                        </span>
+                      </div>
+                      <div className="hidden grid-cols-[minmax(220px,1.5fr)_170px_90px_110px_120px] gap-4 border-b border-slate-100 bg-slate-50 px-4 py-2 text-[11px] font-bold uppercase text-slate-500 lg:grid">
+                        <span>{t('statementPayment.description')}</span>
+                        <span>{t('statementPayment.category')}</span>
+                        <span>{t('statementPayment.installment')}</span>
+                        <span>{t('statementPayment.date')}</span>
+                        <span className="text-right">{t('statementPayment.amount')}</span>
+                      </div>
+                      <div className="divide-y divide-slate-100">
+                        {statementDetails.map((detail) => (
+                          <div
+                            key={detail.id}
+                            className="grid gap-2 px-4 py-3 text-sm lg:grid-cols-[minmax(220px,1.5fr)_170px_90px_110px_120px] lg:items-center lg:gap-4"
+                          >
+                            <p className="min-w-0 truncate font-medium text-slate-800">{detail.description}</p>
+                            <p className="text-slate-600">{detail.categoryName}</p>
+                            <p className="text-slate-600">{installmentLabel(detail.installmentNumber, detail.installmentCount)}</p>
+                            <p className="text-slate-600">{detail.date ? fmtDate(detail.date, locale) : '-'}</p>
+                            <p className="font-semibold text-slate-900 lg:text-right">{toCurrency(detail.amount)}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                </React.Fragment>
               )
             })
           )}

@@ -10,6 +10,7 @@ import type { Transaction } from '@/types/Transaction'
 import DateRangeSelect, { DateFilter } from '../DateRangeSelect'
 import { IconResolver } from '@/utils/IconResolver'
 import { formatCurrency } from '@/utils/formatter'
+import { filterEffectiveCashflowTransactions } from '@/utils/cashflowTransactions'
 
 function toBRL(v: number): string {
   return formatCurrency(v)
@@ -28,13 +29,26 @@ const SkeletonRow: React.FC = () => (
   </div>
 )
 
+function getTransactionsFromQueryData(data: unknown): Transaction[] {
+  if (Array.isArray(data)) return data as Transaction[]
+  if (!data || typeof data !== 'object') return []
+
+  const transactions = (data as { transactions?: unknown }).transactions
+  return Array.isArray(transactions) ? (transactions as Transaction[]) : []
+}
+
 export const LastTransactions: React.FC = () => {
   const { user } = useUserSession()
   const userId = user?.userData.user.id ?? ''
 
-  const { transactionsQuery } = useTranscation({ userId })
+  const { transactionsQuery } = useTranscation({
+    userId,
+    filters: { excludePaymentType: 'CREDIT_CARD' },
+  })
   const isLoading: boolean = transactionsQuery.isLoading
-  const transactions: Transaction[] = transactionsQuery.data ?? []
+  const transactions: Transaction[] = useMemo(() => {
+    return filterEffectiveCashflowTransactions(getTransactionsFromQueryData(transactionsQuery.data)) as Transaction[]
+  }, [transactionsQuery.data])
 
   const [filter, setFilter] = useState<DateFilter>({ mode: 'days', days: 30 })
 

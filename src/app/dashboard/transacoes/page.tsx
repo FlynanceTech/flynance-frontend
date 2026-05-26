@@ -14,7 +14,7 @@ import { Category, CategoryType, Transaction } from '@/types/Transaction'
 import { useTranscation } from '@/hooks/query/useTransaction'
 import { useUserSession } from '@/stores/useUserSession'
 import { useCategories } from '@/hooks/query/useCategory'
-import { CreditCard, Pencil, Trash2, TrashIcon } from 'lucide-react'
+import { AlertTriangle, CreditCard, Sparkles, TrashIcon } from 'lucide-react'
 import DeleteConfirmModal from '../components/DeleteConfirmModal'
 import { CategorySelect } from '../components/CategorySelect'
 import Select from 'react-select'
@@ -26,7 +26,12 @@ import { useCreditCardCharges } from '@/hooks/query/useCreditCardCharges'
 import type { CreditCardChargeItem } from '@/services/creditCardCharges'
 import { useCardMutations } from '@/hooks/query/useCreditCards'
 import toast from 'react-hot-toast'
-import { ADVISOR_READ_ONLY_FRIENDLY_MESSAGE, type PaymentType } from '@/services/transactions'
+import {
+  ADVISOR_READ_ONLY_FRIENDLY_MESSAGE,
+  type ImportConfirmPayload as ImportTransactionsConfirmPayload,
+  type ImportTransactionsPreviewMeta,
+  type PaymentType,
+} from '@/services/transactions'
 import { isAdvisorReadOnlyTransactionAccess } from '@/utils/transactionWriteAccess'
 import { formatCurrency } from '@/utils/formatter'
 import { useLocale, useTranslations } from 'next-intl'
@@ -183,6 +188,46 @@ function formatCardFilterLabel(card: { name: string; last4?: string | null }) {
   return card.last4 ? `${card.name} final ${card.last4}` : card.name
 }
 
+function normalizeSearchText(value: string | null | undefined) {
+  return (value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+}
+
+function resolveDetectedCardId(
+  detectedCardName: string | null | undefined,
+  cards: Array<{ id: string; name: string; last4?: string | null }>
+) {
+  const normalizedDetected = normalizeSearchText(detectedCardName)
+  if (!normalizedDetected) return ''
+
+  const exact = cards.find((card) => normalizeSearchText(card.name) === normalizedDetected)
+  if (exact) return exact.id
+
+  const partial = cards.find((card) => {
+    const normalizedName = normalizeSearchText(card.name)
+    return normalizedName.includes(normalizedDetected) || normalizedDetected.includes(normalizedName)
+  })
+  return partial?.id ?? ''
+}
+
+function isOtherCategoryName(value: string | null | undefined) {
+  const normalized = normalizeSearchText(value)
+  return normalized === 'outros' || normalized === 'other' || normalized === 'otros'
+}
+
+function hasAutoCategory(transaction: Transaction) {
+  const categoryName = transaction.category?.name
+  return Boolean((transaction.categoryId || transaction.category?.id) && !isOtherCategoryName(categoryName))
+}
+
+function isTechnicalOtherCategoryWarning(warning: string) {
+  const normalized = normalizeSearchText(warning)
+  return normalized.includes('categoria') && normalized.includes('outros')
+}
+
 function creditCardChargeToTransaction(charge: CreditCardChargeItem): Transaction {
   const category: Category = charge.category
     ? {
@@ -209,6 +254,7 @@ function creditCardChargeToTransaction(charge: CreditCardChargeItem): Transactio
     updatedByUser: null,
     value: charge.amountTotal,
     description: charge.description,
+    sourceDescription: formatChargeCardLabel(charge),
     categoryId: charge.category?.id ?? '',
     category,
     date: charge.purchaseDate,
@@ -252,7 +298,6 @@ export default function TransactionsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [chargeDrawerOpen, setChargeDrawerOpen] = useState(false)
   const [editingCharge, setEditingCharge] = useState<CreditCardChargeItem | null>(null)
-  const [deletingChargeId, setDeletingChargeId] = useState<string | null>(null)
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [selectAll, setSelectAll] = useState(false)
@@ -321,14 +366,7 @@ export default function TransactionsPage() {
   const [bulkCategoryToId, setBulkCategoryToId] = useState('')
   const [bulkCategoryCount, setBulkCategoryCount] = useState(0)
   const [previewWarnings, setPreviewWarnings] = useState<string[]>([])
-  const [previewMeta, setPreviewMeta] = useState<{
-    fileName?: string
-    fileMime?: string
-    count?: number
-    formatId?: string
-    detectedCardName?: string | null
-    isCreditCardStatement?: boolean
-  } | null>(null)
+  const [previewMeta, setPreviewMeta] = useState<ImportTransactionsPreviewMeta | null>(null)
   const [importStep, setImportStep] = useState<'review' | 'card' | 'uncategorized'>('review')
   const [selectedImportCardId, setSelectedImportCardId] = useState<string>('')
 
@@ -519,28 +557,26 @@ export default function TransactionsPage() {
       const isArrayResponse = Array.isArray(response)
       const list = isArrayResponse ? response : response?.transactions ?? []
       const warnings = !isArrayResponse && Array.isArray(response?.warnings) ? response.warnings : []
-      const meta = (!isArrayResponse ? response?.meta ?? null : null) as {
-        fileName?: string
-        fileMime?: string
-        count?: number
-        formatId?: string
-        detectedCardName?: string | null
-        isCreditCardStatement?: boolean
-      } | null
+      const meta = (!isArrayResponse ? response?.meta ?? null : null) as ImportTransactionsPreviewMeta | null
       const withIds = (list as Transaction[]).map((t, idx) => ({
         ...t,
         id: t.id ?? `import-preview-${idx}`,
       }))
+      const resolvedCardId = resolveDetectedCardId(meta?.detectedCardName, cardQuery.data ?? [])
+      const previewHasCardId = (list as Transaction[]).some(
+        (t) => t.paymentType === 'CREDIT_CARD' && Boolean(t.cardId)
+      )
       setImportedTransactions(withIds)
       setPreviewWarnings(warnings)
       setPreviewMeta(meta)
       setImportFile(file)
+      setSelectedImportCardId(resolvedCardId)
 
       // Decide initial step based on card detection and uncategorized items
       const isCreditCard = meta?.isCreditCardStatement || Boolean(meta?.detectedCardName)
       const hasUncategorized = (list as Transaction[]).some((t) => !t.categoryId && !t.category?.id)
 
-      if (isCreditCard && !meta?.detectedCardName) {
+      if (isCreditCard && !resolvedCardId && !previewHasCardId) {
         // Credit card statement but couldn't identify which card → show card selection
         setImportStep('card')
       } else if (hasUncategorized) {
@@ -563,15 +599,48 @@ export default function TransactionsPage() {
     try {
       setIsImporting(true)
       setImportError(null)
-      const txWithCard = selectedImportCardId
+      const resolvedCardId =
+        selectedImportCardId ||
+        resolveDetectedCardId(previewMeta?.detectedCardName, availableCards)
+      const isCreditCardStatementImport = Boolean(
+        previewMeta?.isCreditCardStatement ||
+        previewMeta?.detectedCardName ||
+        importedTransactions.some((t) => t.paymentType === 'CREDIT_CARD')
+      )
+
+      if (
+        isCreditCardStatementImport &&
+        !resolvedCardId &&
+        !importedTransactions.some((t) => t.paymentType === 'CREDIT_CARD' && Boolean(t.cardId))
+      ) {
+        setImportStep('card')
+        setImportError('Selecione o cartao desta fatura antes de confirmar a importacao.')
+        return
+      }
+
+      const txWithCard = resolvedCardId
         ? importedTransactions.map((t) =>
-            t.paymentType === 'CREDIT_CARD' ? { ...t, cardId: selectedImportCardId } : t
+            t.paymentType === 'CREDIT_CARD' ? { ...t, cardId: resolvedCardId } : t
           )
         : importedTransactions
-      const payload = {
+      const payload: ImportTransactionsConfirmPayload<Transaction> = {
         mode: 'import' as const,
         transactions: txWithCard,
       }
+
+      if (isCreditCardStatementImport) {
+        payload.importKind = 'CREDIT_CARD_STATEMENT'
+        payload.sourceType = 'CREDIT_CARD_STATEMENT'
+        payload.creditCardStatement = {
+          cardId: resolvedCardId || undefined,
+          detectedCardName: previewMeta?.detectedCardName ?? null,
+          fileName: previewMeta?.fileName,
+          formatId: previewMeta?.formatId,
+          createCharges: true,
+          createEffectiveTransaction: false,
+        }
+      }
+
       await importConfirmMutation.mutateAsync({ userId, payload })
       setImportedTransactions([])
       setImportFile(null)
@@ -919,6 +988,19 @@ export default function TransactionsPage() {
     [cardQuery.data]
   )
 
+  const filteredPreviewWarnings = useMemo(
+    () => previewWarnings.filter((warning) => !isTechnicalOtherCategoryWarning(warning)),
+    [previewWarnings]
+  )
+
+  const previewCategorizationStats = useMemo(
+    () => ({
+      categorized: importedTransactions.filter(hasAutoCategory).length,
+      total: importedTransactions.length,
+    }),
+    [importedTransactions]
+  )
+
   if (!userId) return <SkeletonSection />
   if (activeTab === 'all' && transactionsQuery.isLoading) return <SkeletonSection />
   if (activeTab === 'credit_card' && chargesQuery.isLoading) return <SkeletonSection />
@@ -956,7 +1038,8 @@ export default function TransactionsPage() {
                       : tr('previewDialog.title')}
                   </DialogTitle>
                   {previewMeta?.detectedCardName && (
-                    <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-white px-3 py-1 text-[11px] font-extrabold text-primary shadow-[0_8px_20px_rgba(14,165,233,0.12)]">
+                      <CreditCard className="h-3.5 w-3.5" />
                       {tr('previewDialog.cardDetected', { cardName: previewMeta.detectedCardName })}
                     </span>
                   )}
@@ -973,12 +1056,30 @@ export default function TransactionsPage() {
                     ? tr('previewDialog.uncategorizedSubtitle')
                     : tr('previewDialog.subtitle')}
                 </p>
-                {previewWarnings.length > 0 && (
+                {previewCategorizationStats.total > 0 && (
+                  <div className="mt-3 rounded-xl border border-amber-100 bg-gradient-to-r from-amber-50 to-yellow-50 px-4 py-3 shadow-[0_10px_24px_rgba(245,158,11,0.08)]">
+                    <div className="flex items-start gap-3">
+                      <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-amber-600 shadow-sm">
+                        <Sparkles className="h-4 w-4" />
+                      </span>
+                      <div className="space-y-1 text-xs text-amber-900">
+                        <p className="font-semibold">
+                          Categoria “Outros” representa transações não identificadas automaticamente.
+                        </p>
+                        <p>Ajuste-as como quiser.</p>
+                        <p>
+                          Apesar de {previewCategorizationStats.categorized} das {previewCategorizationStats.total} transações terem sido categorizadas automaticamente, vale revisar todas para personalizar como preferir.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {filteredPreviewWarnings.length > 0 && (
                   <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
                     <ul className="flex flex-col gap-0.5 text-[11px] text-amber-700">
-                      {previewWarnings.map((warning, wIdx) => (
+                      {filteredPreviewWarnings.map((warning, wIdx) => (
                         <li key={`${warning}-${wIdx}`} className="flex items-start gap-1">
-                          <span className="mt-px flex-shrink-0">⚠</span>
+                          <AlertTriangle className="mt-px h-3.5 w-3.5 flex-shrink-0" />
                           <span>{warning}</span>
                         </li>
                       ))}
@@ -1040,7 +1141,7 @@ export default function TransactionsPage() {
                       const hasUncategorized = uncategorizedInPreview.length > 0
                       setImportStep(hasUncategorized ? 'uncategorized' : 'review')
                     }}
-                    disabled={availableCards.length > 0 && !selectedImportCardId}
+                    disabled={!selectedImportCardId}
                     className="rounded-full bg-primary px-6 py-2 text-sm font-semibold text-white hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Continuar

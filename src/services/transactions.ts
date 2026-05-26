@@ -43,9 +43,6 @@ function getTransactionWriteErrorMessage(error: unknown, fallback: string) {
   return mapTransactionWriteErrorMessage(rawMessage)
 }
 
-type Primitive = string | number | boolean
-type FilterValue = Primitive | Primitive[] | undefined
-
 export type TransactionFilterMode = 'days' | 'month' | 'range'
 
 export type TransactionFilters = {
@@ -73,7 +70,7 @@ export type GetTransactionParams = {
   scope?: FinancialDataScope
 }
 
-export type GetTransactionResponse<TTransaction = any> = {
+export type GetTransactionResponse<TTransaction = Transaction> = {
   transactions: TTransaction[]
   meta: {
     page: number
@@ -196,20 +193,24 @@ export const deleteTransaction = async (id: string): Promise<{ message: string }
   }
 }
 
-export type ImportTransactionsResponse<TTransaction = any> =
+export type ImportTransactionsResponse<TTransaction = Transaction> =
   | { transactions: TTransaction[] }
   | TTransaction[]
 
-export type ImportTransactionsPreviewResponse<TTransaction = any> =
+export type ImportTransactionsPreviewMeta = {
+  fileName?: string
+  fileMime?: string
+  count?: number
+  formatId?: string
+  detectedCardName?: string | null
+  isCreditCardStatement?: boolean
+}
+
+export type ImportTransactionsPreviewResponse<TTransaction = Transaction> =
   | {
       transactions: TTransaction[]
       warnings?: string[]
-      meta?: {
-        fileName?: string
-        fileMime?: string
-        count?: number
-        formatId?: string
-      }
+      meta?: ImportTransactionsPreviewMeta
     }
   | TTransaction[]
 
@@ -259,9 +260,19 @@ export const importTransactionsPreview = async (
   }
 }
 
-export type ImportConfirmPayload<TTransaction = any> = {
+export type ImportConfirmPayload<TTransaction = Transaction> = {
   mode: 'import'
   transactions: TTransaction[]
+  importKind?: 'BANK_ACCOUNT' | 'CREDIT_CARD_STATEMENT'
+  sourceType?: 'BANK_ACCOUNT' | 'CREDIT_CARD_STATEMENT'
+  creditCardStatement?: {
+    cardId?: string
+    detectedCardName?: string | null
+    fileName?: string
+    formatId?: string
+    createCharges: true
+    createEffectiveTransaction: false
+  }
 }
 
 export const importTransactionsConfirm = async (

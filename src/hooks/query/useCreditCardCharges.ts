@@ -38,6 +38,8 @@ export function useCreditCardCharges(params: UseCreditCardChargesParams = {}) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['credit-card-charges'] })
       qc.invalidateQueries({ queryKey: ['future-forecast'] })
+      qc.invalidateQueries({ queryKey: ['future-installments'] })
+      qc.invalidateQueries({ queryKey: ['cards'] })
     },
   })
 
@@ -46,6 +48,9 @@ export function useCreditCardCharges(params: UseCreditCardChargesParams = {}) {
       updateCreditCardCharge(chargeId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['credit-card-charges'] })
+      qc.invalidateQueries({ queryKey: ['future-forecast'] })
+      qc.invalidateQueries({ queryKey: ['future-installments'] })
+      qc.invalidateQueries({ queryKey: ['cards'] })
     },
   })
 
@@ -54,6 +59,8 @@ export function useCreditCardCharges(params: UseCreditCardChargesParams = {}) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['credit-card-charges'] })
       qc.invalidateQueries({ queryKey: ['future-forecast'] })
+      qc.invalidateQueries({ queryKey: ['future-installments'] })
+      qc.invalidateQueries({ queryKey: ['cards'] })
     },
   })
 

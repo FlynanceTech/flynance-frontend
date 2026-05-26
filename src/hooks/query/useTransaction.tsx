@@ -7,6 +7,7 @@ import {
   importTransactions,
   importTransactionsConfirm,
   importTransactionsPreview,
+  ImportConfirmPayload as ImportTransactionsConfirmPayload,
   TransactionDTO,
   TransactionFilters,
   updateTransaction,
@@ -39,10 +40,7 @@ type ImportPayload = {
 
 type ImportConfirmPayload = {
   userId: string
-  payload: {
-    mode: 'import'
-    transactions: Transaction[]
-  }
+  payload: ImportTransactionsConfirmPayload<Transaction>
 }
 
 export function useTranscation(params: UseTransactionParams) {
@@ -185,9 +183,24 @@ export function useTranscation(params: UseTransactionParams) {
   const importConfirmMutation = useMutation({
     mutationFn: ({ userId, payload }: ImportConfirmPayload) =>
       importTransactionsConfirm(activeClientId ?? userId, payload),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      const hasCreditCardStatementImport =
+        variables.payload.importKind === 'CREDIT_CARD_STATEMENT' ||
+        variables.payload.sourceType === 'CREDIT_CARD_STATEMENT' ||
+        variables.payload.transactions.some((transaction) => transaction.paymentType === 'CREDIT_CARD')
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      queryClient.invalidateQueries({ queryKey: ['financeStatus'] })
+      queryClient.invalidateQueries({ queryKey: ['payment-type-summary'] })
       queryClient.invalidateQueries({ queryKey: ['fixed-accounts'] })
+      queryClient.invalidateQueries({ queryKey: ['controls', { withProgress: true }] })
+
+      if (hasCreditCardStatementImport) {
+        queryClient.invalidateQueries({ queryKey: ['credit-card-charges'] })
+        queryClient.invalidateQueries({ queryKey: ['future-forecast'] })
+        queryClient.invalidateQueries({ queryKey: ['future-installments'] })
+        queryClient.invalidateQueries({ queryKey: ['future-plans'] })
+        queryClient.invalidateQueries({ queryKey: ['cards'] })
+      }
     },
   })
 
