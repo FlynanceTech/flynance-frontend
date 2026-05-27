@@ -630,6 +630,7 @@ function SummaryCard({
   title,
   value,
   subtext,
+  details,
   icon: Icon,
   tone,
   loading,
@@ -638,6 +639,7 @@ function SummaryCard({
   title: string
   value: string | number
   subtext: string
+  details?: string
   icon: React.ComponentType<{ className?: string }>
   tone: SummaryTone
   loading: boolean
@@ -658,6 +660,9 @@ function SummaryCard({
             {value}
           </p>
         )}
+        {details ? (
+          <p className="mt-2 truncate text-xs font-medium text-slate-500">{details}</p>
+        ) : null}
         <p className="mt-2 truncate text-xs font-medium text-slate-500">{subtext}</p>
       </div>
     </div>
@@ -678,6 +683,12 @@ function SummaryCard({
       {content}
     </div>
   )
+}
+
+function summarizeCardNames(names: string[]) {
+  if (!names.length) return 'Nenhum cartao'
+  if (names.length <= 2) return names.join(', ')
+  return `${names.slice(0, 2).join(', ')} +${names.length - 2}`
 }
 
 function ForecastTabs({
@@ -1829,6 +1840,30 @@ function FuturosPageContent() {
     () => currentMonthCreditGroups.reduce((sum, group) => sum + Number(group.totalAmount || 0), 0),
     [currentMonthCreditGroups]
   )
+  const creditInvoiceCardNames = useMemo(() => {
+    const names = new Set<string>()
+    currentMonthCreditGroups.forEach((group) => {
+      if (group.card?.name) names.add(group.card.name)
+    })
+    return Array.from(names)
+  }, [currentMonthCreditGroups])
+  const creditInvoiceCardCount = creditInvoiceCardNames.length
+  const incomeCurrentMonthItems = useMemo(
+    () => currentMonthUpcoming.filter((item) => item.type === 'INCOME'),
+    [currentMonthUpcoming]
+  )
+  const incomeTotalThisMonth = useMemo(
+    () => incomeCurrentMonthItems.reduce((sum, item) => sum + Number(item.amount || 0), 0),
+    [incomeCurrentMonthItems]
+  )
+  const incomeCardNames = useMemo(() => {
+    const names = new Set<string>()
+    incomeCurrentMonthItems.forEach((item) => {
+      if (item.card?.name) names.add(item.card.name)
+    })
+    return Array.from(names)
+  }, [incomeCurrentMonthItems])
+  const incomeCardCount = incomeCardNames.length
   const creditInstallmentTotalThisMonth = useMemo(
     () =>
       currentMonthUpcoming
@@ -2555,9 +2590,23 @@ function FuturosPageContent() {
           <SummaryCard
             title="A pagar"
             value={formatCurrencyBRL(creditInvoiceTotalThisMonth)}
-            subtext={`${activeCreditCardCount} ${activeCreditCardCount === 1 ? 'cartao' : 'cartoes'}`}
+            details={creditInvoiceCardNames.length ? summarizeCardNames(creditInvoiceCardNames) : 'Nenhum cartao na fatura vigente'}
+            subtext={`${creditInvoiceCardCount} ${creditInvoiceCardCount === 1 ? 'cartao' : 'cartoes'}`}
             icon={ArrowDownRight}
             tone="red"
+            loading={currentMonthForecastQuery.isLoading}
+          />
+          <SummaryCard
+            title="A receber"
+            value={formatCurrencyBRL(incomeTotalThisMonth)}
+            details={incomeCardNames.length ? summarizeCardNames(incomeCardNames) : 'Recebimentos vigentes no periodo atual'}
+            subtext={
+              incomeCardNames.length
+                ? `${incomeCardNames.length} ${incomeCardNames.length === 1 ? 'cartao' : 'cartoes'}`
+                : 'Recebimentos vigentes'
+            }
+            icon={ArrowUpRight}
+            tone="green"
             loading={currentMonthForecastQuery.isLoading}
           />
           <SummaryCard
