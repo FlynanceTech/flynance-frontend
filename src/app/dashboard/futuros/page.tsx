@@ -1125,13 +1125,13 @@ function CreditMonthDistributionCard({
 }
 
 function CardFilterRail({
-  sections,
+  cards,
   selectedCardId,
   cardColors,
   onSelect,
   onNewCard,
 }: {
-  sections: CardOwnerSection[]
+  cards: CreditCardResponse[]
   selectedCardId: string | null
   cardColors: Record<string, string>
   onSelect: (cardId: string) => void
@@ -1139,33 +1139,32 @@ function CardFilterRail({
 }) {
   return (
     <section className="rounded-[20px] border border-slate-200 bg-white p-4 shadow-[0_12px_34px_rgba(15,23,42,0.04)]">
-      <div className="flex flex-col gap-4">
-        {sections.map((section) => (
-          <div key={section.id} className="min-w-0">
-            <p className="mb-2 px-1 text-[11px] font-extrabold tracking-[0.14em] text-slate-400">{section.label}</p>
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {section.cards.map((card) => {
-                const accent = getCardAccentColor(card.id, cardColors)
-                const active = selectedCardId === card.id
-                return (
-                  <button
-                    key={card.id}
-                    type="button"
-                    onClick={() => onSelect(card.id)}
-                    className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-extrabold transition-all ${active ? 'border-transparent text-white shadow-[0_12px_24px_rgba(15,23,42,0.14)]' : 'border-slate-200 bg-white text-slate-700 hover:-translate-y-0.5 hover:border-slate-300'}`}
-                    style={active ? { backgroundColor: accent } : undefined}
-                  >
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: active ? '#fff' : accent }} />
-                    {card.name}
-                  </button>
-                )
-              })}
-              <button type="button" onClick={onNewCard} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-dashed border-slate-300 bg-slate-50 text-slate-500 transition-colors hover:border-blue-200 hover:text-primary" title="Novo cartao">
-                <Plus className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        ))}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        {cards.map((card) => {
+          const accent = getCardAccentColor(card.id, cardColors)
+          const active = selectedCardId === card.id
+          return (
+            <button
+              key={card.id}
+              type="button"
+              onClick={() => onSelect(card.id)}
+              className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-extrabold transition-all ${active ? 'border-transparent text-white shadow-[0_12px_24px_rgba(15,23,42,0.14)]' : 'border-slate-200 bg-white text-slate-700 hover:-translate-y-0.5 hover:border-slate-300'}`}
+              style={active ? { backgroundColor: accent } : undefined}
+            >
+              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: active ? '#fff' : accent }} />
+              {card.name}
+            </button>
+          )
+        })}
+
+        <button
+          type="button"
+          onClick={onNewCard}
+          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-dashed border-slate-300 bg-slate-50 text-slate-500 transition-colors hover:border-blue-200 hover:text-primary"
+          title="Novo cartao"
+        >
+          <Plus className="h-4 w-4" />
+        </button>
       </div>
     </section>
   )
@@ -2630,7 +2629,7 @@ function FuturosPageContent() {
         </section>
 
         <CardFilterRail
-          sections={cardOwnerSections}
+          cards={cards}
           selectedCardId={selectedCardId}
           cardColors={cardColors}
           onSelect={setSelectedCardId}
