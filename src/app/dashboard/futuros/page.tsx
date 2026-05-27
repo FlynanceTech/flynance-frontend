@@ -1313,32 +1313,35 @@ function SelectedCardHud({
       <div className="space-y-4">
         <article className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-[0_16px_44px_rgba(15,23,42,0.06)]">
           <div className="h-2" style={{ backgroundColor: cardColor }} />
-          <div className="grid gap-5 p-5 lg:grid-cols-[1fr_auto] lg:items-start">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="h-3 w-3 rounded-full" style={{ backgroundColor: cardColor }} />
-                <h2 className="truncate text-xl font-extrabold text-slate-950">{formatCardDisplayName(card)}</h2>
-                {ownerLabel && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-extrabold text-slate-500">{ownerLabel}</span>}
-                <span className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold ${statementStatusBadge(statementStatus)}`}>{statementStatusLabel(statementStatus)}</span>
+          <div className="p-6">
+            <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="h-3 w-3 rounded-full" style={{ backgroundColor: cardColor }} />
+                  <h2 className="truncate text-2xl font-extrabold text-slate-950">{formatCardDisplayName(card)}</h2>
+                  <span className={`rounded-full px-3 py-1 text-[11px] font-extrabold ${statementStatusBadge(statementStatus)}`}>{statementStatusLabel(statementStatus)}</span>
+                </div>
+                <p className="mt-6 text-xs uppercase tracking-[0.16em] text-slate-400">Fatura atual</p>
+                <p className="mt-3 text-4xl font-extrabold text-slate-950">{formatCurrencyBRL(invoiceTotal)}</p>
               </div>
-              <p className="mt-4 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Fatura atual</p>
-              <p className="mt-1 text-4xl font-extrabold tracking-normal text-slate-950">{formatCurrencyBRL(invoiceTotal)}</p>
+
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 lg:min-w-[220px]">
+                <div className="rounded-[18px] bg-slate-50 px-4 py-4 text-sm text-slate-700">
+                  <p className="font-semibold text-slate-900">Vence</p>
+                  <p className="mt-2 text-base font-extrabold text-slate-950">{formatDateShort(invoiceGroup?.statement?.dueAt)}</p>
+                </div>
+                <div className="rounded-[18px] bg-slate-50 px-4 py-4 text-sm text-slate-700">
+                  <p className="font-semibold text-slate-900">Fecha</p>
+                  <p className="mt-2 text-base font-extrabold text-slate-950">{formatDateShort(invoiceGroup?.statement?.closingAt)}</p>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[520px]">
-              <div className="rounded-[16px] bg-slate-50 px-4 py-3"><p className="text-[11px] font-bold text-slate-500">Vence</p><p className="mt-1 text-sm font-extrabold text-slate-950">{formatDateShort(invoiceGroup?.statement?.dueAt)}</p></div>
-              <div className="rounded-[16px] bg-slate-50 px-4 py-3"><p className="text-[11px] font-bold text-slate-500">Fecha</p><p className="mt-1 text-sm font-extrabold text-slate-950">{formatDateShort(invoiceGroup?.statement?.closingAt)}</p></div>
-              <div className="rounded-[16px] bg-slate-50 px-4 py-3"><p className="text-[11px] font-bold text-slate-500">Compras</p><p className="mt-1 text-sm font-extrabold text-slate-950">{purchases.length}</p></div>
-              <div className="rounded-[16px] bg-slate-50 px-4 py-3"><p className="text-[11px] font-bold text-slate-500">Parcelas</p><p className="mt-1 text-sm font-extrabold text-slate-950">{installments.length}</p></div>
+            <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-start">
+              <button type="button" onClick={() => onManageCard(card.id)} className="inline-flex h-12 items-center justify-center rounded-full bg-primary px-6 text-sm font-extrabold text-white transition-colors hover:bg-secondary">
+                Gerenciar cartao
+              </button>
             </div>
-          </div>
-          <div className="flex flex-wrap gap-2 border-t border-slate-100 px-5 py-4">
-            <button type="button" onClick={onCreateCharge} className="inline-flex h-10 items-center gap-2 rounded-full bg-primary px-4 text-sm font-extrabold text-white transition-colors hover:bg-secondary"><Plus className="h-4 w-4" />Compra no credito</button>
-            <button type="button" onClick={() => onManageCard(card.id)} className="inline-flex h-10 items-center gap-2 rounded-full border border-slate-200 px-4 text-sm font-extrabold text-slate-700 transition-colors hover:border-blue-200 hover:text-primary"><WalletCards className="h-4 w-4" />Gerenciar cartao</button>
-            <button type="button" onClick={onOpenHistory} className="inline-flex h-10 items-center gap-2 rounded-full border border-slate-200 px-4 text-sm font-extrabold text-slate-700 transition-colors hover:border-blue-200 hover:text-primary"><BarChart3 className="h-4 w-4" />Ver historico</button>
-            {invoiceGroup?.statement?.id && statementStatus !== 'paid' && (
-              <button type="button" onClick={onPayStatement} disabled={payingStatement} className="inline-flex h-10 items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 text-sm font-extrabold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"><CheckCircle2 className="h-4 w-4" />{payingStatement ? 'Pagando...' : 'Pagar fatura'}</button>
-            )}
           </div>
         </article>
 
