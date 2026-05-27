@@ -1651,7 +1651,6 @@ function FuturosPageContent() {
     readCreditCardColorMap()
   )
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
-  const [distributionModalOpen, setDistributionModalOpen] = useState(false)
   const [purchasesModalOpen, setPurchasesModalOpen] = useState(false)
   const [installmentPlansModalOpen, setInstallmentPlansModalOpen] = useState(false)
   const [historyModalOpen, setHistoryModalOpen] = useState(false)
@@ -1830,8 +1829,6 @@ function FuturosPageContent() {
     () => currentMonthCreditGroups.reduce((sum, group) => sum + Number(group.totalAmount || 0), 0),
     [currentMonthCreditGroups]
   )
-  const incomeTotalThisMonth = currentMonthForecastQuery.data?.totals?.toReceive ?? 0
-  const incomeCountThisMonth = currentMonthUpcoming.filter((item) => item.type === 'INCOME').length
   const creditInstallmentTotalThisMonth = useMemo(
     () =>
       currentMonthUpcoming
@@ -1932,20 +1929,6 @@ function FuturosPageContent() {
         }))
       ),
     [selectedInvoicePurchases]
-  )
-
-  const monthCreditDistribution = useMemo(
-    () =>
-      buildCreditDistribution(
-        currentMonthUpcoming
-          .filter((item) => item.sourceType === 'credit_card_statement_installment')
-          .map((item) => ({
-            categoryId: item.category?.id ?? null,
-            categoryName: item.category?.name ?? 'Sem categoria',
-            amount: Number(item.amount || 0),
-          }))
-      ),
-    [currentMonthUpcoming]
   )
 
   const selectedCardHistoryData = useMemo(() => {
@@ -2578,14 +2561,6 @@ function FuturosPageContent() {
             loading={currentMonthForecastQuery.isLoading}
           />
           <SummaryCard
-            title="A receber"
-            value={formatCurrencyBRL(incomeTotalThisMonth)}
-            subtext={incomeCountThisMonth > 0 ? `${incomeCountThisMonth} entradas futuras` : 'Entradas futuras'}
-            icon={ArrowUpRight}
-            tone="green"
-            loading={currentMonthForecastQuery.isLoading}
-          />
-          <SummaryCard
             title="Cartao de credito"
             value={activeCreditCardCount}
             subtext="Gerenciar cartoes"
@@ -2604,13 +2579,6 @@ function FuturosPageContent() {
             onClick={openInstallmentsManagement}
           />
         </section>
-
-        <CreditMonthDistributionCard
-          total={creditInvoiceTotalThisMonth}
-          items={monthCreditDistribution}
-          loading={currentMonthForecastQuery.isLoading}
-          onOpen={() => setDistributionModalOpen(true)}
-        />
 
         <CardFilterRail
           sections={cardOwnerSections}
@@ -3103,13 +3071,6 @@ function FuturosPageContent() {
         onClose={closeChargeDrawer}
         initialData={editingCharge ?? undefined}
         initialCardId={selectedCardId}
-      />
-
-      <CreditDistributionModal
-        open={distributionModalOpen}
-        title="Gastos no credito este mes"
-        items={monthCreditDistribution}
-        onClose={() => setDistributionModalOpen(false)}
       />
 
       <PurchasesModal
