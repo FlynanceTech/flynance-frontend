@@ -1219,14 +1219,17 @@ function InstallmentPlanRow({
   plan,
   onEdit,
   onDelete,
+  nextDueDate,
 }: {
   plan: FutureInstallmentPlan
   onEdit: (plan: FutureInstallmentPlan) => void
   onDelete: (plan: FutureInstallmentPlan) => void
+  nextDueDate?: string | null
 }) {
   const progress = getPlanProgress(plan)
   const status = normalizePlanStatus(plan.status ?? null)
   const monthly = getPlanMonthlyAmount(plan)
+  const effectiveNextDue = nextDueDate ?? progress.nextDueDate
 
   return (
     <div className="grid gap-3 border-t border-slate-100 px-4 py-3 first:border-t-0 md:grid-cols-[1.2fr_0.75fr_0.9fr_0.9fr_0.8fr_34px] md:items-center">
@@ -1236,7 +1239,7 @@ function InstallmentPlanRow({
       </div>
       <span className={`w-fit rounded-full px-2.5 py-1 text-[11px] font-extrabold ${status === 'active' ? 'bg-sky-100 text-sky-700' : status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700'}`}>{status === 'active' ? 'Ativo' : status === 'completed' ? 'Concluido' : 'Cancelado'}</span>
       <div><p className="text-sm font-extrabold text-slate-950">{formatCurrencyBRL(plan.totalAmount)}</p><p className="mt-1 text-xs font-medium text-slate-500">Total</p></div>
-      <div><p className="text-sm font-extrabold text-slate-950">{formatDateShort(progress.nextDueDate)}</p><p className="mt-1 text-xs font-medium text-slate-500">Proximo vencimento</p></div>
+      <div><p className="text-sm font-extrabold text-slate-950">{formatDateShort(effectiveNextDue)}</p><p className="mt-1 text-xs font-medium text-slate-500">Proximo vencimento</p></div>
       <div><p className="text-sm font-extrabold text-slate-950">{formatCurrencyBRL(monthly)}</p><p className="mt-1 text-xs font-medium text-slate-500">Por mes</p></div>
       <Menu as="div" className="relative">
         <MenuButton className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"><MoreHorizontal className="h-4 w-4" /></MenuButton>
@@ -1366,7 +1369,15 @@ function SelectedCardHud({
               {installments.length > 7 && <button type="button" onClick={onOpenInstallments} className="text-xs font-extrabold text-primary hover:text-secondary">Ver todos os {installments.length}</button>}
             </div>
             {visibleInstallments.length ? (
-              visibleInstallments.map((plan) => <InstallmentPlanRow key={plan.id} plan={plan} onEdit={onEditPlan} onDelete={onDeletePlan} />)
+              visibleInstallments.map((plan) => (
+                <InstallmentPlanRow
+                  key={plan.id}
+                  plan={plan}
+                  onEdit={onEditPlan}
+                  onDelete={onDeletePlan}
+                  nextDueDate={invoiceGroup?.statement?.dueAt}
+                />
+              ))
             ) : (
               <div className="px-5 py-8 text-sm font-medium text-slate-500">Nenhum parcelamento ativo neste cartao.</div>
             )}
@@ -1448,6 +1459,7 @@ function InstallmentPlansModal({
   onEdit,
   onDelete,
   onOpenManagement,
+  nextDueDate,
 }: {
   open: boolean
   plans: FutureInstallmentPlan[]
@@ -1455,6 +1467,7 @@ function InstallmentPlansModal({
   onEdit: (plan: FutureInstallmentPlan) => void
   onDelete: (plan: FutureInstallmentPlan) => void
   onOpenManagement: () => void
+  nextDueDate?: string | null
 }) {
   return (
     <Dialog open={open} onClose={onClose} className="relative z-50">
@@ -1466,7 +1479,9 @@ function InstallmentPlansModal({
             <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
           </div>
           <div className="min-h-0 overflow-y-auto">
-            {plans.length ? plans.map((plan) => <InstallmentPlanRow key={plan.id} plan={plan} onEdit={onEdit} onDelete={onDelete} />) : <div className="px-6 py-10 text-center text-sm font-medium text-slate-500">Nenhum parcelamento ativo neste cartao.</div>}
+            {plans.length ? plans.map((plan) => (
+              <InstallmentPlanRow key={plan.id} plan={plan} onEdit={onEdit} onDelete={onDelete} nextDueDate={nextDueDate} />
+            )) : <div className="px-6 py-10 text-center text-sm font-medium text-slate-500">Nenhum parcelamento ativo neste cartao.</div>}
           </div>
           <div className="border-t border-slate-100 px-6 py-4">
             <button type="button" onClick={onOpenManagement} className="inline-flex h-10 items-center justify-center rounded-full bg-primary px-5 text-sm font-extrabold text-white transition-colors hover:bg-secondary">Abrir gerenciamento completo</button>
@@ -3145,6 +3160,7 @@ function FuturosPageContent() {
         }}
         onDelete={setDeletePlanTarget}
         onOpenManagement={openInstallmentsManagement}
+        nextDueDate={selectedInvoiceGroup?.statement?.dueAt}
       />
 
       <CardHistoryModal
