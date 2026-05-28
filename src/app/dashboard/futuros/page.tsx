@@ -2638,7 +2638,7 @@ function FuturosPageContent() {
           <SummaryCard
             title="Parcelamentos"
             value={formatCurrencyBRL(creditInstallmentTotalThisMonth)}
-            subtext={`As parcelas dos seus cartoes somam ${formatCurrencyBRL(creditInstallmentTotalThisMonth)} este mes.`}
+            subtext={`As parcelas dos seus cartões somam ${formatCurrencyBRL(creditInstallmentTotalThisMonth)} este mês.`}
             icon={LayoutGrid}
             tone="purple"
             loading={currentMonthForecastQuery.isLoading}
