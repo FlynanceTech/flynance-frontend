@@ -29,7 +29,7 @@ export default function FinancialScopeSwitcher() {
 
   return (
     <Select value={currentScope} onValueChange={(value) => setScope(value as FinancialDataScope)}>
-      <SelectTrigger className="h-7 w-fit min-w-[184px] rounded-full border-0 bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 shadow-none hover:bg-slate-200 focus:ring-1 focus:ring-primary/30">
+      <SelectTrigger className="h-7 w-fit min-w-[184px] rounded-full border border-gray-300 bg-white px-3 py-1 text-xs font-semibold text-gray-600 shadow-none hover:bg-gray-50 focus:ring-1 focus:ring-primary/30">
         <span>{t('current', { scope: currentLabel })}</span>
       </SelectTrigger>
       <SelectContent align="start">

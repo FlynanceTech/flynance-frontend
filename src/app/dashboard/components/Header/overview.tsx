@@ -262,19 +262,21 @@ export default function Header({
               {t('greeting', { name: greetingName })}
             </h3>
             {showAccountTypeBadge && (
-              <Link
-                href="/dashboard/conta-casal"
-                className={
-                  'inline-flex w-fit items-center rounded-full px-3 py-0.5 text-xs font-medium ' +
-                  (hasCoupleAccount
-                    ? 'bg-emerald-100 text-emerald-700'
-                    : 'bg-slate-100 text-slate-600')
-                }
-              >
-                {accountTypeLabel}
-              </Link>
+              <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+                <Link
+                  href="/dashboard/conta-casal"
+                  className={
+                    'inline-flex w-fit items-center gap-1 rounded-full px-3 py-0.5 text-xs font-bold ' +
+                    (hasCoupleAccount
+                      ? 'bg-[#FFD414] text-black'
+                      : 'bg-[#0065A4] text-white')
+                  }
+                >
+                  {accountTypeLabel} {hasCoupleAccount ? '❤️' : '📊'}
+                </Link>
+                <FinancialScopeSwitcher />
+              </span>
             )}
-            <FinancialScopeSwitcher />
           </div>
 
           <div className="col-span-2 flex w-full items-center justify-end gap-2">
