@@ -915,7 +915,7 @@ function CommitmentCard({
         <MenuButton className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800">
           <MoreHorizontal className="h-5 w-5" />
         </MenuButton>
-        <MenuItems className="absolute right-0 z-20 mt-2 w-44 rounded-xl border border-slate-200 bg-white p-1 text-sm shadow-xl outline-none">
+        <MenuItems anchor="bottom end" className="z-20 w-44 rounded-xl border border-slate-200 bg-white p-1 text-sm shadow-xl outline-none">
           <MenuItem>
             {({ focus }) => (
               <button
@@ -1233,7 +1233,7 @@ function CreditPurchaseRow({
         <MenuButton className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800">
           <MoreHorizontal className="h-4 w-4" />
         </MenuButton>
-        <MenuItems className="absolute right-0 z-20 mt-2 w-40 rounded-xl border border-slate-200 bg-white p-1 text-sm shadow-xl outline-none">
+        <MenuItems anchor="bottom end" className="z-20 w-40 rounded-xl border border-slate-200 bg-white p-1 text-sm shadow-xl outline-none">
           <MenuItem>
             {({ focus }) => (
               <button
@@ -1292,7 +1292,7 @@ function InstallmentPlanRow({
       <div><p className="text-sm font-extrabold text-slate-950">{formatCurrencyBRL(monthly)}</p><p className="mt-1 text-xs font-medium text-slate-500">Por mes</p></div>
       <Menu as="div" className="relative">
         <MenuButton className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"><MoreHorizontal className="h-4 w-4" /></MenuButton>
-        <MenuItems className="absolute right-0 z-20 mt-2 w-40 rounded-xl border border-slate-200 bg-white p-1 text-sm shadow-xl outline-none">
+        <MenuItems anchor="bottom end" className="z-20 w-40 rounded-xl border border-slate-200 bg-white p-1 text-sm shadow-xl outline-none">
           <MenuItem>{({ focus }) => <button type="button" onClick={() => onEdit(plan)} className={`w-full rounded-lg px-3 py-2 text-left font-medium ${focus ? 'bg-slate-50 text-slate-900' : 'text-slate-700'}`}>Editar</button>}</MenuItem>
           <MenuItem>{({ focus }) => <button type="button" onClick={() => onDelete(plan)} className={`w-full rounded-lg px-3 py-2 text-left font-medium ${focus ? 'bg-red-50 text-red-700' : 'text-red-600'}`}>Excluir</button>}</MenuItem>
         </MenuItems>
