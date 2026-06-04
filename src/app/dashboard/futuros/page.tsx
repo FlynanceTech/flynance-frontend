@@ -1128,47 +1128,60 @@ function CreditMonthDistributionCard({
 }
 
 function CardFilterRail({
-  cards,
+  cardOwnerSections,
   selectedCardId,
   cardColors,
   onSelect,
   onNewCard,
 }: {
-  cards: CreditCardResponse[]
+  cardOwnerSections: CardOwnerSection[]
   selectedCardId: string | null
   cardColors: Record<string, string>
   onSelect: (cardId: string) => void
   onNewCard: () => void
 }) {
-  return (
-    <section className="rounded-[20px] border border-slate-200 bg-white p-4 shadow-[0_12px_34px_rgba(15,23,42,0.04)]">
-      <div className="flex items-center gap-2 overflow-x-auto pb-1">
-        {cards.map((card) => {
-          const accent = getCardAccentColor(card.id, cardColors)
-          const active = selectedCardId === card.id
-          return (
-            <button
-              key={card.id}
-              type="button"
-              onClick={() => onSelect(card.id)}
-              className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-extrabold transition-all ${active ? 'border-transparent text-white shadow-[0_12px_24px_rgba(15,23,42,0.14)]' : 'border-slate-200 bg-white text-slate-700 hover:-translate-y-0.5 hover:border-slate-300'}`}
-              style={active ? { backgroundColor: accent } : undefined}
-            >
-              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: active ? '#fff' : accent }} />
-              {card.name}
-            </button>
-          )
-        })}
+  const multipleOwners = cardOwnerSections.length > 1
 
-        <button
-          type="button"
-          onClick={onNewCard}
-          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-dashed border-slate-300 bg-slate-50 text-slate-500 transition-colors hover:border-blue-200 hover:text-primary"
-          title="Novo cartao"
-        >
-          <Plus className="h-4 w-4" />
-        </button>
-      </div>
+  return (
+    <section className="space-y-4">
+      {cardOwnerSections.map((section) => (
+        <div key={section.id}>
+          {multipleOwners && (
+            <h3 className="mb-3 text-xs font-extrabold uppercase tracking-wider text-slate-600">{section.label}</h3>
+          )}
+          <div className={`rounded-[20px] border border-slate-200 bg-white p-4 shadow-[0_12px_34px_rgba(15,23,42,0.04)] ${multipleOwners ? '' : ''}`}>
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              {section.cards.map((card) => {
+                const accent = getCardAccentColor(card.id, cardColors)
+                const active = selectedCardId === card.id
+                return (
+                  <button
+                    key={card.id}
+                    type="button"
+                    onClick={() => onSelect(card.id)}
+                    className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-extrabold transition-all ${active ? 'border-transparent text-white shadow-[0_12px_24px_rgba(15,23,42,0.14)]' : 'border-slate-200 bg-white text-slate-700 hover:-translate-y-0.5 hover:border-slate-300'}`}
+                    style={active ? { backgroundColor: accent } : undefined}
+                  >
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: active ? '#fff' : accent }} />
+                    {card.name}
+                  </button>
+                )
+              })}
+
+              {section.id === cardOwnerSections[0]?.id && (
+                <button
+                  type="button"
+                  onClick={onNewCard}
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-dashed border-slate-300 bg-slate-50 text-slate-500 transition-colors hover:border-blue-200 hover:text-primary"
+                  title="Novo cartao"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
     </section>
   )
 }
@@ -1347,6 +1360,11 @@ function SelectedCardHud({
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="h-3 w-3 rounded-full" style={{ backgroundColor: cardColor }} />
                   <h2 className="truncate text-2xl font-extrabold text-slate-950">{formatCardDisplayName(card)}</h2>
+                  {ownerLabel && (
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-extrabold text-slate-700">
+                      {ownerLabel}
+                    </span>
+                  )}
                   <span className={`rounded-full px-3 py-1 text-[11px] font-extrabold ${statementStatusBadge(statementStatus)}`}>{statementStatusLabel(statementStatus)}</span>
                 </div>
                 <p className="mt-6 text-xs uppercase tracking-[0.16em] text-slate-400">Fatura atual</p>
@@ -2797,7 +2815,7 @@ function FuturosPageContent() {
         />
 
         <CardFilterRail
-          cards={cards}
+          cardOwnerSections={cardOwnerSections}
           selectedCardId={selectedCardId}
           cardColors={cardColors}
           onSelect={setSelectedCardId}
