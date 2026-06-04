@@ -256,8 +256,8 @@ export default function Header({
   return (
     <header className="flex flex-col px-6 pt-6">
       <div className="flex flex-col gap-2">
-        <div className="grid grid-cols-3 items-center">
-          <div className="col-span-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
             <h3 className="text-[1.7rem] font-bold text-[#333C4D] lg:text-[2rem]">
               {t('greeting', { name: greetingName })}
             </h3>
@@ -279,7 +279,7 @@ export default function Header({
             )}
           </div>
 
-          <div className="col-span-2 flex w-full items-center justify-end gap-2">
+          <div className="flex w-full items-center justify-end gap-2 lg:w-auto lg:flex-shrink-0">
             {rightContent}
 
             <div className="hidden lg:flex gap-4 items-center justify-end">
