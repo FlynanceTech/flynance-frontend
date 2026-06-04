@@ -99,6 +99,8 @@ export default function SidebarSection({
                 icon={item.icon}
                 href={item.path}
                 active={item.active}
+                disabled={item.disabled}
+                disabledReason={item.disabledReason}
                 onClick={item.onClick}
               />
             ))}

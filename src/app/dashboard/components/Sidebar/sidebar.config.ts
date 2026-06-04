@@ -25,6 +25,8 @@ export type SidebarItemConfig = {
   label: string
   icon: LucideIcon
   path?: string
+  disabled?: boolean
+  disabledReason?: string
   featureFlag?: FeatureFlag
   requiresAdmin?: boolean
   requiresAdvisor?: boolean
@@ -192,7 +194,7 @@ export function buildSidebarSections(t: SidebarTranslations): SidebarSectionConf
       items: [
         {
           id: 'clients',
-          label: t.clients,
+          label: 'Advisor',
           icon: Users,
           path: '/advisor',
           requiresAdvisor: true,

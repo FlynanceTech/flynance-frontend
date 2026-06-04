@@ -1,6 +1,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useFinancialScope } from '@/hooks/useFinancialScope'
 import {
   getCreditCardCharges,
   createCreditCardCharge,
@@ -22,11 +23,12 @@ export interface UseCreditCardChargesParams {
 
 export function useCreditCardCharges(params: UseCreditCardChargesParams = {}) {
   const qc = useQueryClient()
+  const { scope, scopeKey } = useFinancialScope()
   const { enabled = true, ...queryParams } = params
 
   const chargesQuery = useQuery({
-    queryKey: ['credit-card-charges', queryParams],
-    queryFn: () => getCreditCardCharges(queryParams),
+    queryKey: ['credit-card-charges', scopeKey, queryParams],
+    queryFn: () => getCreditCardCharges({ ...queryParams, scope }),
     enabled,
     staleTime: 30_000,
     retry: 1,
@@ -38,6 +40,8 @@ export function useCreditCardCharges(params: UseCreditCardChargesParams = {}) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['credit-card-charges'] })
       qc.invalidateQueries({ queryKey: ['future-forecast'] })
+      qc.invalidateQueries({ queryKey: ['future-installments'] })
+      qc.invalidateQueries({ queryKey: ['cards'] })
     },
   })
 
@@ -46,6 +50,9 @@ export function useCreditCardCharges(params: UseCreditCardChargesParams = {}) {
       updateCreditCardCharge(chargeId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['credit-card-charges'] })
+      qc.invalidateQueries({ queryKey: ['future-forecast'] })
+      qc.invalidateQueries({ queryKey: ['future-installments'] })
+      qc.invalidateQueries({ queryKey: ['cards'] })
     },
   })
 
@@ -54,6 +61,8 @@ export function useCreditCardCharges(params: UseCreditCardChargesParams = {}) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['credit-card-charges'] })
       qc.invalidateQueries({ queryKey: ['future-forecast'] })
+      qc.invalidateQueries({ queryKey: ['future-installments'] })
+      qc.invalidateQueries({ queryKey: ['cards'] })
     },
   })
 

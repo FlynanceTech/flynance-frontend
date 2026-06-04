@@ -10,6 +10,8 @@ import {
   type CreditCardResponse,
   getCardSummary,
   CardSummaryResponse,
+  payCreditCardStatement,
+  type PayCreditCardStatementDTO,
 } from '@/services/cards'
 import { useAdvisorActing } from '@/stores/useAdvisorActing'
 import { cardKeys } from './cardkeys' // <-- corrige o path/case
@@ -112,11 +114,36 @@ export function useCardMutations(cardId?: string, tz?: string) {
         },
     })
 
+    const payStatementMutation = useMutation({
+        mutationFn: ({ statementId, data }: { statementId: string; data?: PayCreditCardStatementDTO }) =>
+        payCreditCardStatement(statementId, data),
+        onSuccess: () => {
+        qc.invalidateQueries({ queryKey: ['cards'] })
+        qc.invalidateQueries({ queryKey: ['cards', 'statements'] })
+        qc.invalidateQueries({ queryKey: ['future-forecast'] })
+        qc.invalidateQueries({ queryKey: ['future-installments'] })
+        qc.invalidateQueries({ queryKey: ['future-plans'] })
+        qc.invalidateQueries({ queryKey: ['credit-card-charges'] })
+        qc.invalidateQueries({ queryKey: ['transactions'] })
+        qc.invalidateQueries({ queryKey: ['financeStatus'] })
+        qc.invalidateQueries({ queryKey: ['payment-type-summary'] })
+        qc.invalidateQueries({ queryKey: ['controls', { withProgress: true }] })
+        qc.invalidateQueries({ queryKey: ['fixed-accounts'] })
+        qc.invalidateQueries({
+            predicate: (q) =>
+            Array.isArray(q.queryKey) &&
+            q.queryKey[0] === 'cards' &&
+            q.queryKey[1] === 'summary',
+        })
+        },
+    })
+
     return {
         cardQuery,
         CardSummary,
         createCardMutation,
         updateCardMutation,
         deleteCardMutation,
+        payStatementMutation,
     }
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Dialog, DialogPanel, DialogTitle, Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -8,15 +8,14 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import {
   ArrowDownRight,
   ArrowUpRight,
+  BarChart3,
   CalendarDays,
   CheckCircle2,
   ChevronDown,
   CircleDollarSign,
-  Clock3,
   CreditCard,
   Eye,
   Filter,
-  Info,
   LayoutGrid,
   MoreHorizontal,
   Pencil,
@@ -26,15 +25,28 @@ import {
   WalletCards,
   X,
 } from 'lucide-react'
+import {
+  Bar,
+  BarChart,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Treemap,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import toast from 'react-hot-toast'
 import { useLocale, useTranslations } from 'next-intl'
 
 import { Pagination } from '../components/Pagination'
 import { Skeleton } from '../components/skeleton'
 import DeleteConfirmModal from '../components/DeleteConfirmModal'
+import FeatureUnavailable from '../components/FeatureUnavailable'
 
+import { FEATURES } from '@/config/features'
 import { useCategories } from '@/hooks/query/useCategory'
 import { useCardMutations } from '@/hooks/query/useCreditCards'
+import { useCreditCardCharges } from '@/hooks/query/useCreditCardCharges'
 import {
   FutureEditableInstallmentStatus,
   FutureInstallment,
@@ -53,6 +65,15 @@ import {
   useFutureMutations,
   useFuturePlans,
 } from '@/hooks/query/useFuture'
+import CreditCardChargeDrawer from '../components/CreditCardChargeDrawer'
+import type { CreditCardChargeItem } from '@/services/creditCardCharges'
+import type { CreditCardResponse, StatementPaymentType } from '@/services/cards'
+import { useFinancialScope } from '@/hooks/useFinancialScope'
+import { useAdvisorActing } from '@/stores/useAdvisorActing'
+import { useUserSession } from '@/stores/useUserSession'
+import { isAdvisorReadOnlyTransactionAccess } from '@/utils/transactionWriteAccess'
+import { ADVISOR_READ_ONLY_FRIENDLY_MESSAGE } from '@/services/transactions'
+import type { HouseContext, HouseMember } from '@/types/house'
 import { formatCurrency } from '@/utils/formatter'
 import { Button } from '@/components/ui/button'
 import CreditCardManagerDrawer, {
@@ -63,12 +84,20 @@ import CreditCardManagerDrawer, {
   writeCreditCardColorMap,
 } from './components/CreditCardManagerDrawer'
 import FinancialScopeSwitcher from '@/components/financial/FinancialScopeSwitcher'
+import { futurosPillClass, futurosUi } from './futurosUi'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type TranslatorFn = (key: string, values?: Record<string, string | number | Date>) => string
 type PeriodOption = '30d' | '60d' | '90d' | 'this_month' | 'next_month'
 type ForecastTab = 'expense' | 'income'
+
+const STATEMENT_PAYMENT_TYPE_OPTIONS: Array<{ value: StatementPaymentType; label: string }> = [
+  { value: 'PIX', label: 'Pix' },
+  { value: 'DEBIT_CARD', label: 'Debito' },
+  { value: 'MONEY', label: 'Dinheiro' },
+  { value: 'CASH', label: 'Especie' },
+]
 
 const PERIOD_LABELS: Record<PeriodOption, string> = {
   '30d': '30 dias',
@@ -254,6 +283,176 @@ function getCategoryColor(seed: string | null | undefined) {
   return colors[index]
 }
 
+const CATEGORY_HEX_COLORS = [
+  '#E11D48',
+  '#059669',
+  '#2563EB',
+  '#7C3AED',
+  '#F97316',
+  '#0891B2',
+  '#475569',
+  '#DB2777',
+]
+
+type CreditDistributionItem = {
+  id: string
+  name: string
+  value: number
+  color: string
+  percent: number
+}
+
+type CardOwnerSection = {
+  id: string
+  label: string
+  cards: CreditCardResponse[]
+}
+
+function getCategoryHexColor(seed: string | null | undefined, preferred?: string | null) {
+  if (preferred && /^#[0-9A-Fa-f]{6}$/.test(preferred)) return preferred
+  const value = seed ?? 'default'
+  const index = value.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0) % CATEGORY_HEX_COLORS.length
+  return CATEGORY_HEX_COLORS[index]
+}
+
+function formatCardDisplayName(card: { name?: string | null; last4?: string | null }) {
+  const name = card.name || 'Cartao'
+  return card.last4 ? `${name} final ${card.last4}` : name
+}
+
+function getFirstName(value: string | null | undefined) {
+  const trimmed = value?.trim()
+  if (!trimmed) return null
+  return trimmed.split(/\s+/)[0]
+}
+
+function getMemberName(member: HouseMember | null | undefined, fallback: string) {
+  return getFirstName(member?.name) || member?.email || fallback
+}
+
+function getCardOwnerSections(params: {
+  cards: CreditCardResponse[]
+  houseContext?: HouseContext | null
+  currentUserId?: string | null
+  currentUserName?: string | null
+}): CardOwnerSection[] {
+  const { cards, houseContext, currentUserId, currentUserName } = params
+  const activeMembers = (houseContext?.members ?? []).filter((member) => member.active)
+  const hasCoupleCards = houseContext?.status === 'COUPLE' && activeMembers.length > 1
+
+  if (!hasCoupleCards) {
+    return [{ id: 'me', label: 'Meus cartoes', cards }]
+  }
+
+  const memberSections = activeMembers
+    .map((member) => {
+      const memberId = member.userId ?? member.id ?? ''
+      const label = `Cartoes ${getMemberName(
+        member,
+        memberId && memberId === currentUserId ? currentUserName || 'meus' : 'usuario'
+      )}`.toUpperCase()
+
+      return {
+        id: memberId || member.role || label,
+        label,
+        cards: cards.filter((card) => card.userId === memberId),
+      }
+    })
+    .filter((section) => section.cards.length > 0)
+
+  const knownOwnerIds = new Set(activeMembers.map((member) => member.userId ?? member.id).filter(Boolean))
+  const orphanCards = cards.filter((card) => !knownOwnerIds.has(card.userId))
+
+  if (orphanCards.length) {
+    memberSections.push({
+      id: 'unassigned',
+      label: 'OUTROS CARTOES',
+      cards: orphanCards,
+    })
+  }
+
+  return memberSections.length ? memberSections : [{ id: 'house', label: 'CARTOES DA CONTA', cards }]
+}
+
+function getStatementDisplayStatus(statement: InvoiceGroup['statement'] | null | undefined) {
+  if (!statement) return 'open'
+  const normalizedStatus = String(statement.status ?? '').toLowerCase()
+  if (normalizedStatus === 'paid') return 'paid'
+  const due = statement.dueAt ? new Date(statement.dueAt) : null
+  const todayEnd = new Date()
+  todayEnd.setHours(23, 59, 59, 999)
+  if (normalizedStatus !== 'paid' && due && !Number.isNaN(due.getTime()) && due < todayEnd) {
+    return 'overdue'
+  }
+  if (normalizedStatus === 'invoiced') return 'invoiced'
+  return 'open'
+}
+
+function addMonths(base: Date, months: number) {
+  const next = new Date(base)
+  next.setMonth(next.getMonth() + months)
+  return next
+}
+
+function getPlanMonthlyAmount(plan: FutureInstallmentPlan) {
+  const count = Math.max(1, Number(plan.installmentCount || 1))
+  return Number(plan.totalAmount || 0) / count
+}
+
+function getPlanProgress(plan: FutureInstallmentPlan) {
+  const count = Math.max(1, Number(plan.installmentCount || 1))
+  const interval = Math.max(1, Number(plan.intervalMonths || 1))
+  const first = new Date(plan.firstDueDate)
+  if (Number.isNaN(first.getTime())) {
+    return { installmentNumber: 1, nextDueDate: plan.firstDueDate }
+  }
+
+  const now = new Date()
+  const monthDiff = (now.getFullYear() - first.getFullYear()) * 12 + (now.getMonth() - first.getMonth())
+  const zeroBased = Math.max(0, Math.floor(monthDiff / interval))
+  const installmentNumber = Math.min(count, zeroBased + 1)
+  return {
+    installmentNumber,
+    nextDueDate: addMonths(first, (installmentNumber - 1) * interval).toISOString(),
+  }
+}
+
+function getCurrentMonthRange() {
+  const now = new Date()
+  const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
+  return { from: start, to: end }
+}
+
+function isWithinCurrentMonth(iso: string | null | undefined) {
+  if (!iso) return false
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return false
+  const now = new Date()
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+}
+
+function buildCreditDistribution(
+  items: Array<{ categoryId: string | null; categoryName: string; categoryColor?: string | null; amount: number }>
+) {
+  const grouped = items.reduce<Record<string, { id: string; name: string; value: number; color: string }>>((acc, item) => {
+    const id = item.categoryId || item.categoryName || 'sem-categoria'
+    const current = acc[id] ?? {
+      id,
+      name: item.categoryName || 'Sem categoria',
+      value: 0,
+      color: getCategoryHexColor(id, item.categoryColor),
+    }
+    current.value += Number(item.amount || 0)
+    acc[id] = current
+    return acc
+  }, {})
+  const total = Object.values(grouped).reduce((sum, item) => sum + item.value, 0)
+  return Object.values(grouped)
+    .sort((a, b) => b.value - a.value)
+    .map((item) => ({ ...item, percent: total > 0 ? (item.value / total) * 100 : 0 }))
+}
+
 function canEditForecastItem(item: FutureItem) {
   return (
     item.sourceType === 'installment_plan' &&
@@ -338,13 +537,15 @@ function forecastStatusLabel(status: string) {
 
 function statementStatusBadge(status: string) {
   if (status === 'paid') return 'bg-emerald-100 text-emerald-700'
+  if (status === 'overdue') return 'bg-red-100 text-red-700'
   if (status === 'invoiced') return 'bg-amber-100 text-amber-700'
   return 'bg-sky-100 text-sky-700'
 }
 
 function statementStatusLabel(status: string) {
   if (status === 'paid') return 'Paga'
-  if (status === 'invoiced') return 'Faturada'
+  if (status === 'overdue') return 'Atrasada'
+  if (status === 'invoiced') return 'Fechada'
   return 'Aberta'
 }
 
@@ -393,36 +594,36 @@ const summaryToneClasses: Record<
   { card: string; icon: string; title: string; value: string; pulse: string }
 > = {
   red: {
-    card: 'border-red-100 bg-gradient-to-br from-white via-red-50/80 to-red-50',
-    icon: 'bg-red-100/80 text-red-600',
+    card: 'border-red-100 bg-red-50/40',
+    icon: 'bg-red-100 text-red-600',
     title: 'text-red-600',
     value: 'text-red-700',
     pulse: 'bg-red-100',
   },
   green: {
-    card: 'border-emerald-100 bg-gradient-to-br from-white via-emerald-50/80 to-emerald-50',
-    icon: 'bg-emerald-100/80 text-emerald-600',
+    card: 'border-emerald-100 bg-emerald-50/40',
+    icon: 'bg-emerald-100 text-emerald-600',
     title: 'text-emerald-600',
     value: 'text-emerald-700',
     pulse: 'bg-emerald-100',
   },
   amber: {
-    card: 'border-amber-100 bg-gradient-to-br from-white via-amber-50/80 to-amber-50',
-    icon: 'bg-amber-100/80 text-amber-600',
+    card: 'border-amber-100 bg-amber-50/40',
+    icon: 'bg-amber-100 text-amber-600',
     title: 'text-amber-700',
     value: 'text-amber-700',
     pulse: 'bg-amber-100',
   },
   blue: {
-    card: 'border-blue-100 bg-gradient-to-br from-white via-blue-50/80 to-blue-50',
-    icon: 'bg-blue-100/80 text-primary',
+    card: 'border-blue-100 bg-blue-50/40',
+    icon: 'bg-blue-100 text-primary',
     title: 'text-primary',
     value: 'text-primary',
     pulse: 'bg-blue-100',
   },
   purple: {
-    card: 'border-violet-100 bg-gradient-to-br from-white via-violet-50/80 to-violet-50',
-    icon: 'bg-violet-100/80 text-violet-700',
+    card: 'border-violet-100 bg-violet-50/40',
+    icon: 'bg-violet-100 text-violet-700',
     title: 'text-violet-700',
     value: 'text-violet-700',
     pulse: 'bg-violet-100',
@@ -433,98 +634,65 @@ function SummaryCard({
   title,
   value,
   subtext,
+  details,
   icon: Icon,
   tone,
   loading,
+  onClick,
 }: {
   title: string
   value: string | number
   subtext: string
+  details?: string
   icon: React.ComponentType<{ className?: string }>
   tone: SummaryTone
   loading: boolean
+  onClick?: () => void
 }) {
   const classes = summaryToneClasses[tone]
-
-  return (
-    <div className={`min-h-[118px] rounded-[20px] border p-5 shadow-[0_12px_34px_rgba(15,23,42,0.05)] ${classes.card}`}>
-      <div className="flex items-start gap-4">
-        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${classes.icon}`}>
-          <Icon className="h-6 w-6" />
-        </div>
-        <div className="min-w-0">
-          <p className={`text-xs font-bold ${classes.title}`}>{title}</p>
-          {loading ? (
-            <div className={`mt-3 h-7 w-24 animate-pulse rounded-md ${classes.pulse}`} />
-          ) : (
-            <p className={`mt-2 text-2xl font-extrabold tracking-normal ${classes.value}`}>
-              {value}
-            </p>
-          )}
-          <p className="mt-2 truncate text-xs font-medium text-slate-500">{subtext}</p>
-        </div>
+  const content = (
+    <div className="flex items-start gap-4">
+      <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${classes.icon}`}>
+        <Icon className="h-6 w-6" />
+      </div>
+      <div className="min-w-0">
+        <p className={`text-xs font-bold ${classes.title}`}>{title}</p>
+        {loading ? (
+          <div className={`mt-3 h-7 w-24 animate-pulse rounded-md ${classes.pulse}`} />
+        ) : (
+          <p className={`mt-2 text-2xl font-extrabold tracking-normal ${classes.value}`}>
+            {value}
+          </p>
+        )}
+        {details ? (
+          <p className="mt-2 truncate text-xs font-medium text-slate-500">{details}</p>
+        ) : null}
+        <p className="mt-2 truncate text-xs font-medium text-slate-500">{subtext}</p>
       </div>
     </div>
   )
-}
 
-function ForecastBalanceCard({ value, loading }: { value: number; loading: boolean }) {
-  const positive = value >= 0
-  const color = positive ? '#059669' : '#E11D48'
+  const className = `min-h-[104px] w-full rounded-xl border p-4 text-left shadow-sm transition-shadow sm:p-5 ${onClick ? 'cursor-pointer hover:shadow-md' : ''} ${classes.card}`
 
-  if (loading) {
+  if (onClick) {
     return (
-      <div className="h-[92px] animate-pulse rounded-[20px] border border-slate-200 bg-white shadow-[0_12px_34px_rgba(15,23,42,0.05)]" />
+      <button type="button" onClick={onClick} className={className}>
+        {content}
+      </button>
     )
   }
 
   return (
-    <section
-      className={`overflow-hidden rounded-[20px] border px-6 py-5 shadow-[0_12px_34px_rgba(15,23,42,0.05)] ${
-        positive
-          ? 'border-emerald-100 bg-gradient-to-r from-white via-emerald-50/70 to-white'
-          : 'border-red-100 bg-gradient-to-r from-white via-red-50/70 to-white'
-      }`}
-    >
-      <div className="grid items-center gap-5 lg:grid-cols-[1fr_auto_360px]">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-extrabold text-slate-900">Saldo futuro previsto</h2>
-            <Info className="h-4 w-4 text-slate-400" />
-          </div>
-          <p className="mt-1 text-sm font-medium text-slate-500">Receitas - Despesas futuras</p>
-        </div>
-        <p className={`text-2xl font-extrabold lg:text-center ${positive ? 'text-emerald-700' : 'text-rose-700'}`}>
-          {formatCurrencyBRL(value)}
-        </p>
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 360 72"
-          className="h-[54px] w-full max-w-[360px] justify-self-end"
-          preserveAspectRatio="none"
-        >
-          <defs>
-            <linearGradient id={positive ? 'future-positive-fill' : 'future-negative-fill'} x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor={color} stopOpacity="0.18" />
-              <stop offset="100%" stopColor={color} stopOpacity="0" />
-            </linearGradient>
-          </defs>
-          <path
-            d="M2 47 C38 46 42 48 70 43 C102 37 112 22 145 25 C170 27 177 46 207 47 C235 48 247 39 272 37 C304 35 310 18 336 24 C348 27 354 36 358 43"
-            fill="none"
-            stroke={color}
-            strokeLinecap="round"
-            strokeWidth="3"
-          />
-          <path
-            d="M2 47 C38 46 42 48 70 43 C102 37 112 22 145 25 C170 27 177 46 207 47 C235 48 247 39 272 37 C304 35 310 18 336 24 C348 27 354 36 358 43 L358 72 L2 72 Z"
-            fill={`url(#${positive ? 'future-positive-fill' : 'future-negative-fill'})`}
-          />
-          <path d="M300 53 C322 57 338 51 358 52" fill="none" stroke={color} strokeDasharray="2 4" strokeLinecap="round" strokeWidth="2" />
-        </svg>
-      </div>
-    </section>
+    <div className={className}>
+      {content}
+    </div>
   )
+}
+
+function summarizeCardNames(names: string[]) {
+  if (!names.length) return 'Nenhum cartao'
+  if (names.length <= 2) return names.join(', ')
+  return `${names.slice(0, 2).join(', ')} +${names.length - 2}`
 }
 
 function ForecastTabs({
@@ -535,8 +703,8 @@ function ForecastTabs({
   onChange: (tab: ForecastTab) => void
 }) {
   return (
-    <div className="border-b border-slate-200">
-      <div className="flex gap-7">
+    <div className="border-b border-gray-200">
+      <div className="flex gap-1 overflow-x-auto">
         {[
           { value: 'expense' as const, label: 'Despesas' },
           { value: 'income' as const, label: 'Receitas' },
@@ -545,10 +713,10 @@ function ForecastTabs({
             key={tab.value}
             type="button"
             onClick={() => onChange(tab.value)}
-            className={`-mb-px border-b-2 px-1 pb-3 text-sm font-extrabold transition-colors ${
+            className={`shrink-0 border-b-2 px-3 pb-2.5 text-sm font-medium transition-colors ${
               active === tab.value
                 ? 'border-primary text-primary'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
             {tab.label}
@@ -561,14 +729,14 @@ function ForecastTabs({
 
 function ForecastSkeleton() {
   return (
-    <div className="space-y-5">
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         {[1, 2].map((item) => (
-          <div key={item} className="h-[250px] animate-pulse rounded-[18px] border border-slate-200 bg-white" />
+          <div key={item} className={`h-[220px] animate-pulse ${futurosUi.surfaceFlat}`} />
         ))}
       </div>
-      <div className="h-[104px] animate-pulse rounded-[18px] border border-slate-200 bg-white" />
-      <div className="h-[104px] animate-pulse rounded-[18px] border border-slate-200 bg-white" />
+      <div className={`h-24 animate-pulse ${futurosUi.surfaceFlat}`} />
+      <div className={`h-24 animate-pulse ${futurosUi.surfaceFlat}`} />
     </div>
   )
 }
@@ -594,13 +762,13 @@ function InvoiceGroupAccordion({
 
   return (
     <article
-      className="overflow-hidden rounded-[18px] border border-slate-200 bg-white shadow-[0_14px_38px_rgba(15,23,42,0.07)]"
+      className={futurosUi.surface}
       style={{ borderTopColor: accent, borderTopWidth: 3 }}
     >
       <button
         type="button"
         onClick={() => onToggle(groupKey)}
-        className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition-colors hover:bg-slate-50/70"
+        className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors hover:bg-gray-50 sm:gap-4 sm:px-5 sm:py-4"
       >
         <div className="flex min-w-0 items-center gap-4">
           <div
@@ -633,15 +801,15 @@ function InvoiceGroupAccordion({
       </button>
 
       {isOpen && (
-        <div className="border-t border-slate-100">
-          <div className="hidden grid-cols-[1.2fr_1.7fr_0.9fr_0.9fr_1fr] gap-4 bg-slate-50 px-5 py-3 text-[11px] font-extrabold text-slate-500 md:grid">
+        <div className="border-t border-gray-100">
+          <div className={`${futurosUi.tableHead} grid-cols-[1.2fr_1.7fr_0.9fr_0.9fr_1fr] gap-4`}>
             <span>Categoria</span>
             <span>Descrição</span>
             <span>Parcela</span>
             <span>Status</span>
             <span className="text-right">Valor</span>
           </div>
-          <div className="divide-y divide-slate-100">
+          <div className={`divide-y divide-gray-100 ${group.items.length > 6 ? futurosUi.listScrollSm : ''}`}>
             {group.items.map((item) => {
               const categoryName = item.category?.name ?? 'Sem categoria'
               const categoryColor = getCategoryColor(item.category?.id ?? categoryName)
@@ -695,7 +863,7 @@ function CommitmentCard({
   const categoryName = item.category?.name ?? 'Sem categoria'
 
   return (
-    <article className="grid gap-4 border-t border-slate-100 bg-white px-5 py-4 first:border-t-0 md:grid-cols-[84px_1.5fr_0.75fr_1fr_0.9fr_0.8fr_42px] md:items-center">
+    <article className="border-t border-gray-100 bg-white px-4 py-4 first:border-t-0 sm:px-5 md:grid md:grid-cols-[84px_1.5fr_0.75fr_1fr_0.9fr_0.8fr_42px] md:items-center md:gap-4">
       <div className="flex items-center gap-3 md:block md:text-center">
         <div className="text-2xl font-extrabold leading-none text-slate-900">{dateParts.day}</div>
         <div className="mt-1 text-xs font-extrabold text-slate-500">{dateParts.month}</div>
@@ -747,7 +915,7 @@ function CommitmentCard({
         <MenuButton className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800">
           <MoreHorizontal className="h-5 w-5" />
         </MenuButton>
-        <MenuItems className="absolute right-0 z-20 mt-2 w-44 rounded-xl border border-slate-200 bg-white p-1 text-sm shadow-xl outline-none">
+        <MenuItems anchor="bottom end" className="z-20 w-44 rounded-xl border border-slate-200 bg-white p-1 text-sm shadow-xl outline-none">
           <MenuItem>
             {({ focus }) => (
               <button
@@ -792,18 +960,18 @@ function CommitmentCard({
 
 function ForecastEmptyState({ onCreate }: { onCreate: () => void }) {
   return (
-    <div className="flex min-h-[260px] flex-col items-center justify-center rounded-[22px] border border-dashed border-slate-200 bg-white px-6 py-12 text-center shadow-[0_14px_38px_rgba(15,23,42,0.05)]">
-      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-primary">
-        <CalendarDays className="h-7 w-7" />
+    <div className={`flex min-h-[220px] flex-col items-center justify-center px-6 py-10 text-center sm:py-12 ${futurosUi.surfaceDashed}`}>
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-primary">
+        <CalendarDays className="h-6 w-6" />
       </div>
-      <h3 className="mt-5 text-base font-extrabold text-slate-900">Nenhum compromisso futuro no período selecionado</h3>
-      <p className="mt-2 max-w-xl text-sm font-medium text-slate-500">
+      <h3 className="mt-4 text-base font-semibold text-gray-900">Nenhum compromisso futuro no período selecionado</h3>
+      <p className="mt-2 max-w-md text-sm text-gray-500">
         Quando você registrar uma despesa futura, parcelamento ou compra no cartão, ela aparecerá aqui.
       </p>
       <button
         type="button"
         onClick={onCreate}
-        className="mt-6 inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-extrabold text-white shadow-[0_12px_26px_rgba(0,102,163,0.24)] transition-colors hover:bg-secondary"
+        className={`mt-5 ${futurosUi.btnPrimary}`}
       >
         <Plus className="h-4 w-4" />
         Registrar despesa futura
@@ -814,9 +982,816 @@ function ForecastEmptyState({ onCreate }: { onCreate: () => void }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
+function CreditTreemapNode(props: {
+  x?: number
+  y?: number
+  width?: number
+  height?: number
+  depth?: number
+  name?: string
+  color?: string
+  size?: number
+}) {
+  const x = Number(props.x ?? 0)
+  const y = Number(props.y ?? 0)
+  const width = Number(props.width ?? 0)
+  const height = Number(props.height ?? 0)
+  const depth = Number(props.depth ?? 0)
+  const color = props.color || '#CBD5E1'
+  const canLabel = depth === 1 && width >= 82 && height >= 42
+  const label = props.name ?? ''
+  const maxChars = Math.max(8, Math.floor(width / 7))
+
+  return (
+    <g>
+      <rect x={x} y={y} width={width} height={height} rx={6} ry={6} fill={depth === 1 ? color : 'transparent'} stroke="#fff" strokeWidth={2} />
+      {canLabel && (
+        <text x={x + width / 2} y={y + height / 2} textAnchor="middle" dominantBaseline="middle" fill="#fff" fontSize={width >= 140 ? 12 : 10} fontWeight={700} pointerEvents="none">
+          {label.length > maxChars ? `${label.slice(0, maxChars - 3)}...` : label}
+        </text>
+      )}
+    </g>
+  )
+}
+
+function ChartTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean
+  payload?: Array<{ payload?: { name?: string; value?: number; size?: number; total?: number }; value?: number }>
+}) {
+  if (!active || !payload?.length) return null
+  const row = payload[0]?.payload
+  const value = Number(row?.value ?? row?.size ?? row?.total ?? payload[0]?.value ?? 0)
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-xl">
+      <p className="text-slate-900">{row?.name ?? 'Categoria'}</p>
+      <p className="mt-1">{formatCurrencyBRL(value)}</p>
+    </div>
+  )
+}
+
+function CreditDistributionChart({ items, height = 220 }: { items: CreditDistributionItem[]; height?: number }) {
+  if (!items.length) {
+    return (
+      <div className="flex h-[220px] items-center justify-center rounded-[16px] border border-dashed border-slate-200 bg-slate-50 text-sm font-medium text-slate-500">
+        Sem gastos categorizados nesta fatura.
+      </div>
+    )
+  }
+
+  const data = [{ name: 'credito', children: items.map((item) => ({ ...item, size: item.value })) }]
+
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <Treemap data={data} dataKey="size" nameKey="name" animationDuration={350} content={<CreditTreemapNode />}>
+        <Tooltip content={<ChartTooltip />} />
+      </Treemap>
+    </ResponsiveContainer>
+  )
+}
+
+function DistributionLegend({ items }: { items: CreditDistributionItem[] }) {
+  const total = items.reduce((sum, item) => sum + item.value, 0)
+
+  return (
+    <div className="space-y-3">
+      {items.slice(0, 6).map((item) => (
+        <div key={item.id} className="space-y-1.5">
+          <div className="flex items-center justify-between gap-3 text-xs font-bold">
+            <span className="flex min-w-0 items-center gap-2 text-slate-700">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
+              <span className="truncate">{item.name}</span>
+            </span>
+            <span className="shrink-0 text-slate-900">{formatCurrencyBRL(item.value)}</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+            <div className="h-full rounded-full" style={{ width: `${total > 0 ? Math.max(3, item.percent) : 0}%`, backgroundColor: item.color }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function CreditMonthDistributionCard({
+  total,
+  items,
+  loading,
+  onOpen,
+}: {
+  total: number
+  items: CreditDistributionItem[]
+  loading: boolean
+  onOpen: () => void
+}) {
+  return (
+    <section className={futurosUi.surfacePadding}>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(240px,1fr)_auto] lg:items-center lg:gap-5">
+        <div>
+          <div className="flex items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-sky-50 text-primary">
+              <BarChart3 className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-extrabold text-slate-950">Gastos no credito este mes</h2>
+              <p className="mt-1 text-xs font-medium text-slate-500">Distribuicao consolidada das faturas vigentes.</p>
+            </div>
+          </div>
+          {loading ? <div className="mt-4 h-8 w-32 animate-pulse rounded-lg bg-slate-100" /> : <p className="mt-4 text-2xl font-extrabold text-slate-950">{formatCurrencyBRL(total)}</p>}
+        </div>
+
+        <div className="min-w-0">
+          {loading ? (
+            <div className="h-16 animate-pulse rounded-[14px] bg-slate-100" />
+          ) : items.length ? (
+            <div className="overflow-hidden rounded-full bg-slate-100">
+              <div className="flex h-4 w-full">
+                {items.slice(0, 7).map((item) => (
+                  <div key={item.id} title={`${item.name}: ${formatCurrencyBRL(item.value)}`} style={{ width: `${Math.max(4, item.percent)}%`, backgroundColor: item.color }} />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="rounded-[14px] border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500">Sem gastos no credito neste mes.</p>
+          )}
+          {!loading && items.length > 0 && <div className="mt-3"><DistributionLegend items={items.slice(0, 4)} /></div>}
+        </div>
+
+        <button type="button" onClick={onOpen} className={`w-full sm:w-auto ${futurosUi.btnOutline}`}>
+          Ver distribuicao
+        </button>
+      </div>
+    </section>
+  )
+}
+
+function CardFilterRail({
+  cardOwnerSections,
+  selectedCardId,
+  cardColors,
+  onSelect,
+  onNewCard,
+}: {
+  cardOwnerSections: CardOwnerSection[]
+  selectedCardId: string | null
+  cardColors: Record<string, string>
+  onSelect: (cardId: string) => void
+  onNewCard: () => void
+}) {
+  const multipleOwners = cardOwnerSections.length > 1
+
+  const totalCards = cardOwnerSections.reduce((sum, section) => sum + section.cards.length, 0)
+
+  return (
+    <section className="space-y-3">
+      {totalCards > 4 && (
+        <p className="text-xs font-medium text-gray-500">
+          {totalCards} cartões — role horizontalmente para ver todos
+        </p>
+      )}
+      {cardOwnerSections.map((section) => (
+        <div key={section.id}>
+          {multipleOwners && (
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-600">{section.label}</h3>
+              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600">
+                {section.cards.length}
+              </span>
+            </div>
+          )}
+          <div className={futurosUi.surfacePadding}>
+            <div className={futurosUi.chipScroll}>
+              {section.cards.map((card) => {
+                const accent = getCardAccentColor(card.id, cardColors)
+                const active = selectedCardId === card.id
+                return (
+                  <button
+                    key={card.id}
+                    type="button"
+                    onClick={() => onSelect(card.id)}
+                    className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-full border px-3.5 text-sm font-semibold transition-colors sm:h-10 sm:px-4 ${active ? 'border-transparent text-white shadow-sm' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'}`}
+                    style={active ? { backgroundColor: accent } : undefined}
+                  >
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: active ? '#fff' : accent }} />
+                    {card.name}
+                  </button>
+                )
+              })}
+
+              {section.id === cardOwnerSections[0]?.id && (
+                <button
+                  type="button"
+                  onClick={onNewCard}
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-dashed border-slate-300 bg-slate-50 text-slate-500 transition-colors hover:border-blue-200 hover:text-primary"
+                  title="Novo cartao"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
+    </section>
+  )
+}
+
+function CreditPurchaseRow({
+  item,
+  charge,
+  readOnly = false,
+  onEdit,
+  onDelete,
+}: {
+  item: FutureItem
+  charge?: CreditCardChargeItem | null
+  readOnly?: boolean
+  onEdit: (charge: CreditCardChargeItem) => void
+  onDelete: (charge: CreditCardChargeItem) => void
+}) {
+  const locale = useLocale()
+  const categoryName = item.category?.name ?? charge?.category?.name ?? 'Sem categoria'
+  const categoryColor = getCategoryHexColor(item.category?.id ?? charge?.category?.id ?? categoryName, charge?.category?.color)
+  const dateLabel = new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeZone: 'UTC' }).format(new Date(item.dueDate))
+
+  const actionDisabled = !charge || readOnly
+
+  return (
+    <div className="grid gap-3 border-t border-slate-100 px-4 py-3 first:border-t-0 md:grid-cols-[0.9fr_1.4fr_0.9fr_0.8fr_0.8fr_34px] md:items-center">
+      <p className="text-sm font-semibold text-slate-900">{dateLabel}</p>
+      <p className="truncate text-sm font-extrabold text-slate-900">{item.description ?? charge?.description ?? 'Sem descricao'}</p>
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: categoryColor }} />
+        <span className="truncate text-xs font-bold text-slate-600">{categoryName}</span>
+      </div>
+      <span className={`w-fit rounded-full px-2.5 py-1 text-[11px] font-extrabold ${forecastStatusBadge(item.status)}`}>{forecastStatusLabel(item.status)}</span>
+      <p className="text-sm font-extrabold text-slate-950 md:text-right">{formatCurrencyBRL(item.amount)}</p>
+      <Menu as="div" className="relative">
+        <MenuButton className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800">
+          <MoreHorizontal className="h-4 w-4" />
+        </MenuButton>
+        <MenuItems anchor="bottom end" className="z-20 w-40 rounded-xl border border-slate-200 bg-white p-1 text-sm shadow-xl outline-none">
+          <MenuItem>
+            {({ focus }) => (
+              <button
+                type="button"
+                disabled={actionDisabled}
+                onClick={() => charge && onEdit(charge)}
+                className={`w-full rounded-lg px-3 py-2 text-left font-medium disabled:cursor-not-allowed disabled:text-slate-300 ${focus ? 'bg-slate-50 text-slate-900' : 'text-slate-700'}`}
+              >
+                Editar compra
+              </button>
+            )}
+          </MenuItem>
+          <MenuItem>
+            {({ focus }) => (
+              <button
+                type="button"
+                disabled={actionDisabled}
+                onClick={() => charge && onDelete(charge)}
+                className={`w-full rounded-lg px-3 py-2 text-left font-medium disabled:cursor-not-allowed disabled:text-slate-300 ${focus ? 'bg-red-50 text-red-700' : 'text-red-600'}`}
+              >
+                Excluir
+              </button>
+            )}
+          </MenuItem>
+        </MenuItems>
+      </Menu>
+    </div>
+  )
+}
+
+function InstallmentPlanRow({
+  plan,
+  onEdit,
+  onDelete,
+  nextDueDate,
+}: {
+  plan: FutureInstallmentPlan
+  onEdit: (plan: FutureInstallmentPlan) => void
+  onDelete: (plan: FutureInstallmentPlan) => void
+  nextDueDate?: string | null
+}) {
+  const progress = getPlanProgress(plan)
+  const status = normalizePlanStatus(plan.status ?? null)
+  const monthly = getPlanMonthlyAmount(plan)
+  const effectiveNextDue = nextDueDate ?? progress.nextDueDate
+
+  return (
+    <div className="grid gap-3 border-t border-slate-100 px-4 py-3 first:border-t-0 md:grid-cols-[1.2fr_0.75fr_0.9fr_0.9fr_0.8fr_34px] md:items-center">
+      <div className="min-w-0">
+        <p className="truncate text-sm font-extrabold text-slate-900">{plan.description}</p>
+        <p className="mt-1 text-xs font-bold text-slate-500">Parcela {progress.installmentNumber} de {Number(plan.installmentCount || 1)}</p>
+      </div>
+      <span className={`w-fit rounded-full px-2.5 py-1 text-[11px] font-extrabold ${status === 'active' ? 'bg-sky-100 text-sky-700' : status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700'}`}>{status === 'active' ? 'Ativo' : status === 'completed' ? 'Concluido' : 'Cancelado'}</span>
+      <div><p className="text-sm font-extrabold text-slate-950">{formatCurrencyBRL(plan.totalAmount)}</p><p className="mt-1 text-xs font-medium text-slate-500">Total</p></div>
+      <div><p className="text-sm font-extrabold text-slate-950">{formatDateShort(effectiveNextDue)}</p><p className="mt-1 text-xs font-medium text-slate-500">Proximo vencimento</p></div>
+      <div><p className="text-sm font-extrabold text-slate-950">{formatCurrencyBRL(monthly)}</p><p className="mt-1 text-xs font-medium text-slate-500">Por mes</p></div>
+      <Menu as="div" className="relative">
+        <MenuButton className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"><MoreHorizontal className="h-4 w-4" /></MenuButton>
+        <MenuItems anchor="bottom end" className="z-20 w-40 rounded-xl border border-slate-200 bg-white p-1 text-sm shadow-xl outline-none">
+          <MenuItem>{({ focus }) => <button type="button" onClick={() => onEdit(plan)} className={`w-full rounded-lg px-3 py-2 text-left font-medium ${focus ? 'bg-slate-50 text-slate-900' : 'text-slate-700'}`}>Editar</button>}</MenuItem>
+          <MenuItem>{({ focus }) => <button type="button" onClick={() => onDelete(plan)} className={`w-full rounded-lg px-3 py-2 text-left font-medium ${focus ? 'bg-red-50 text-red-700' : 'text-red-600'}`}>Excluir</button>}</MenuItem>
+        </MenuItems>
+      </Menu>
+    </div>
+  )
+}
+
+function SelectedCardHud({
+  card,
+  ownerLabel,
+  cardColor,
+  invoiceGroup,
+  purchases,
+  installments,
+  distribution,
+  loadingPurchases,
+  payingStatement,
+  onCreateCard,
+  onCreateCharge,
+  onManageCard,
+  onPayStatement,
+  onOpenPurchases,
+  onOpenInstallments,
+  onOpenHistory,
+  onEditPurchase,
+  onDeletePurchase,
+  onEditPlan,
+  onDeletePlan,
+  readOnly,
+}: {
+  card: CreditCardResponse | null
+  ownerLabel?: string
+  cardColor: string
+  invoiceGroup: InvoiceGroup | null
+  purchases: Array<{ item: FutureItem; charge?: CreditCardChargeItem | null }>
+  installments: FutureInstallmentPlan[]
+  distribution: CreditDistributionItem[]
+  loadingPurchases: boolean
+  payingStatement: boolean
+  onCreateCard: () => void
+  onCreateCharge: () => void
+  onManageCard: (cardId?: string) => void
+  onPayStatement: () => void
+  onOpenPurchases: () => void
+  onOpenInstallments: () => void
+  onOpenHistory: () => void
+  onEditPurchase: (charge: CreditCardChargeItem) => void
+  onDeletePurchase: (charge: CreditCardChargeItem) => void
+  onEditPlan: (plan: FutureInstallmentPlan) => void
+  onDeletePlan: (plan: FutureInstallmentPlan) => void
+  readOnly: boolean
+}) {
+  if (!card) {
+    return (
+      <section className={`flex min-h-[280px] flex-col items-center justify-center px-6 py-10 text-center sm:py-12 ${futurosUi.surfaceDashed}`}>
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-sky-50 text-primary"><WalletCards className="h-6 w-6" /></div>
+        <h2 className="mt-4 text-base font-semibold text-gray-900">Nenhum cartao ativo</h2>
+        <p className="mt-2 max-w-md text-sm text-gray-500">Cadastre um cartao para acompanhar fatura, compras, parcelamentos e historico.</p>
+        <button type="button" onClick={onCreateCard} className={`mt-5 ${futurosUi.btnPrimary}`}><Plus className="h-4 w-4" />Novo cartao</button>
+      </section>
+    )
+  }
+
+  const statementStatus = getStatementDisplayStatus(invoiceGroup?.statement)
+  const invoiceTotal = invoiceGroup?.totalAmount ?? 0
+  const visiblePurchases = purchases.slice(0, 7)
+  const visibleInstallments = installments.slice(0, 7)
+
+  return (
+    <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] lg:gap-5">
+      <div className="space-y-4">
+        <article className={futurosUi.surface}>
+          <div className="h-1.5" style={{ backgroundColor: cardColor }} />
+          <div className="p-4 sm:p-6">
+            <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="h-3 w-3 rounded-full" style={{ backgroundColor: cardColor }} />
+                  <h2 className="truncate text-2xl font-extrabold text-slate-950">{formatCardDisplayName(card)}</h2>
+                  {ownerLabel && (
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-extrabold text-slate-700">
+                      {ownerLabel}
+                    </span>
+                  )}
+                  <span className={`rounded-full px-3 py-1 text-[11px] font-extrabold ${statementStatusBadge(statementStatus)}`}>{statementStatusLabel(statementStatus)}</span>
+                </div>
+                <p className="mt-4 text-xs font-medium uppercase tracking-wide text-gray-400 sm:mt-6">Fatura atual</p>
+                <p className="mt-2 text-3xl font-semibold text-gray-950 sm:mt-3 sm:text-4xl">{formatCurrencyBRL(invoiceTotal)}</p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 lg:min-w-[220px]">
+                <div className="rounded-xl bg-gray-50 px-3 py-3 text-sm text-gray-700 sm:px-4 sm:py-4">
+                  <p className="font-medium text-gray-900">Vence</p>
+                  <p className="mt-1 text-base font-semibold text-gray-950">{formatDateShort(invoiceGroup?.statement?.dueAt)}</p>
+                </div>
+                <div className="rounded-xl bg-gray-50 px-3 py-3 text-sm text-gray-700 sm:px-4 sm:py-4">
+                  <p className="font-medium text-gray-900">Fecha</p>
+                  <p className="mt-1 text-base font-semibold text-gray-950">{formatDateShort(invoiceGroup?.statement?.closingAt)}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+              <button type="button" onClick={() => onManageCard(card.id)} className={futurosUi.btnPrimary}>
+                Gerenciar cartao
+              </button>
+              <button type="button" onClick={onOpenHistory} className={futurosUi.btnOutline}>
+                Ver histórico
+              </button>
+            </div>
+          </div>
+        </article>
+
+        <article className={futurosUi.surface}>
+          <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-3.5 sm:px-5 sm:py-4">
+            <div>
+              <h3 className={futurosUi.sectionTitle}>Histórico do cartão</h3>
+              <p className={futurosUi.sectionSubtitle}>Faturas anteriores e ciclo atual.</p>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenHistory}
+              className="text-xs font-extrabold text-primary hover:text-secondary"
+            >
+              Ver histórico
+            </button>
+          </div>
+          <div className="px-5 py-6 text-sm font-medium text-slate-500">
+            Um gráfico de barras simples mostra o valor de cada fatura por mês, incluindo o ciclo atual quando disponível.
+          </div>
+        </article>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <article className={futurosUi.surface}>
+            <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-3.5 sm:px-5 sm:py-4">
+              <div><h3 className={futurosUi.sectionTitle}>Compras da fatura atual</h3><p className={futurosUi.sectionSubtitle}>Até 7 compras recentes deste ciclo.</p></div>
+              {purchases.length > 7 && <button type="button" onClick={onOpenPurchases} className="text-xs font-extrabold text-primary hover:text-secondary">Ver todas as {purchases.length}</button>}
+            </div>
+            {loadingPurchases ? (
+              <div className="space-y-3 p-4">{[1, 2, 3].map((item) => <div key={item} className="h-12 animate-pulse rounded-xl bg-slate-100" />)}</div>
+            ) : visiblePurchases.length ? (
+              <div className={`space-y-1 px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-3 ${purchases.length > 5 ? futurosUi.listScrollSm : ''}`}>
+                <div className={`${futurosUi.tableHead} grid-cols-[0.9fr_1.4fr_0.9fr_0.8fr_0.8fr_34px] gap-3`}>
+                  <span>Data</span>
+                  <span>Descrição</span>
+                  <span>Categoria</span>
+                  <span>Status</span>
+                  <span className="text-right">Valor</span>
+                  <span className="sr-only">Ações</span>
+                </div>
+                {visiblePurchases.map((purchase) => (
+                  <CreditPurchaseRow
+                    key={purchase.item.id}
+                    item={purchase.item}
+                    charge={purchase.charge}
+                    readOnly={readOnly}
+                    onEdit={onEditPurchase}
+                    onDelete={onDeletePurchase}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="px-5 py-8 text-sm font-medium text-slate-500">Nenhuma compra nesta fatura.</div>
+            )}
+          </article>
+
+          <article className={futurosUi.surface}>
+            <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-3.5 sm:px-5 sm:py-4">
+              <div><h3 className={futurosUi.sectionTitle}>Parcelamentos</h3><p className={futurosUi.sectionSubtitle}>Planos vinculados a este cartao.</p></div>
+              {installments.length > 7 && <button type="button" onClick={onOpenInstallments} className="text-xs font-extrabold text-primary hover:text-secondary">Ver todos os {installments.length}</button>}
+            </div>
+            {visibleInstallments.length ? (
+              <div className={installments.length > 5 ? futurosUi.listScrollSm : undefined}>
+              {visibleInstallments.map((plan) => (
+                <InstallmentPlanRow
+                  key={plan.id}
+                  plan={plan}
+                  onEdit={onEditPlan}
+                  onDelete={onDeletePlan}
+                />
+              ))}
+              </div>
+            ) : (
+              <div className="px-5 py-8 text-sm text-gray-500">Nenhum parcelamento ativo neste cartao.</div>
+            )}
+          </article>
+        </div>
+      </div>
+
+      <aside className={`${futurosUi.surfacePadding} lg:sticky lg:top-4 lg:self-start`}>
+        <div className="mb-4"><h3 className={futurosUi.sectionTitle}>Distribuicao de gastos</h3><p className={futurosUi.sectionSubtitle}>O que esta consumindo a fatura selecionada.</p></div>
+        <CreditDistributionChart items={distribution} height={260} />
+        <div className="mt-5"><DistributionLegend items={distribution} /></div>
+      </aside>
+    </section>
+  )
+}
+
+function CreditDistributionModal({
+  open,
+  title,
+  items,
+  onClose,
+}: {
+  open: boolean
+  title: string
+  items: CreditDistributionItem[]
+  onClose: () => void
+}) {
+  return (
+    <Dialog open={open} onClose={onClose} className="relative z-50">
+      <div className={futurosUi.modalBackdrop} aria-hidden="true" />
+      <div className={futurosUi.modalShell}>
+        <DialogPanel className={futurosUi.modalPanelLg}>
+          <div className={futurosUi.modalHeader}>
+            <div><DialogTitle className="text-lg font-semibold text-gray-900">{title}</DialogTitle><p className="mt-1 text-sm text-gray-500">Distribuicao por categoria dos gastos no credito.</p></div>
+            <button type="button" onClick={onClose} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100" aria-label="Fechar"><X className="h-5 w-5" /></button>
+          </div>
+          <div className={`${futurosUi.modalBody} p-4 sm:p-6`}>
+            <div className="grid gap-5 lg:grid-cols-[1.3fr_0.8fr]"><CreditDistributionChart items={items} height={380} /><DistributionLegend items={items} /></div>
+          </div>
+        </DialogPanel>
+      </div>
+    </Dialog>
+  )
+}
+
+function PurchasesModal({
+  open,
+  purchases,
+  onClose,
+  onEdit,
+  onDelete,
+  readOnly = false,
+}: {
+  open: boolean
+  purchases: Array<{ item: FutureItem; charge?: CreditCardChargeItem | null }>
+  onClose: () => void
+  onEdit: (charge: CreditCardChargeItem) => void
+  onDelete: (charge: CreditCardChargeItem) => void
+  readOnly?: boolean
+}) {
+  return (
+    <Dialog open={open} onClose={onClose} className="relative z-50">
+      <div className={futurosUi.modalBackdrop} aria-hidden="true" />
+      <div className={futurosUi.modalShell}>
+        <DialogPanel className={futurosUi.modalPanel}>
+          <div className={futurosUi.modalHeader}>
+            <div><DialogTitle className="text-lg font-semibold text-gray-900">Compras da fatura</DialogTitle><p className="mt-1 text-sm text-gray-500">Edite ou exclua compras do ciclo atual.</p></div>
+            <button type="button" onClick={onClose} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100" aria-label="Fechar"><X className="h-5 w-5" /></button>
+          </div>
+          <div className={futurosUi.modalBody}>
+            {purchases.length ? (
+              <div className="space-y-2 px-4 pb-4 pt-3">
+                <div className="grid gap-3 px-2 text-xs uppercase tracking-[0.18em] text-slate-500 md:grid-cols-[0.9fr_1.4fr_0.9fr_0.8fr_0.8fr_34px] md:items-center">
+                  <span>Data</span>
+                  <span>Descrição</span>
+                  <span>Categoria</span>
+                  <span>Status</span>
+                  <span className="text-right">Valor</span>
+                  <span className="sr-only">Ações</span>
+                </div>
+                {purchases.map((purchase) => (
+                  <CreditPurchaseRow
+                    key={purchase.item.id}
+                    item={purchase.item}
+                    charge={purchase.charge}
+                    readOnly={readOnly}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="px-6 py-10 text-center text-sm font-medium text-slate-500">Nenhuma compra nesta fatura.</div>
+            )}
+          </div>
+        </DialogPanel>
+      </div>
+    </Dialog>
+  )
+}
+
+function InstallmentPlansModal({
+  open,
+  plans,
+  onClose,
+  onEdit,
+  onDelete,
+  onOpenManagement,
+  nextDueDate,
+}: {
+  open: boolean
+  plans: FutureInstallmentPlan[]
+  onClose: () => void
+  onEdit: (plan: FutureInstallmentPlan) => void
+  onDelete: (plan: FutureInstallmentPlan) => void
+  onOpenManagement: () => void
+  nextDueDate?: string | null
+}) {
+  return (
+    <Dialog open={open} onClose={onClose} className="relative z-50">
+      <div className={futurosUi.modalBackdrop} aria-hidden="true" />
+      <div className={futurosUi.modalShell}>
+        <DialogPanel className={futurosUi.modalPanel}>
+          <div className={futurosUi.modalHeader}>
+            <div><DialogTitle className="text-lg font-semibold text-gray-900">Gerenciamento de parcelamentos</DialogTitle><p className="mt-1 text-sm text-gray-500">Parcelamentos vinculados ao cartao selecionado.</p></div>
+            <button type="button" onClick={onClose} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100" aria-label="Fechar"><X className="h-5 w-5" /></button>
+          </div>
+          <div className={futurosUi.modalBody}>
+            {plans.length ? plans.map((plan) => (
+              <InstallmentPlanRow key={plan.id} plan={plan} onEdit={onEdit} onDelete={onDelete} nextDueDate={nextDueDate} />
+            )) : <div className="px-6 py-10 text-center text-sm text-gray-500">Nenhum parcelamento ativo neste cartao.</div>}
+          </div>
+          <div className={futurosUi.modalFooter}>
+            <button type="button" onClick={onOpenManagement} className={futurosUi.btnPrimary}>Abrir gerenciamento completo</button>
+          </div>
+        </DialogPanel>
+      </div>
+    </Dialog>
+  )
+}
+
+function CardHistoryModal({
+  open,
+  title,
+  data,
+  onClose,
+}: {
+  open: boolean
+  title: string
+  data: Array<{ month: string; total: number }>
+  onClose: () => void
+}) {
+  return (
+    <Dialog open={open} onClose={onClose} className="relative z-50">
+      <div className={futurosUi.modalBackdrop} aria-hidden="true" />
+      <div className={futurosUi.modalShell}>
+        <DialogPanel className={futurosUi.modalPanelLg}>
+          <div className={futurosUi.modalHeader}>
+            <div><DialogTitle className="text-lg font-semibold text-gray-900">{title}</DialogTitle><p className="mt-1 text-sm text-gray-500">Evolucao das faturas por ciclo.</p></div>
+            <button type="button" onClick={onClose} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100" aria-label="Fechar"><X className="h-5 w-5" /></button>
+          </div>
+          <div className="p-4 sm:p-6">
+          {data.length ? (
+            <div className="h-[240px] w-full sm:h-[360px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data} margin={{ top: 12, right: 12, bottom: 12, left: 0 }}>
+                <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fill: '#64748B', fontSize: 12 }} />
+                <YAxis tickLine={false} axisLine={false} width={86} tick={{ fill: '#64748B', fontSize: 12 }} tickFormatter={(value) => formatCurrencyBRL(Number(value)).replace(',00', '')} />
+                <Tooltip content={<ChartTooltip />} />
+                <Bar dataKey="total" radius={[8, 8, 0, 0]}>
+                  {data.map((entry, index) => <Cell key={`${entry.month}-${index}`} fill={index % 2 === 0 ? '#0066A3' : '#0EA5E9'} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="flex h-[220px] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 text-sm text-gray-500 sm:h-[260px]">Historico indisponivel para este cartao.</div>
+          )}
+          </div>
+        </DialogPanel>
+      </div>
+    </Dialog>
+  )
+}
+
+function PayStatementConfirmModal({
+  open,
+  cardName,
+  amount,
+  dueAt,
+  closingAt,
+  paymentType,
+  confirming,
+  onPaymentTypeChange,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean
+  cardName: string
+  amount: number
+  dueAt?: string | null
+  closingAt?: string | null
+  paymentType: StatementPaymentType
+  confirming: boolean
+  onPaymentTypeChange: (paymentType: StatementPaymentType) => void
+  onClose: () => void
+  onConfirm: () => void
+}) {
+  return (
+    <Dialog open={open} onClose={confirming ? () => undefined : onClose} className="relative z-50">
+      <div className={futurosUi.modalBackdrop} aria-hidden="true" />
+      <div className={futurosUi.modalShell}>
+        <DialogPanel className="flex max-h-[min(92vh,40rem)] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border border-gray-200 bg-white shadow-xl sm:rounded-xl">
+          <div className={futurosUi.modalHeader}>
+            <div className="flex w-full items-start justify-between gap-4">
+              <div>
+                <DialogTitle className="text-lg font-semibold text-gray-900">
+                  Confirmar pagamento da fatura
+                </DialogTitle>
+                <p className="mt-1 text-sm text-gray-500">
+                  Revise antes de marcar esta fatura como paga.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={confirming}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Fechar"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+
+          <div className={`${futurosUi.modalBody} space-y-4 px-4 py-4 sm:space-y-5 sm:px-6 sm:py-5`}>
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{cardName}</p>
+              <p className="mt-2 text-2xl font-semibold text-gray-950 sm:text-3xl">{formatCurrencyBRL(amount)}</p>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="rounded-lg bg-white px-3 py-2">
+                  <p className="text-[11px] font-medium text-gray-500">Vencimento</p>
+                  <p className="mt-1 text-sm font-semibold text-gray-950">{formatDateShort(dueAt)}</p>
+                </div>
+                <div className="rounded-lg bg-white px-3 py-2">
+                  <p className="text-[11px] font-medium text-gray-500">Fechamento</p>
+                  <p className="mt-1 text-sm font-semibold text-gray-950">{formatDateShort(closingAt)}</p>
+                </div>
+              </div>
+            </div>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-gray-600">Forma de pagamento</span>
+              <select
+                value={paymentType}
+                onChange={(event) => onPaymentTypeChange(event.target.value as StatementPaymentType)}
+                disabled={confirming}
+                className={futurosUi.select}
+              >
+                {STATEMENT_PAYMENT_TYPE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+              Sera criada uma unica transacao de saida consolidada. As compras desta fatura ficam apenas como detalhes do pagamento.
+            </div>
+          </div>
+
+          <div className={`${futurosUi.modalFooter} flex flex-col-reverse gap-2 sm:flex-row sm:justify-end`}>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={confirming}
+              className={`${futurosUi.btnOutline} disabled:cursor-not-allowed disabled:opacity-50`}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={confirming}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-emerald-600 px-5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              {confirming ? 'Confirmando...' : 'Confirmar pagamento'}
+            </button>
+          </div>
+        </DialogPanel>
+      </div>
+    </Dialog>
+  )
+}
+
 export default function FuturosPage() {
+  if (!FEATURES.FUTURES) {
+    return <FeatureUnavailable />
+  }
+
+  return <FuturosPageContent />
+}
+
+function FuturosPageContent() {
   const t = useTranslations('futurosPage')
   const locale = useLocale()
+  const { user } = useUserSession()
+  const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
+  const activePermission = useAdvisorActing((s) => s.activePermission ?? s.selectedPermission)
+  const isAdvisorReadOnly = isAdvisorReadOnlyTransactionAccess(activeClientId, activePermission)
+  const notifyReadOnly = () => {
+    toast.error(ADVISOR_READ_ONLY_FRIENDLY_MESSAGE)
+  }
+  const { houseContext, currentUserId, scopeKey } = useFinancialScope()
+  const currentUserName = user?.userData?.user?.name ?? user?.userData?.user?.email ?? ''
+  const managementSectionRef = useRef<HTMLElement | null>(null)
 
   const planSchema = useMemo(() => buildPlanSchema(t), [t])
   const installmentEditSchema = useMemo(() => buildInstallmentEditSchema(t), [t])
@@ -838,6 +1813,16 @@ export default function FuturosPage() {
   const [cardColors, setCardColors] = useState<Record<string, string>>(() =>
     readCreditCardColorMap()
   )
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
+  const [purchasesModalOpen, setPurchasesModalOpen] = useState(false)
+  const [distributionModalOpen, setDistributionModalOpen] = useState(false)
+  const [installmentPlansModalOpen, setInstallmentPlansModalOpen] = useState(false)
+  const [historyModalOpen, setHistoryModalOpen] = useState(false)
+  const [chargeDrawerOpen, setChargeDrawerOpen] = useState(false)
+  const [editingCharge, setEditingCharge] = useState<CreditCardChargeItem | null>(null)
+  const [deleteChargeTarget, setDeleteChargeTarget] = useState<CreditCardChargeItem | null>(null)
+  const [payStatementConfirmOpen, setPayStatementConfirmOpen] = useState(false)
+  const [statementPaymentType, setStatementPaymentType] = useState<StatementPaymentType>('PIX')
 
   const toggleGroup = (key: string) => {
     setClosedGroups((prev) => {
@@ -875,7 +1860,7 @@ export default function FuturosPage() {
 
   // ── Queries ─────────────────────────────────────────────────────────────────
   const { categoriesQuery } = useCategories()
-  const { cardQuery } = useCardMutations()
+  const { cardQuery, payStatementMutation } = useCardMutations()
   const {
     createPlanMutation,
     updatePlanMutation,
@@ -895,6 +1880,17 @@ export default function FuturosPage() {
     return computeForecastParams(period)
   }, [filters.from, filters.to, period])
   const forecastQuery = useFutureForecast(forecastParams)
+  const currentMonthForecastParams = useMemo(() => getCurrentMonthRange(), [])
+  const currentMonthForecastQuery = useFutureForecast(currentMonthForecastParams)
+  const {
+    chargesQuery: selectedCardChargesQuery,
+    deleteChargeMutation,
+  } = useCreditCardCharges({
+    cardId: selectedCardId ?? undefined,
+    page: 1,
+    limit: 300,
+    enabled: Boolean(selectedCardId),
+  })
 
   const plansQuery = useFuturePlans({
     from: filters.from || undefined,
@@ -923,7 +1919,6 @@ export default function FuturosPage() {
   )
 
   // ── Derived forecast data ────────────────────────────────────────────────────
-  const totals = forecastQuery.data?.totals
   const upcoming = useMemo(
     () => (forecastQuery.data?.upcoming ?? []) as FutureItem[],
     [forecastQuery.data]
@@ -978,24 +1973,217 @@ export default function FuturosPage() {
   const hasExpenseItems = creditCardGroups.length > 0 || otherCommitments.length > 0
   const hasAnyForecastItem = filteredUpcoming.length > 0
 
-  const forecastBalance = (totals?.toReceive ?? 0) - (totals?.toPay ?? 0)
-  const creditCardCount = totals?.creditCardCount ?? creditCardGroups.reduce((sum, group) => sum + group.items.length, 0)
-  const installmentPlanCount = totals?.installmentPlanCount ?? otherCommitments.length + incomeItems.length
-  const cardMetricsById = useMemo(
-    () =>
-      allCreditCardGroups.reduce<Record<string, CreditCardMetrics>>((acc, group) => {
-        const cardId = group.card?.id
-        if (!cardId) return acc
-
-        const current = acc[cardId] ?? { openInvoices: 0, futureInstallments: 0 }
-        acc[cardId] = {
-          openInvoices: current.openInvoices + (group.statement?.status === 'open' ? 1 : 0),
-          futureInstallments: current.futureInstallments + group.items.length,
-        }
-        return acc
-      }, {}),
-    [allCreditCardGroups]
+  const cards = useMemo(
+    () => (cardQuery.data ?? []).filter((card) => card.isActive !== false),
+    [cardQuery.data]
   )
+  const cardOwnerSections = useMemo(
+    () => getCardOwnerSections({ cards, houseContext, currentUserId, currentUserName }),
+    [cards, currentUserId, currentUserName, houseContext]
+  )
+  const currentMonthUpcoming = useMemo(
+    () => (currentMonthForecastQuery.data?.upcoming ?? []) as FutureItem[],
+    [currentMonthForecastQuery.data]
+  )
+  const currentMonthCreditGroups = useMemo(
+    () => groupCreditCardInvoices(currentMonthUpcoming),
+    [currentMonthUpcoming]
+  )
+  const currentMonthCreditItems = useMemo(
+    () => currentMonthCreditGroups.flatMap((group) => group.items),
+    [currentMonthCreditGroups]
+  )
+  const currentMonthCreditDistributionItems = useMemo(
+    () =>
+      buildCreditDistribution(
+        currentMonthCreditItems.map((item) => ({
+          categoryId: item.category?.id ?? null,
+          categoryName: item.category?.name ?? 'Sem categoria',
+          amount: Number(item.amount || 0),
+        }))
+      ),
+    [currentMonthCreditItems]
+  )
+  const currentMonthTotals = currentMonthForecastQuery.data?.totals
+  const creditInvoiceTotalThisMonth = useMemo(
+    () => currentMonthCreditGroups.reduce((sum, group) => sum + Number(group.totalAmount || 0), 0),
+    [currentMonthCreditGroups]
+  )
+  const toPayTotalThisMonth = useMemo(
+    () =>
+      typeof currentMonthTotals?.toPay === 'number'
+        ? currentMonthTotals.toPay
+        : currentMonthUpcoming
+            .filter((item) => item.type !== 'INCOME')
+            .reduce((sum, item) => sum + Number(item.amount || 0), 0),
+    [currentMonthTotals?.toPay, currentMonthUpcoming]
+  )
+  const creditInvoiceCardNames = useMemo(() => {
+    const names = new Set<string>()
+    currentMonthCreditGroups.forEach((group) => {
+      if (group.card?.name) names.add(group.card.name)
+    })
+    return Array.from(names)
+  }, [currentMonthCreditGroups])
+  const creditInvoiceCardCount = creditInvoiceCardNames.length
+  const incomeCurrentMonthItems = useMemo(
+    () => currentMonthUpcoming.filter((item) => item.type === 'INCOME'),
+    [currentMonthUpcoming]
+  )
+  const incomeTotalThisMonth = useMemo(
+    () =>
+      typeof currentMonthTotals?.toReceive === 'number'
+        ? currentMonthTotals.toReceive
+        : incomeCurrentMonthItems.reduce((sum, item) => sum + Number(item.amount || 0), 0),
+    [currentMonthTotals?.toReceive, incomeCurrentMonthItems]
+  )
+  const incomeCardNames = useMemo(() => {
+    const names = new Set<string>()
+    incomeCurrentMonthItems.forEach((item) => {
+      if (item.card?.name) names.add(item.card.name)
+    })
+    return Array.from(names)
+  }, [incomeCurrentMonthItems])
+  const incomeCardCount = incomeCardNames.length
+  const installmentPlanTotalThisMonth = useMemo(
+    () =>
+      currentMonthUpcoming
+        .filter(
+          (item) =>
+            item.sourceType === 'installment_plan' &&
+            item.type !== 'INCOME' &&
+            isWithinCurrentMonth(item.dueDate)
+        )
+        .reduce((sum, item) => sum + Number(item.amount || 0), 0),
+    [currentMonthUpcoming]
+  )
+  const activeCreditCardCount = cards.length
+  const cardMetricsById = useMemo(() => {
+    const acc = allCreditCardGroups.reduce<Record<string, CreditCardMetrics>>((metrics, group) => {
+      const cardId = group.card?.id
+      if (!cardId) return metrics
+
+      const current = metrics[cardId] ?? { openInvoices: 0, futureInstallments: 0 }
+      metrics[cardId] = {
+        openInvoices:
+          current.openInvoices +
+          (String(group.statement?.status ?? '').toLowerCase() === 'open' ? 1 : 0),
+        futureInstallments: current.futureInstallments,
+      }
+      return metrics
+    }, {})
+
+    ;(plansQuery.data?.plans ?? []).forEach((plan) => {
+      if (!plan.cardId || normalizePlanStatus(plan.status ?? null) === 'canceled') return
+      const current = acc[plan.cardId] ?? { openInvoices: 0, futureInstallments: 0 }
+      acc[plan.cardId] = {
+        ...current,
+        futureInstallments: current.futureInstallments + 1,
+      }
+    })
+
+    return acc
+  }, [allCreditCardGroups, plansQuery.data?.plans])
+
+  useEffect(() => {
+    if (!cards.length) {
+      setSelectedCardId(null)
+      return
+    }
+    if (selectedCardId && cards.some((card) => card.id === selectedCardId)) return
+    setSelectedCardId(cards[0].id)
+  }, [cards, scopeKey, selectedCardId])
+
+  const selectedCard = useMemo(
+    () => cards.find((card) => card.id === selectedCardId) ?? null,
+    [cards, selectedCardId]
+  )
+  const selectedCardOwnerLabel = useMemo(() => {
+    if (!selectedCard) return undefined
+    const section = cardOwnerSections.find((item) => item.cards.some((card) => card.id === selectedCard.id))
+    return section?.label
+  }, [cardOwnerSections, selectedCard])
+
+  const selectedCardGroups = useMemo(
+    () => allCreditCardGroups.filter((group) => group.card?.id === selectedCardId),
+    [allCreditCardGroups, selectedCardId]
+  )
+  const selectedInvoiceGroup = useMemo(() => {
+    if (!selectedCardGroups.length) return null
+    return (
+      selectedCardGroups.find((group) => getStatementDisplayStatus(group.statement) === 'open') ??
+      selectedCardGroups.find((group) => getStatementDisplayStatus(group.statement) === 'invoiced') ??
+      selectedCardGroups[0]
+    )
+  }, [selectedCardGroups])
+
+  const selectedCardCharges = useMemo(
+    () => selectedCardChargesQuery.data?.charges ?? [],
+    [selectedCardChargesQuery.data?.charges]
+  )
+  const chargeByStatementInstallmentId = useMemo(() => {
+    const map = new Map<string, CreditCardChargeItem>()
+    selectedCardCharges.forEach((charge) => {
+      map.set(charge.id, charge)
+      charge.installments?.forEach((installment) => {
+        map.set(installment.id, charge)
+      })
+    })
+    return map
+  }, [selectedCardCharges])
+  const selectedInvoicePurchases = useMemo(
+    () =>
+      (selectedInvoiceGroup?.items ?? []).map((item) => ({
+        item,
+        charge: chargeByStatementInstallmentId.get(item.id) ?? null,
+      })),
+    [chargeByStatementInstallmentId, selectedInvoiceGroup?.items]
+  )
+  const selectedCardInstallmentPlans = useMemo(
+    () =>
+      (plansQuery.data?.plans ?? []).filter(
+        (plan) =>
+          normalizePlanStatus(plan.status ?? null) !== 'canceled' &&
+          plan.paymentType === 'CREDIT_CARD' &&
+          plan.cardId === selectedCardId
+      ),
+    [plansQuery.data?.plans, selectedCardId]
+  )
+
+  const selectedCardDistribution = useMemo(
+    () =>
+      buildCreditDistribution(
+        selectedInvoicePurchases.map(({ item, charge }) => ({
+          categoryId: item.category?.id ?? charge?.category?.id ?? null,
+          categoryName: item.category?.name ?? charge?.category?.name ?? 'Sem categoria',
+          categoryColor: charge?.category?.color ?? null,
+          amount: Number(item.amount || 0),
+        }))
+      ),
+    [selectedInvoicePurchases]
+  )
+
+  const selectedCardHistoryData = useMemo(() => {
+    const map = new Map<string, number>()
+    selectedCardCharges.forEach((charge) => {
+      charge.installments?.forEach((installment) => {
+        const key = installment.statementMonthKey || installment.statementDueAt?.slice(0, 7)
+        if (!key) return
+        map.set(key, (map.get(key) ?? 0) + Number(installment.amount || 0))
+      })
+    })
+    if (map.size === 0) {
+      selectedCardGroups.forEach((group) => {
+        const key = group.statement?.cycleKey
+        if (!key) return
+        map.set(key, (map.get(key) ?? 0) + Number(group.totalAmount || 0))
+      })
+    }
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-12)
+      .map(([month, total]) => ({ month: formatCycleKey(month).replace('Fatura ', ''), total }))
+  }, [selectedCardCharges, selectedCardGroups])
 
   useEffect(() => {
     if (forecastQuery.isLoading) return
@@ -1144,6 +2332,54 @@ export default function FuturosPage() {
     setCardManagerOpen(true)
   }
 
+  const openEditCardForm = (cardId?: string) => {
+    setEditingCardId(cardId ?? selectedCardId)
+    setCardManagerView('form')
+    setCardManagerOpen(true)
+  }
+
+  const openInstallmentsManagement = () => {
+    setShowManagement(true)
+    setInstallmentPlansModalOpen(false)
+    window.setTimeout(() => {
+      managementSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 80)
+  }
+
+  const openChargeDrawer = (charge?: CreditCardChargeItem | null) => {
+    setEditingCharge(charge ?? null)
+    setChargeDrawerOpen(true)
+  }
+
+  const handleOpenChargeDrawer = (charge?: CreditCardChargeItem | null) => {
+    if (isAdvisorReadOnly) {
+      notifyReadOnly()
+      return
+    }
+    openChargeDrawer(charge)
+  }
+
+  const handleRequestDeleteCharge = (charge: CreditCardChargeItem) => {
+    if (isAdvisorReadOnly) {
+      notifyReadOnly()
+      return
+    }
+    setDeleteChargeTarget(charge)
+  }
+
+  const handleNewCreditPurchase = () => {
+    if (isAdvisorReadOnly) {
+      notifyReadOnly()
+      return
+    }
+    openChargeDrawer(null)
+  }
+
+  const closeChargeDrawer = () => {
+    setChargeDrawerOpen(false)
+    setEditingCharge(null)
+  }
+
   const handleCardColorSaved = (cardId: string, color: string) => {
     persistCardColors({ ...cardColors, [cardId]: color })
   }
@@ -1152,6 +2388,45 @@ export default function FuturosPage() {
     const next = { ...cardColors }
     delete next[cardId]
     persistCardColors(next)
+  }
+
+  const onDeleteCharge = async () => {
+    if (!deleteChargeTarget?.id) return
+    try {
+      await deleteChargeMutation.mutateAsync(deleteChargeTarget.id)
+      setDeleteChargeTarget(null)
+      toast.success('Compra excluida')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao excluir compra.')
+    }
+  }
+
+  const requestPaySelectedStatement = () => {
+    if (!selectedInvoiceGroup?.statement?.id) return
+    setPayStatementConfirmOpen(true)
+  }
+
+  const confirmPaySelectedStatement = async () => {
+    if (payStatementMutation.isPending) return
+
+    const statementId = selectedInvoiceGroup?.statement?.id
+    if (!statementId) return
+
+    try {
+      await payStatementMutation.mutateAsync({
+        statementId,
+        data: {
+          paidAt: new Date().toISOString(),
+          transactionDate: new Date().toISOString(),
+          paymentType: statementPaymentType,
+          createTransaction: true,
+        },
+      })
+      setPayStatementConfirmOpen(false)
+      toast.success('Fatura marcada como paga')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao pagar fatura.')
+    }
   }
 
   const openCreatePlanModal = () => {
@@ -1352,41 +2627,149 @@ export default function FuturosPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
+  const filtersPanel = (
+    <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-lg sm:p-5">
+      <div className="flex flex-col gap-3 border-b border-gray-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className={futurosUi.sectionTitle}>Filtros</h2>
+          <p className={futurosUi.sectionSubtitle}>Refine periodo, tipo e status.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowFilters(false)}
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900"
+          aria-label="Fechar filtros"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 items-end gap-3 pt-4 md:grid-cols-2 xl:grid-cols-6">
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold text-gray-600">{t('filters.from')}</span>
+          <input
+            type="date"
+            value={filters.from}
+            onChange={(e) => {
+              setPlanPage(1)
+              setFilters((p) => ({ ...p, from: e.target.value, page: 1 }))
+            }}
+            className={futurosUi.input}
+          />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold text-gray-600">{t('filters.to')}</span>
+          <input
+            type="date"
+            value={filters.to}
+            onChange={(e) => {
+              setPlanPage(1)
+              setFilters((p) => ({ ...p, to: e.target.value, page: 1 }))
+            }}
+            className={futurosUi.input}
+          />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold text-gray-600">{t('filters.type')}</span>
+          <select
+            value={filters.type}
+            onChange={(e) => {
+              setPlanPage(1)
+              setFilters((p) => ({ ...p, type: e.target.value as '' | FutureType, page: 1 }))
+            }}
+            className={futurosUi.select}
+          >
+            {typeOptions.map((opt) => <option key={opt.label} value={opt.value}>{opt.label}</option>)}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold text-gray-600">{t('filters.installmentStatus')}</span>
+          <select
+            value={filters.status}
+            onChange={(e) => {
+              setPlanPage(1)
+              setFilters((p) => ({ ...p, status: e.target.value as '' | FutureStatus, page: 1 }))
+            }}
+            className={futurosUi.select}
+          >
+            {statusOptions.map((opt) => <option key={opt.label} value={opt.value}>{opt.label}</option>)}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold text-gray-600">{t('filters.installmentsPerPage')}</span>
+          <select
+            value={filters.limit}
+            onChange={(e) => {
+              setPlanPage(1)
+              setFilters((p) => ({ ...p, limit: Number(e.target.value), page: 1 }))
+            }}
+            className={futurosUi.select}
+          >
+            {[10, 20, 30, 50].map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
+        <button
+          type="button"
+          onClick={() => {
+            setPlanPage(1)
+            setFilters({ from: '', to: '', type: '', status: '', page: 1, limit: 10 })
+          }}
+          className={futurosUi.btnOutline}
+        >
+          Limpar
+        </button>
+      </div>
+    </section>
+  )
+
   return (
-    <section className="min-h-full w-full bg-[#F6F9FC] px-4 pb-24 pt-6 lg:px-8 lg:pb-10">
-      <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-6">
-        <header className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex min-w-0 gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-blue-50 text-primary shadow-[0_12px_26px_rgba(0,102,163,0.10)]">
-              <CalendarDays className="h-6 w-6" />
+    <section className={futurosUi.page}>
+      <div className={futurosUi.container}>
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 gap-3 sm:gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-50 text-primary sm:h-14 sm:w-14">
+              <CalendarDays className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-3xl font-extrabold tracking-normal text-slate-950">Futuros</h1>
+                <h1 className="text-2xl font-semibold text-gray-900 sm:text-3xl">Futuros</h1>
                 <FinancialScopeSwitcher />
               </div>
-              <p className="mt-2 text-sm font-extrabold text-slate-700">
-                Acompanhe seus ganhos e despesas futuras.
+              <p className="mt-1.5 text-sm font-medium text-gray-700">
+                Cartoes, faturas, compras no credito e parcelamentos.
               </p>
-              <p className="mt-1 max-w-3xl text-sm font-medium text-slate-500">
-                Tudo que ainda vai vencer, organizado para você se planejar melhor.
+              <p className="mt-1 hidden max-w-2xl text-sm text-gray-500 sm:block">
+                Selecione um cartao no filtro e acompanhe a fatura na HUD abaixo.
               </p>
             </div>
           </div>
 
-          <Button
-            type="button"
-            variant="default"
-            onClick={openCreatePlanModal}
-            className="h-12 w-auto rounded-full px-5 text-sm font-extrabold shadow-[0_14px_28px_rgba(0,102,163,0.24)]"
-          >
-            <Plus className="h-4 w-4" />
-            Transação Futura
-          </Button>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <Button
+              type="button"
+              variant="default"
+              onClick={handleNewCreditPurchase}
+              disabled={isAdvisorReadOnly}
+              className="h-10 w-full rounded-full px-4 text-sm font-semibold sm:w-auto"
+              title={isAdvisorReadOnly ? 'Acesso somente leitura' : undefined}
+            >
+              <CreditCard className="h-4 w-4" />
+              Compra no credito
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={openCreatePlanModal}
+              className="h-10 w-full rounded-full px-4 text-sm font-semibold sm:w-auto"
+            >
+              <Plus className="h-4 w-4" />
+              Transacao futura
+            </Button>
+          </div>
         </header>
 
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap gap-2.5">
+        <div className="relative z-40 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className={`${futurosUi.chipScroll} max-w-full flex-1`}>
             {(Object.keys(PERIOD_LABELS) as PeriodOption[]).map((p) => (
               <button
                 key={p}
@@ -1396,11 +2779,7 @@ export default function FuturosPage() {
                   setFilters((prev) => ({ ...prev, from: '', to: '', page: 1 }))
                   setPlanPage(1)
                 }}
-                className={`h-10 rounded-full border px-5 text-sm font-extrabold shadow-[0_8px_22px_rgba(15,23,42,0.06)] transition-colors ${
-                  period === p && !filters.from && !filters.to
-                    ? 'border-primary bg-primary text-white'
-                    : 'border-slate-200 bg-white text-slate-600 hover:border-blue-200 hover:text-primary'
-                }`}
+                className={futurosPillClass(period === p && !filters.from && !filters.to)}
               >
                 {PERIOD_LABELS[p]}
               </button>
@@ -1410,62 +2789,101 @@ export default function FuturosPage() {
           <button
             type="button"
             onClick={() => setShowFilters((prev) => !prev)}
-            className={`inline-flex h-10 w-fit items-center gap-2 rounded-full border px-4 text-sm font-extrabold shadow-[0_8px_22px_rgba(15,23,42,0.06)] transition-colors ${
-              showFilters
-                ? 'border-primary bg-primary text-white'
-                : 'border-slate-200 bg-white text-slate-700 hover:border-blue-200 hover:text-primary'
-            }`}
+            className={`inline-flex h-9 w-full shrink-0 items-center justify-center gap-2 sm:w-auto ${futurosPillClass(showFilters)}`}
           >
             <Filter className="h-4 w-4" />
             Filtros
             <ChevronDown className={`h-4 w-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
           </button>
+
+          {showFilters && (
+            <div className="absolute left-0 right-0 top-[calc(100%+12px)] z-50 max-h-[calc(100vh-180px)] overflow-y-auto">
+              {filtersPanel}
+            </div>
+          )}
         </div>
 
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
           <SummaryCard
             title="A pagar"
-            value={formatCurrencyBRL(totals?.toPay ?? 0)}
-            subtext={`${Math.max(0, otherCommitments.length + creditCardCount)} itens`}
+            value={formatCurrencyBRL(toPayTotalThisMonth)}
+            details={creditInvoiceCardNames.length ? summarizeCardNames(creditInvoiceCardNames) : 'Compromissos de despesa no mes atual'}
+            subtext={`${creditInvoiceCardCount} ${creditInvoiceCardCount === 1 ? 'cartao' : 'cartoes'} com fatura`}
             icon={ArrowDownRight}
             tone="red"
-            loading={loadingCards}
+            loading={currentMonthForecastQuery.isLoading}
           />
           <SummaryCard
             title="A receber"
-            value={formatCurrencyBRL(totals?.toReceive ?? 0)}
-            subtext={`${incomeItems.length} itens`}
+            value={formatCurrencyBRL(incomeTotalThisMonth)}
+            details={incomeCardNames.length ? summarizeCardNames(incomeCardNames) : 'Recebimentos vigentes no periodo atual'}
+            subtext={
+              incomeCardNames.length
+                ? `${incomeCardNames.length} ${incomeCardNames.length === 1 ? 'cartao' : 'cartoes'}`
+                : 'Recebimentos vigentes'
+            }
             icon={ArrowUpRight}
             tone="green"
-            loading={loadingCards}
+            loading={currentMonthForecastQuery.isLoading}
           />
           <SummaryCard
-            title="Pendentes"
-            value={totals?.pendingCount ?? 0}
-            subtext="Em aberto"
-            icon={Clock3}
-            tone="amber"
-            loading={loadingCards}
-          />
-          <SummaryCard
-            title="Cartão de crédito"
-            value={creditCardCount}
-            subtext="Faturas e parcelas"
+            title="Cartao de credito"
+            value={activeCreditCardCount}
+            subtext="Gerenciar cartoes"
             icon={WalletCards}
             tone="blue"
-            loading={loadingCards}
+            loading={cardQuery.isLoading}
+            onClick={openCardManagerList}
           />
           <SummaryCard
             title="Parcelamentos"
-            value={installmentPlanCount}
-            subtext="Outros compromissos"
+            value={formatCurrencyBRL(installmentPlanTotalThisMonth)}
+            subtext={`Parcelas de planos no mes: ${formatCurrencyBRL(installmentPlanTotalThisMonth)}.`}
             icon={LayoutGrid}
             tone="purple"
-            loading={loadingCards}
+            loading={currentMonthForecastQuery.isLoading}
+            onClick={openInstallmentsManagement}
           />
         </section>
 
-        <ForecastBalanceCard value={forecastBalance} loading={loadingCards} />
+        <CreditMonthDistributionCard
+          total={creditInvoiceTotalThisMonth}
+          items={currentMonthCreditDistributionItems}
+          loading={currentMonthForecastQuery.isLoading}
+          onOpen={() => setDistributionModalOpen(true)}
+        />
+
+        <CardFilterRail
+          cardOwnerSections={cardOwnerSections}
+          selectedCardId={selectedCardId}
+          cardColors={cardColors}
+          onSelect={setSelectedCardId}
+          onNewCard={openNewCardForm}
+        />
+
+        <SelectedCardHud
+          card={selectedCard}
+          ownerLabel={selectedCardOwnerLabel}
+          cardColor={getCardAccentColor(selectedCard?.id, cardColors)}
+          invoiceGroup={selectedInvoiceGroup}
+          purchases={selectedInvoicePurchases}
+          installments={selectedCardInstallmentPlans}
+          distribution={selectedCardDistribution}
+          loadingPurchases={selectedCardChargesQuery.isLoading}
+          payingStatement={payStatementMutation.isPending}
+          onCreateCard={openNewCardForm}
+          onCreateCharge={handleNewCreditPurchase}
+          onManageCard={openEditCardForm}
+          onPayStatement={requestPaySelectedStatement}
+          onOpenPurchases={() => setPurchasesModalOpen(true)}
+          onOpenInstallments={() => setInstallmentPlansModalOpen(true)}
+          onOpenHistory={() => setHistoryModalOpen(true)}
+          onEditPurchase={handleOpenChargeDrawer}
+          onDeletePurchase={handleRequestDeleteCharge}
+          onEditPlan={openEditPlanModal}
+          onDeletePlan={setDeletePlanTarget}
+          readOnly={isAdvisorReadOnly}
+        />
 
         {forecastQuery.isError && (
           <div className="flex flex-col gap-3 rounded-[18px] border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700 sm:flex-row sm:items-center sm:justify-between">
@@ -1480,7 +2898,7 @@ export default function FuturosPage() {
           </div>
         )}
 
-        {loadingCards ? (
+        {(loadingCards ? (
           <ForecastSkeleton />
         ) : !hasAnyForecastItem ? (
           <>
@@ -1494,7 +2912,7 @@ export default function FuturosPage() {
                   <button
                     type="button"
                     onClick={openNewCardForm}
-                    className="inline-flex h-10 items-center gap-2 rounded-full bg-primary px-4 text-sm font-extrabold text-white shadow-[0_12px_26px_rgba(0,102,163,0.18)] transition-colors hover:bg-secondary"
+                    className={futurosUi.btnPrimary}
                   >
                     <Plus className="h-4 w-4" />
                     Novo cartão
@@ -1502,14 +2920,14 @@ export default function FuturosPage() {
                   <button
                     type="button"
                     onClick={openCardManagerList}
-                    className="inline-flex h-10 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 text-sm font-extrabold text-slate-700 shadow-[0_8px_22px_rgba(15,23,42,0.05)] transition-colors hover:border-blue-200 hover:text-primary"
+                    className={futurosUi.btnOutline}
                   >
                     <WalletCards className="h-4 w-4" />
                     Gerenciar cartões
                   </button>
                 </div>
               </div>
-              <div className="rounded-[18px] border border-slate-200 bg-white px-5 py-6 text-sm font-medium text-slate-500 shadow-[0_10px_28px_rgba(15,23,42,0.04)]">
+              <div className={`px-4 py-6 text-sm text-gray-500 sm:px-5 ${futurosUi.surfaceFlat}`}>
                 Nenhuma fatura de cartão neste período.
               </div>
             </section>
@@ -1520,7 +2938,7 @@ export default function FuturosPage() {
             <ForecastTabs active={typeTab} onChange={setTypeTab} />
 
             {typeTab === 'expense' ? (
-              <div className="space-y-5">
+              <div className={futurosUi.forecastScroll}>
                 <section className="space-y-3">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <h2 className="flex items-center gap-2 text-sm font-extrabold text-slate-900">
@@ -1547,7 +2965,7 @@ export default function FuturosPage() {
                     </div>
                   </div>
                   {creditCardGroups.length > 0 ? (
-                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4">
                       {creditCardGroups.map((group) => {
                         const key = getInvoiceGroupKey(group)
                         return (
@@ -1563,18 +2981,19 @@ export default function FuturosPage() {
                       })}
                     </div>
                   ) : (
-                    <div className="rounded-[18px] border border-slate-200 bg-white px-5 py-6 text-sm font-medium text-slate-500 shadow-[0_10px_28px_rgba(15,23,42,0.04)]">
+                    <div className={`px-4 py-6 text-sm text-gray-500 sm:px-5 ${futurosUi.surfaceFlat}`}>
                       Nenhuma fatura de cartão neste período.
                     </div>
                   )}
                 </section>
 
                 {otherCommitments.length > 0 ? (
-                  <section className="overflow-hidden rounded-[18px] border border-slate-200 bg-white shadow-[0_14px_38px_rgba(15,23,42,0.06)]">
-                    <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-4">
-                      <CalendarDays className="h-4 w-4 text-slate-500" />
-                      <h2 className="text-sm font-extrabold text-slate-900">Outros compromissos futuros</h2>
+                  <section className={futurosUi.surface}>
+                    <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-3.5 sm:px-5 sm:py-4">
+                      <CalendarDays className="h-4 w-4 text-gray-500" />
+                      <h2 className={futurosUi.sectionTitle}>Outros compromissos futuros</h2>
                     </div>
+                    <div className={otherCommitments.length > 8 ? futurosUi.listScroll : undefined}>
                     {limitedOtherCommitments.map((item) => (
                       <CommitmentCard
                         key={item.id}
@@ -1585,10 +3004,11 @@ export default function FuturosPage() {
                       />
                     ))}
                     {otherCommitments.length > limitedOtherCommitments.length && (
-                      <div className="border-t border-slate-100 px-5 py-3 text-center text-xs font-extrabold text-primary">
+                      <div className="border-t border-gray-100 px-4 py-3 text-center text-xs font-semibold text-primary sm:px-5">
                         Exibindo {limitedOtherCommitments.length} de {otherCommitments.length} compromissos
                       </div>
                     )}
+                    </div>
                   </section>
                 ) : creditCardGroups.length === 0 ? (
                   <p className="rounded-[18px] border border-slate-200 bg-white px-5 py-6 text-sm font-medium text-slate-500">
@@ -1597,13 +3017,14 @@ export default function FuturosPage() {
                 ) : null}
               </div>
             ) : (
-              <section className="overflow-hidden rounded-[18px] border border-slate-200 bg-white shadow-[0_14px_38px_rgba(15,23,42,0.06)]">
-                <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-4">
+              <section className={futurosUi.surface}>
+                <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-3.5 sm:px-5 sm:py-4">
                   <CircleDollarSign className="h-4 w-4 text-emerald-600" />
-                  <h2 className="text-sm font-extrabold text-slate-900">Receitas futuras</h2>
+                  <h2 className={futurosUi.sectionTitle}>Receitas futuras</h2>
                 </div>
                 {incomeItems.length > 0 ? (
                   <>
+                    <div className={incomeItems.length > 8 ? futurosUi.listScroll : undefined}>
                     {limitedIncomeItems.map((item) => (
                       <CommitmentCard
                         key={item.id}
@@ -1614,95 +3035,27 @@ export default function FuturosPage() {
                       />
                     ))}
                     {incomeItems.length > limitedIncomeItems.length && (
-                      <div className="border-t border-slate-100 px-5 py-3 text-center text-xs font-extrabold text-primary">
+                      <div className="border-t border-gray-100 px-4 py-3 text-center text-xs font-semibold text-primary sm:px-5">
                         Exibindo {limitedIncomeItems.length} de {incomeItems.length} receitas
                       </div>
                     )}
+                    </div>
                   </>
                 ) : (
-                  <div className="px-5 py-8 text-sm font-medium text-slate-500">
+                  <div className="px-4 py-8 text-sm text-gray-500 sm:px-5">
                     Nenhuma receita futura neste período.
                   </div>
                 )}
               </section>
             )}
           </>
-        )}
+        ))}
 
       {/* ────────────────────────────────────────────────────────────────────── */}
       {/* MANAGEMENT SECTION */}
       {/* ────────────────────────────────────────────────────────────────────── */}
 
-        {showFilters && (
-          <section className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-[0_14px_38px_rgba(15,23,42,0.05)]">
-            <div className="flex flex-col gap-1 pb-4">
-              <h2 className="text-sm font-extrabold text-slate-900">Filtros</h2>
-              <p className="text-xs font-medium text-slate-500">Ajustes secundários para refinar o período e a listagem.</p>
-            </div>
-            <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-2 xl:grid-cols-6">
-              <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-slate-600">{t('filters.from')}</span>
-                <input
-                  type="date"
-                  value={filters.from}
-                  onChange={(e) => { setPlanPage(1); setFilters((p) => ({ ...p, from: e.target.value, page: 1 })) }}
-                  className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-primary"
-                />
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-slate-600">{t('filters.to')}</span>
-                <input
-                  type="date"
-                  value={filters.to}
-                  onChange={(e) => { setPlanPage(1); setFilters((p) => ({ ...p, to: e.target.value, page: 1 })) }}
-                  className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-primary"
-                />
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-slate-600">{t('filters.type')}</span>
-                <select
-                  value={filters.type}
-                  onChange={(e) => { setPlanPage(1); setFilters((p) => ({ ...p, type: e.target.value as '' | FutureType, page: 1 })) }}
-                  className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-primary"
-                >
-                  {typeOptions.map((opt) => <option key={opt.label} value={opt.value}>{opt.label}</option>)}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-slate-600">{t('filters.installmentStatus')}</span>
-                <select
-                  value={filters.status}
-                  onChange={(e) => setFilters((p) => ({ ...p, status: e.target.value as '' | FutureStatus, page: 1 }))}
-                  className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-primary"
-                >
-                  {statusOptions.map((opt) => <option key={opt.label} value={opt.value}>{opt.label}</option>)}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-slate-600">{t('filters.installmentsPerPage')}</span>
-                <select
-                  value={filters.limit}
-                  onChange={(e) => setFilters((p) => ({ ...p, limit: Number(e.target.value), page: 1 }))}
-                  className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-primary"
-                >
-                  {[10, 20, 30, 50].map((n) => <option key={n} value={n}>{n}</option>)}
-                </select>
-              </label>
-              <button
-                type="button"
-                onClick={() => {
-                  setPlanPage(1)
-                  setFilters({ from: '', to: '', type: '', status: '', page: 1, limit: 10 })
-                }}
-                className="h-11 rounded-full border border-slate-200 bg-white px-4 text-sm font-extrabold text-slate-700 transition-colors hover:border-blue-200 hover:text-primary"
-              >
-                Limpar
-              </button>
-            </div>
-          </section>
-        )}
-
-        <section className="rounded-[20px] border border-slate-200 bg-white p-4 shadow-[0_14px_38px_rgba(15,23,42,0.04)]">
+        <section ref={managementSectionRef} className={futurosUi.surfacePadding}>
           <button
             type="button"
             onClick={() => setShowManagement((prev) => !prev)}
@@ -1991,46 +3344,108 @@ export default function FuturosPage() {
 
       {/* ── Modals ─────────────────────────────────────────────────────────────── */}
 
+      <CreditCardChargeDrawer
+        open={chargeDrawerOpen}
+        onClose={closeChargeDrawer}
+        initialData={editingCharge ?? undefined}
+        initialCardId={selectedCardId}
+      />
+
+      <PurchasesModal
+        open={purchasesModalOpen}
+        purchases={selectedInvoicePurchases}
+        onClose={() => setPurchasesModalOpen(false)}
+        onEdit={(charge) => {
+          if (isAdvisorReadOnly) {
+            notifyReadOnly()
+            return
+          }
+          setPurchasesModalOpen(false)
+          openChargeDrawer(charge)
+        }}
+        onDelete={handleRequestDeleteCharge}
+        readOnly={isAdvisorReadOnly}
+      />
+
+      <CreditDistributionModal
+        open={distributionModalOpen}
+        title="Distribuição de gastos no crédito este mês"
+        items={currentMonthCreditDistributionItems}
+        onClose={() => setDistributionModalOpen(false)}
+      />
+
+      <InstallmentPlansModal
+        open={installmentPlansModalOpen}
+        plans={selectedCardInstallmentPlans}
+        onClose={() => setInstallmentPlansModalOpen(false)}
+        onEdit={(plan) => {
+          setInstallmentPlansModalOpen(false)
+          openEditPlanModal(plan)
+        }}
+        onDelete={setDeletePlanTarget}
+        onOpenManagement={openInstallmentsManagement}
+      />
+
+      <CardHistoryModal
+        open={historyModalOpen}
+        title={selectedCard ? `Historico do ${selectedCard.name}` : 'Historico do cartao'}
+        data={selectedCardHistoryData}
+        onClose={() => setHistoryModalOpen(false)}
+      />
+
+      <PayStatementConfirmModal
+        open={payStatementConfirmOpen}
+        cardName={selectedCard ? formatCardDisplayName(selectedCard) : 'Cartao'}
+        amount={selectedInvoiceGroup?.totalAmount ?? 0}
+        dueAt={selectedInvoiceGroup?.statement?.dueAt}
+        closingAt={selectedInvoiceGroup?.statement?.closingAt}
+        paymentType={statementPaymentType}
+        confirming={payStatementMutation.isPending}
+        onPaymentTypeChange={setStatementPaymentType}
+        onClose={() => setPayStatementConfirmOpen(false)}
+        onConfirm={confirmPaySelectedStatement}
+      />
+
       {/* Create/Edit plan */}
       <Dialog open={planModalOpen} onClose={closePlanModal} className="relative z-50">
-        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
-        <div className="fixed inset-0 flex items-center justify-center p-4">
-          <DialogPanel className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl">
-            <div className="flex items-center justify-between mb-4">
+        <div className={futurosUi.modalBackdrop} aria-hidden="true" />
+        <div className={futurosUi.modalShell}>
+          <DialogPanel className={`${futurosUi.modalPanel} sm:max-w-2xl`}>
+            <div className={futurosUi.modalHeader}>
               <DialogTitle className="text-lg font-semibold text-gray-900">
                 {planModalMode === 'edit' ? t('modals.plan.editTitle') : t('modals.plan.createTitle')}
               </DialogTitle>
-              <button type="button" onClick={closePlanModal} className="text-gray-500 hover:text-gray-700">
+              <button type="button" onClick={closePlanModal} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100" aria-label="Fechar">
                 <X size={18} />
               </button>
             </div>
-            <form onSubmit={handleSubmitPlan(onSavePlan)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <form onSubmit={handleSubmitPlan(onSavePlan)} className={`${futurosUi.modalBody} grid grid-cols-1 gap-4 p-4 md:grid-cols-2 sm:p-6`}>
               <label className="flex flex-col gap-1 md:col-span-2">
                 <span className="text-xs text-gray-600">{t('forms.description')}</span>
-                <input {...registerPlan('description')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm" />
+                <input {...registerPlan('description')} className={futurosUi.input} />
                 {planErrors.description && <span className="text-xs text-red-400">{planErrors.description.message}</span>}
               </label>
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-gray-600">{t('forms.type')}</span>
-                <select {...registerPlan('type')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm">
+                <select {...registerPlan('type')} className={futurosUi.select}>
                   <option value="EXPENSE">{t('labels.expense')}</option>
                   <option value="INCOME">{t('labels.income')}</option>
                 </select>
               </label>
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-gray-600">{t('forms.payment')}</span>
-                <select {...registerPlan('paymentType')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm">
+                <select {...registerPlan('paymentType')} className={futurosUi.select}>
                   {paymentTypeOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
               </label>
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-gray-600">{t('forms.totalValue')}</span>
-                <input type="number" step="0.01" min="0" {...registerPlan('totalAmount')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm" />
+                <input type="number" step="0.01" min="0" {...registerPlan('totalAmount')} className={futurosUi.input} />
                 {planErrors.totalAmount && <span className="text-xs text-red-400">{planErrors.totalAmount.message}</span>}
               </label>
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-gray-600">{t('forms.installmentCount')}</span>
-                <input type="number" min="1" {...registerPlan('installmentCount')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm" />
+                <input type="number" min="1" {...registerPlan('installmentCount')} className={futurosUi.input} />
                 {planErrors.installmentCount && <span className="text-xs text-red-400">{planErrors.installmentCount.message}</span>}
               </label>
               <label className="flex flex-col gap-1">
@@ -2038,18 +3453,18 @@ export default function FuturosPage() {
                   <CalendarDays size={14} />
                   {t('forms.firstDueDate')}
                 </span>
-                <input type="date" {...registerPlan('firstDueDate')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm" />
+                <input type="date" {...registerPlan('firstDueDate')} className={futurosUi.input} />
                 {planErrors.firstDueDate && <span className="text-xs text-red-400">{planErrors.firstDueDate.message}</span>}
               </label>
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-gray-600">{t('forms.intervalMonths')}</span>
-                <input type="number" min="1" {...registerPlan('intervalMonths')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm" />
+                <input type="number" min="1" {...registerPlan('intervalMonths')} className={futurosUi.input} />
                 {planErrors.intervalMonths && <span className="text-xs text-red-400">{planErrors.intervalMonths.message}</span>}
               </label>
               {planModalMode === 'edit' && (
                 <label className="flex flex-col gap-1">
                   <span className="text-xs text-gray-600">{t('forms.planStatus')}</span>
-                  <select {...registerPlan('status')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm">
+                  <select {...registerPlan('status')} className={futurosUi.select}>
                     {planStatusOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                   </select>
                 </label>
@@ -2062,30 +3477,30 @@ export default function FuturosPage() {
               )}
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-gray-600">{t('forms.categoryOptional')}</span>
-                <select {...registerPlan('categoryId')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm">
+                <select {...registerPlan('categoryId')} className={futurosUi.select}>
                   <option value="">{t('forms.noCategory')}</option>
                   {(categoriesQuery.data ?? []).map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                 </select>
               </label>
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-gray-600">{t('forms.cardOptional')}</span>
-                <select {...registerPlan('cardId')} disabled={watchedPaymentType !== 'CREDIT_CARD'} className="h-10 rounded-lg border border-gray-200 px-3 text-sm disabled:bg-gray-100">
+                <select {...registerPlan('cardId')} disabled={watchedPaymentType !== 'CREDIT_CARD'} className={`${futurosUi.select} disabled:bg-gray-100`}>
                   <option value="">{t('forms.noCard')}</option>
                   {(cardQuery.data ?? []).map((card) => <option key={card.id} value={card.id}>{card.name}</option>)}
                 </select>
               </label>
               <label className="flex flex-col gap-1 md:col-span-2">
                 <span className="text-xs text-gray-600">{t('forms.notesOptional')}</span>
-                <textarea {...registerPlan('notes')} rows={3} className="rounded-lg border border-gray-200 px-3 py-2 text-sm" />
+                <textarea {...registerPlan('notes')} rows={3} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15" />
               </label>
               <div className="md:col-span-2 rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-sm">
                 {t('forms.approxInstallmentValue')}: <strong>{formatBRL(approximateInstallmentValue)}</strong>
               </div>
-              <div className="md:col-span-2 flex justify-end gap-2 pt-2">
-                <button type="button" onClick={closePlanModal} className="h-10 rounded-full border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50">
+              <div className={`${futurosUi.modalFooter} flex flex-col-reverse gap-2 sm:flex-row sm:justify-end`}>
+                <button type="button" onClick={closePlanModal} className={futurosUi.btnOutline}>
                   {t('buttons.cancel')}
                 </button>
-                <button type="submit" disabled={isSavingPlan} className="h-10 rounded-full bg-primary px-4 text-sm font-semibold text-white hover:bg-secondary disabled:opacity-60">
+                <button type="submit" disabled={isSavingPlan} className={`${futurosUi.btnPrimary} disabled:opacity-60`}>
                   {isSavingPlan ? t('buttons.saving') : planModalMode === 'edit' ? t('buttons.saveChanges') : t('buttons.createFuture')}
                 </button>
               </div>
@@ -2096,14 +3511,14 @@ export default function FuturosPage() {
 
       {/* Settle */}
       <Dialog open={settleModalOpen} onClose={closeSettleModal} className="relative z-50">
-        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
-        <div className="fixed inset-0 flex items-center justify-center p-4">
-          <DialogPanel className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <div className="flex items-center justify-between mb-4">
+        <div className={futurosUi.modalBackdrop} aria-hidden="true" />
+        <div className={futurosUi.modalShell}>
+          <DialogPanel className={`${futurosUi.modalPanel} sm:max-w-md`}>
+            <div className={futurosUi.modalHeader}>
               <DialogTitle className="text-lg font-semibold text-gray-900">{t('modals.settle.title')}</DialogTitle>
-              <button type="button" onClick={closeSettleModal} className="text-gray-500 hover:text-gray-700"><X size={18} /></button>
+              <button type="button" onClick={closeSettleModal} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100" aria-label="Fechar"><X size={18} /></button>
             </div>
-            <form onSubmit={handleSubmitSettle(onSettle)} className="space-y-4">
+            <form onSubmit={handleSubmitSettle(onSettle)} className={`${futurosUi.modalBody} space-y-4 p-4 sm:p-6`}>
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
                 <p className="font-medium text-slate-700">{selectedInstallment?.description}</p>
                 <p className="text-slate-600 mt-1">
@@ -2116,19 +3531,19 @@ export default function FuturosPage() {
               </div>
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-gray-600">{t('forms.amountPaidOptional')}</span>
-                <input type="text" placeholder={t('forms.amountPaidPlaceholder')} {...registerSettle('amount')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm" />
+                <input type="text" placeholder={t('forms.amountPaidPlaceholder')} {...registerSettle('amount')} className={futurosUi.input} />
                 {settleErrors.amount && <span className="text-xs text-red-400">{settleErrors.amount.message as string}</span>}
               </label>
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-gray-600">{t('forms.paymentDateOptional')}</span>
-                <input type="date" {...registerSettle('paidAt')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm" />
+                <input type="date" {...registerSettle('paidAt')} className={futurosUi.input} />
                 {settleErrors.paidAt && <span className="text-xs text-red-400">{settleErrors.paidAt.message as string}</span>}
               </label>
-              <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={closeSettleModal} className="h-10 rounded-full border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50">
+              <div className={`${futurosUi.modalFooter} flex flex-col-reverse gap-2 sm:flex-row sm:justify-end`}>
+                <button type="button" onClick={closeSettleModal} className={futurosUi.btnOutline}>
                   {t('buttons.cancel')}
                 </button>
-                <button type="submit" disabled={settleInstallmentMutation.isPending} className="h-10 rounded-full bg-primary px-4 text-sm font-semibold text-white hover:bg-secondary disabled:opacity-60">
+                <button type="submit" disabled={settleInstallmentMutation.isPending} className={`${futurosUi.btnPrimary} disabled:opacity-60`}>
                   {settleInstallmentMutation.isPending ? t('buttons.saving') : t('buttons.confirmSettle')}
                 </button>
               </div>
@@ -2139,14 +3554,14 @@ export default function FuturosPage() {
 
       {/* Edit installment */}
       <Dialog open={installmentEditModalOpen} onClose={closeInstallmentEditModal} className="relative z-50">
-        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
-        <div className="fixed inset-0 flex items-center justify-center p-4">
-          <DialogPanel className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <div className="flex items-center justify-between mb-4">
+        <div className={futurosUi.modalBackdrop} aria-hidden="true" />
+        <div className={futurosUi.modalShell}>
+          <DialogPanel className={`${futurosUi.modalPanel} sm:max-w-md`}>
+            <div className={futurosUi.modalHeader}>
               <DialogTitle className="text-lg font-semibold text-gray-900">{t('modals.installmentEdit.title')}</DialogTitle>
-              <button type="button" onClick={closeInstallmentEditModal} className="text-gray-500 hover:text-gray-700"><X size={18} /></button>
+              <button type="button" onClick={closeInstallmentEditModal} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100" aria-label="Fechar"><X size={18} /></button>
             </div>
-            <form onSubmit={handleSubmitInstallmentEdit(onSaveInstallment)} className="space-y-4">
+            <form onSubmit={handleSubmitInstallmentEdit(onSaveInstallment)} className={`${futurosUi.modalBody} space-y-4 p-4 sm:p-6`}>
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
                 <p className="font-medium text-slate-700">{editingInstallment?.description}</p>
                 <p className="text-slate-600 mt-1">
@@ -2159,17 +3574,17 @@ export default function FuturosPage() {
               </div>
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-gray-600">{t('forms.value')}</span>
-                <input type="number" step="0.01" min="0" {...registerInstallmentEdit('amount')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm" />
+                <input type="number" step="0.01" min="0" {...registerInstallmentEdit('amount')} className={futurosUi.input} />
                 {installmentEditErrors.amount && <span className="text-xs text-red-400">{installmentEditErrors.amount.message}</span>}
               </label>
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-gray-600">{t('forms.dueDate')}</span>
-                <input type="date" {...registerInstallmentEdit('dueDate')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm" />
+                <input type="date" {...registerInstallmentEdit('dueDate')} className={futurosUi.input} />
                 {installmentEditErrors.dueDate && <span className="text-xs text-red-400">{installmentEditErrors.dueDate.message}</span>}
               </label>
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-gray-600">{t('forms.status')}</span>
-                <select {...registerInstallmentEdit('status')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm">
+                <select {...registerInstallmentEdit('status')} className={futurosUi.select}>
                   {installmentEditableStatusOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
                 {installmentEditErrors.status && <span className="text-xs text-red-400">{installmentEditErrors.status.message}</span>}
@@ -2178,11 +3593,11 @@ export default function FuturosPage() {
                 <input type="checkbox" {...registerInstallmentEdit('recalculateRemaining')} className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40" />
                 {t('forms.recalculateNextInstallments')}
               </label>
-              <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={closeInstallmentEditModal} className="h-10 rounded-full border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50">
+              <div className={`${futurosUi.modalFooter} flex flex-col-reverse gap-2 sm:flex-row sm:justify-end`}>
+                <button type="button" onClick={closeInstallmentEditModal} className={futurosUi.btnOutline}>
                   {t('buttons.cancel')}
                 </button>
-                <button type="submit" disabled={updateInstallmentMutation.isPending} className="h-10 rounded-full bg-primary px-4 text-sm font-semibold text-white hover:bg-secondary disabled:opacity-60">
+                <button type="submit" disabled={updateInstallmentMutation.isPending} className={`${futurosUi.btnPrimary} disabled:opacity-60`}>
                   {updateInstallmentMutation.isPending ? t('buttons.saving') : t('buttons.saveInstallment')}
                 </button>
               </div>
@@ -2207,6 +3622,15 @@ export default function FuturosPage() {
         title={t('delete.installmentTitle')}
         description={t('delete.installmentDescription', { description: deleteInstallmentTarget?.description ?? '' })}
         confirmLabel={deleteInstallmentMutation.isPending ? t('delete.deleting') : t('delete.delete')}
+      />
+
+      <DeleteConfirmModal
+        isOpen={Boolean(deleteChargeTarget)}
+        onClose={() => setDeleteChargeTarget(null)}
+        onConfirm={onDeleteCharge}
+        title="Excluir compra"
+        description={`Excluir ${deleteChargeTarget?.description ?? 'esta compra'} da fatura?`}
+        confirmLabel={deleteChargeMutation.isPending ? 'Excluindo...' : 'Excluir'}
       />
     </section>
   )

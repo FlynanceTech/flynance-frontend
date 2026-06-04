@@ -191,7 +191,7 @@ export default function CreditCardManagerDrawer({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-slate-950/30 backdrop-blur-[1px]" />
+          <div className="fixed inset-0 bg-gray-900/40" />
         </TransitionChild>
 
         <div className="fixed inset-0 flex items-stretch justify-end sm:p-4">
@@ -204,21 +204,21 @@ export default function CreditCardManagerDrawer({
             leaveFrom="translate-x-0"
             leaveTo="translate-x-full"
           >
-            <DialogPanel className="flex h-full w-full flex-col overflow-hidden bg-[#F6F9FC] shadow-2xl sm:max-w-[520px] sm:rounded-[28px]">
-              <div className="border-b border-slate-200 bg-white px-5 py-5">
+            <DialogPanel className="flex h-full w-full flex-col overflow-hidden bg-slate-50 shadow-xl sm:max-h-[min(92vh,48rem)] sm:max-w-[480px] sm:rounded-xl sm:border sm:border-gray-200">
+              <div className="border-b border-gray-200 bg-white px-4 py-4 sm:px-5 sm:py-5">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <DialogTitle className="text-xl font-extrabold text-slate-950">
+                    <DialogTitle className="text-lg font-semibold text-gray-900 sm:text-xl">
                       {view === 'form' ? (editingCard ? 'Editar cartão' : 'Novo cartão') : 'Seus cartões'}
                     </DialogTitle>
-                    <p className="mt-1 text-sm font-medium text-slate-500">
+                    <p className="mt-1 text-sm text-gray-500">
                       Cartões usados no planejamento de faturas futuras.
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={onClose}
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-200 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -282,7 +282,7 @@ function CreditCardList({
     return (
       <div className="space-y-3">
         {[1, 2, 3].map((item) => (
-          <div key={item} className="h-32 animate-pulse rounded-[20px] border border-slate-200 bg-white" />
+          <div key={item} className="h-32 animate-pulse rounded-xl border border-gray-200 bg-white" />
         ))}
       </div>
     )
@@ -290,7 +290,7 @@ function CreditCardList({
 
   if (cards.length === 0) {
     return (
-      <div className="flex min-h-[420px] flex-col items-center justify-center rounded-[24px] border border-dashed border-slate-200 bg-white px-6 py-10 text-center shadow-[0_14px_38px_rgba(15,23,42,0.05)]">
+      <div className="flex min-h-[320px] flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white px-6 py-10 text-center shadow-sm sm:min-h-[420px]">
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-primary">
           <CreditCardIcon className="h-8 w-8" />
         </div>
@@ -321,17 +321,19 @@ function CreditCardList({
         </button>
       </div>
 
-      {cards.map((card) => (
-        <CreditCardItem
-          key={card.id}
-          card={card}
-          metrics={metricsByCardId[card.id] ?? { openInvoices: 0, futureInstallments: 0 }}
-          mutating={mutating}
-          onEdit={() => onEditCard(card.id)}
-          onArchive={() => onArchiveCard(card.id)}
-          onDelete={() => onDeleteCard(card.id)}
-        />
-      ))}
+      <div className="max-h-[min(36rem,58vh)] space-y-3 overflow-y-auto overscroll-contain pr-0.5">
+        {cards.map((card) => (
+          <CreditCardItem
+            key={card.id}
+            card={card}
+            metrics={metricsByCardId[card.id] ?? { openInvoices: 0, futureInstallments: 0 }}
+            mutating={mutating}
+            onEdit={() => onEditCard(card.id)}
+            onArchive={() => onArchiveCard(card.id)}
+            onDelete={() => onDeleteCard(card.id)}
+          />
+        ))}
+      </div>
     </div>
   )
 }
@@ -354,7 +356,7 @@ function CreditCardItem({
   const accent = normalizeCreditCardColor(card.color) ?? DEFAULT_CARD_COLOR
 
   return (
-    <article className="rounded-[22px] border border-slate-200 bg-white p-4 shadow-[0_14px_38px_rgba(15,23,42,0.06)]">
+    <article className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           <div
@@ -548,8 +550,8 @@ function CreditCardForm({
         Voltar
       </button>
 
-      <section className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_14px_38px_rgba(15,23,42,0.05)]">
-        <div className="flex items-center gap-4 rounded-[20px] border border-slate-100 bg-slate-50 p-4">
+      <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex items-center gap-4 rounded-xl border border-gray-100 bg-gray-50 p-4">
           <div
             className="flex h-14 w-14 items-center justify-center rounded-full"
             style={{ backgroundColor: `${selectedColor}18`, color: selectedColor }}

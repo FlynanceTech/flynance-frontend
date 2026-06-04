@@ -9,6 +9,8 @@ export interface SidebarItemProps {
   icon: LucideIcon
   href?: string
   active?: boolean
+  disabled?: boolean
+  disabledReason?: string
   onClick?: () => void
 }
 
@@ -17,17 +19,25 @@ export default function SidebarItem({
   icon: Icon,
   href,
   active = false,
+  disabled = false,
+  disabledReason,
   onClick,
 }: SidebarItemProps) {
-  const className = clsx(
-    'group relative flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-all duration-200',
-    active
-      ? 'bg-secondary/20 text-primary shadow-[inset_0_0_0_1px_rgba(10,120,177,0.12)] dark:bg-[#F4C542]/14 dark:text-[#F4C542]'
-      : 'text-[#5A687C] hover:bg-[#F1F5F9CC] hover:text-[#223043] dark:text-zinc-300 dark:hover:bg-[rgba(255,255,255,0.10)] dark:hover:text-white'
-  )
-
-  const content = (
-    <>
+  return (
+    <button
+      type="button"
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+      title={disabled ? disabledReason : undefined}
+      aria-disabled={disabled}
+      className={clsx(
+        'group relative flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-all duration-200',
+        disabled && 'cursor-not-allowed opacity-50',
+        active
+          ? 'bg-secondary/20 text-primary shadow-[inset_0_0_0_1px_rgba(10,120,177,0.12)] dark:bg-[#F4C542]/14 dark:text-[#F4C542]'
+          : 'text-[#5A687C] hover:bg-[#F1F5F9CC] hover:text-[#223043] dark:text-zinc-300 dark:hover:bg-[rgba(255,255,255,0.10)] dark:hover:text-white'
+      )}
+    >
       <span
         className={clsx(
           'absolute left-0 top-2 bottom-2 w-1 rounded-r-full transition-opacity duration-200',
@@ -45,20 +55,11 @@ export default function SidebarItem({
         <Icon size={18} />
       </span>
       <span className={clsx('truncate', active && 'font-semibold')}>{label}</span>
-    </>
-  )
-
-  if (href) {
-    return (
-      <Link href={href} className={className}>
-        {content}
-      </Link>
-    )
-  }
-
-  return (
-    <button type="button" onClick={onClick} className={className}>
-      {content}
+      {disabled ? (
+        <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-slate-500 dark:bg-white/10 dark:text-zinc-400">
+          Off
+        </span>
+      ) : null}
     </button>
   )
 }

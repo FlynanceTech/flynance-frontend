@@ -66,6 +66,11 @@ export interface CategoryClassificationUpdatePayload {
   items: CategoryClassificationUpdateItem[]
 }
 
+export interface CategoryClassificationReorderPayload {
+  classification: CategoryClassification
+  categoryIds: string[]
+}
+
 export interface CategoryClassificationPatchPayload {
   classification: CategoryClassification
   order: number
@@ -100,6 +105,18 @@ function buildClassificationRequestConfig(options?: ClassificationRequestOptions
     headers: Object.keys(headers).length > 0 ? headers : undefined,
     params: Object.keys(params).length > 0 ? params : undefined,
   }
+}
+
+function normalizeCategoryErrorMessage(e: unknown, fallback: string) {
+  const message = getErrorMessage(e, fallback).trim()
+  const normalized = message
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+
+  if (normalized.startsWith('nao foi possivel')) return message
+  if (normalized.startsWith('limite')) return message
+  return fallback
 }
 
 export function normalizeClassificationCategoryId(raw: string): string | null {
@@ -175,7 +192,10 @@ export const createCategory = async (
 
     return response.data
   } catch (e: unknown) {
-    const msg = getErrorMessage(e, "Erro ao criar categoria.");
+    const msg = normalizeCategoryErrorMessage(
+      e,
+      'Nao foi possivel criar a categoria. Tente novamente.'
+    )
     console.error("Erro ao criar categoria:", msg);
     throw new Error(msg);
   }
@@ -188,7 +208,10 @@ export const getCategories = async (
     const response = await api.get(`/categories`, buildClassificationRequestConfig(options))
     return response.data
   } catch (e: unknown) {
-    const msg = getErrorMessage(e, "Erro ao buscar categorias.");
+    const msg = normalizeCategoryErrorMessage(
+      e,
+      'Nao foi possivel carregar as categorias. Tente novamente.'
+    )
     console.error("Erro ao buscar categorias:", msg);
     throw new Error(msg);
   }
@@ -207,7 +230,10 @@ export const updateCategory = async (
     )
     return response.data
   } catch (e: unknown) {
-    const msg = getErrorMessage(e, "Erro ao atualizar categoria.");
+    const msg = normalizeCategoryErrorMessage(
+      e,
+      'Nao foi possivel salvar a categoria. Tente novamente.'
+    )
     console.error("Erro ao atualizar categoria:", msg);
     throw new Error(msg);
   }
@@ -221,7 +247,10 @@ export const deleteCategory = async (
     const response = await api.delete(`/category/${id}`, buildClassificationRequestConfig(options))
     return response.data
   } catch (e: unknown) {
-    const msg = getErrorMessage(e, "Erro ao deletar categoria.");
+    const msg = normalizeCategoryErrorMessage(
+      e,
+      'Nao foi possivel excluir a categoria. Tente novamente.'
+    )
     console.error("Erro ao deletar categoria:", msg);
     throw new Error(msg);
   }
@@ -237,7 +266,10 @@ export const getCategoriesClassificationBoard = async (
     )
     return sanitizeClassificationBoardResponse(response.data)
   } catch (e: unknown) {
-    const msg = getErrorMessage(e, 'Erro ao buscar classificacao de categorias.')
+    const msg = normalizeCategoryErrorMessage(
+      e,
+      'Nao foi possivel carregar a classificacao das categorias. Tente novamente.'
+    )
     console.error('Erro ao buscar classificacao de categorias:', msg)
     throw new Error(msg)
   }
@@ -255,7 +287,10 @@ export const updateCategoriesClassificationBoard = async (
     )
     return sanitizeClassificationBoardResponse(response.data)
   } catch (e: unknown) {
-    const msg = getErrorMessage(e, 'Erro ao salvar classificacao de categorias.')
+    const msg = normalizeCategoryErrorMessage(
+      e,
+      'Nao foi possivel salvar a classificacao das categorias. Tente novamente.'
+    )
     console.error('Erro ao salvar classificacao de categorias:', msg)
     throw new Error(msg)
   }
@@ -274,8 +309,32 @@ export const updateCategoryClassification = async (
     )
     return sanitizeClassificationBoardResponse(response.data)
   } catch (e: unknown) {
-    const msg = getErrorMessage(e, 'Erro ao salvar classificacao de categoria.')
+    const msg = normalizeCategoryErrorMessage(
+      e,
+      'Nao foi possivel salvar a classificacao da categoria. Tente novamente.'
+    )
     console.error('Erro ao salvar classificacao de categoria:', msg)
+    throw new Error(msg)
+  }
+}
+
+export const reorderCategoryClassificationColumn = async (
+  data: CategoryClassificationReorderPayload,
+  options?: ClassificationRequestOptions
+): Promise<CategoryClassificationBoardResponse> => {
+  try {
+    const response = await api.patch(
+      '/categories/classification/reorder',
+      data,
+      buildClassificationRequestConfig(options)
+    )
+    return sanitizeClassificationBoardResponse(response.data)
+  } catch (e: unknown) {
+    const msg = normalizeCategoryErrorMessage(
+      e,
+      'Nao foi possivel reordenar as categorias. Tente novamente.'
+    )
+    console.error('Erro ao reordenar classificacao de categorias:', msg)
     throw new Error(msg)
   }
 }

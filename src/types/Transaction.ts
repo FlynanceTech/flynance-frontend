@@ -14,6 +14,43 @@ export interface Category {
   type: CategoryType
 }
 
+export interface CreditCardStatementPaymentDetail {
+  id?: string
+  description?: string | null
+  categoryName?: string | null
+  category?: Partial<Category> | null
+  installmentNumber?: number | null
+  installmentCurrent?: number | null
+  currentInstallment?: number | null
+  installmentCount?: number | null
+  installmentTotal?: number | null
+  totalInstallments?: number | null
+  amount?: number | null
+  value?: number | null
+  installmentAmount?: number | null
+  date?: string | null
+  purchaseDate?: string | null
+  dueDate?: string | null
+}
+
+export interface CreditCardStatementPaymentSummary {
+  card?: {
+    id?: string | null
+    name?: string | null
+    last4?: string | null
+  } | null
+  statement?: {
+    id?: string | null
+    cycleKey?: string | null
+    dueAt?: string | null
+    closingAt?: string | null
+    paidAt?: string | null
+    status?: string | null
+  } | null
+  items?: CreditCardStatementPaymentDetail[] | null
+  charges?: CreditCardStatementPaymentDetail[] | null
+}
+
 export interface Transaction {
   id: string
   userId: string
@@ -36,6 +73,7 @@ export interface Transaction {
   } | null
   value: number
   description: string
+  sourceDescription?: string | null
   categoryId: string
   date: string 
   type: CategoryType
@@ -51,6 +89,19 @@ export interface Transaction {
   installmentCount?: number | null
   confidence?: 'LOW' | 'MEDIUM' | 'HIGH'
   matchedKeyword?: string
+  isInstallment?: boolean
+  installmentCurrent?: number | null
+  installmentTotal?: number | null
+  transactionCode?: string | null
+  creditCardStatementId?: string | null
+  statementId?: string | null
+  creditCardStatementPaymentDetails?: CreditCardStatementPaymentDetail[] | null
+  creditCardPaymentDetails?: CreditCardStatementPaymentDetail[] | null
+  statementPaymentDetails?: CreditCardStatementPaymentDetail[] | null
+  creditCardPayment?: CreditCardStatementPaymentSummary | null
+  creditCardStatementPayment?: CreditCardStatementPaymentSummary | null
+  statementPayment?: CreditCardStatementPaymentSummary | null
+  metadata?: Record<string, unknown> | null
 }
 
 export interface User {
