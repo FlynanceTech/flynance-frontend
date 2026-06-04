@@ -1181,17 +1181,19 @@ function CreditPurchaseRow({
   onEdit: (charge: CreditCardChargeItem) => void
   onDelete: (charge: CreditCardChargeItem) => void
 }) {
+  const locale = useLocale()
   const categoryName = item.category?.name ?? charge?.category?.name ?? 'Sem categoria'
   const categoryColor = getCategoryHexColor(item.category?.id ?? charge?.category?.id ?? categoryName, charge?.category?.color)
+  const dateLabel = new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeZone: 'UTC' }).format(new Date(item.dueDate))
 
   return (
-    <div className="grid gap-3 border-t border-slate-100 px-4 py-3 first:border-t-0 md:grid-cols-[1fr_1.4fr_0.65fr_0.8fr_0.8fr_34px] md:items-center">
+    <div className="grid gap-3 border-t border-slate-100 px-4 py-3 first:border-t-0 md:grid-cols-[0.9fr_1.4fr_0.9fr_0.8fr_0.8fr_34px] md:items-center">
+      <p className="text-sm font-semibold text-slate-900">{dateLabel}</p>
+      <p className="truncate text-sm font-extrabold text-slate-900">{item.description ?? charge?.description ?? 'Sem descricao'}</p>
       <div className="flex min-w-0 items-center gap-2">
         <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: categoryColor }} />
         <span className="truncate text-xs font-bold text-slate-600">{categoryName}</span>
       </div>
-      <p className="truncate text-sm font-extrabold text-slate-900">{item.description ?? charge?.description ?? 'Sem descricao'}</p>
-      <p className="text-xs font-bold text-slate-500">{installmentTableLabel(item.installmentNumber, item.installmentCount)}</p>
       <span className={`w-fit rounded-full px-2.5 py-1 text-[11px] font-extrabold ${forecastStatusBadge(item.status)}`}>{forecastStatusLabel(item.status)}</span>
       <p className="text-sm font-extrabold text-slate-950 md:text-right">{formatCurrencyBRL(item.amount)}</p>
       <Menu as="div" className="relative">
@@ -1357,7 +1359,25 @@ function SelectedCardHud({
             {loadingPurchases ? (
               <div className="space-y-3 p-4">{[1, 2, 3].map((item) => <div key={item} className="h-12 animate-pulse rounded-xl bg-slate-100" />)}</div>
             ) : visiblePurchases.length ? (
-              visiblePurchases.map((purchase) => <CreditPurchaseRow key={purchase.item.id} item={purchase.item} charge={purchase.charge} onEdit={onEditPurchase} onDelete={onDeletePurchase} />)
+              <div className="space-y-2 px-4 pb-4 pt-3">
+                <div className="grid gap-3 px-2 text-xs uppercase tracking-[0.18em] text-slate-500 md:grid-cols-[0.9fr_1.4fr_0.9fr_0.8fr_0.8fr_34px] md:items-center">
+                  <span>Data</span>
+                  <span>Descrição</span>
+                  <span>Categoria</span>
+                  <span>Status</span>
+                  <span className="text-right">Valor</span>
+                  <span className="sr-only">Ações</span>
+                </div>
+                {visiblePurchases.map((purchase) => (
+                  <CreditPurchaseRow
+                    key={purchase.item.id}
+                    item={purchase.item}
+                    charge={purchase.charge}
+                    onEdit={onEditPurchase}
+                    onDelete={onDeletePurchase}
+                  />
+                ))}
+              </div>
             ) : (
               <div className="px-5 py-8 text-sm font-medium text-slate-500">Nenhuma compra nesta fatura.</div>
             )}
@@ -1444,7 +1464,29 @@ function PurchasesModal({
             <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
           </div>
           <div className="min-h-0 overflow-y-auto">
-            {purchases.length ? purchases.map((purchase) => <CreditPurchaseRow key={purchase.item.id} item={purchase.item} charge={purchase.charge} onEdit={onEdit} onDelete={onDelete} />) : <div className="px-6 py-10 text-center text-sm font-medium text-slate-500">Nenhuma compra nesta fatura.</div>}
+            {purchases.length ? (
+              <div className="space-y-2 px-4 pb-4 pt-3">
+                <div className="grid gap-3 px-2 text-xs uppercase tracking-[0.18em] text-slate-500 md:grid-cols-[0.9fr_1.4fr_0.9fr_0.8fr_0.8fr_34px] md:items-center">
+                  <span>Data</span>
+                  <span>Descrição</span>
+                  <span>Categoria</span>
+                  <span>Status</span>
+                  <span className="text-right">Valor</span>
+                  <span className="sr-only">Ações</span>
+                </div>
+                {purchases.map((purchase) => (
+                  <CreditPurchaseRow
+                    key={purchase.item.id}
+                    item={purchase.item}
+                    charge={purchase.charge}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="px-6 py-10 text-center text-sm font-medium text-slate-500">Nenhuma compra nesta fatura.</div>
+            )}
           </div>
         </DialogPanel>
       </div>
