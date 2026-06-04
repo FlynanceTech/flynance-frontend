@@ -1,4 +1,5 @@
 import api from '@/lib/axios'
+import { FinancialDataScope, withFinancialScope } from '@/lib/financialScope'
 import { getErrorMessage } from '@/utils/getErrorMessage'
 
 export interface CreditCardChargeInstallmentItem {
@@ -56,17 +57,22 @@ export async function getCreditCardCharges(params: {
   to?: string
   page?: number
   limit?: number
+  scope?: FinancialDataScope
 }): Promise<CreditCardChargesResponse> {
   try {
-    const searchParams = new URLSearchParams()
-    if (params.cardId) searchParams.set('cardId', params.cardId)
-    if (params.categoryId) searchParams.set('categoryId', params.categoryId)
-    if (params.from) searchParams.set('from', params.from)
-    if (params.to) searchParams.set('to', params.to)
-    if (params.page) searchParams.set('page', String(params.page))
-    if (params.limit) searchParams.set('limit', String(params.limit))
-
-    const response = await api.get(`/cards/charges?${searchParams.toString()}`)
+    const response = await api.get('/cards/charges', {
+      params: withFinancialScope(
+        {
+          cardId: params.cardId,
+          categoryId: params.categoryId,
+          from: params.from,
+          to: params.to,
+          page: params.page,
+          limit: params.limit,
+        },
+        params.scope
+      ),
+    })
     return response.data
   } catch (e: unknown) {
     const msg = getErrorMessage(e, 'Erro ao buscar gastos de cartão.')
