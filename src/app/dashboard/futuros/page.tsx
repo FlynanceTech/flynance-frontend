@@ -1755,6 +1755,7 @@ function FuturosPageContent() {
   )
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
   const [purchasesModalOpen, setPurchasesModalOpen] = useState(false)
+  const [distributionModalOpen, setDistributionModalOpen] = useState(false)
   const [installmentPlansModalOpen, setInstallmentPlansModalOpen] = useState(false)
   const [historyModalOpen, setHistoryModalOpen] = useState(false)
   const [chargeDrawerOpen, setChargeDrawerOpen] = useState(false)
@@ -1927,6 +1928,21 @@ function FuturosPageContent() {
   const currentMonthCreditGroups = useMemo(
     () => groupCreditCardInvoices(currentMonthUpcoming),
     [currentMonthUpcoming]
+  )
+  const currentMonthCreditItems = useMemo(
+    () => currentMonthCreditGroups.flatMap((group) => group.items),
+    [currentMonthCreditGroups]
+  )
+  const currentMonthCreditDistributionItems = useMemo(
+    () =>
+      buildCreditDistribution(
+        currentMonthCreditItems.map((item) => ({
+          categoryId: item.category?.id ?? null,
+          categoryName: item.category?.name ?? 'Sem categoria',
+          amount: Number(item.amount || 0),
+        }))
+      ),
+    [currentMonthCreditItems]
   )
   const creditInvoiceTotalThisMonth = useMemo(
     () => currentMonthCreditGroups.reduce((sum, group) => sum + Number(group.totalAmount || 0), 0),
@@ -2747,6 +2763,13 @@ function FuturosPageContent() {
           />
         </section>
 
+        <CreditMonthDistributionCard
+          total={creditInvoiceTotalThisMonth}
+          items={currentMonthCreditDistributionItems}
+          loading={currentMonthForecastQuery.isLoading}
+          onOpen={() => setDistributionModalOpen(true)}
+        />
+
         <CardFilterRail
           cards={cards}
           selectedCardId={selectedCardId}
@@ -3255,6 +3278,13 @@ function FuturosPageContent() {
         }}
         onDelete={handleRequestDeleteCharge}
         readOnly={isAdvisorReadOnly}
+      />
+
+      <CreditDistributionModal
+        open={distributionModalOpen}
+        title="Distribuição de gastos no crédito este mês"
+        items={currentMonthCreditDistributionItems}
+        onClose={() => setDistributionModalOpen(false)}
       />
 
       <InstallmentPlansModal
