@@ -1463,7 +1463,6 @@ function SelectedCardHud({
                   plan={plan}
                   onEdit={onEditPlan}
                   onDelete={onDeletePlan}
-                  nextDueDate={invoiceGroup?.statement?.dueAt}
                 />
               ))
             ) : (
@@ -1988,9 +1987,19 @@ function FuturosPageContent() {
       ),
     [currentMonthCreditItems]
   )
+  const currentMonthTotals = currentMonthForecastQuery.data?.totals
   const creditInvoiceTotalThisMonth = useMemo(
     () => currentMonthCreditGroups.reduce((sum, group) => sum + Number(group.totalAmount || 0), 0),
     [currentMonthCreditGroups]
+  )
+  const toPayTotalThisMonth = useMemo(
+    () =>
+      typeof currentMonthTotals?.toPay === 'number'
+        ? currentMonthTotals.toPay
+        : currentMonthUpcoming
+            .filter((item) => item.type !== 'INCOME')
+            .reduce((sum, item) => sum + Number(item.amount || 0), 0),
+    [currentMonthTotals?.toPay, currentMonthUpcoming]
   )
   const creditInvoiceCardNames = useMemo(() => {
     const names = new Set<string>()
@@ -2005,8 +2014,11 @@ function FuturosPageContent() {
     [currentMonthUpcoming]
   )
   const incomeTotalThisMonth = useMemo(
-    () => incomeCurrentMonthItems.reduce((sum, item) => sum + Number(item.amount || 0), 0),
-    [incomeCurrentMonthItems]
+    () =>
+      typeof currentMonthTotals?.toReceive === 'number'
+        ? currentMonthTotals.toReceive
+        : incomeCurrentMonthItems.reduce((sum, item) => sum + Number(item.amount || 0), 0),
+    [currentMonthTotals?.toReceive, incomeCurrentMonthItems]
   )
   const incomeCardNames = useMemo(() => {
     const names = new Set<string>()
@@ -2016,29 +2028,45 @@ function FuturosPageContent() {
     return Array.from(names)
   }, [incomeCurrentMonthItems])
   const incomeCardCount = incomeCardNames.length
-  const creditInstallmentTotalThisMonth = useMemo(
+  const installmentPlanTotalThisMonth = useMemo(
     () =>
       currentMonthUpcoming
-        .filter((item) => item.sourceType === 'installment_plan' && item.paymentType === 'CREDIT_CARD' && item.type !== 'INCOME' && isWithinCurrentMonth(item.dueDate))
+        .filter(
+          (item) =>
+            item.sourceType === 'installment_plan' &&
+            item.type !== 'INCOME' &&
+            isWithinCurrentMonth(item.dueDate)
+        )
         .reduce((sum, item) => sum + Number(item.amount || 0), 0),
     [currentMonthUpcoming]
   )
   const activeCreditCardCount = cards.length
-  const cardMetricsById = useMemo(
-    () =>
-      allCreditCardGroups.reduce<Record<string, CreditCardMetrics>>((acc, group) => {
-        const cardId = group.card?.id
-        if (!cardId) return acc
+  const cardMetricsById = useMemo(() => {
+    const acc = allCreditCardGroups.reduce<Record<string, CreditCardMetrics>>((metrics, group) => {
+      const cardId = group.card?.id
+      if (!cardId) return metrics
 
-        const current = acc[cardId] ?? { openInvoices: 0, futureInstallments: 0 }
-        acc[cardId] = {
-          openInvoices: current.openInvoices + (String(group.statement?.status ?? '').toLowerCase() === 'open' ? 1 : 0),
-          futureInstallments: current.futureInstallments + group.items.length,
-        }
-        return acc
-      }, {}),
-    [allCreditCardGroups]
-  )
+      const current = metrics[cardId] ?? { openInvoices: 0, futureInstallments: 0 }
+      metrics[cardId] = {
+        openInvoices:
+          current.openInvoices +
+          (String(group.statement?.status ?? '').toLowerCase() === 'open' ? 1 : 0),
+        futureInstallments: current.futureInstallments,
+      }
+      return metrics
+    }, {})
+
+    ;(plansQuery.data?.plans ?? []).forEach((plan) => {
+      if (!plan.cardId || normalizePlanStatus(plan.status ?? null) === 'canceled') return
+      const current = acc[plan.cardId] ?? { openInvoices: 0, futureInstallments: 0 }
+      acc[plan.cardId] = {
+        ...current,
+        futureInstallments: current.futureInstallments + 1,
+      }
+    })
+
+    return acc
+  }, [allCreditCardGroups, plansQuery.data?.plans])
 
   useEffect(() => {
     if (!cards.length) {
@@ -2769,9 +2797,9 @@ function FuturosPageContent() {
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <SummaryCard
             title="A pagar"
-            value={formatCurrencyBRL(creditInvoiceTotalThisMonth)}
-            details={creditInvoiceCardNames.length ? summarizeCardNames(creditInvoiceCardNames) : 'Nenhum cartao na fatura vigente'}
-            subtext={`${creditInvoiceCardCount} ${creditInvoiceCardCount === 1 ? 'cartao' : 'cartoes'}`}
+            value={formatCurrencyBRL(toPayTotalThisMonth)}
+            details={creditInvoiceCardNames.length ? summarizeCardNames(creditInvoiceCardNames) : 'Compromissos de despesa no mes atual'}
+            subtext={`${creditInvoiceCardCount} ${creditInvoiceCardCount === 1 ? 'cartao' : 'cartoes'} com fatura`}
             icon={ArrowDownRight}
             tone="red"
             loading={currentMonthForecastQuery.isLoading}
@@ -2800,8 +2828,8 @@ function FuturosPageContent() {
           />
           <SummaryCard
             title="Parcelamentos"
-            value={formatCurrencyBRL(creditInstallmentTotalThisMonth)}
-            subtext={`As parcelas dos seus cartões somam ${formatCurrencyBRL(creditInstallmentTotalThisMonth)} este mês.`}
+            value={formatCurrencyBRL(installmentPlanTotalThisMonth)}
+            subtext={`Parcelas de planos no mes: ${formatCurrencyBRL(installmentPlanTotalThisMonth)}.`}
             icon={LayoutGrid}
             tone="purple"
             loading={currentMonthForecastQuery.isLoading}
@@ -2861,7 +2889,7 @@ function FuturosPageContent() {
           </div>
         )}
 
-        {false && (loadingCards ? (
+        {(loadingCards ? (
           <ForecastSkeleton />
         ) : !hasAnyForecastItem ? (
           <>
@@ -3343,7 +3371,6 @@ function FuturosPageContent() {
         }}
         onDelete={setDeletePlanTarget}
         onOpenManagement={openInstallmentsManagement}
-        nextDueDate={selectedInvoiceGroup?.statement?.dueAt}
       />
 
       <CardHistoryModal
