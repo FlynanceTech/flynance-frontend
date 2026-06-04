@@ -25,6 +25,7 @@ const PATCHABLE_KEYS: Array<keyof UserPreferencesPatch> = [
   'notificationEmail',
   'notificationWhatsapp',
   'notificationPush',
+  'dailyNoTransactionNudgeEnabled',
   'loginPreference',
 ]
 
@@ -49,6 +50,8 @@ const PREFERENCE_HINT_KEYS = [
   'notification_whatsapp',
   'notificationPush',
   'notification_push',
+  'dailyNoTransactionNudgeEnabled',
+  'daily_no_transaction_nudge_enabled',
   'loginPreference',
   'login_preference',
 ] as const
@@ -194,6 +197,7 @@ export function createDefaultUserPreferences(userId = ''): UserPreferences {
     notificationEmail: true,
     notificationWhatsapp: false,
     notificationPush: false,
+    dailyNoTransactionNudgeEnabled: true,
     loginPreference: DEFAULT_LOGIN_PREFERENCE,
     createdAt: nowIso,
     updatedAt: nowIso,
@@ -239,6 +243,13 @@ export function normalizeUserPreferences(input: unknown, fallbackUserId = ''): U
     notificationPush: toBoolean(
       pickFirstValue(raw, ['notificationPush', 'notification_push']),
       defaults.notificationPush
+    ),
+    dailyNoTransactionNudgeEnabled: toBoolean(
+      pickFirstValue(raw, [
+        'dailyNoTransactionNudgeEnabled',
+        'daily_no_transaction_nudge_enabled',
+      ]),
+      defaults.dailyNoTransactionNudgeEnabled
     ),
     loginPreference: normalizeLoginPreference(
       pickFirstValue(raw, ['loginPreference', 'login_preference'])

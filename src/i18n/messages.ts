@@ -979,6 +979,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         email: 'E-mail',
         whatsapp: 'WhatsApp',
         push: 'Push no navegador',
+        dailyReminder: 'Lembrete diário para registrar transações',
+        dailyReminderHint:
+          'Receba um lembrete pelo WhatsApp para registrar suas transações do dia. Pode ser ativado ou desativado aqui ou pelo próprio WhatsApp.',
         pushHelp:
           'O Web Push entrega alertas mesmo com a Flynance em segundo plano, quando o navegador suportar.',
         permissionLabel: 'Permissao do navegador',
@@ -3426,6 +3429,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         email: 'Email',
         whatsapp: 'WhatsApp',
         push: 'Browser push',
+        dailyReminder: 'Daily reminder to log transactions',
+        dailyReminderHint:
+          'Get a WhatsApp reminder to log your transactions for the day. You can turn it on or off here or from WhatsApp.',
         pushHelp:
           'Web Push can deliver alerts even while Flynance stays in the background, when the browser supports it.',
         permissionLabel: 'Browser permission',
@@ -5871,6 +5877,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         email: 'Correo',
         whatsapp: 'WhatsApp',
         push: 'Push del navegador',
+        dailyReminder: 'Recordatorio diario para registrar transacciones',
+        dailyReminderHint:
+          'Recibe un recordatorio por WhatsApp para registrar tus transacciones del día. Puedes activarlo o desactivarlo aquí o desde WhatsApp.',
         pushHelp:
           'Web Push puede entregar alertas incluso con Flynance en segundo plano, cuando el navegador lo permite.',
         permissionLabel: 'Permiso del navegador',
