@@ -1365,11 +1365,37 @@ function SelectedCardHud({
               </div>
             </div>
 
-            <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-start">
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <button type="button" onClick={() => onManageCard(card.id)} className="inline-flex h-12 items-center justify-center rounded-full bg-primary px-6 text-sm font-extrabold text-white transition-colors hover:bg-secondary">
                 Gerenciar cartao
               </button>
+              <button
+                type="button"
+                onClick={onOpenHistory}
+                className="inline-flex h-12 items-center justify-center rounded-full border border-slate-200 bg-white px-6 text-sm font-extrabold text-slate-700 transition-colors hover:border-blue-200 hover:text-primary"
+              >
+                Ver histórico
+              </button>
             </div>
+          </div>
+        </article>
+
+        <article className="overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_12px_34px_rgba(15,23,42,0.04)]">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+            <div>
+              <h3 className="text-sm font-extrabold text-slate-950">Histórico do cartão</h3>
+              <p className="mt-1 text-xs font-medium text-slate-500">Abra o histórico para visualizar as faturas anteriores e a fatura atual.</p>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenHistory}
+              className="text-xs font-extrabold text-primary hover:text-secondary"
+            >
+              Ver histórico
+            </button>
+          </div>
+          <div className="px-5 py-6 text-sm font-medium text-slate-500">
+            Um gráfico de barras simples mostra o valor de cada fatura por mês, incluindo o ciclo atual quando disponível.
           </div>
         </article>
 
