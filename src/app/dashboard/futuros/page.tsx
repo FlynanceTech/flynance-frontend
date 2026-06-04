@@ -69,7 +69,10 @@ import CreditCardChargeDrawer from '../components/CreditCardChargeDrawer'
 import type { CreditCardChargeItem } from '@/services/creditCardCharges'
 import type { CreditCardResponse, StatementPaymentType } from '@/services/cards'
 import { useFinancialScope } from '@/hooks/useFinancialScope'
+import { useAdvisorActing } from '@/stores/useAdvisorActing'
 import { useUserSession } from '@/stores/useUserSession'
+import { isAdvisorReadOnlyTransactionAccess } from '@/utils/transactionWriteAccess'
+import { ADVISOR_READ_ONLY_FRIENDLY_MESSAGE } from '@/services/transactions'
 import type { HouseContext, HouseMember } from '@/types/house'
 import { formatCurrency } from '@/utils/formatter'
 import { Button } from '@/components/ui/button'
@@ -1173,11 +1176,13 @@ function CardFilterRail({
 function CreditPurchaseRow({
   item,
   charge,
+  readOnly = false,
   onEdit,
   onDelete,
 }: {
   item: FutureItem
   charge?: CreditCardChargeItem | null
+  readOnly?: boolean
   onEdit: (charge: CreditCardChargeItem) => void
   onDelete: (charge: CreditCardChargeItem) => void
 }) {
@@ -1185,6 +1190,8 @@ function CreditPurchaseRow({
   const categoryName = item.category?.name ?? charge?.category?.name ?? 'Sem categoria'
   const categoryColor = getCategoryHexColor(item.category?.id ?? charge?.category?.id ?? categoryName, charge?.category?.color)
   const dateLabel = new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeZone: 'UTC' }).format(new Date(item.dueDate))
+
+  const actionDisabled = !charge || readOnly
 
   return (
     <div className="grid gap-3 border-t border-slate-100 px-4 py-3 first:border-t-0 md:grid-cols-[0.9fr_1.4fr_0.9fr_0.8fr_0.8fr_34px] md:items-center">
@@ -1203,12 +1210,26 @@ function CreditPurchaseRow({
         <MenuItems className="absolute right-0 z-20 mt-2 w-40 rounded-xl border border-slate-200 bg-white p-1 text-sm shadow-xl outline-none">
           <MenuItem>
             {({ focus }) => (
-              <button type="button" disabled={!charge} onClick={() => charge && onEdit(charge)} className={`w-full rounded-lg px-3 py-2 text-left font-medium disabled:cursor-not-allowed disabled:text-slate-300 ${focus ? 'bg-slate-50 text-slate-900' : 'text-slate-700'}`}>Editar compra</button>
+              <button
+                type="button"
+                disabled={actionDisabled}
+                onClick={() => charge && onEdit(charge)}
+                className={`w-full rounded-lg px-3 py-2 text-left font-medium disabled:cursor-not-allowed disabled:text-slate-300 ${focus ? 'bg-slate-50 text-slate-900' : 'text-slate-700'}`}
+              >
+                Editar compra
+              </button>
             )}
           </MenuItem>
           <MenuItem>
             {({ focus }) => (
-              <button type="button" disabled={!charge} onClick={() => charge && onDelete(charge)} className={`w-full rounded-lg px-3 py-2 text-left font-medium disabled:cursor-not-allowed disabled:text-slate-300 ${focus ? 'bg-red-50 text-red-700' : 'text-red-600'}`}>Excluir</button>
+              <button
+                type="button"
+                disabled={actionDisabled}
+                onClick={() => charge && onDelete(charge)}
+                className={`w-full rounded-lg px-3 py-2 text-left font-medium disabled:cursor-not-allowed disabled:text-slate-300 ${focus ? 'bg-red-50 text-red-700' : 'text-red-600'}`}
+              >
+                Excluir
+              </button>
             )}
           </MenuItem>
         </MenuItems>
@@ -1275,6 +1296,7 @@ function SelectedCardHud({
   onDeletePurchase,
   onEditPlan,
   onDeletePlan,
+  readOnly,
 }: {
   card: CreditCardResponse | null
   ownerLabel?: string
@@ -1296,6 +1318,7 @@ function SelectedCardHud({
   onDeletePurchase: (charge: CreditCardChargeItem) => void
   onEditPlan: (plan: FutureInstallmentPlan) => void
   onDeletePlan: (plan: FutureInstallmentPlan) => void
+  readOnly: boolean
 }) {
   if (!card) {
     return (
@@ -1373,6 +1396,7 @@ function SelectedCardHud({
                     key={purchase.item.id}
                     item={purchase.item}
                     charge={purchase.charge}
+                    readOnly={readOnly}
                     onEdit={onEditPurchase}
                     onDelete={onDeletePurchase}
                   />
@@ -1447,12 +1471,14 @@ function PurchasesModal({
   onClose,
   onEdit,
   onDelete,
+  readOnly = false,
 }: {
   open: boolean
   purchases: Array<{ item: FutureItem; charge?: CreditCardChargeItem | null }>
   onClose: () => void
   onEdit: (charge: CreditCardChargeItem) => void
   onDelete: (charge: CreditCardChargeItem) => void
+  readOnly?: boolean
 }) {
   return (
     <Dialog open={open} onClose={onClose} className="relative z-50">
@@ -1479,6 +1505,7 @@ function PurchasesModal({
                     key={purchase.item.id}
                     item={purchase.item}
                     charge={purchase.charge}
+                    readOnly={readOnly}
                     onEdit={onEdit}
                     onDelete={onDelete}
                   />
@@ -1696,6 +1723,12 @@ function FuturosPageContent() {
   const t = useTranslations('futurosPage')
   const locale = useLocale()
   const { user } = useUserSession()
+  const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
+  const activePermission = useAdvisorActing((s) => s.activePermission ?? s.selectedPermission)
+  const isAdvisorReadOnly = isAdvisorReadOnlyTransactionAccess(activeClientId, activePermission)
+  const notifyReadOnly = () => {
+    toast.error(ADVISOR_READ_ONLY_FRIENDLY_MESSAGE)
+  }
   const { houseContext, currentUserId, scopeKey } = useFinancialScope()
   const currentUserName = user?.userData?.user?.name ?? user?.userData?.user?.email ?? ''
   const managementSectionRef = useRef<HTMLElement | null>(null)
@@ -2213,6 +2246,30 @@ function FuturosPageContent() {
     setChargeDrawerOpen(true)
   }
 
+  const handleOpenChargeDrawer = (charge?: CreditCardChargeItem | null) => {
+    if (isAdvisorReadOnly) {
+      notifyReadOnly()
+      return
+    }
+    openChargeDrawer(charge)
+  }
+
+  const handleRequestDeleteCharge = (charge: CreditCardChargeItem) => {
+    if (isAdvisorReadOnly) {
+      notifyReadOnly()
+      return
+    }
+    setDeleteChargeTarget(charge)
+  }
+
+  const handleNewCreditPurchase = () => {
+    if (isAdvisorReadOnly) {
+      notifyReadOnly()
+      return
+    }
+    openChargeDrawer(null)
+  }
+
   const closeChargeDrawer = () => {
     setChargeDrawerOpen(false)
     setEditingCharge(null)
@@ -2584,8 +2641,10 @@ function FuturosPageContent() {
             <Button
               type="button"
               variant="default"
-              onClick={() => openChargeDrawer(null)}
+              onClick={handleNewCreditPurchase}
+              disabled={isAdvisorReadOnly}
               className="h-12 w-auto rounded-full px-5 text-sm font-extrabold shadow-[0_14px_28px_rgba(0,102,163,0.24)]"
+              title={isAdvisorReadOnly ? 'Acesso somente leitura' : undefined}
             >
               <CreditCard className="h-4 w-4" />
               Compra no credito
@@ -2707,16 +2766,17 @@ function FuturosPageContent() {
           loadingPurchases={selectedCardChargesQuery.isLoading}
           payingStatement={payStatementMutation.isPending}
           onCreateCard={openNewCardForm}
-          onCreateCharge={() => openChargeDrawer(null)}
+          onCreateCharge={handleNewCreditPurchase}
           onManageCard={openEditCardForm}
           onPayStatement={requestPaySelectedStatement}
           onOpenPurchases={() => setPurchasesModalOpen(true)}
           onOpenInstallments={() => setInstallmentPlansModalOpen(true)}
           onOpenHistory={() => setHistoryModalOpen(true)}
-          onEditPurchase={openChargeDrawer}
-          onDeletePurchase={setDeleteChargeTarget}
+          onEditPurchase={handleOpenChargeDrawer}
+          onDeletePurchase={handleRequestDeleteCharge}
           onEditPlan={openEditPlanModal}
           onDeletePlan={setDeletePlanTarget}
+          readOnly={isAdvisorReadOnly}
         />
 
         {forecastQuery.isError && (
@@ -3186,10 +3246,15 @@ function FuturosPageContent() {
         purchases={selectedInvoicePurchases}
         onClose={() => setPurchasesModalOpen(false)}
         onEdit={(charge) => {
+          if (isAdvisorReadOnly) {
+            notifyReadOnly()
+            return
+          }
           setPurchasesModalOpen(false)
           openChargeDrawer(charge)
         }}
-        onDelete={setDeleteChargeTarget}
+        onDelete={handleRequestDeleteCharge}
+        readOnly={isAdvisorReadOnly}
       />
 
       <InstallmentPlansModal
