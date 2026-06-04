@@ -84,6 +84,7 @@ import CreditCardManagerDrawer, {
   writeCreditCardColorMap,
 } from './components/CreditCardManagerDrawer'
 import FinancialScopeSwitcher from '@/components/financial/FinancialScopeSwitcher'
+import { futurosPillClass, futurosUi } from './futurosUi'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -593,36 +594,36 @@ const summaryToneClasses: Record<
   { card: string; icon: string; title: string; value: string; pulse: string }
 > = {
   red: {
-    card: 'border-red-100 bg-gradient-to-br from-white via-red-50/80 to-red-50',
-    icon: 'bg-red-100/80 text-red-600',
+    card: 'border-red-100 bg-red-50/40',
+    icon: 'bg-red-100 text-red-600',
     title: 'text-red-600',
     value: 'text-red-700',
     pulse: 'bg-red-100',
   },
   green: {
-    card: 'border-emerald-100 bg-gradient-to-br from-white via-emerald-50/80 to-emerald-50',
-    icon: 'bg-emerald-100/80 text-emerald-600',
+    card: 'border-emerald-100 bg-emerald-50/40',
+    icon: 'bg-emerald-100 text-emerald-600',
     title: 'text-emerald-600',
     value: 'text-emerald-700',
     pulse: 'bg-emerald-100',
   },
   amber: {
-    card: 'border-amber-100 bg-gradient-to-br from-white via-amber-50/80 to-amber-50',
-    icon: 'bg-amber-100/80 text-amber-600',
+    card: 'border-amber-100 bg-amber-50/40',
+    icon: 'bg-amber-100 text-amber-600',
     title: 'text-amber-700',
     value: 'text-amber-700',
     pulse: 'bg-amber-100',
   },
   blue: {
-    card: 'border-blue-100 bg-gradient-to-br from-white via-blue-50/80 to-blue-50',
-    icon: 'bg-blue-100/80 text-primary',
+    card: 'border-blue-100 bg-blue-50/40',
+    icon: 'bg-blue-100 text-primary',
     title: 'text-primary',
     value: 'text-primary',
     pulse: 'bg-blue-100',
   },
   purple: {
-    card: 'border-violet-100 bg-gradient-to-br from-white via-violet-50/80 to-violet-50',
-    icon: 'bg-violet-100/80 text-violet-700',
+    card: 'border-violet-100 bg-violet-50/40',
+    icon: 'bg-violet-100 text-violet-700',
     title: 'text-violet-700',
     value: 'text-violet-700',
     pulse: 'bg-violet-100',
@@ -671,7 +672,7 @@ function SummaryCard({
     </div>
   )
 
-  const className = `min-h-[118px] w-full rounded-[20px] border p-5 text-left shadow-[0_12px_34px_rgba(15,23,42,0.05)] transition-transform ${onClick ? 'hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)]' : ''} ${classes.card}`
+  const className = `min-h-[104px] w-full rounded-xl border p-4 text-left shadow-sm transition-shadow sm:p-5 ${onClick ? 'cursor-pointer hover:shadow-md' : ''} ${classes.card}`
 
   if (onClick) {
     return (
@@ -702,8 +703,8 @@ function ForecastTabs({
   onChange: (tab: ForecastTab) => void
 }) {
   return (
-    <div className="border-b border-slate-200">
-      <div className="flex gap-7">
+    <div className="border-b border-gray-200">
+      <div className="flex gap-1 overflow-x-auto">
         {[
           { value: 'expense' as const, label: 'Despesas' },
           { value: 'income' as const, label: 'Receitas' },
@@ -712,10 +713,10 @@ function ForecastTabs({
             key={tab.value}
             type="button"
             onClick={() => onChange(tab.value)}
-            className={`-mb-px border-b-2 px-1 pb-3 text-sm font-extrabold transition-colors ${
+            className={`shrink-0 border-b-2 px-3 pb-2.5 text-sm font-medium transition-colors ${
               active === tab.value
                 ? 'border-primary text-primary'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
             {tab.label}
@@ -728,14 +729,14 @@ function ForecastTabs({
 
 function ForecastSkeleton() {
   return (
-    <div className="space-y-5">
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         {[1, 2].map((item) => (
-          <div key={item} className="h-[250px] animate-pulse rounded-[18px] border border-slate-200 bg-white" />
+          <div key={item} className={`h-[220px] animate-pulse ${futurosUi.surfaceFlat}`} />
         ))}
       </div>
-      <div className="h-[104px] animate-pulse rounded-[18px] border border-slate-200 bg-white" />
-      <div className="h-[104px] animate-pulse rounded-[18px] border border-slate-200 bg-white" />
+      <div className={`h-24 animate-pulse ${futurosUi.surfaceFlat}`} />
+      <div className={`h-24 animate-pulse ${futurosUi.surfaceFlat}`} />
     </div>
   )
 }
@@ -761,13 +762,13 @@ function InvoiceGroupAccordion({
 
   return (
     <article
-      className="overflow-hidden rounded-[18px] border border-slate-200 bg-white shadow-[0_14px_38px_rgba(15,23,42,0.07)]"
+      className={futurosUi.surface}
       style={{ borderTopColor: accent, borderTopWidth: 3 }}
     >
       <button
         type="button"
         onClick={() => onToggle(groupKey)}
-        className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition-colors hover:bg-slate-50/70"
+        className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors hover:bg-gray-50 sm:gap-4 sm:px-5 sm:py-4"
       >
         <div className="flex min-w-0 items-center gap-4">
           <div
@@ -800,15 +801,15 @@ function InvoiceGroupAccordion({
       </button>
 
       {isOpen && (
-        <div className="border-t border-slate-100">
-          <div className="hidden grid-cols-[1.2fr_1.7fr_0.9fr_0.9fr_1fr] gap-4 bg-slate-50 px-5 py-3 text-[11px] font-extrabold text-slate-500 md:grid">
+        <div className="border-t border-gray-100">
+          <div className={`${futurosUi.tableHead} grid-cols-[1.2fr_1.7fr_0.9fr_0.9fr_1fr] gap-4`}>
             <span>Categoria</span>
             <span>Descrição</span>
             <span>Parcela</span>
             <span>Status</span>
             <span className="text-right">Valor</span>
           </div>
-          <div className="divide-y divide-slate-100">
+          <div className={`divide-y divide-gray-100 ${group.items.length > 6 ? futurosUi.listScrollSm : ''}`}>
             {group.items.map((item) => {
               const categoryName = item.category?.name ?? 'Sem categoria'
               const categoryColor = getCategoryColor(item.category?.id ?? categoryName)
@@ -862,7 +863,7 @@ function CommitmentCard({
   const categoryName = item.category?.name ?? 'Sem categoria'
 
   return (
-    <article className="grid gap-4 border-t border-slate-100 bg-white px-5 py-4 first:border-t-0 md:grid-cols-[84px_1.5fr_0.75fr_1fr_0.9fr_0.8fr_42px] md:items-center">
+    <article className="border-t border-gray-100 bg-white px-4 py-4 first:border-t-0 sm:px-5 md:grid md:grid-cols-[84px_1.5fr_0.75fr_1fr_0.9fr_0.8fr_42px] md:items-center md:gap-4">
       <div className="flex items-center gap-3 md:block md:text-center">
         <div className="text-2xl font-extrabold leading-none text-slate-900">{dateParts.day}</div>
         <div className="mt-1 text-xs font-extrabold text-slate-500">{dateParts.month}</div>
@@ -959,18 +960,18 @@ function CommitmentCard({
 
 function ForecastEmptyState({ onCreate }: { onCreate: () => void }) {
   return (
-    <div className="flex min-h-[260px] flex-col items-center justify-center rounded-[22px] border border-dashed border-slate-200 bg-white px-6 py-12 text-center shadow-[0_14px_38px_rgba(15,23,42,0.05)]">
-      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-primary">
-        <CalendarDays className="h-7 w-7" />
+    <div className={`flex min-h-[220px] flex-col items-center justify-center px-6 py-10 text-center sm:py-12 ${futurosUi.surfaceDashed}`}>
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-primary">
+        <CalendarDays className="h-6 w-6" />
       </div>
-      <h3 className="mt-5 text-base font-extrabold text-slate-900">Nenhum compromisso futuro no período selecionado</h3>
-      <p className="mt-2 max-w-xl text-sm font-medium text-slate-500">
+      <h3 className="mt-4 text-base font-semibold text-gray-900">Nenhum compromisso futuro no período selecionado</h3>
+      <p className="mt-2 max-w-md text-sm text-gray-500">
         Quando você registrar uma despesa futura, parcelamento ou compra no cartão, ela aparecerá aqui.
       </p>
       <button
         type="button"
         onClick={onCreate}
-        className="mt-6 inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-extrabold text-white shadow-[0_12px_26px_rgba(0,102,163,0.24)] transition-colors hover:bg-secondary"
+        className={`mt-5 ${futurosUi.btnPrimary}`}
       >
         <Plus className="h-4 w-4" />
         Registrar despesa futura
@@ -1087,8 +1088,8 @@ function CreditMonthDistributionCard({
   onOpen: () => void
 }) {
   return (
-    <section className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-[0_14px_38px_rgba(15,23,42,0.05)]">
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(280px,1.15fr)_auto] lg:items-center">
+    <section className={futurosUi.surfacePadding}>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(240px,1fr)_auto] lg:items-center lg:gap-5">
         <div>
           <div className="flex items-center gap-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-sky-50 text-primary">
@@ -1119,7 +1120,7 @@ function CreditMonthDistributionCard({
           {!loading && items.length > 0 && <div className="mt-3"><DistributionLegend items={items.slice(0, 4)} /></div>}
         </div>
 
-        <button type="button" onClick={onOpen} className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 text-sm font-extrabold text-slate-700 transition-colors hover:border-blue-200 hover:text-primary">
+        <button type="button" onClick={onOpen} className={`w-full sm:w-auto ${futurosUi.btnOutline}`}>
           Ver distribuicao
         </button>
       </div>
@@ -1142,15 +1143,27 @@ function CardFilterRail({
 }) {
   const multipleOwners = cardOwnerSections.length > 1
 
+  const totalCards = cardOwnerSections.reduce((sum, section) => sum + section.cards.length, 0)
+
   return (
-    <section className="space-y-4">
+    <section className="space-y-3">
+      {totalCards > 4 && (
+        <p className="text-xs font-medium text-gray-500">
+          {totalCards} cartões — role horizontalmente para ver todos
+        </p>
+      )}
       {cardOwnerSections.map((section) => (
         <div key={section.id}>
           {multipleOwners && (
-            <h3 className="mb-3 text-xs font-extrabold uppercase tracking-wider text-slate-600">{section.label}</h3>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-600">{section.label}</h3>
+              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600">
+                {section.cards.length}
+              </span>
+            </div>
           )}
-          <div className={`rounded-[20px] border border-slate-200 bg-white p-4 shadow-[0_12px_34px_rgba(15,23,42,0.04)] ${multipleOwners ? '' : ''}`}>
-            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          <div className={futurosUi.surfacePadding}>
+            <div className={futurosUi.chipScroll}>
               {section.cards.map((card) => {
                 const accent = getCardAccentColor(card.id, cardColors)
                 const active = selectedCardId === card.id
@@ -1159,7 +1172,7 @@ function CardFilterRail({
                     key={card.id}
                     type="button"
                     onClick={() => onSelect(card.id)}
-                    className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-extrabold transition-all ${active ? 'border-transparent text-white shadow-[0_12px_24px_rgba(15,23,42,0.14)]' : 'border-slate-200 bg-white text-slate-700 hover:-translate-y-0.5 hover:border-slate-300'}`}
+                    className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-full border px-3.5 text-sm font-semibold transition-colors sm:h-10 sm:px-4 ${active ? 'border-transparent text-white shadow-sm' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'}`}
                     style={active ? { backgroundColor: accent } : undefined}
                   >
                     <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: active ? '#fff' : accent }} />
@@ -1335,11 +1348,11 @@ function SelectedCardHud({
 }) {
   if (!card) {
     return (
-      <section className="flex min-h-[320px] flex-col items-center justify-center rounded-[22px] border border-dashed border-slate-200 bg-white px-6 py-12 text-center shadow-[0_14px_38px_rgba(15,23,42,0.04)]">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-sky-50 text-primary"><WalletCards className="h-7 w-7" /></div>
-        <h2 className="mt-5 text-base font-extrabold text-slate-950">Nenhum cartao ativo</h2>
-        <p className="mt-2 max-w-xl text-sm font-medium text-slate-500">Cadastre um cartao para acompanhar fatura, compras, parcelamentos e historico em uma unica HUD.</p>
-        <button type="button" onClick={onCreateCard} className="mt-6 inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-extrabold text-white transition-colors hover:bg-secondary"><Plus className="h-4 w-4" />Novo cartao</button>
+      <section className={`flex min-h-[280px] flex-col items-center justify-center px-6 py-10 text-center sm:py-12 ${futurosUi.surfaceDashed}`}>
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-sky-50 text-primary"><WalletCards className="h-6 w-6" /></div>
+        <h2 className="mt-4 text-base font-semibold text-gray-900">Nenhum cartao ativo</h2>
+        <p className="mt-2 max-w-md text-sm text-gray-500">Cadastre um cartao para acompanhar fatura, compras, parcelamentos e historico.</p>
+        <button type="button" onClick={onCreateCard} className={`mt-5 ${futurosUi.btnPrimary}`}><Plus className="h-4 w-4" />Novo cartao</button>
       </section>
     )
   }
@@ -1350,11 +1363,11 @@ function SelectedCardHud({
   const visibleInstallments = installments.slice(0, 7)
 
   return (
-    <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+    <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] lg:gap-5">
       <div className="space-y-4">
-        <article className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-[0_16px_44px_rgba(15,23,42,0.06)]">
-          <div className="h-2" style={{ backgroundColor: cardColor }} />
-          <div className="p-6">
+        <article className={futurosUi.surface}>
+          <div className="h-1.5" style={{ backgroundColor: cardColor }} />
+          <div className="p-4 sm:p-6">
             <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
@@ -1367,42 +1380,38 @@ function SelectedCardHud({
                   )}
                   <span className={`rounded-full px-3 py-1 text-[11px] font-extrabold ${statementStatusBadge(statementStatus)}`}>{statementStatusLabel(statementStatus)}</span>
                 </div>
-                <p className="mt-6 text-xs uppercase tracking-[0.16em] text-slate-400">Fatura atual</p>
-                <p className="mt-3 text-4xl font-extrabold text-slate-950">{formatCurrencyBRL(invoiceTotal)}</p>
+                <p className="mt-4 text-xs font-medium uppercase tracking-wide text-gray-400 sm:mt-6">Fatura atual</p>
+                <p className="mt-2 text-3xl font-semibold text-gray-950 sm:mt-3 sm:text-4xl">{formatCurrencyBRL(invoiceTotal)}</p>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 lg:min-w-[220px]">
-                <div className="rounded-[18px] bg-slate-50 px-4 py-4 text-sm text-slate-700">
-                  <p className="font-semibold text-slate-900">Vence</p>
-                  <p className="mt-2 text-base font-extrabold text-slate-950">{formatDateShort(invoiceGroup?.statement?.dueAt)}</p>
+                <div className="rounded-xl bg-gray-50 px-3 py-3 text-sm text-gray-700 sm:px-4 sm:py-4">
+                  <p className="font-medium text-gray-900">Vence</p>
+                  <p className="mt-1 text-base font-semibold text-gray-950">{formatDateShort(invoiceGroup?.statement?.dueAt)}</p>
                 </div>
-                <div className="rounded-[18px] bg-slate-50 px-4 py-4 text-sm text-slate-700">
-                  <p className="font-semibold text-slate-900">Fecha</p>
-                  <p className="mt-2 text-base font-extrabold text-slate-950">{formatDateShort(invoiceGroup?.statement?.closingAt)}</p>
+                <div className="rounded-xl bg-gray-50 px-3 py-3 text-sm text-gray-700 sm:px-4 sm:py-4">
+                  <p className="font-medium text-gray-900">Fecha</p>
+                  <p className="mt-1 text-base font-semibold text-gray-950">{formatDateShort(invoiceGroup?.statement?.closingAt)}</p>
                 </div>
               </div>
             </div>
 
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <button type="button" onClick={() => onManageCard(card.id)} className="inline-flex h-12 items-center justify-center rounded-full bg-primary px-6 text-sm font-extrabold text-white transition-colors hover:bg-secondary">
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+              <button type="button" onClick={() => onManageCard(card.id)} className={futurosUi.btnPrimary}>
                 Gerenciar cartao
               </button>
-              <button
-                type="button"
-                onClick={onOpenHistory}
-                className="inline-flex h-12 items-center justify-center rounded-full border border-slate-200 bg-white px-6 text-sm font-extrabold text-slate-700 transition-colors hover:border-blue-200 hover:text-primary"
-              >
+              <button type="button" onClick={onOpenHistory} className={futurosUi.btnOutline}>
                 Ver histórico
               </button>
             </div>
           </div>
         </article>
 
-        <article className="overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_12px_34px_rgba(15,23,42,0.04)]">
-          <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+        <article className={futurosUi.surface}>
+          <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-3.5 sm:px-5 sm:py-4">
             <div>
-              <h3 className="text-sm font-extrabold text-slate-950">Histórico do cartão</h3>
-              <p className="mt-1 text-xs font-medium text-slate-500">Abra o histórico para visualizar as faturas anteriores e a fatura atual.</p>
+              <h3 className={futurosUi.sectionTitle}>Histórico do cartão</h3>
+              <p className={futurosUi.sectionSubtitle}>Faturas anteriores e ciclo atual.</p>
             </div>
             <button
               type="button"
@@ -1417,17 +1426,17 @@ function SelectedCardHud({
           </div>
         </article>
 
-        <div className="grid gap-4 2xl:grid-cols-2">
-          <article className="overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_12px_34px_rgba(15,23,42,0.04)]">
-            <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
-              <div><h3 className="text-sm font-extrabold text-slate-950">Compras da fatura atual</h3><p className="mt-1 text-xs font-medium text-slate-500">Ate 7 compras recentes deste ciclo.</p></div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <article className={futurosUi.surface}>
+            <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-3.5 sm:px-5 sm:py-4">
+              <div><h3 className={futurosUi.sectionTitle}>Compras da fatura atual</h3><p className={futurosUi.sectionSubtitle}>Até 7 compras recentes deste ciclo.</p></div>
               {purchases.length > 7 && <button type="button" onClick={onOpenPurchases} className="text-xs font-extrabold text-primary hover:text-secondary">Ver todas as {purchases.length}</button>}
             </div>
             {loadingPurchases ? (
               <div className="space-y-3 p-4">{[1, 2, 3].map((item) => <div key={item} className="h-12 animate-pulse rounded-xl bg-slate-100" />)}</div>
             ) : visiblePurchases.length ? (
-              <div className="space-y-2 px-4 pb-4 pt-3">
-                <div className="grid gap-3 px-2 text-xs uppercase tracking-[0.18em] text-slate-500 md:grid-cols-[0.9fr_1.4fr_0.9fr_0.8fr_0.8fr_34px] md:items-center">
+              <div className={`space-y-1 px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-3 ${purchases.length > 5 ? futurosUi.listScrollSm : ''}`}>
+                <div className={`${futurosUi.tableHead} grid-cols-[0.9fr_1.4fr_0.9fr_0.8fr_0.8fr_34px] gap-3`}>
                   <span>Data</span>
                   <span>Descrição</span>
                   <span>Categoria</span>
@@ -1451,29 +1460,31 @@ function SelectedCardHud({
             )}
           </article>
 
-          <article className="overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_12px_34px_rgba(15,23,42,0.04)]">
-            <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
-              <div><h3 className="text-sm font-extrabold text-slate-950">Parcelamentos</h3><p className="mt-1 text-xs font-medium text-slate-500">Planos vinculados a este cartao.</p></div>
+          <article className={futurosUi.surface}>
+            <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-3.5 sm:px-5 sm:py-4">
+              <div><h3 className={futurosUi.sectionTitle}>Parcelamentos</h3><p className={futurosUi.sectionSubtitle}>Planos vinculados a este cartao.</p></div>
               {installments.length > 7 && <button type="button" onClick={onOpenInstallments} className="text-xs font-extrabold text-primary hover:text-secondary">Ver todos os {installments.length}</button>}
             </div>
             {visibleInstallments.length ? (
-              visibleInstallments.map((plan) => (
+              <div className={installments.length > 5 ? futurosUi.listScrollSm : undefined}>
+              {visibleInstallments.map((plan) => (
                 <InstallmentPlanRow
                   key={plan.id}
                   plan={plan}
                   onEdit={onEditPlan}
                   onDelete={onDeletePlan}
                 />
-              ))
+              ))}
+              </div>
             ) : (
-              <div className="px-5 py-8 text-sm font-medium text-slate-500">Nenhum parcelamento ativo neste cartao.</div>
+              <div className="px-5 py-8 text-sm text-gray-500">Nenhum parcelamento ativo neste cartao.</div>
             )}
           </article>
         </div>
       </div>
 
-      <aside className="rounded-[22px] border border-slate-200 bg-white p-5 shadow-[0_16px_44px_rgba(15,23,42,0.05)]">
-        <div className="mb-4"><h3 className="text-sm font-extrabold text-slate-950">Distribuicao de gastos</h3><p className="mt-1 text-xs font-medium text-slate-500">O que esta consumindo a fatura selecionada.</p></div>
+      <aside className={`${futurosUi.surfacePadding} lg:sticky lg:top-4 lg:self-start`}>
+        <div className="mb-4"><h3 className={futurosUi.sectionTitle}>Distribuicao de gastos</h3><p className={futurosUi.sectionSubtitle}>O que esta consumindo a fatura selecionada.</p></div>
         <CreditDistributionChart items={distribution} height={260} />
         <div className="mt-5"><DistributionLegend items={distribution} /></div>
       </aside>
@@ -1494,14 +1505,16 @@ function CreditDistributionModal({
 }) {
   return (
     <Dialog open={open} onClose={onClose} className="relative z-50">
-      <div className="fixed inset-0 bg-slate-950/30" aria-hidden="true" />
-      <div className="fixed inset-0 flex items-center justify-center p-4">
-        <DialogPanel className="w-full max-w-4xl rounded-[24px] bg-white p-6 shadow-2xl">
-          <div className="mb-5 flex items-start justify-between gap-4">
-            <div><DialogTitle className="text-lg font-extrabold text-slate-950">{title}</DialogTitle><p className="mt-1 text-sm font-medium text-slate-500">Distribuicao por categoria dos gastos no credito.</p></div>
-            <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+      <div className={futurosUi.modalBackdrop} aria-hidden="true" />
+      <div className={futurosUi.modalShell}>
+        <DialogPanel className={futurosUi.modalPanelLg}>
+          <div className={futurosUi.modalHeader}>
+            <div><DialogTitle className="text-lg font-semibold text-gray-900">{title}</DialogTitle><p className="mt-1 text-sm text-gray-500">Distribuicao por categoria dos gastos no credito.</p></div>
+            <button type="button" onClick={onClose} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100" aria-label="Fechar"><X className="h-5 w-5" /></button>
           </div>
-          <div className="grid gap-5 lg:grid-cols-[1.3fr_0.8fr]"><CreditDistributionChart items={items} height={380} /><DistributionLegend items={items} /></div>
+          <div className={`${futurosUi.modalBody} p-4 sm:p-6`}>
+            <div className="grid gap-5 lg:grid-cols-[1.3fr_0.8fr]"><CreditDistributionChart items={items} height={380} /><DistributionLegend items={items} /></div>
+          </div>
         </DialogPanel>
       </div>
     </Dialog>
@@ -1525,14 +1538,14 @@ function PurchasesModal({
 }) {
   return (
     <Dialog open={open} onClose={onClose} className="relative z-50">
-      <div className="fixed inset-0 bg-slate-950/30" aria-hidden="true" />
-      <div className="fixed inset-0 flex items-center justify-center p-4">
-        <DialogPanel className="flex max-h-[86vh] w-full max-w-5xl flex-col overflow-hidden rounded-[24px] bg-white shadow-2xl">
-          <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
-            <div><DialogTitle className="text-lg font-extrabold text-slate-950">Compras da fatura</DialogTitle><p className="mt-1 text-sm font-medium text-slate-500">Edite ou exclua compras do ciclo atual.</p></div>
-            <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+      <div className={futurosUi.modalBackdrop} aria-hidden="true" />
+      <div className={futurosUi.modalShell}>
+        <DialogPanel className={futurosUi.modalPanel}>
+          <div className={futurosUi.modalHeader}>
+            <div><DialogTitle className="text-lg font-semibold text-gray-900">Compras da fatura</DialogTitle><p className="mt-1 text-sm text-gray-500">Edite ou exclua compras do ciclo atual.</p></div>
+            <button type="button" onClick={onClose} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100" aria-label="Fechar"><X className="h-5 w-5" /></button>
           </div>
-          <div className="min-h-0 overflow-y-auto">
+          <div className={futurosUi.modalBody}>
             {purchases.length ? (
               <div className="space-y-2 px-4 pb-4 pt-3">
                 <div className="grid gap-3 px-2 text-xs uppercase tracking-[0.18em] text-slate-500 md:grid-cols-[0.9fr_1.4fr_0.9fr_0.8fr_0.8fr_34px] md:items-center">
@@ -1583,20 +1596,20 @@ function InstallmentPlansModal({
 }) {
   return (
     <Dialog open={open} onClose={onClose} className="relative z-50">
-      <div className="fixed inset-0 bg-slate-950/30" aria-hidden="true" />
-      <div className="fixed inset-0 flex items-center justify-center p-4">
-        <DialogPanel className="flex max-h-[86vh] w-full max-w-5xl flex-col overflow-hidden rounded-[24px] bg-white shadow-2xl">
-          <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
-            <div><DialogTitle className="text-lg font-extrabold text-slate-950">Gerenciamento de parcelamentos</DialogTitle><p className="mt-1 text-sm font-medium text-slate-500">Parcelamentos vinculados ao cartao selecionado.</p></div>
-            <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+      <div className={futurosUi.modalBackdrop} aria-hidden="true" />
+      <div className={futurosUi.modalShell}>
+        <DialogPanel className={futurosUi.modalPanel}>
+          <div className={futurosUi.modalHeader}>
+            <div><DialogTitle className="text-lg font-semibold text-gray-900">Gerenciamento de parcelamentos</DialogTitle><p className="mt-1 text-sm text-gray-500">Parcelamentos vinculados ao cartao selecionado.</p></div>
+            <button type="button" onClick={onClose} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100" aria-label="Fechar"><X className="h-5 w-5" /></button>
           </div>
-          <div className="min-h-0 overflow-y-auto">
+          <div className={futurosUi.modalBody}>
             {plans.length ? plans.map((plan) => (
               <InstallmentPlanRow key={plan.id} plan={plan} onEdit={onEdit} onDelete={onDelete} nextDueDate={nextDueDate} />
-            )) : <div className="px-6 py-10 text-center text-sm font-medium text-slate-500">Nenhum parcelamento ativo neste cartao.</div>}
+            )) : <div className="px-6 py-10 text-center text-sm text-gray-500">Nenhum parcelamento ativo neste cartao.</div>}
           </div>
-          <div className="border-t border-slate-100 px-6 py-4">
-            <button type="button" onClick={onOpenManagement} className="inline-flex h-10 items-center justify-center rounded-full bg-primary px-5 text-sm font-extrabold text-white transition-colors hover:bg-secondary">Abrir gerenciamento completo</button>
+          <div className={futurosUi.modalFooter}>
+            <button type="button" onClick={onOpenManagement} className={futurosUi.btnPrimary}>Abrir gerenciamento completo</button>
           </div>
         </DialogPanel>
       </div>
@@ -1617,15 +1630,17 @@ function CardHistoryModal({
 }) {
   return (
     <Dialog open={open} onClose={onClose} className="relative z-50">
-      <div className="fixed inset-0 bg-slate-950/30" aria-hidden="true" />
-      <div className="fixed inset-0 flex items-center justify-center p-4">
-        <DialogPanel className="w-full max-w-4xl rounded-[24px] bg-white p-6 shadow-2xl">
-          <div className="mb-5 flex items-start justify-between gap-4">
-            <div><DialogTitle className="text-lg font-extrabold text-slate-950">{title}</DialogTitle><p className="mt-1 text-sm font-medium text-slate-500">Evolucao das faturas por ciclo.</p></div>
-            <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+      <div className={futurosUi.modalBackdrop} aria-hidden="true" />
+      <div className={futurosUi.modalShell}>
+        <DialogPanel className={futurosUi.modalPanelLg}>
+          <div className={futurosUi.modalHeader}>
+            <div><DialogTitle className="text-lg font-semibold text-gray-900">{title}</DialogTitle><p className="mt-1 text-sm text-gray-500">Evolucao das faturas por ciclo.</p></div>
+            <button type="button" onClick={onClose} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100" aria-label="Fechar"><X className="h-5 w-5" /></button>
           </div>
+          <div className="p-4 sm:p-6">
           {data.length ? (
-            <ResponsiveContainer width="100%" height={360}>
+            <div className="h-[240px] w-full sm:h-[360px]">
+            <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data} margin={{ top: 12, right: 12, bottom: 12, left: 0 }}>
                 <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fill: '#64748B', fontSize: 12 }} />
                 <YAxis tickLine={false} axisLine={false} width={86} tick={{ fill: '#64748B', fontSize: 12 }} tickFormatter={(value) => formatCurrencyBRL(Number(value)).replace(',00', '')} />
@@ -1635,9 +1650,11 @@ function CardHistoryModal({
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
+            </div>
           ) : (
-            <div className="flex h-[260px] items-center justify-center rounded-[16px] border border-dashed border-slate-200 bg-slate-50 text-sm font-medium text-slate-500">Historico indisponivel para este cartao.</div>
+            <div className="flex h-[220px] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 text-sm text-gray-500 sm:h-[260px]">Historico indisponivel para este cartao.</div>
           )}
+          </div>
         </DialogPanel>
       </div>
     </Dialog>
@@ -1669,16 +1686,16 @@ function PayStatementConfirmModal({
 }) {
   return (
     <Dialog open={open} onClose={confirming ? () => undefined : onClose} className="relative z-50">
-      <div className="fixed inset-0 bg-slate-950/35 backdrop-blur-[1px]" aria-hidden="true" />
-      <div className="fixed inset-0 flex items-center justify-center p-4">
-        <DialogPanel className="w-full max-w-lg overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-2xl">
-          <div className="border-b border-slate-100 px-6 py-5">
-            <div className="flex items-start justify-between gap-4">
+      <div className={futurosUi.modalBackdrop} aria-hidden="true" />
+      <div className={futurosUi.modalShell}>
+        <DialogPanel className="flex max-h-[min(92vh,40rem)] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border border-gray-200 bg-white shadow-xl sm:rounded-xl">
+          <div className={futurosUi.modalHeader}>
+            <div className="flex w-full items-start justify-between gap-4">
               <div>
-                <DialogTitle className="text-lg font-extrabold text-slate-950">
+                <DialogTitle className="text-lg font-semibold text-gray-900">
                   Confirmar pagamento da fatura
                 </DialogTitle>
-                <p className="mt-1 text-sm font-medium text-slate-500">
+                <p className="mt-1 text-sm text-gray-500">
                   Revise antes de marcar esta fatura como paga.
                 </p>
               </div>
@@ -1694,29 +1711,29 @@ function PayStatementConfirmModal({
             </div>
           </div>
 
-          <div className="space-y-5 px-6 py-5">
-            <div className="rounded-[18px] border border-slate-200 bg-slate-50 p-4">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">{cardName}</p>
-              <p className="mt-2 text-3xl font-extrabold text-slate-950">{formatCurrencyBRL(amount)}</p>
+          <div className={`${futurosUi.modalBody} space-y-4 px-4 py-4 sm:space-y-5 sm:px-6 sm:py-5`}>
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{cardName}</p>
+              <p className="mt-2 text-2xl font-semibold text-gray-950 sm:text-3xl">{formatCurrencyBRL(amount)}</p>
               <div className="mt-4 grid grid-cols-2 gap-3">
-                <div className="rounded-[14px] bg-white px-3 py-2">
-                  <p className="text-[11px] font-bold text-slate-500">Vencimento</p>
-                  <p className="mt-1 text-sm font-extrabold text-slate-950">{formatDateShort(dueAt)}</p>
+                <div className="rounded-lg bg-white px-3 py-2">
+                  <p className="text-[11px] font-medium text-gray-500">Vencimento</p>
+                  <p className="mt-1 text-sm font-semibold text-gray-950">{formatDateShort(dueAt)}</p>
                 </div>
-                <div className="rounded-[14px] bg-white px-3 py-2">
-                  <p className="text-[11px] font-bold text-slate-500">Fechamento</p>
-                  <p className="mt-1 text-sm font-extrabold text-slate-950">{formatDateShort(closingAt)}</p>
+                <div className="rounded-lg bg-white px-3 py-2">
+                  <p className="text-[11px] font-medium text-gray-500">Fechamento</p>
+                  <p className="mt-1 text-sm font-semibold text-gray-950">{formatDateShort(closingAt)}</p>
                 </div>
               </div>
             </div>
 
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">Forma de pagamento</span>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-gray-600">Forma de pagamento</span>
               <select
                 value={paymentType}
                 onChange={(event) => onPaymentTypeChange(event.target.value as StatementPaymentType)}
                 disabled={confirming}
-                className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                className={futurosUi.select}
               >
                 {STATEMENT_PAYMENT_TYPE_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>{option.label}</option>
@@ -1724,17 +1741,17 @@ function PayStatementConfirmModal({
               </select>
             </label>
 
-            <div className="rounded-[18px] border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900">
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
               Sera criada uma unica transacao de saida consolidada. As compras desta fatura ficam apenas como detalhes do pagamento.
             </div>
           </div>
 
-          <div className="flex flex-col-reverse gap-2 border-t border-slate-100 px-6 py-4 sm:flex-row sm:justify-end">
+          <div className={`${futurosUi.modalFooter} flex flex-col-reverse gap-2 sm:flex-row sm:justify-end`}>
             <button
               type="button"
               onClick={onClose}
               disabled={confirming}
-              className="inline-flex h-11 items-center justify-center rounded-full border border-slate-200 px-5 text-sm font-extrabold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className={`${futurosUi.btnOutline} disabled:cursor-not-allowed disabled:opacity-50`}
             >
               Cancelar
             </button>
@@ -1742,7 +1759,7 @@ function PayStatementConfirmModal({
               type="button"
               onClick={onConfirm}
               disabled={confirming}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-emerald-600 px-5 text-sm font-extrabold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-emerald-600 px-5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
             >
               <CheckCircle2 className="h-4 w-4" />
               {confirming ? 'Confirmando...' : 'Confirmar pagamento'}
@@ -2611,11 +2628,11 @@ function FuturosPageContent() {
   // ── Render ────────────────────────────────────────────────────────────────────
 
   const filtersPanel = (
-    <section className="rounded-[20px] border border-slate-200 bg-white/95 p-4 shadow-[0_24px_70px_rgba(15,23,42,0.18)] backdrop-blur">
-      <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
+    <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-lg sm:p-5">
+      <div className="flex flex-col gap-3 border-b border-gray-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-sm font-extrabold text-slate-900">Filtros</h2>
-          <p className="mt-1 text-xs font-medium text-slate-500">Refine periodo, tipo e status sem sair da central.</p>
+          <h2 className={futurosUi.sectionTitle}>Filtros</h2>
+          <p className={futurosUi.sectionSubtitle}>Refine periodo, tipo e status.</p>
         </div>
         <button
           type="button"
@@ -2629,7 +2646,7 @@ function FuturosPageContent() {
 
       <div className="grid grid-cols-1 items-end gap-3 pt-4 md:grid-cols-2 xl:grid-cols-6">
         <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-bold text-slate-600">{t('filters.from')}</span>
+          <span className="text-xs font-semibold text-gray-600">{t('filters.from')}</span>
           <input
             type="date"
             value={filters.from}
@@ -2637,11 +2654,11 @@ function FuturosPageContent() {
               setPlanPage(1)
               setFilters((p) => ({ ...p, from: e.target.value, page: 1 }))
             }}
-            className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-primary"
+            className={futurosUi.input}
           />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-bold text-slate-600">{t('filters.to')}</span>
+          <span className="text-xs font-semibold text-gray-600">{t('filters.to')}</span>
           <input
             type="date"
             value={filters.to}
@@ -2649,44 +2666,44 @@ function FuturosPageContent() {
               setPlanPage(1)
               setFilters((p) => ({ ...p, to: e.target.value, page: 1 }))
             }}
-            className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-primary"
+            className={futurosUi.input}
           />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-bold text-slate-600">{t('filters.type')}</span>
+          <span className="text-xs font-semibold text-gray-600">{t('filters.type')}</span>
           <select
             value={filters.type}
             onChange={(e) => {
               setPlanPage(1)
               setFilters((p) => ({ ...p, type: e.target.value as '' | FutureType, page: 1 }))
             }}
-            className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-primary"
+            className={futurosUi.select}
           >
             {typeOptions.map((opt) => <option key={opt.label} value={opt.value}>{opt.label}</option>)}
           </select>
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-bold text-slate-600">{t('filters.installmentStatus')}</span>
+          <span className="text-xs font-semibold text-gray-600">{t('filters.installmentStatus')}</span>
           <select
             value={filters.status}
             onChange={(e) => {
               setPlanPage(1)
               setFilters((p) => ({ ...p, status: e.target.value as '' | FutureStatus, page: 1 }))
             }}
-            className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-primary"
+            className={futurosUi.select}
           >
             {statusOptions.map((opt) => <option key={opt.label} value={opt.value}>{opt.label}</option>)}
           </select>
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-bold text-slate-600">{t('filters.installmentsPerPage')}</span>
+          <span className="text-xs font-semibold text-gray-600">{t('filters.installmentsPerPage')}</span>
           <select
             value={filters.limit}
             onChange={(e) => {
               setPlanPage(1)
               setFilters((p) => ({ ...p, limit: Number(e.target.value), page: 1 }))
             }}
-            className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-primary"
+            className={futurosUi.select}
           >
             {[10, 20, 30, 50].map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
@@ -2697,7 +2714,7 @@ function FuturosPageContent() {
             setPlanPage(1)
             setFilters({ from: '', to: '', type: '', status: '', page: 1, limit: 10 })
           }}
-          className="h-11 rounded-full border border-slate-200 bg-white px-4 text-sm font-extrabold text-slate-700 transition-colors hover:border-blue-200 hover:text-primary"
+          className={futurosUi.btnOutline}
         >
           Limpar
         </button>
@@ -2706,34 +2723,34 @@ function FuturosPageContent() {
   )
 
   return (
-    <section className="min-h-full w-full bg-[#F6F9FC] px-4 pb-24 pt-6 lg:px-8 lg:pb-10">
-      <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-6">
-        <header className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex min-w-0 gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-blue-50 text-primary shadow-[0_12px_26px_rgba(0,102,163,0.10)]">
-              <CalendarDays className="h-6 w-6" />
+    <section className={futurosUi.page}>
+      <div className={futurosUi.container}>
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 gap-3 sm:gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-50 text-primary sm:h-14 sm:w-14">
+              <CalendarDays className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-3xl font-extrabold tracking-normal text-slate-950">Futuros</h1>
+                <h1 className="text-2xl font-semibold text-gray-900 sm:text-3xl">Futuros</h1>
                 <FinancialScopeSwitcher />
               </div>
-              <p className="mt-2 text-sm font-extrabold text-slate-700">
-                Central de gestao de cartoes, faturas, compras no credito e parcelamentos.
+              <p className="mt-1.5 text-sm font-medium text-gray-700">
+                Cartoes, faturas, compras no credito e parcelamentos.
               </p>
-              <p className="mt-1 max-w-3xl text-sm font-medium text-slate-500">
-                Troque de cartao no filtro superior e acompanhe a HUD sem multiplicar containers.
+              <p className="mt-1 hidden max-w-2xl text-sm text-gray-500 sm:block">
+                Selecione um cartao no filtro e acompanhe a fatura na HUD abaixo.
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <Button
               type="button"
               variant="default"
               onClick={handleNewCreditPurchase}
               disabled={isAdvisorReadOnly}
-              className="h-12 w-auto rounded-full px-5 text-sm font-extrabold shadow-[0_14px_28px_rgba(0,102,163,0.24)]"
+              className="h-10 w-full rounded-full px-4 text-sm font-semibold sm:w-auto"
               title={isAdvisorReadOnly ? 'Acesso somente leitura' : undefined}
             >
               <CreditCard className="h-4 w-4" />
@@ -2743,16 +2760,16 @@ function FuturosPageContent() {
               type="button"
               variant="outline"
               onClick={openCreatePlanModal}
-              className="h-12 w-auto rounded-full px-5 text-sm font-extrabold"
+              className="h-10 w-full rounded-full px-4 text-sm font-semibold sm:w-auto"
             >
               <Plus className="h-4 w-4" />
-              transação futura
+              Transacao futura
             </Button>
           </div>
         </header>
 
-        <div className="relative z-40 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap gap-2.5">
+        <div className="relative z-40 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className={`${futurosUi.chipScroll} max-w-full flex-1`}>
             {(Object.keys(PERIOD_LABELS) as PeriodOption[]).map((p) => (
               <button
                 key={p}
@@ -2762,11 +2779,7 @@ function FuturosPageContent() {
                   setFilters((prev) => ({ ...prev, from: '', to: '', page: 1 }))
                   setPlanPage(1)
                 }}
-                className={`h-10 rounded-full border px-5 text-sm font-extrabold shadow-[0_8px_22px_rgba(15,23,42,0.06)] transition-colors ${
-                  period === p && !filters.from && !filters.to
-                    ? 'border-primary bg-primary text-white'
-                    : 'border-slate-200 bg-white text-slate-600 hover:border-blue-200 hover:text-primary'
-                }`}
+                className={futurosPillClass(period === p && !filters.from && !filters.to)}
               >
                 {PERIOD_LABELS[p]}
               </button>
@@ -2776,11 +2789,7 @@ function FuturosPageContent() {
           <button
             type="button"
             onClick={() => setShowFilters((prev) => !prev)}
-            className={`inline-flex h-10 w-fit items-center gap-2 rounded-full border px-4 text-sm font-extrabold shadow-[0_8px_22px_rgba(15,23,42,0.06)] transition-colors ${
-              showFilters
-                ? 'border-primary bg-primary text-white'
-                : 'border-slate-200 bg-white text-slate-700 hover:border-blue-200 hover:text-primary'
-            }`}
+            className={`inline-flex h-9 w-full shrink-0 items-center justify-center gap-2 sm:w-auto ${futurosPillClass(showFilters)}`}
           >
             <Filter className="h-4 w-4" />
             Filtros
@@ -2794,7 +2803,7 @@ function FuturosPageContent() {
           )}
         </div>
 
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
           <SummaryCard
             title="A pagar"
             value={formatCurrencyBRL(toPayTotalThisMonth)}
@@ -2903,7 +2912,7 @@ function FuturosPageContent() {
                   <button
                     type="button"
                     onClick={openNewCardForm}
-                    className="inline-flex h-10 items-center gap-2 rounded-full bg-primary px-4 text-sm font-extrabold text-white shadow-[0_12px_26px_rgba(0,102,163,0.18)] transition-colors hover:bg-secondary"
+                    className={futurosUi.btnPrimary}
                   >
                     <Plus className="h-4 w-4" />
                     Novo cartão
@@ -2911,14 +2920,14 @@ function FuturosPageContent() {
                   <button
                     type="button"
                     onClick={openCardManagerList}
-                    className="inline-flex h-10 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 text-sm font-extrabold text-slate-700 shadow-[0_8px_22px_rgba(15,23,42,0.05)] transition-colors hover:border-blue-200 hover:text-primary"
+                    className={futurosUi.btnOutline}
                   >
                     <WalletCards className="h-4 w-4" />
                     Gerenciar cartões
                   </button>
                 </div>
               </div>
-              <div className="rounded-[18px] border border-slate-200 bg-white px-5 py-6 text-sm font-medium text-slate-500 shadow-[0_10px_28px_rgba(15,23,42,0.04)]">
+              <div className={`px-4 py-6 text-sm text-gray-500 sm:px-5 ${futurosUi.surfaceFlat}`}>
                 Nenhuma fatura de cartão neste período.
               </div>
             </section>
@@ -2929,7 +2938,7 @@ function FuturosPageContent() {
             <ForecastTabs active={typeTab} onChange={setTypeTab} />
 
             {typeTab === 'expense' ? (
-              <div className="space-y-5">
+              <div className={futurosUi.forecastScroll}>
                 <section className="space-y-3">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <h2 className="flex items-center gap-2 text-sm font-extrabold text-slate-900">
@@ -2956,7 +2965,7 @@ function FuturosPageContent() {
                     </div>
                   </div>
                   {creditCardGroups.length > 0 ? (
-                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4">
                       {creditCardGroups.map((group) => {
                         const key = getInvoiceGroupKey(group)
                         return (
@@ -2972,18 +2981,19 @@ function FuturosPageContent() {
                       })}
                     </div>
                   ) : (
-                    <div className="rounded-[18px] border border-slate-200 bg-white px-5 py-6 text-sm font-medium text-slate-500 shadow-[0_10px_28px_rgba(15,23,42,0.04)]">
+                    <div className={`px-4 py-6 text-sm text-gray-500 sm:px-5 ${futurosUi.surfaceFlat}`}>
                       Nenhuma fatura de cartão neste período.
                     </div>
                   )}
                 </section>
 
                 {otherCommitments.length > 0 ? (
-                  <section className="overflow-hidden rounded-[18px] border border-slate-200 bg-white shadow-[0_14px_38px_rgba(15,23,42,0.06)]">
-                    <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-4">
-                      <CalendarDays className="h-4 w-4 text-slate-500" />
-                      <h2 className="text-sm font-extrabold text-slate-900">Outros compromissos futuros</h2>
+                  <section className={futurosUi.surface}>
+                    <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-3.5 sm:px-5 sm:py-4">
+                      <CalendarDays className="h-4 w-4 text-gray-500" />
+                      <h2 className={futurosUi.sectionTitle}>Outros compromissos futuros</h2>
                     </div>
+                    <div className={otherCommitments.length > 8 ? futurosUi.listScroll : undefined}>
                     {limitedOtherCommitments.map((item) => (
                       <CommitmentCard
                         key={item.id}
@@ -2994,10 +3004,11 @@ function FuturosPageContent() {
                       />
                     ))}
                     {otherCommitments.length > limitedOtherCommitments.length && (
-                      <div className="border-t border-slate-100 px-5 py-3 text-center text-xs font-extrabold text-primary">
+                      <div className="border-t border-gray-100 px-4 py-3 text-center text-xs font-semibold text-primary sm:px-5">
                         Exibindo {limitedOtherCommitments.length} de {otherCommitments.length} compromissos
                       </div>
                     )}
+                    </div>
                   </section>
                 ) : creditCardGroups.length === 0 ? (
                   <p className="rounded-[18px] border border-slate-200 bg-white px-5 py-6 text-sm font-medium text-slate-500">
@@ -3006,13 +3017,14 @@ function FuturosPageContent() {
                 ) : null}
               </div>
             ) : (
-              <section className="overflow-hidden rounded-[18px] border border-slate-200 bg-white shadow-[0_14px_38px_rgba(15,23,42,0.06)]">
-                <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-4">
+              <section className={futurosUi.surface}>
+                <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-3.5 sm:px-5 sm:py-4">
                   <CircleDollarSign className="h-4 w-4 text-emerald-600" />
-                  <h2 className="text-sm font-extrabold text-slate-900">Receitas futuras</h2>
+                  <h2 className={futurosUi.sectionTitle}>Receitas futuras</h2>
                 </div>
                 {incomeItems.length > 0 ? (
                   <>
+                    <div className={incomeItems.length > 8 ? futurosUi.listScroll : undefined}>
                     {limitedIncomeItems.map((item) => (
                       <CommitmentCard
                         key={item.id}
@@ -3023,13 +3035,14 @@ function FuturosPageContent() {
                       />
                     ))}
                     {incomeItems.length > limitedIncomeItems.length && (
-                      <div className="border-t border-slate-100 px-5 py-3 text-center text-xs font-extrabold text-primary">
+                      <div className="border-t border-gray-100 px-4 py-3 text-center text-xs font-semibold text-primary sm:px-5">
                         Exibindo {limitedIncomeItems.length} de {incomeItems.length} receitas
                       </div>
                     )}
+                    </div>
                   </>
                 ) : (
-                  <div className="px-5 py-8 text-sm font-medium text-slate-500">
+                  <div className="px-4 py-8 text-sm text-gray-500 sm:px-5">
                     Nenhuma receita futura neste período.
                   </div>
                 )}
@@ -3042,7 +3055,7 @@ function FuturosPageContent() {
       {/* MANAGEMENT SECTION */}
       {/* ────────────────────────────────────────────────────────────────────── */}
 
-        <section ref={managementSectionRef} className="rounded-[20px] border border-slate-200 bg-white p-4 shadow-[0_14px_38px_rgba(15,23,42,0.04)]">
+        <section ref={managementSectionRef} className={futurosUi.surfacePadding}>
           <button
             type="button"
             onClick={() => setShowManagement((prev) => !prev)}
@@ -3395,44 +3408,44 @@ function FuturosPageContent() {
 
       {/* Create/Edit plan */}
       <Dialog open={planModalOpen} onClose={closePlanModal} className="relative z-50">
-        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
-        <div className="fixed inset-0 flex items-center justify-center p-4">
-          <DialogPanel className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl">
-            <div className="flex items-center justify-between mb-4">
+        <div className={futurosUi.modalBackdrop} aria-hidden="true" />
+        <div className={futurosUi.modalShell}>
+          <DialogPanel className={`${futurosUi.modalPanel} sm:max-w-2xl`}>
+            <div className={futurosUi.modalHeader}>
               <DialogTitle className="text-lg font-semibold text-gray-900">
                 {planModalMode === 'edit' ? t('modals.plan.editTitle') : t('modals.plan.createTitle')}
               </DialogTitle>
-              <button type="button" onClick={closePlanModal} className="text-gray-500 hover:text-gray-700">
+              <button type="button" onClick={closePlanModal} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100" aria-label="Fechar">
                 <X size={18} />
               </button>
             </div>
-            <form onSubmit={handleSubmitPlan(onSavePlan)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <form onSubmit={handleSubmitPlan(onSavePlan)} className={`${futurosUi.modalBody} grid grid-cols-1 gap-4 p-4 md:grid-cols-2 sm:p-6`}>
               <label className="flex flex-col gap-1 md:col-span-2">
                 <span className="text-xs text-gray-600">{t('forms.description')}</span>
-                <input {...registerPlan('description')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm" />
+                <input {...registerPlan('description')} className={futurosUi.input} />
                 {planErrors.description && <span className="text-xs text-red-400">{planErrors.description.message}</span>}
               </label>
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-gray-600">{t('forms.type')}</span>
-                <select {...registerPlan('type')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm">
+                <select {...registerPlan('type')} className={futurosUi.select}>
                   <option value="EXPENSE">{t('labels.expense')}</option>
                   <option value="INCOME">{t('labels.income')}</option>
                 </select>
               </label>
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-gray-600">{t('forms.payment')}</span>
-                <select {...registerPlan('paymentType')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm">
+                <select {...registerPlan('paymentType')} className={futurosUi.select}>
                   {paymentTypeOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
               </label>
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-gray-600">{t('forms.totalValue')}</span>
-                <input type="number" step="0.01" min="0" {...registerPlan('totalAmount')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm" />
+                <input type="number" step="0.01" min="0" {...registerPlan('totalAmount')} className={futurosUi.input} />
                 {planErrors.totalAmount && <span className="text-xs text-red-400">{planErrors.totalAmount.message}</span>}
               </label>
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-gray-600">{t('forms.installmentCount')}</span>
-                <input type="number" min="1" {...registerPlan('installmentCount')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm" />
+                <input type="number" min="1" {...registerPlan('installmentCount')} className={futurosUi.input} />
                 {planErrors.installmentCount && <span className="text-xs text-red-400">{planErrors.installmentCount.message}</span>}
               </label>
               <label className="flex flex-col gap-1">
@@ -3440,18 +3453,18 @@ function FuturosPageContent() {
                   <CalendarDays size={14} />
                   {t('forms.firstDueDate')}
                 </span>
-                <input type="date" {...registerPlan('firstDueDate')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm" />
+                <input type="date" {...registerPlan('firstDueDate')} className={futurosUi.input} />
                 {planErrors.firstDueDate && <span className="text-xs text-red-400">{planErrors.firstDueDate.message}</span>}
               </label>
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-gray-600">{t('forms.intervalMonths')}</span>
-                <input type="number" min="1" {...registerPlan('intervalMonths')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm" />
+                <input type="number" min="1" {...registerPlan('intervalMonths')} className={futurosUi.input} />
                 {planErrors.intervalMonths && <span className="text-xs text-red-400">{planErrors.intervalMonths.message}</span>}
               </label>
               {planModalMode === 'edit' && (
                 <label className="flex flex-col gap-1">
                   <span className="text-xs text-gray-600">{t('forms.planStatus')}</span>
-                  <select {...registerPlan('status')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm">
+                  <select {...registerPlan('status')} className={futurosUi.select}>
                     {planStatusOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                   </select>
                 </label>
@@ -3464,30 +3477,30 @@ function FuturosPageContent() {
               )}
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-gray-600">{t('forms.categoryOptional')}</span>
-                <select {...registerPlan('categoryId')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm">
+                <select {...registerPlan('categoryId')} className={futurosUi.select}>
                   <option value="">{t('forms.noCategory')}</option>
                   {(categoriesQuery.data ?? []).map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                 </select>
               </label>
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-gray-600">{t('forms.cardOptional')}</span>
-                <select {...registerPlan('cardId')} disabled={watchedPaymentType !== 'CREDIT_CARD'} className="h-10 rounded-lg border border-gray-200 px-3 text-sm disabled:bg-gray-100">
+                <select {...registerPlan('cardId')} disabled={watchedPaymentType !== 'CREDIT_CARD'} className={`${futurosUi.select} disabled:bg-gray-100`}>
                   <option value="">{t('forms.noCard')}</option>
                   {(cardQuery.data ?? []).map((card) => <option key={card.id} value={card.id}>{card.name}</option>)}
                 </select>
               </label>
               <label className="flex flex-col gap-1 md:col-span-2">
                 <span className="text-xs text-gray-600">{t('forms.notesOptional')}</span>
-                <textarea {...registerPlan('notes')} rows={3} className="rounded-lg border border-gray-200 px-3 py-2 text-sm" />
+                <textarea {...registerPlan('notes')} rows={3} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15" />
               </label>
               <div className="md:col-span-2 rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-sm">
                 {t('forms.approxInstallmentValue')}: <strong>{formatBRL(approximateInstallmentValue)}</strong>
               </div>
-              <div className="md:col-span-2 flex justify-end gap-2 pt-2">
-                <button type="button" onClick={closePlanModal} className="h-10 rounded-full border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50">
+              <div className={`${futurosUi.modalFooter} flex flex-col-reverse gap-2 sm:flex-row sm:justify-end`}>
+                <button type="button" onClick={closePlanModal} className={futurosUi.btnOutline}>
                   {t('buttons.cancel')}
                 </button>
-                <button type="submit" disabled={isSavingPlan} className="h-10 rounded-full bg-primary px-4 text-sm font-semibold text-white hover:bg-secondary disabled:opacity-60">
+                <button type="submit" disabled={isSavingPlan} className={`${futurosUi.btnPrimary} disabled:opacity-60`}>
                   {isSavingPlan ? t('buttons.saving') : planModalMode === 'edit' ? t('buttons.saveChanges') : t('buttons.createFuture')}
                 </button>
               </div>
@@ -3498,14 +3511,14 @@ function FuturosPageContent() {
 
       {/* Settle */}
       <Dialog open={settleModalOpen} onClose={closeSettleModal} className="relative z-50">
-        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
-        <div className="fixed inset-0 flex items-center justify-center p-4">
-          <DialogPanel className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <div className="flex items-center justify-between mb-4">
+        <div className={futurosUi.modalBackdrop} aria-hidden="true" />
+        <div className={futurosUi.modalShell}>
+          <DialogPanel className={`${futurosUi.modalPanel} sm:max-w-md`}>
+            <div className={futurosUi.modalHeader}>
               <DialogTitle className="text-lg font-semibold text-gray-900">{t('modals.settle.title')}</DialogTitle>
-              <button type="button" onClick={closeSettleModal} className="text-gray-500 hover:text-gray-700"><X size={18} /></button>
+              <button type="button" onClick={closeSettleModal} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100" aria-label="Fechar"><X size={18} /></button>
             </div>
-            <form onSubmit={handleSubmitSettle(onSettle)} className="space-y-4">
+            <form onSubmit={handleSubmitSettle(onSettle)} className={`${futurosUi.modalBody} space-y-4 p-4 sm:p-6`}>
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
                 <p className="font-medium text-slate-700">{selectedInstallment?.description}</p>
                 <p className="text-slate-600 mt-1">
@@ -3518,19 +3531,19 @@ function FuturosPageContent() {
               </div>
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-gray-600">{t('forms.amountPaidOptional')}</span>
-                <input type="text" placeholder={t('forms.amountPaidPlaceholder')} {...registerSettle('amount')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm" />
+                <input type="text" placeholder={t('forms.amountPaidPlaceholder')} {...registerSettle('amount')} className={futurosUi.input} />
                 {settleErrors.amount && <span className="text-xs text-red-400">{settleErrors.amount.message as string}</span>}
               </label>
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-gray-600">{t('forms.paymentDateOptional')}</span>
-                <input type="date" {...registerSettle('paidAt')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm" />
+                <input type="date" {...registerSettle('paidAt')} className={futurosUi.input} />
                 {settleErrors.paidAt && <span className="text-xs text-red-400">{settleErrors.paidAt.message as string}</span>}
               </label>
-              <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={closeSettleModal} className="h-10 rounded-full border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50">
+              <div className={`${futurosUi.modalFooter} flex flex-col-reverse gap-2 sm:flex-row sm:justify-end`}>
+                <button type="button" onClick={closeSettleModal} className={futurosUi.btnOutline}>
                   {t('buttons.cancel')}
                 </button>
-                <button type="submit" disabled={settleInstallmentMutation.isPending} className="h-10 rounded-full bg-primary px-4 text-sm font-semibold text-white hover:bg-secondary disabled:opacity-60">
+                <button type="submit" disabled={settleInstallmentMutation.isPending} className={`${futurosUi.btnPrimary} disabled:opacity-60`}>
                   {settleInstallmentMutation.isPending ? t('buttons.saving') : t('buttons.confirmSettle')}
                 </button>
               </div>
@@ -3541,14 +3554,14 @@ function FuturosPageContent() {
 
       {/* Edit installment */}
       <Dialog open={installmentEditModalOpen} onClose={closeInstallmentEditModal} className="relative z-50">
-        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
-        <div className="fixed inset-0 flex items-center justify-center p-4">
-          <DialogPanel className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <div className="flex items-center justify-between mb-4">
+        <div className={futurosUi.modalBackdrop} aria-hidden="true" />
+        <div className={futurosUi.modalShell}>
+          <DialogPanel className={`${futurosUi.modalPanel} sm:max-w-md`}>
+            <div className={futurosUi.modalHeader}>
               <DialogTitle className="text-lg font-semibold text-gray-900">{t('modals.installmentEdit.title')}</DialogTitle>
-              <button type="button" onClick={closeInstallmentEditModal} className="text-gray-500 hover:text-gray-700"><X size={18} /></button>
+              <button type="button" onClick={closeInstallmentEditModal} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100" aria-label="Fechar"><X size={18} /></button>
             </div>
-            <form onSubmit={handleSubmitInstallmentEdit(onSaveInstallment)} className="space-y-4">
+            <form onSubmit={handleSubmitInstallmentEdit(onSaveInstallment)} className={`${futurosUi.modalBody} space-y-4 p-4 sm:p-6`}>
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
                 <p className="font-medium text-slate-700">{editingInstallment?.description}</p>
                 <p className="text-slate-600 mt-1">
@@ -3561,17 +3574,17 @@ function FuturosPageContent() {
               </div>
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-gray-600">{t('forms.value')}</span>
-                <input type="number" step="0.01" min="0" {...registerInstallmentEdit('amount')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm" />
+                <input type="number" step="0.01" min="0" {...registerInstallmentEdit('amount')} className={futurosUi.input} />
                 {installmentEditErrors.amount && <span className="text-xs text-red-400">{installmentEditErrors.amount.message}</span>}
               </label>
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-gray-600">{t('forms.dueDate')}</span>
-                <input type="date" {...registerInstallmentEdit('dueDate')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm" />
+                <input type="date" {...registerInstallmentEdit('dueDate')} className={futurosUi.input} />
                 {installmentEditErrors.dueDate && <span className="text-xs text-red-400">{installmentEditErrors.dueDate.message}</span>}
               </label>
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-gray-600">{t('forms.status')}</span>
-                <select {...registerInstallmentEdit('status')} className="h-10 rounded-lg border border-gray-200 px-3 text-sm">
+                <select {...registerInstallmentEdit('status')} className={futurosUi.select}>
                   {installmentEditableStatusOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
                 {installmentEditErrors.status && <span className="text-xs text-red-400">{installmentEditErrors.status.message}</span>}
@@ -3580,11 +3593,11 @@ function FuturosPageContent() {
                 <input type="checkbox" {...registerInstallmentEdit('recalculateRemaining')} className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40" />
                 {t('forms.recalculateNextInstallments')}
               </label>
-              <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={closeInstallmentEditModal} className="h-10 rounded-full border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50">
+              <div className={`${futurosUi.modalFooter} flex flex-col-reverse gap-2 sm:flex-row sm:justify-end`}>
+                <button type="button" onClick={closeInstallmentEditModal} className={futurosUi.btnOutline}>
                   {t('buttons.cancel')}
                 </button>
-                <button type="submit" disabled={updateInstallmentMutation.isPending} className="h-10 rounded-full bg-primary px-4 text-sm font-semibold text-white hover:bg-secondary disabled:opacity-60">
+                <button type="submit" disabled={updateInstallmentMutation.isPending} className={`${futurosUi.btnPrimary} disabled:opacity-60`}>
                   {updateInstallmentMutation.isPending ? t('buttons.saving') : t('buttons.saveInstallment')}
                 </button>
               </div>
