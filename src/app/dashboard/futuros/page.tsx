@@ -2362,6 +2362,8 @@ function FuturosPageContent() {
   }
 
   const confirmPaySelectedStatement = async () => {
+    if (payStatementMutation.isPending) return
+
     const statementId = selectedInvoiceGroup?.statement?.id
     if (!statementId) return
 
