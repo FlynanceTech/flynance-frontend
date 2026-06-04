@@ -153,7 +153,7 @@ export default function CoupleInviteAcceptPage() {
 
     const digits = whatsappPhone.replace(/\D/g, '')
     if (digits.length < 10) {
-      setFlowError('Informe um WhatsApp valido para continuar.')
+      setFlowError('Informe um WhatsApp válido para continuar.')
       return
     }
 
@@ -163,7 +163,7 @@ export default function CoupleInviteAcceptPage() {
       const result = await checkHouseInviteIdentity({ token, whatsappPhone })
       setStep(result.exists ? 'existing-account' : 'signup')
     } catch (error) {
-      setFlowError(error instanceof Error ? error.message : 'Nao foi possivel verificar o WhatsApp.')
+      setFlowError(error instanceof Error ? error.message : 'Não foi possível verificar o WhatsApp.')
     } finally {
       setCheckingIdentity(false)
     }
@@ -174,7 +174,7 @@ export default function CoupleInviteAcceptPage() {
     if (!isValidToken || creatingAccount) return
 
     if (!acceptedTerms) {
-      setFlowError('Voce precisa aceitar os termos para criar a conta.')
+      setFlowError('Você precisa aceitar os termos para criar a conta.')
       return
     }
 
@@ -185,7 +185,7 @@ export default function CoupleInviteAcceptPage() {
       setStep('signup-success')
       persistLoginIdentifier()
     } catch (error) {
-      setFlowError(error instanceof Error ? error.message : 'Nao foi possivel criar a conta pelo convite.')
+      setFlowError(error instanceof Error ? error.message : 'Não foi possível criar a conta pelo convite.')
     } finally {
       setCreatingAccount(false)
     }
@@ -274,7 +274,7 @@ export default function CoupleInviteAcceptPage() {
         {status === 'unauthenticated' && step === 'existing-account' && (
           <div className="mt-5 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-800">
             <p className="font-semibold">Encontramos uma conta com esse WhatsApp.</p>
-            <p className="mt-1">Entre com seu codigo de acesso para aceitar o convite da conta casal.</p>
+            <p className="mt-1">Entre com seu código de acesso para aceitar o convite da conta casal.</p>
             <button
               type="button"
               onClick={() => goToLogin(nextToLogin)}
@@ -288,7 +288,7 @@ export default function CoupleInviteAcceptPage() {
         {status === 'unauthenticated' && step === 'signup' && (
           <form onSubmit={handleSignup} className="mt-5 space-y-3">
             <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-              Nao encontramos uma conta com esse WhatsApp. Crie sua conta para entrar na conta casal.
+              Não encontramos uma conta com esse WhatsApp. Crie sua conta para entrar na conta casal.
             </div>
             <input
               type="text"
@@ -329,7 +329,7 @@ export default function CoupleInviteAcceptPage() {
                 </Link>{' '}
                 e a{' '}
                 <Link href="/privacidade" target="_blank" rel="noreferrer" className="font-semibold text-primary underline underline-offset-2">
-                  politica de privacidade
+                  política de privacidade
                 </Link>
                 .
               </span>
@@ -347,13 +347,13 @@ export default function CoupleInviteAcceptPage() {
         {status === 'unauthenticated' && step === 'signup-success' && (
           <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
             <p className="font-semibold">Sua conta foi criada e vinculada ao convite.</p>
-            <p className="mt-1">Agora entre com o codigo enviado para seu WhatsApp.</p>
+            <p className="mt-1">Agora entre com o código enviado para seu WhatsApp.</p>
             <button
               type="button"
               onClick={() => goToLogin(nextToLoginAfterSignup)}
               className="mt-4 inline-flex h-10 items-center justify-center rounded-xl bg-[#0065A4] px-4 text-sm font-semibold text-white hover:bg-[#00558A]"
             >
-              Entrar por codigo
+              Entrar por código
             </button>
           </div>
         )}
