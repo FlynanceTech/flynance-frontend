@@ -55,6 +55,7 @@ type FormState = {
   notificationEmail: boolean
   notificationWhatsapp: boolean
   notificationPush: boolean
+  dailyNoTransactionNudgeEnabled: boolean
   loginPreference: LoginPreference
 }
 
@@ -68,6 +69,7 @@ function toFormState(preferences: UserPreferences): FormState {
     notificationEmail: preferences.notificationEmail,
     notificationWhatsapp: preferences.notificationWhatsapp,
     notificationPush: preferences.notificationPush,
+    dailyNoTransactionNudgeEnabled: preferences.dailyNoTransactionNudgeEnabled,
     loginPreference: preferences.loginPreference,
   }
 }
@@ -266,6 +268,7 @@ export default function UserPreferencesCard() {
       notificationEmail: form.notificationEmail,
       notificationWhatsapp: form.notificationWhatsapp,
       notificationPush: form.notificationPush,
+      dailyNoTransactionNudgeEnabled: form.dailyNoTransactionNudgeEnabled,
       loginPreference: form.loginPreference,
     }
 
@@ -539,6 +542,24 @@ export default function UserPreferencesCard() {
               />
             </label>
           </div>
+
+          <label className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm text-foreground">
+            <span className="flex flex-col">
+              <span className="font-medium">{t('notifications.dailyReminder')}</span>
+              <span className="mt-0.5 text-xs text-muted-foreground">
+                {t('notifications.dailyReminderHint')}
+              </span>
+            </span>
+            <Switch
+              checked={form.dailyNoTransactionNudgeEnabled}
+              onCheckedChange={(checked) =>
+                setForm((prev) =>
+                  prev ? { ...prev, dailyNoTransactionNudgeEnabled: checked } : prev
+                )
+              }
+              disabled={isBusy}
+            />
+          </label>
 
           <div className="mt-3 rounded-lg border border-border/80 bg-muted/20 px-3 py-3">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

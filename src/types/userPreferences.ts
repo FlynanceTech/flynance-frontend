@@ -15,6 +15,7 @@ export type UserPreferences = {
   notificationEmail: boolean
   notificationWhatsapp: boolean
   notificationPush: boolean
+  dailyNoTransactionNudgeEnabled: boolean
   loginPreference: LoginPreference
   createdAt: string
   updatedAt: string
@@ -34,6 +35,7 @@ export type UserPreferencesPatch = Partial<
     | 'notificationEmail'
     | 'notificationWhatsapp'
     | 'notificationPush'
+    | 'dailyNoTransactionNudgeEnabled'
     | 'loginPreference'
   >
 >
