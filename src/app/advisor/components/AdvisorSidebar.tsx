@@ -3,7 +3,7 @@
 import React from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   Building2,
   FileText,
@@ -57,7 +57,6 @@ type AdvisorSidebarProps = {
 
 export default function AdvisorSidebar({ collapsed, onCollapsedChange }: AdvisorSidebarProps) {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
   const router = useRouter()
   const { theme, saveTheme } = useUserTheme()
   const session = useUserSession((s) => s.user)
@@ -70,14 +69,10 @@ export default function AdvisorSidebar({ collapsed, onCollapsedChange }: Advisor
   const visibleItems = isMaster ? NAV_ITEMS_ORG : NAV_ITEMS.filter((item) => !item.masterOnly)
 
   function isActive(item: NavItem) {
-    const [basePath, query] = item.path.split('?')
-    if (query) {
-      const sectionParam = new URLSearchParams(query).get('section')
-      return pathname === basePath && searchParams.get('section') === sectionParam
-    }
+    const [basePath] = item.path.split('?')
     // exact match for /advisor and /advisor/organization/dashboard to avoid false positives
     if (basePath === '/advisor' || basePath === '/advisor/organization/dashboard') {
-      return pathname === basePath && !searchParams.get('section')
+      return pathname === basePath
     }
     if (basePath === '/advisor/organization') {
       return pathname === basePath || pathname.startsWith(`${basePath}/advisors/`)

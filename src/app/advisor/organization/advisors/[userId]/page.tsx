@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Loader2, Mail, Phone, Users } from 'lucide-react'
 import { toast } from 'sonner'
@@ -20,8 +20,18 @@ function formatDate(dateStr: string | null) {
 export default function OrgAdvisorCarteiraPage() {
   return (
     <AdvisorGuard>
-      <OrgAdvisorCarteiraInner />
+      <Suspense fallback={<OrgAdvisorCarteiraFallback />}>
+        <OrgAdvisorCarteiraInner />
+      </Suspense>
     </AdvisorGuard>
+  )
+}
+
+function OrgAdvisorCarteiraFallback() {
+  return (
+    <div className="flex h-64 items-center justify-center">
+      <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+    </div>
   )
 }
 

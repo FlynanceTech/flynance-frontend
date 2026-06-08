@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Loader2, ShieldAlert, TrendingUp } from 'lucide-react'
 import { toast } from 'sonner'
@@ -126,8 +126,18 @@ function ClassProgressCard({ item, categories }: { item: ClassProgressItem; cate
 export default function ProgressoPage() {
   return (
     <AdvisorGuard>
-      <ProgressoInner />
+      <Suspense fallback={<ProgressoFallback />}>
+        <ProgressoInner />
+      </Suspense>
     </AdvisorGuard>
+  )
+}
+
+function ProgressoFallback() {
+  return (
+    <div className="flex h-64 items-center justify-center">
+      <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+    </div>
   )
 }
 

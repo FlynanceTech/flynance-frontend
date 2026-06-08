@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { Suspense, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
@@ -84,7 +84,19 @@ export default function Page() {
     return <FeatureUnavailable />
   }
 
-  return <EducationLessonPageContent />
+  return (
+    <Suspense fallback={<EducationLessonFallback />}>
+      <EducationLessonPageContent />
+    </Suspense>
+  )
+}
+
+function EducationLessonFallback() {
+  return (
+    <div className="h-[95vh] w-full grid place-items-center">
+      <p className="text-sm text-muted-foreground">Carregando...</p>
+    </div>
+  )
 }
 
 function EducationLessonPageContent() {
