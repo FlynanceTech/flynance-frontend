@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Toaster } from 'react-hot-toast'
 import { useTranslations } from 'next-intl'
@@ -28,7 +28,7 @@ function formatWhatsApp(value: string) {
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
 }
 
-export default function CoupleInviteAcceptPage() {
+function CoupleInviteAcceptContent() {
   const t = useTranslations('coupleInvitePage')
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -390,5 +390,13 @@ export default function CoupleInviteAcceptPage() {
       </section>
       <Toaster />
     </main>
+  )
+}
+
+export default function CoupleInviteAcceptPage() {
+  return (
+    <Suspense fallback={null}>
+      <CoupleInviteAcceptContent />
+    </Suspense>
   )
 }

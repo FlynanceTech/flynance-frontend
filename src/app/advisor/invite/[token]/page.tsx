@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Loader2, LogOut, UserCheck } from 'lucide-react'
 import { acceptAdvisorInvite } from '@/services/advisor'
@@ -13,7 +13,7 @@ function isEmailMismatch(msg: string) {
   return /email.*match|email.*diferente|email.*incorreto|wrong.*email/i.test(msg)
 }
 
-export default function AdvisorInviteAcceptPage() {
+function AdvisorInviteAcceptContent() {
   const t = useTranslations('advisorInvitePage')
   const router = useRouter()
   const params = useParams<{ token: string }>()
@@ -185,5 +185,13 @@ export default function AdvisorInviteAcceptPage() {
         </div>
       </section>
     </main>
+  )
+}
+
+export default function AdvisorInviteAcceptPage() {
+  return (
+    <Suspense fallback={null}>
+      <AdvisorInviteAcceptContent />
+    </Suspense>
   )
 }

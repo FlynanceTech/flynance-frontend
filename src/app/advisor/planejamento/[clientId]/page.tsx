@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { Suspense, useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   ArrowLeft,
@@ -522,8 +522,18 @@ function CategoryCard({
 export default function PlanejamentoOrcamentarioPage() {
   return (
     <AdvisorGuard>
-      <PlanejamentoInner />
+      <Suspense fallback={<PlanejamentoFallback />}>
+        <PlanejamentoInner />
+      </Suspense>
     </AdvisorGuard>
+  )
+}
+
+function PlanejamentoFallback() {
+  return (
+    <div className="flex h-64 items-center justify-center">
+      <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+    </div>
   )
 }
 
