@@ -43,7 +43,11 @@ function AdvisorLoginContent() {
 
   const rawNext = searchParams.get('next')
   const defaultNext = '/advisor'
-  const nextRoute = rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : defaultNext
+  const isAdvisorNextRoute = rawNext === '/advisor' || rawNext?.startsWith('/advisor/')
+  const nextRoute =
+    rawNext && isAdvisorNextRoute && !rawNext.startsWith('/advisor/login')
+      ? rawNext
+      : defaultNext
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -61,12 +65,16 @@ function AdvisorLoginContent() {
     setMethod(m)
     setIdentifier('')
     setError('')
-    typeof window !== 'undefined' && window.sessionStorage.setItem(STORAGE_METHOD_KEY, m)
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.setItem(STORAGE_METHOD_KEY, m)
+    }
   }
 
   function handleIdentifierChange(val: string) {
     setIdentifier(val)
-    typeof window !== 'undefined' && window.sessionStorage.setItem(STORAGE_IDENTIFIER_KEY, val)
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.setItem(STORAGE_IDENTIFIER_KEY, val)
+    }
   }
 
   async function handleSendCode(e: React.FormEvent) {

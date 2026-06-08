@@ -25,7 +25,6 @@ import { WhatsappIcon } from '@/components/icon/whatsapp'
 import { getErrorMessage } from '@/lib/getErrorMessage'
 import clsx from 'clsx'
 import { useUserSession } from '@/stores/useUserSession'
-import { canAccessAdvisorRole, getAdvisorHomePath } from '@/utils/roles'
 
 type LoginMethod = 'email' | 'whatsapp'
 
@@ -153,14 +152,8 @@ function LoginContent() {
         phone: sessionUser.phone,
       })
 
-      // Redirect based on role: advisors go to advisory, not personal dashboard
-      let destination = nextRoute
-      if (canAccessAdvisorRole(sessionUser.role) && nextRoute === '/dashboard') {
-        destination = getAdvisorHomePath(sessionUser.role)
-      }
-
       startTransition(() => {
-        router.push(destination)
+        router.push(nextRoute)
       })
     } catch (err: unknown) {
       setError(getErrorMessage(err) || t('errors.invalidOrExpiredCode'))
