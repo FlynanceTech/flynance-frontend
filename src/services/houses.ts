@@ -496,6 +496,69 @@ export async function acceptHouseInvite(token: string): Promise<HouseContext | n
   }
 }
 
+export type CheckHouseInviteIdentityInput = {
+  token: string
+  whatsappPhone: string
+}
+
+export type CheckHouseInviteIdentityResponse = {
+  exists: boolean
+  identifierType: 'whatsapp'
+}
+
+export async function checkHouseInviteIdentity(
+  input: CheckHouseInviteIdentityInput
+): Promise<CheckHouseInviteIdentityResponse> {
+  const token = String(input.token ?? '').trim()
+  const whatsappPhone = String(input.whatsappPhone ?? '').trim()
+  if (token.length < 6) throw new Error('Token de convite invalido.')
+  if (whatsappPhone.length < 10) throw new Error('Informe um WhatsApp valido.')
+
+  try {
+    const response = await api.post('/houses/invites/check-identity', {
+      token,
+      whatsappPhone,
+    })
+    return {
+      exists: Boolean(response.data?.exists),
+      identifierType: 'whatsapp',
+    }
+  } catch (error: unknown) {
+    throw new Error(toHouseErrorMessage(error, 'Erro ao verificar o WhatsApp do convite.'))
+  }
+}
+
+export type SignupHouseInviteInput = {
+  token: string
+  name: string
+  email: string
+  whatsappPhone: string
+}
+
+export async function signupHouseInvite(input: SignupHouseInviteInput): Promise<{ created: boolean }> {
+  const token = String(input.token ?? '').trim()
+  const name = String(input.name ?? '').trim()
+  const email = String(input.email ?? '').trim().toLowerCase()
+  const whatsappPhone = String(input.whatsappPhone ?? '').trim()
+
+  if (token.length < 6) throw new Error('Token de convite invalido.')
+  if (name.length < 2) throw new Error('Informe seu nome.')
+  if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error('Informe um e-mail valido.')
+  if (whatsappPhone.length < 10) throw new Error('Informe um WhatsApp valido.')
+
+  try {
+    const response = await api.post('/houses/invites/signup', {
+      token,
+      name,
+      email,
+      whatsappPhone,
+    })
+    return { created: Boolean(response.data?.created) }
+  } catch (error: unknown) {
+    throw new Error(toHouseErrorMessage(error, 'Erro ao criar a conta pelo convite.'))
+  }
+}
+
 export async function removeHousePartner(): Promise<HouseContext | null> {
   try {
     const response = await api.post('/houses/me/partner/remove', {})

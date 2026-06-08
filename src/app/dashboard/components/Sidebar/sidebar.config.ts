@@ -140,8 +140,6 @@ export function buildSidebarSections(t: SidebarTranslations): SidebarSectionConf
           label: t.future,
           icon: Clock3,
           path: '/dashboard/futuros',
-          disabled: true,
-          disabledReason: 'Em revisao',
         },
         {
           id: 'reports',

@@ -119,6 +119,7 @@ export function useCardMutations(cardId?: string, tz?: string) {
         payCreditCardStatement(statementId, data),
         onSuccess: () => {
         qc.invalidateQueries({ queryKey: ['cards'] })
+        qc.invalidateQueries({ queryKey: ['cards', 'statements'] })
         qc.invalidateQueries({ queryKey: ['future-forecast'] })
         qc.invalidateQueries({ queryKey: ['future-installments'] })
         qc.invalidateQueries({ queryKey: ['future-plans'] })

@@ -2,10 +2,12 @@
 
 import clsx from 'clsx'
 import type { LucideIcon } from 'lucide-react'
+import Link from 'next/link'
 
 export interface SidebarItemProps {
   label: string
   icon: LucideIcon
+  href?: string
   active?: boolean
   disabled?: boolean
   disabledReason?: string
@@ -15,6 +17,7 @@ export interface SidebarItemProps {
 export default function SidebarItem({
   label,
   icon: Icon,
+  href,
   active = false,
   disabled = false,
   disabledReason,
@@ -60,4 +63,3 @@ export default function SidebarItem({
     </button>
   )
 }
-

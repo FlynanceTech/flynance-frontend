@@ -70,7 +70,7 @@ function DashboardShell({
 
   return (
     <main
-      className={`h-screen min-h-0 w-full gap-8 overflow-x-hidden bg-[hsl(var(--background))] text-[hsl(var(--foreground))] transition-colors lg:flex lg:py-8 lg:pr-8 ${
+      className={`h-screen min-h-0 w-full gap-4 overflow-x-hidden bg-[hsl(var(--background))] text-[hsl(var(--foreground))] transition-colors lg:flex lg:py-8 lg:pr-8 ${
         sidebarCollapsed ? DESKTOP_SIDEBAR_COLLAPSED_OFFSET_CLASS : DESKTOP_SIDEBAR_EXPANDED_OFFSET_CLASS
       }`}
     >

@@ -183,40 +183,64 @@ export function CouplePlanUpgradeCard({
           </div>
         ) : (
           <>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="space-y-3">
-                  <p className="text-base font-semibold leading-5 text-[#333C4D]">{plan.name}</p>
-                  <div className="flex flex-wrap items-end gap-2">
-                    <p className="text-3xl font-semibold leading-none text-secondary">
-                      {formatDisplayPlanPrice(plan, locale)}
-                    </p>
-                    {isAnnualPlan && (
-                      <span className="pb-0.5 text-sm font-semibold leading-5 text-secondary">
-                        {t('upgradeCard.annualInstallmentSuffix')}
-                      </span>
-                    )}
-                    <Badge
-                      variant="outline"
-                      className="border-[#D7EAF5] bg-white text-xs font-medium text-[#2F6E91]"
-                    >
-                      {planPeriodKey ? t(planPeriodKey) : planPeriodFallback}
-                    </Badge>
-                  </div>
-                </div>
+            <div className="relative rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+              {hasMultiplePlans && (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={showPreviousPlan}
+                    aria-label={t('upgradeCard.carousel.previous')}
+                    className="absolute left-3 top-1/2 z-10 h-9 w-9 -translate-y-1/2 rounded-full bg-white/95 shadow-sm"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={showNextPlan}
+                    aria-label={t('upgradeCard.carousel.next')}
+                    className="absolute right-3 top-1/2 z-10 h-9 w-9 -translate-y-1/2 rounded-full bg-white/95 shadow-sm"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
 
-                {isCurrentCouplePlan && (
-                  <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
-                    {t('upgradeCard.activeBadge')}
-                  </Badge>
-                )}
+              <div className={hasMultiplePlans ? 'px-10 sm:px-12' : ''}>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="space-y-3">
+                    <p className="text-base font-semibold leading-5 text-[#333C4D]">{plan.name}</p>
+                    <div className="flex flex-wrap items-end gap-2">
+                      <p className="text-3xl font-semibold leading-none text-secondary">
+                        {formatDisplayPlanPrice(plan, locale)}
+                      </p>
+                      {isAnnualPlan && (
+                        <span className="pb-0.5 text-sm font-semibold leading-5 text-secondary">
+                          {t('upgradeCard.annualInstallmentSuffix')}
+                        </span>
+                      )}
+                      <Badge
+                        variant="outline"
+                        className="border-[#D7EAF5] bg-white text-xs font-medium text-[#2F6E91]"
+                      >
+                        {planPeriodKey ? t(planPeriodKey) : planPeriodFallback}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {isCurrentCouplePlan && (
+                    <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                      {t('upgradeCard.activeBadge')}
+                    </Badge>
+                  )}
+                </div>
               </div>
 
               {hasMultiplePlans && (
-                <div className="mt-4 flex items-center justify-between gap-3">
-                  <Button type="button" variant="outline" size="icon" onClick={showPreviousPlan} aria-label={t('upgradeCard.carousel.previous')}>
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
+                <div className="mt-4 flex items-center justify-center gap-3">
                   <div className="flex items-center gap-1">
                     {visiblePlans.map((item, index) => (
                       <button
@@ -231,9 +255,6 @@ export function CouplePlanUpgradeCard({
                       />
                     ))}
                   </div>
-                  <Button type="button" variant="outline" size="icon" onClick={showNextPlan} aria-label={t('upgradeCard.carousel.next')}>
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
                 </div>
               )}
 
