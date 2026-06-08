@@ -1,9 +1,11 @@
 'use client'
 
 import Link from 'next/link'
+import axios from 'axios'
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Toaster } from 'react-hot-toast'
+import toast from 'react-hot-toast'
 
 import LegalDocsModal, { type LegalDocKey } from '@/components/ui/LegalDocsModal'
 import { useUserSession } from '@/stores/useUserSession'
@@ -12,6 +14,8 @@ import {
   useAdvisorGeneratedInviteByToken,
 } from '@/hooks/query/useAdvisor'
 import type { AdvisorGeneratedInvite } from '@/services/advisor'
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5555/api'
 
 function getDisplayName(invite: AdvisorGeneratedInvite | null | undefined) {
   if (!invite) return 'Cliente'
@@ -56,6 +60,14 @@ export default function AdvisorClientInviteAcceptClient() {
   const [legalOpen, setLegalOpen] = useState(false)
   const [legalDoc, setLegalDoc] = useState<LegalDocKey>('termos')
 
+  // Formulário de cadastro inline (para quem não tem conta)
+  const [signupStep, setSignupStep] = useState<'hidden' | 'form' | 'otp'>('hidden')
+  const [signupName, setSignupName] = useState('')
+  const [signupEmail, setSignupEmail] = useState('')
+  const [signupCode, setSignupCode] = useState('')
+  const [signupLoading, setSignupLoading] = useState(false)
+  const [signupError, setSignupError] = useState<string | null>(null)
+
   const invite = inviteQuery.data ?? null
   const isValidToken = token.length >= 10
   const isClientPays = invite?.paymentResponsible === 'CLIENT'
@@ -70,6 +82,48 @@ export default function AdvisorClientInviteAcceptClient() {
     qs.set('advisorInviteToken', token)
     return `/cadastro/checkout?${qs.toString()}`
   }, [invite, token])
+
+  async function handleSendCode() {
+    if (!signupName.trim() || !signupEmail.trim()) {
+      setSignupError('Preencha nome e e-mail.')
+      return
+    }
+    setSignupLoading(true)
+    setSignupError(null)
+    try {
+      await axios.post(`${API_BASE}/auth/send-code`, { email: signupEmail.trim(), register: true })
+      setSignupStep('otp')
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.response?.data?.message || 'Erro ao enviar código.'
+      setSignupError(msg)
+    } finally {
+      setSignupLoading(false)
+    }
+  }
+
+  async function handleVerifyAndCreate() {
+    if (!signupCode.trim()) {
+      setSignupError('Informe o código recebido.')
+      return
+    }
+    setSignupLoading(true)
+    setSignupError(null)
+    try {
+      await axios.post(
+        `${API_BASE}/auth/verify-code`,
+        { email: signupEmail.trim(), code: signupCode.trim(), name: signupName.trim() },
+        { withCredentials: true }
+      )
+      await fetchAccount()
+      setSignupStep('hidden')
+      toast.success('Conta criada com sucesso!')
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.response?.data?.message || 'Código inválido.'
+      setSignupError(msg)
+    } finally {
+      setSignupLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (status === 'idle') {
@@ -126,7 +180,7 @@ export default function AdvisorClientInviteAcceptClient() {
           </div>
           {invite?.paymentResponsible && (
             <span className="rounded-full border border-[#D7EAF5] bg-[#F3FAFF] px-3 py-1 text-xs font-semibold text-[#2F6E91]">
-              Paga: {invite.paymentResponsible === 'CLIENT' ? 'cliente' : 'consultor'}
+              Paga: {invite.paymentResponsible === 'CLIENT' ? 'cliente' : invite.paymentResponsible === 'ORG' ? 'organização' : 'consultor'}
             </span>
           )}
         </div>
@@ -226,23 +280,125 @@ export default function AdvisorClientInviteAcceptClient() {
           </div>
         )}
 
-        <div className="mt-6 flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handlePrimaryAction}
-            disabled={!isValidToken || primaryLoading || blocked || inviteQuery.isLoading}
-            className="h-10 rounded-xl bg-[#4F98C2] px-4 text-sm font-semibold text-white hover:bg-[#3f86b0] disabled:opacity-60"
-          >
-            {primaryLoading ? 'Confirmando...' : primaryLabel}
-          </button>
+        {/* Formulário inline de cadastro (advisor/org paga, usuário sem conta) */}
+        {!isClientPays && status === 'unauthenticated' && signupStep !== 'hidden' && (
+          <div className="mt-4 space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-sm font-semibold text-slate-700">
+              {signupStep === 'form' ? 'Crie sua conta' : 'Verifique seu e-mail'}
+            </p>
 
-          {!isClientPays && status === 'unauthenticated' && (
-            <Link
-              href={nextToLogin}
-              className="inline-flex h-10 items-center rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            {signupStep === 'form' && (
+              <>
+                <input
+                  type="text"
+                  placeholder="Seu nome completo"
+                  value={signupName}
+                  onChange={(e) => setSignupName(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#4F98C2]"
+                />
+                <input
+                  type="email"
+                  placeholder="Seu e-mail"
+                  value={signupEmail}
+                  onChange={(e) => setSignupEmail(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#4F98C2]"
+                />
+              </>
+            )}
+
+            {signupStep === 'otp' && (
+              <>
+                <p className="text-xs text-slate-500">
+                  Enviamos um código para <strong>{signupEmail}</strong>. Verifique sua caixa de entrada.
+                </p>
+                <input
+                  type="text"
+                  placeholder="Código de verificação"
+                  value={signupCode}
+                  onChange={(e) => setSignupCode(e.target.value)}
+                  maxLength={6}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#4F98C2]"
+                />
+              </>
+            )}
+
+            {signupError && (
+              <p className="text-xs text-red-600">{signupError}</p>
+            )}
+
+            <div className="flex gap-2">
+              {signupStep === 'form' && (
+                <button
+                  type="button"
+                  onClick={handleSendCode}
+                  disabled={signupLoading}
+                  className="h-9 rounded-xl bg-[#4F98C2] px-4 text-sm font-semibold text-white hover:bg-[#3f86b0] disabled:opacity-60"
+                >
+                  {signupLoading ? 'Enviando...' : 'Enviar código'}
+                </button>
+              )}
+              {signupStep === 'otp' && (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleVerifyAndCreate}
+                    disabled={signupLoading}
+                    className="h-9 rounded-xl bg-[#4F98C2] px-4 text-sm font-semibold text-white hover:bg-[#3f86b0] disabled:opacity-60"
+                  >
+                    {signupLoading ? 'Verificando...' : 'Verificar e criar conta'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSignupStep('form')}
+                    disabled={signupLoading}
+                    className="h-9 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                  >
+                    Voltar
+                  </button>
+                </>
+              )}
+              {signupStep === 'form' && (
+                <button
+                  type="button"
+                  onClick={() => setSignupStep('hidden')}
+                  className="h-9 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                >
+                  Cancelar
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="mt-6 flex flex-wrap items-center gap-2">
+          {/* Botão principal: só aparece quando autenticado OU quando é o cliente que paga (vai para checkout) */}
+          {(isClientPays || status === 'authenticated') && (
+            <button
+              type="button"
+              onClick={handlePrimaryAction}
+              disabled={!isValidToken || primaryLoading || blocked || inviteQuery.isLoading}
+              className="h-10 rounded-xl bg-[#4F98C2] px-4 text-sm font-semibold text-white hover:bg-[#3f86b0] disabled:opacity-60"
             >
-              Fazer login
-            </Link>
+              {primaryLoading ? 'Confirmando...' : primaryLabel}
+            </button>
+          )}
+
+          {!isClientPays && status === 'unauthenticated' && signupStep === 'hidden' && (
+            <>
+              <button
+                type="button"
+                onClick={() => setSignupStep('form')}
+                className="h-10 rounded-xl bg-[#4F98C2] px-4 text-sm font-semibold text-white hover:bg-[#3f86b0]"
+              >
+                Criar conta
+              </button>
+              <Link
+                href={nextToLogin}
+                className="inline-flex h-10 items-center rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Fazer login
+              </Link>
+            </>
           )}
 
           <button

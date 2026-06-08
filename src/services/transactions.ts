@@ -270,6 +270,15 @@ export type ImportConfirmPayload<TTransaction = Transaction> = {
     detectedCardName?: string | null
     fileName?: string
     formatId?: string
+    idempotencyKey?: string
+    itemFingerprints?: string[]
+    ignoredItems?: Array<{
+      description?: string | null
+      date?: string | null
+      value?: number | null
+      reason: 'statement_payment_adjustment'
+      message?: string
+    }>
     createCharges: true
     createEffectiveTransaction: false
   }

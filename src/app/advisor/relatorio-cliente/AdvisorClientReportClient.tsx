@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -16,6 +16,7 @@ import {
   Download,
   FileText,
   LayoutDashboard,
+  Loader2,
   MessageCircle,
   PieChart,
   Send,
@@ -29,13 +30,6 @@ import {
 } from 'lucide-react'
 
 import AdvisorGuard from '../components/AdvisorGuard'
-import Sidebar from '../../dashboard/components/Sidebar'
-import BottomMenu from '../../dashboard/components/buttonMenu'
-import AdvisorActingPill from '../../dashboard/components/AdvisorActingPill'
-import {
-  DESKTOP_SIDEBAR_COLLAPSED_OFFSET_CLASS,
-  DESKTOP_SIDEBAR_EXPANDED_OFFSET_CLASS,
-} from '../../dashboard/components/Sidebar/sidebar.config'
 import { useAdvisorClients } from '@/hooks/query/useAdvisor'
 import type { AdvisorClient } from '@/services/advisor'
 import { useAdvisorActing } from '@/stores/useAdvisorActing'
@@ -289,7 +283,6 @@ export default function AdvisorClientReportClient() {
   const searchParams = useSearchParams()
   const locale = useLocale()
   const setActingClient = useAdvisorActing((state) => state.setActingClient)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [period, setPeriod] = useState<PeriodKey>('6M')
   const [viewMode, setViewMode] = useState<ViewMode>('CONSOLIDATED')
   const [selectedQuestion, setSelectedQuestion] = useState(flyQuestions[0])
@@ -300,11 +293,8 @@ export default function AdvisorClientReportClient() {
   const clientsQuery = useAdvisorClients({ page: 1, limit: 100 })
   const clients = useMemo(() => clientsQuery.data?.clients ?? [], [clientsQuery.data?.clients])
   const selectedClient = useMemo(() => {
-    if (clients.length === 0) return null
-    return (
-      clients.find((client) => client.clientUserId === selectedClientId || client.id === selectedClientId) ||
-      clients[0]
-    )
+    if (!selectedClientId || clients.length === 0) return null
+    return clients.find((client) => client.clientUserId === selectedClientId || client.id === selectedClientId) ?? null
   }, [clients, selectedClientId])
 
   const report = useMemo(() => {
@@ -352,21 +342,89 @@ export default function AdvisorClientReportClient() {
         ? 'O cliente apresenta sinais de atenção em crédito, recorrências ou frequência de lançamentos.'
         : 'O comprometimento financeiro está elevado e exige uma intervenção consultiva próxima.'
 
+  /* ── Tela de seleção de cliente ── */
+  if (!selectedClientId || !selectedClient) {
+    return (
+      <AdvisorGuard>
+        <section className="w-full px-4 pb-28 pt-6 md:px-6 lg:px-8 lg:pt-8 lg:pb-8">
+          <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-5">
+            <header className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <button
+                type="button"
+                onClick={() => router.push('/advisor')}
+                className="mb-3 inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Voltar ao Advisor
+              </button>
+              <p className="text-xs font-semibold uppercase text-[#2F6E91]">Relatórios</p>
+              <h1 className="mt-1 text-2xl font-semibold text-[#253140]">Selecione um cliente</h1>
+              <p className="mt-1 text-sm text-slate-600">
+                Escolha um cliente para visualizar o relatório consultivo completo.
+              </p>
+            </header>
+
+            {clientsQuery.isLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="h-6 w-6 animate-spin text-[#2F6E91]" />
+              </div>
+            ) : clients.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
+                <UserRound className="mx-auto h-10 w-10 text-slate-400" />
+                <p className="mt-3 text-sm font-medium text-slate-600">Nenhum cliente vinculado ainda.</p>
+                <p className="mt-1 text-xs text-slate-400">Gere convites na tela de Clientes para começar.</p>
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {clients.map((client) => {
+                  const initials = (client.name || 'C')
+                    .split(/\s+/)
+                    .map((w: string) => w[0])
+                    .slice(0, 2)
+                    .join('')
+                    .toUpperCase()
+                  const score = clamp(hashText(client.clientUserId) % 40 + 45, 0, 100)
+                  const tone = score >= 70 ? 'emerald' : score >= 50 ? 'amber' : 'rose'
+                  const toneClasses = {
+                    emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                    amber: 'bg-amber-50 text-amber-700 border-amber-200',
+                    rose: 'bg-rose-50 text-rose-700 border-rose-200',
+                  }[tone]
+                  const toneLabel = { emerald: 'Saudável', amber: 'Atenção', rose: 'Crítico' }[tone]
+
+                  return (
+                    <button
+                      key={client.id}
+                      type="button"
+                      onClick={() => setSelectedClientId(client.clientUserId)}
+                      className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-[#7CB8D8] hover:shadow-md"
+                    >
+                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-[#EAF4FA] text-sm font-bold text-[#2F6E91]">
+                        {initials}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-[#253140]">{client.name}</p>
+                        <p className="truncate text-xs text-slate-500">{client.email}</p>
+                        <span className={`mt-1.5 inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold ${toneClasses}`}>
+                          {toneLabel}
+                        </span>
+                      </div>
+                      <FileText className="h-4 w-4 flex-shrink-0 text-slate-400" />
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+      </AdvisorGuard>
+    )
+  }
+
   return (
     <AdvisorGuard>
-      <main className={`relative h-screen w-full gap-8 bg-[#F5F7FA] text-[#253140] transition-colors lg:flex lg:py-8 lg:pr-8 ${
-        sidebarCollapsed ? DESKTOP_SIDEBAR_COLLAPSED_OFFSET_CLASS : DESKTOP_SIDEBAR_EXPANDED_OFFSET_CLASS
-      }`}>
-        <AdvisorActingPill />
-        <aside className="hidden lg:block">
-          <Sidebar collapsed={sidebarCollapsed} onCollapsedChange={setSidebarCollapsed} />
-        </aside>
-        <aside className="flex lg:hidden">
-          <BottomMenu />
-        </aside>
-
-        <section className="w-full overflow-y-auto px-4 pb-28 pt-6 md:px-6 lg:pb-6 lg:pr-8 lg:pt-0">
-          <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-5">
+      <section className="w-full px-4 pb-28 pt-6 md:px-6 lg:px-8 lg:pt-8 lg:pb-8">
+        <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-5">
             <header className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                 <div className="min-w-0">
@@ -625,7 +683,7 @@ export default function AdvisorClientReportClient() {
                         readOnly
                         className="h-10 min-w-0 flex-1 rounded-xl bg-slate-50 px-3 text-sm text-slate-600 outline-none"
                       />
-                      <button type="button" className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-white">
+                      <button type="button" className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-primary-foreground">
                         <Send className="h-4 w-4" />
                       </button>
                     </div>
@@ -646,8 +704,7 @@ export default function AdvisorClientReportClient() {
               </>
             )}
           </div>
-        </section>
-      </main>
+      </section>
       <Toaster />
     </AdvisorGuard>
   )
@@ -937,3 +994,4 @@ function EmptyState() {
     </section>
   )
 }
+

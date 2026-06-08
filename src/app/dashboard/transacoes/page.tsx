@@ -37,6 +37,14 @@ import { formatCurrency } from '@/utils/formatter'
 import { useLocale, useTranslations } from 'next-intl'
 import { useFinancialScope } from '@/hooks/useFinancialScope'
 import type { HouseMember } from '@/types/house'
+import {
+  buildCreditCardImportItemFingerprint,
+  buildCreditCardStatementImportKey,
+  logCreditCardImportDiagnostic,
+  normalizeCreditCardStatementImportTransactions,
+  splitCreditCardStatementImportTransactions,
+  type CreditCardIgnoredImportItem,
+} from '@/utils/creditCardImportGuards'
 
 type TypeOption = { value: CategoryType; label: string }
 type AuthorOption = { value: string; label: string }
@@ -170,6 +178,20 @@ function getTransactionsFromQueryData(data: unknown): Transaction[] {
 
   const transactions = (data as { transactions?: unknown }).transactions
   return Array.isArray(transactions) ? (transactions as Transaction[]) : []
+}
+
+function getTransactionsFromImportResponse(data: unknown): Transaction[] {
+  return getTransactionsFromQueryData(data)
+}
+
+function summarizeIgnoredImportItem(item: CreditCardIgnoredImportItem) {
+  return {
+    description: item.transaction.description,
+    date: item.transaction.date,
+    value: item.transaction.value,
+    reason: item.reason,
+    message: item.message,
+  }
 }
 
 function getMetaFromQueryData(data: unknown) {
@@ -367,6 +389,7 @@ export default function TransactionsPage() {
   const [bulkCategoryCount, setBulkCategoryCount] = useState(0)
   const [previewWarnings, setPreviewWarnings] = useState<string[]>([])
   const [previewMeta, setPreviewMeta] = useState<ImportTransactionsPreviewMeta | null>(null)
+  const [ignoredImportItems, setIgnoredImportItems] = useState<CreditCardIgnoredImportItem[]>([])
   const [importStep, setImportStep] = useState<'review' | 'card' | 'uncategorized'>('review')
   const [selectedImportCardId, setSelectedImportCardId] = useState<string>('')
 
@@ -558,23 +581,42 @@ export default function TransactionsPage() {
       const list = isArrayResponse ? response : response?.transactions ?? []
       const warnings = !isArrayResponse && Array.isArray(response?.warnings) ? response.warnings : []
       const meta = (!isArrayResponse ? response?.meta ?? null : null) as ImportTransactionsPreviewMeta | null
-      const withIds = (list as Transaction[]).map((t, idx) => ({
+      const rawTransactions = list as Transaction[]
+      const isCreditCard =
+        meta?.isCreditCardStatement ||
+        Boolean(meta?.detectedCardName) ||
+        rawTransactions.some((t) => t.paymentType === 'CREDIT_CARD')
+      const guardedTransactions = isCreditCard
+        ? splitCreditCardStatementImportTransactions(rawTransactions)
+        : { importable: rawTransactions, ignored: [] }
+      const resolvedCardId = resolveDetectedCardId(meta?.detectedCardName, cardQuery.data ?? [])
+      const withIds = guardedTransactions.importable.map((t, idx) => ({
         ...t,
         id: t.id ?? `import-preview-${idx}`,
       }))
-      const resolvedCardId = resolveDetectedCardId(meta?.detectedCardName, cardQuery.data ?? [])
-      const previewHasCardId = (list as Transaction[]).some(
+      const normalizedPreviewTransactions = isCreditCard
+        ? normalizeCreditCardStatementImportTransactions(withIds, resolvedCardId)
+        : withIds
+      const previewHasCardId = normalizedPreviewTransactions.some(
         (t) => t.paymentType === 'CREDIT_CARD' && Boolean(t.cardId)
       )
-      setImportedTransactions(withIds)
+      guardedTransactions.ignored.forEach((item) => {
+        logCreditCardImportDiagnostic('credit_card_import_item_ignored_payment', {
+          description: item.transaction.description,
+          date: item.transaction.date,
+          value: item.transaction.value,
+          fingerprint: item.fingerprint,
+        })
+      })
+      setImportedTransactions(normalizedPreviewTransactions)
+      setIgnoredImportItems(guardedTransactions.ignored)
       setPreviewWarnings(warnings)
       setPreviewMeta(meta)
       setImportFile(file)
       setSelectedImportCardId(resolvedCardId)
 
       // Decide initial step based on card detection and uncategorized items
-      const isCreditCard = meta?.isCreditCardStatement || Boolean(meta?.detectedCardName)
-      const hasUncategorized = (list as Transaction[]).some((t) => !t.categoryId && !t.category?.id)
+      const hasUncategorized = normalizedPreviewTransactions.some((t) => !t.categoryId && !t.category?.id)
 
       if (isCreditCard && !resolvedCardId && !previewHasCardId) {
         // Credit card statement but couldn't identify which card → show card selection
@@ -618,11 +660,34 @@ export default function TransactionsPage() {
         return
       }
 
-      const txWithCard = resolvedCardId
-        ? importedTransactions.map((t) =>
+      const guardedTransactions = isCreditCardStatementImport
+        ? splitCreditCardStatementImportTransactions(importedTransactions)
+        : { importable: importedTransactions, ignored: [] }
+
+      if (guardedTransactions.ignored.length > 0) {
+        guardedTransactions.ignored.forEach((item) => {
+          logCreditCardImportDiagnostic('credit_card_import_item_ignored_payment', {
+            description: item.transaction.description,
+            date: item.transaction.date,
+            value: item.transaction.value,
+            fingerprint: item.fingerprint,
+          })
+        })
+        setIgnoredImportItems((prev) => [...prev, ...guardedTransactions.ignored])
+      }
+
+      if (guardedTransactions.importable.length === 0) {
+        setImportError('Nenhuma compra importavel foi encontrada nesta fatura.')
+        return
+      }
+
+      const txWithCard = isCreditCardStatementImport
+        ? normalizeCreditCardStatementImportTransactions(guardedTransactions.importable, resolvedCardId)
+        : resolvedCardId
+        ? guardedTransactions.importable.map((t) =>
             t.paymentType === 'CREDIT_CARD' ? { ...t, cardId: resolvedCardId } : t
           )
-        : importedTransactions
+        : guardedTransactions.importable
       const payload: ImportTransactionsConfirmPayload<Transaction> = {
         mode: 'import' as const,
         transactions: txWithCard,
@@ -636,13 +701,55 @@ export default function TransactionsPage() {
           detectedCardName: previewMeta?.detectedCardName ?? null,
           fileName: previewMeta?.fileName,
           formatId: previewMeta?.formatId,
+          idempotencyKey: buildCreditCardStatementImportKey({
+            cardId: resolvedCardId || undefined,
+            detectedCardName: previewMeta?.detectedCardName,
+            transactions: txWithCard,
+          }),
+          itemFingerprints: txWithCard.map(buildCreditCardImportItemFingerprint),
+          ignoredItems: ignoredImportItems
+            .concat(guardedTransactions.ignored)
+            .map(summarizeIgnoredImportItem),
           createCharges: true,
           createEffectiveTransaction: false,
         }
       }
 
-      await importConfirmMutation.mutateAsync({ userId, payload })
+      if (isCreditCardStatementImport) {
+        logCreditCardImportDiagnostic('credit_card_import_skipped_transaction_creation', {
+          count: txWithCard.length,
+          cardId: resolvedCardId || null,
+          createEffectiveTransaction: false,
+        })
+      }
+
+      const response = await importConfirmMutation.mutateAsync({ userId, payload })
+
+      if (isCreditCardStatementImport) {
+        logCreditCardImportDiagnostic('credit_card_import_charge_created', {
+          count: txWithCard.length,
+          cardId: resolvedCardId || null,
+        })
+
+        const returnedTransactions = getTransactionsFromImportResponse(response)
+        const unexpectedCashTransactions = returnedTransactions.filter(
+          (transaction) => transaction.paymentType !== 'CREDIT_CARD'
+        )
+
+        if (unexpectedCashTransactions.length > 0) {
+          logCreditCardImportDiagnostic(
+            'credit_card_import_unexpected_cash_transaction_created',
+            {
+              count: unexpectedCashTransactions.length,
+              ids: unexpectedCashTransactions.map((transaction) => transaction.id),
+            },
+            'error'
+          )
+        }
+      }
+
       setImportedTransactions([])
+      setIgnoredImportItems([])
       setImportFile(null)
       setPreviewOpen(false)
       setImportStep('review')
@@ -658,6 +765,7 @@ export default function TransactionsPage() {
     setPreviewOpen(false)
     setImportedTransactions([])
     setImportFile(null)
+    setIgnoredImportItems([])
     setEditingPreviewId(null)
     setEditingPreviewValue('')
     setEditingPreviewOriginal('')
@@ -1069,6 +1177,23 @@ export default function TransactionsPage() {
                         <p>Ajuste-as como quiser.</p>
                         <p>
                           Apesar de {previewCategorizationStats.categorized} das {previewCategorizationStats.total} transações terem sido categorizadas automaticamente, vale revisar todas para personalizar como preferir.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {ignoredImportItems.length > 0 && (
+                  <div className="mt-2 rounded-xl border border-amber-100 bg-amber-50/80 px-4 py-2.5 shadow-[0_8px_20px_rgba(245,158,11,0.06)]">
+                    <div className="flex items-start gap-2.5">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
+                      <div className="text-xs text-amber-900">
+                        <p className="font-semibold">
+                          {ignoredImportItems.length === 1
+                            ? '1 item ignorado por parecer pagamento/ajuste da fatura.'
+                            : `${ignoredImportItems.length} itens ignorados por parecerem pagamentos/ajustes da fatura.`}
+                        </p>
+                        <p className="mt-0.5">
+                          Este item parece ser pagamento/ajuste da fatura e nao sera importado como gasto.
                         </p>
                       </div>
                     </div>

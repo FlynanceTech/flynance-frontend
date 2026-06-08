@@ -312,7 +312,7 @@ function getCategoryHexColor(seed: string | null | undefined, preferred?: string
 }
 
 function formatCardDisplayName(card: { name?: string | null; last4?: string | null }) {
-  const name = card.name || 'Cartao'
+  const name = card.name || 'Cartão'
   return card.last4 ? `${name} final ${card.last4}` : name
 }
 
@@ -590,39 +590,39 @@ const summaryToneClasses: Record<
   { card: string; icon: string; title: string; value: string; pulse: string }
 > = {
   red: {
-    card: 'border-red-100 bg-gradient-to-br from-white via-red-50/80 to-red-50',
-    icon: 'bg-red-100/80 text-red-600',
-    title: 'text-red-600',
-    value: 'text-red-700',
-    pulse: 'bg-red-100',
+    card: 'border-red-100 bg-gradient-to-br from-white via-red-50/80 to-red-50 dark:border-red-900/40 dark:from-slate-800 dark:via-red-950/30 dark:to-red-950/20',
+    icon: 'bg-red-100/80 text-red-600 dark:bg-red-900/40 dark:text-red-400',
+    title: 'text-red-600 dark:text-red-400',
+    value: 'text-red-700 dark:text-red-400',
+    pulse: 'bg-red-100 dark:bg-red-900/40',
   },
   green: {
-    card: 'border-emerald-100 bg-gradient-to-br from-white via-emerald-50/80 to-emerald-50',
-    icon: 'bg-emerald-100/80 text-emerald-600',
-    title: 'text-emerald-600',
-    value: 'text-emerald-700',
-    pulse: 'bg-emerald-100',
+    card: 'border-emerald-100 bg-gradient-to-br from-white via-emerald-50/80 to-emerald-50 dark:border-emerald-900/40 dark:from-slate-800 dark:via-emerald-950/30 dark:to-emerald-950/20',
+    icon: 'bg-emerald-100/80 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400',
+    title: 'text-emerald-600 dark:text-emerald-400',
+    value: 'text-emerald-700 dark:text-emerald-400',
+    pulse: 'bg-emerald-100 dark:bg-emerald-900/40',
   },
   amber: {
-    card: 'border-amber-100 bg-gradient-to-br from-white via-amber-50/80 to-amber-50',
-    icon: 'bg-amber-100/80 text-amber-600',
-    title: 'text-amber-700',
-    value: 'text-amber-700',
-    pulse: 'bg-amber-100',
+    card: 'border-amber-100 bg-gradient-to-br from-white via-amber-50/80 to-amber-50 dark:border-amber-900/40 dark:from-slate-800 dark:via-amber-950/30 dark:to-amber-950/20',
+    icon: 'bg-amber-100/80 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400',
+    title: 'text-amber-700 dark:text-amber-400',
+    value: 'text-amber-700 dark:text-amber-400',
+    pulse: 'bg-amber-100 dark:bg-amber-900/40',
   },
   blue: {
-    card: 'border-blue-100 bg-gradient-to-br from-white via-blue-50/80 to-blue-50',
-    icon: 'bg-blue-100/80 text-primary',
-    title: 'text-primary',
-    value: 'text-primary',
-    pulse: 'bg-blue-100',
+    card: 'border-blue-100 bg-gradient-to-br from-white via-blue-50/80 to-blue-50 dark:border-blue-900/40 dark:from-slate-800 dark:via-blue-950/30 dark:to-blue-950/20',
+    icon: 'bg-blue-100/80 text-primary dark:bg-blue-900/40 dark:text-blue-400',
+    title: 'text-primary dark:text-blue-400',
+    value: 'text-primary dark:text-blue-400',
+    pulse: 'bg-blue-100 dark:bg-blue-900/40',
   },
   purple: {
-    card: 'border-violet-100 bg-gradient-to-br from-white via-violet-50/80 to-violet-50',
-    icon: 'bg-violet-100/80 text-violet-700',
-    title: 'text-violet-700',
-    value: 'text-violet-700',
-    pulse: 'bg-violet-100',
+    card: 'border-violet-100 bg-gradient-to-br from-white via-violet-50/80 to-violet-50 dark:border-violet-900/40 dark:from-slate-800 dark:via-violet-950/30 dark:to-violet-950/20',
+    icon: 'bg-violet-100/80 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400',
+    title: 'text-violet-700 dark:text-violet-400',
+    value: 'text-violet-700 dark:text-violet-400',
+    pulse: 'bg-violet-100 dark:bg-violet-900/40',
   },
 }
 
@@ -658,7 +658,7 @@ function SummaryCard({
             {value}
           </p>
         )}
-        <p className="mt-2 truncate text-xs font-medium text-slate-500">{subtext}</p>
+        <p className="mt-2 truncate text-xs font-medium text-slate-500 dark:text-slate-400">{subtext}</p>
       </div>
     </div>
   )
@@ -1073,26 +1073,26 @@ function CreditMonthDistributionCard({
   onOpen: () => void
 }) {
   return (
-    <section className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-[0_14px_38px_rgba(15,23,42,0.05)]">
+    <section className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-[0_14px_38px_rgba(15,23,42,0.05)] dark:border-white/10 dark:bg-slate-800">
       <div className="grid gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(280px,1.15fr)_auto] lg:items-center">
         <div>
           <div className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-sky-50 text-primary">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-sky-50 text-primary dark:bg-sky-900/30 dark:text-blue-400">
               <BarChart3 className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-sm font-extrabold text-slate-950">Gastos no credito este mes</h2>
-              <p className="mt-1 text-xs font-medium text-slate-500">Distribuicao consolidada das faturas vigentes.</p>
+              <h2 className="text-sm font-extrabold text-slate-950 dark:text-white">Gastos no crédito este mês</h2>
+              <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">Distribuição consolidada das faturas vigentes.</p>
             </div>
           </div>
-          {loading ? <div className="mt-4 h-8 w-32 animate-pulse rounded-lg bg-slate-100" /> : <p className="mt-4 text-2xl font-extrabold text-slate-950">{formatCurrencyBRL(total)}</p>}
+          {loading ? <div className="mt-4 h-8 w-32 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-700" /> : <p className="mt-4 text-2xl font-extrabold text-slate-950 dark:text-white">{formatCurrencyBRL(total)}</p>}
         </div>
 
         <div className="min-w-0">
           {loading ? (
-            <div className="h-16 animate-pulse rounded-[14px] bg-slate-100" />
+            <div className="h-16 animate-pulse rounded-[14px] bg-slate-100 dark:bg-slate-700" />
           ) : items.length ? (
-            <div className="overflow-hidden rounded-full bg-slate-100">
+            <div className="overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
               <div className="flex h-4 w-full">
                 {items.slice(0, 7).map((item) => (
                   <div key={item.id} title={`${item.name}: ${formatCurrencyBRL(item.value)}`} style={{ width: `${Math.max(4, item.percent)}%`, backgroundColor: item.color }} />
@@ -1100,13 +1100,13 @@ function CreditMonthDistributionCard({
               </div>
             </div>
           ) : (
-            <p className="rounded-[14px] border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500">Sem gastos no credito neste mes.</p>
+            <p className="rounded-[14px] border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500 dark:border-white/10 dark:bg-slate-700/50 dark:text-slate-400">Sem gastos no crédito neste mês.</p>
           )}
           {!loading && items.length > 0 && <div className="mt-3"><DistributionLegend items={items.slice(0, 4)} /></div>}
         </div>
 
-        <button type="button" onClick={onOpen} className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 text-sm font-extrabold text-slate-700 transition-colors hover:border-blue-200 hover:text-primary">
-          Ver distribuicao
+        <button type="button" onClick={onOpen} className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 text-sm font-extrabold text-slate-700 transition-colors hover:border-blue-200 hover:text-primary dark:border-white/10 dark:bg-slate-700 dark:text-slate-200 dark:hover:border-blue-500 dark:hover:text-blue-400">
+          Ver distribuição
         </button>
       </div>
     </section>
@@ -1127,11 +1127,11 @@ function CardFilterRail({
   onNewCard: () => void
 }) {
   return (
-    <section className="rounded-[20px] border border-slate-200 bg-white p-4 shadow-[0_12px_34px_rgba(15,23,42,0.04)]">
+    <section className="rounded-[20px] border border-slate-200 bg-white p-4 shadow-[0_12px_34px_rgba(15,23,42,0.04)] dark:border-white/10 dark:bg-slate-800">
       <div className="flex flex-col gap-4">
         {sections.map((section) => (
           <div key={section.id} className="min-w-0">
-            <p className="mb-2 px-1 text-[11px] font-extrabold tracking-[0.14em] text-slate-400">{section.label}</p>
+            <p className="mb-2 px-1 text-[11px] font-extrabold tracking-[0.14em] text-slate-400 dark:text-slate-500">{section.label}</p>
             <div className="flex gap-2 overflow-x-auto pb-1">
               {section.cards.map((card) => {
                 const accent = getCardAccentColor(card.id, cardColors)
@@ -1141,7 +1141,7 @@ function CardFilterRail({
                     key={card.id}
                     type="button"
                     onClick={() => onSelect(card.id)}
-                    className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-extrabold transition-all ${active ? 'border-transparent text-white shadow-[0_12px_24px_rgba(15,23,42,0.14)]' : 'border-slate-200 bg-white text-slate-700 hover:-translate-y-0.5 hover:border-slate-300'}`}
+                    className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-extrabold transition-all ${active ? 'border-transparent text-white shadow-[0_12px_24px_rgba(15,23,42,0.14)]' : 'border-slate-200 bg-white text-slate-700 hover:-translate-y-0.5 hover:border-slate-300 dark:border-white/10 dark:bg-slate-700 dark:text-slate-200 dark:hover:border-white/20'}`}
                     style={active ? { backgroundColor: accent } : undefined}
                   >
                     <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: active ? '#fff' : accent }} />
@@ -1149,7 +1149,7 @@ function CardFilterRail({
                   </button>
                 )
               })}
-              <button type="button" onClick={onNewCard} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-dashed border-slate-300 bg-slate-50 text-slate-500 transition-colors hover:border-blue-200 hover:text-primary" title="Novo cartao">
+              <button type="button" onClick={onNewCard} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-dashed border-slate-300 bg-slate-50 text-slate-500 transition-colors hover:border-blue-200 hover:text-primary dark:border-white/20 dark:bg-slate-700 dark:text-slate-400 dark:hover:border-blue-500 dark:hover:text-blue-400" title="Novo cartão">
                 <Plus className="h-4 w-4" />
               </button>
             </div>
@@ -1175,20 +1175,20 @@ function CreditPurchaseRow({
   const categoryColor = getCategoryHexColor(item.category?.id ?? charge?.category?.id ?? categoryName, charge?.category?.color)
 
   return (
-    <div className="grid gap-3 border-t border-slate-100 px-4 py-3 first:border-t-0 md:grid-cols-[1fr_1.4fr_0.65fr_0.8fr_0.8fr_34px] md:items-center">
+    <div className="grid gap-3 border-t border-slate-100 px-4 py-3 first:border-t-0 md:grid-cols-[1fr_1.4fr_0.65fr_0.8fr_0.8fr_34px] md:items-center dark:border-white/5">
       <div className="flex min-w-0 items-center gap-2">
         <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: categoryColor }} />
-        <span className="truncate text-xs font-bold text-slate-600">{categoryName}</span>
+        <span className="truncate text-xs font-bold text-slate-600 dark:text-slate-400">{categoryName}</span>
       </div>
-      <p className="truncate text-sm font-extrabold text-slate-900">{item.description ?? charge?.description ?? 'Sem descricao'}</p>
-      <p className="text-xs font-bold text-slate-500">{installmentTableLabel(item.installmentNumber, item.installmentCount)}</p>
+      <p className="truncate text-sm font-extrabold text-slate-900 dark:text-white">{item.description ?? charge?.description ?? 'Sem descrição'}</p>
+      <p className="text-xs font-bold text-slate-500 dark:text-slate-400">{installmentTableLabel(item.installmentNumber, item.installmentCount)}</p>
       <span className={`w-fit rounded-full px-2.5 py-1 text-[11px] font-extrabold ${forecastStatusBadge(item.status)}`}>{forecastStatusLabel(item.status)}</span>
-      <p className="text-sm font-extrabold text-slate-950 md:text-right">{formatCurrencyBRL(item.amount)}</p>
+      <p className="text-sm font-extrabold text-slate-950 md:text-right dark:text-white">{formatCurrencyBRL(item.amount)}</p>
       <Menu as="div" className="relative">
-        <MenuButton className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800">
+        <MenuButton className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200">
           <MoreHorizontal className="h-4 w-4" />
         </MenuButton>
-        <MenuItems className="absolute right-0 z-20 mt-2 w-40 rounded-xl border border-slate-200 bg-white p-1 text-sm shadow-xl outline-none">
+        <MenuItems className="absolute right-0 z-20 mt-2 w-40 rounded-xl border border-slate-200 bg-white p-1 text-sm shadow-xl outline-none dark:border-white/10 dark:bg-slate-700">
           <MenuItem>
             {({ focus }) => (
               <button type="button" disabled={!charge} onClick={() => charge && onEdit(charge)} className={`w-full rounded-lg px-3 py-2 text-left font-medium disabled:cursor-not-allowed disabled:text-slate-300 ${focus ? 'bg-slate-50 text-slate-900' : 'text-slate-700'}`}>Editar compra</button>
@@ -1224,9 +1224,9 @@ function InstallmentPlanRow({
         <p className="truncate text-sm font-extrabold text-slate-900">{plan.description}</p>
         <p className="mt-1 text-xs font-bold text-slate-500">Parcela {progress.installmentNumber} de {Number(plan.installmentCount || 1)}</p>
       </div>
-      <span className={`w-fit rounded-full px-2.5 py-1 text-[11px] font-extrabold ${status === 'active' ? 'bg-sky-100 text-sky-700' : status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700'}`}>{status === 'active' ? 'Ativo' : status === 'completed' ? 'Concluido' : 'Cancelado'}</span>
+      <span className={`w-fit rounded-full px-2.5 py-1 text-[11px] font-extrabold ${status === 'active' ? 'bg-sky-100 text-sky-700' : status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700'}`}>{status === 'active' ? 'Ativo' : status === 'completed' ? 'Concluído' : 'Cancelado'}</span>
       <div><p className="text-sm font-extrabold text-slate-950">{formatCurrencyBRL(plan.totalAmount)}</p><p className="mt-1 text-xs font-medium text-slate-500">Total</p></div>
-      <div><p className="text-sm font-extrabold text-slate-950">{formatDateShort(progress.nextDueDate)}</p><p className="mt-1 text-xs font-medium text-slate-500">Proximo vencimento</p></div>
+      <div><p className="text-sm font-extrabold text-slate-950 dark:text-white">{formatDateShort(progress.nextDueDate)}</p><p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">Próximo vencimento</p></div>
       <div><p className="text-sm font-extrabold text-slate-950">{formatCurrencyBRL(monthly)}</p><p className="mt-1 text-xs font-medium text-slate-500">Por mes</p></div>
       <Menu as="div" className="relative">
         <MenuButton className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"><MoreHorizontal className="h-4 w-4" /></MenuButton>
@@ -1286,9 +1286,9 @@ function SelectedCardHud({
     return (
       <section className="flex min-h-[320px] flex-col items-center justify-center rounded-[22px] border border-dashed border-slate-200 bg-white px-6 py-12 text-center shadow-[0_14px_38px_rgba(15,23,42,0.04)]">
         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-sky-50 text-primary"><WalletCards className="h-7 w-7" /></div>
-        <h2 className="mt-5 text-base font-extrabold text-slate-950">Nenhum cartao ativo</h2>
-        <p className="mt-2 max-w-xl text-sm font-medium text-slate-500">Cadastre um cartao para acompanhar fatura, compras, parcelamentos e historico em uma unica HUD.</p>
-        <button type="button" onClick={onCreateCard} className="mt-6 inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-extrabold text-white transition-colors hover:bg-secondary"><Plus className="h-4 w-4" />Novo cartao</button>
+        <h2 className="mt-5 text-base font-extrabold text-slate-950 dark:text-white">Nenhum cartão ativo</h2>
+        <p className="mt-2 max-w-xl text-sm font-medium text-slate-500 dark:text-slate-400">Cadastre um cartão para acompanhar fatura, compras, parcelamentos e histórico em uma única HUD.</p>
+        <button type="button" onClick={onCreateCard} className="mt-6 inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-extrabold text-white transition-colors hover:bg-secondary"><Plus className="h-4 w-4" />Novo cartão</button>
       </section>
     )
   }
@@ -1301,31 +1301,31 @@ function SelectedCardHud({
   return (
     <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
       <div className="space-y-4">
-        <article className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-[0_16px_44px_rgba(15,23,42,0.06)]">
+        <article className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-[0_16px_44px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-slate-800">
           <div className="h-2" style={{ backgroundColor: cardColor }} />
           <div className="grid gap-5 p-5 lg:grid-cols-[1fr_auto] lg:items-start">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="h-3 w-3 rounded-full" style={{ backgroundColor: cardColor }} />
-                <h2 className="truncate text-xl font-extrabold text-slate-950">{formatCardDisplayName(card)}</h2>
-                {ownerLabel && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-extrabold text-slate-500">{ownerLabel}</span>}
+                <h2 className="truncate text-xl font-extrabold text-slate-950 dark:text-white">{formatCardDisplayName(card)}</h2>
+                {ownerLabel && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-extrabold text-slate-500 dark:bg-slate-700 dark:text-slate-400">{ownerLabel}</span>}
                 <span className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold ${statementStatusBadge(statementStatus)}`}>{statementStatusLabel(statementStatus)}</span>
               </div>
-              <p className="mt-4 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Fatura atual</p>
-              <p className="mt-1 text-4xl font-extrabold tracking-normal text-slate-950">{formatCurrencyBRL(invoiceTotal)}</p>
+              <p className="mt-4 text-xs font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Fatura atual</p>
+              <p className="mt-1 text-4xl font-extrabold tracking-normal text-slate-950 dark:text-white">{formatCurrencyBRL(invoiceTotal)}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[520px]">
-              <div className="rounded-[16px] bg-slate-50 px-4 py-3"><p className="text-[11px] font-bold text-slate-500">Vence</p><p className="mt-1 text-sm font-extrabold text-slate-950">{formatDateShort(invoiceGroup?.statement?.dueAt)}</p></div>
-              <div className="rounded-[16px] bg-slate-50 px-4 py-3"><p className="text-[11px] font-bold text-slate-500">Fecha</p><p className="mt-1 text-sm font-extrabold text-slate-950">{formatDateShort(invoiceGroup?.statement?.closingAt)}</p></div>
-              <div className="rounded-[16px] bg-slate-50 px-4 py-3"><p className="text-[11px] font-bold text-slate-500">Compras</p><p className="mt-1 text-sm font-extrabold text-slate-950">{purchases.length}</p></div>
-              <div className="rounded-[16px] bg-slate-50 px-4 py-3"><p className="text-[11px] font-bold text-slate-500">Parcelas</p><p className="mt-1 text-sm font-extrabold text-slate-950">{installments.length}</p></div>
+              <div className="rounded-[16px] bg-slate-50 px-4 py-3 dark:bg-slate-700/60"><p className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Vence</p><p className="mt-1 text-sm font-extrabold text-slate-950 dark:text-white">{formatDateShort(invoiceGroup?.statement?.dueAt)}</p></div>
+              <div className="rounded-[16px] bg-slate-50 px-4 py-3 dark:bg-slate-700/60"><p className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Fecha</p><p className="mt-1 text-sm font-extrabold text-slate-950 dark:text-white">{formatDateShort(invoiceGroup?.statement?.closingAt)}</p></div>
+              <div className="rounded-[16px] bg-slate-50 px-4 py-3 dark:bg-slate-700/60"><p className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Compras</p><p className="mt-1 text-sm font-extrabold text-slate-950 dark:text-white">{purchases.length}</p></div>
+              <div className="rounded-[16px] bg-slate-50 px-4 py-3 dark:bg-slate-700/60"><p className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Parcelas</p><p className="mt-1 text-sm font-extrabold text-slate-950 dark:text-white">{installments.length}</p></div>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2 border-t border-slate-100 px-5 py-4">
-            <button type="button" onClick={onCreateCharge} className="inline-flex h-10 items-center gap-2 rounded-full bg-primary px-4 text-sm font-extrabold text-white transition-colors hover:bg-secondary"><Plus className="h-4 w-4" />Compra no credito</button>
-            <button type="button" onClick={() => onManageCard(card.id)} className="inline-flex h-10 items-center gap-2 rounded-full border border-slate-200 px-4 text-sm font-extrabold text-slate-700 transition-colors hover:border-blue-200 hover:text-primary"><WalletCards className="h-4 w-4" />Gerenciar cartao</button>
-            <button type="button" onClick={onOpenHistory} className="inline-flex h-10 items-center gap-2 rounded-full border border-slate-200 px-4 text-sm font-extrabold text-slate-700 transition-colors hover:border-blue-200 hover:text-primary"><BarChart3 className="h-4 w-4" />Ver historico</button>
+          <div className="flex flex-wrap gap-2 border-t border-slate-100 px-5 py-4 dark:border-white/5">
+            <button type="button" onClick={onCreateCharge} className="inline-flex h-10 items-center gap-2 rounded-full bg-primary px-4 text-sm font-extrabold text-white transition-colors hover:bg-secondary"><Plus className="h-4 w-4" />Compra no crédito</button>
+            <button type="button" onClick={() => onManageCard(card.id)} className="inline-flex h-10 items-center gap-2 rounded-full border border-slate-200 px-4 text-sm font-extrabold text-slate-700 transition-colors hover:border-blue-200 hover:text-primary dark:border-white/10 dark:text-slate-200 dark:hover:border-blue-500 dark:hover:text-blue-400"><WalletCards className="h-4 w-4" />Gerenciar cartão</button>
+            <button type="button" onClick={onOpenHistory} className="inline-flex h-10 items-center gap-2 rounded-full border border-slate-200 px-4 text-sm font-extrabold text-slate-700 transition-colors hover:border-blue-200 hover:text-primary dark:border-white/10 dark:text-slate-200 dark:hover:border-blue-500 dark:hover:text-blue-400"><BarChart3 className="h-4 w-4" />Ver histórico</button>
             {invoiceGroup?.statement?.id && statementStatus !== 'paid' && (
               <button type="button" onClick={onPayStatement} disabled={payingStatement} className="inline-flex h-10 items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 text-sm font-extrabold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"><CheckCircle2 className="h-4 w-4" />{payingStatement ? 'Pagando...' : 'Pagar fatura'}</button>
             )}
@@ -1333,9 +1333,9 @@ function SelectedCardHud({
         </article>
 
         <div className="grid gap-4 2xl:grid-cols-2">
-          <article className="overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_12px_34px_rgba(15,23,42,0.04)]">
-            <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
-              <div><h3 className="text-sm font-extrabold text-slate-950">Compras da fatura atual</h3><p className="mt-1 text-xs font-medium text-slate-500">Ate 7 compras recentes deste ciclo.</p></div>
+          <article className="overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_12px_34px_rgba(15,23,42,0.04)] dark:border-white/10 dark:bg-slate-800">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-white/5">
+              <div><h3 className="text-sm font-extrabold text-slate-950 dark:text-white">Compras da fatura atual</h3><p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">Até 7 compras recentes deste ciclo.</p></div>
               {purchases.length > 7 && <button type="button" onClick={onOpenPurchases} className="text-xs font-extrabold text-primary hover:text-secondary">Ver todas as {purchases.length}</button>}
             </div>
             {loadingPurchases ? (
@@ -1347,22 +1347,22 @@ function SelectedCardHud({
             )}
           </article>
 
-          <article className="overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_12px_34px_rgba(15,23,42,0.04)]">
-            <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
-              <div><h3 className="text-sm font-extrabold text-slate-950">Parcelamentos</h3><p className="mt-1 text-xs font-medium text-slate-500">Planos vinculados a este cartao.</p></div>
+          <article className="overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_12px_34px_rgba(15,23,42,0.04)] dark:border-white/10 dark:bg-slate-800">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-white/5">
+              <div><h3 className="text-sm font-extrabold text-slate-950 dark:text-white">Parcelamentos</h3><p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">Planos vinculados a este cartão.</p></div>
               {installments.length > 7 && <button type="button" onClick={onOpenInstallments} className="text-xs font-extrabold text-primary hover:text-secondary">Ver todos os {installments.length}</button>}
             </div>
             {visibleInstallments.length ? (
               visibleInstallments.map((plan) => <InstallmentPlanRow key={plan.id} plan={plan} onEdit={onEditPlan} onDelete={onDeletePlan} />)
             ) : (
-              <div className="px-5 py-8 text-sm font-medium text-slate-500">Nenhum parcelamento ativo neste cartao.</div>
+              <div className="px-5 py-8 text-sm font-medium text-slate-500">Nenhum parcelamento ativo neste cartão.</div>
             )}
           </article>
         </div>
       </div>
 
-      <aside className="rounded-[22px] border border-slate-200 bg-white p-5 shadow-[0_16px_44px_rgba(15,23,42,0.05)]">
-        <div className="mb-4"><h3 className="text-sm font-extrabold text-slate-950">Distribuicao de gastos</h3><p className="mt-1 text-xs font-medium text-slate-500">O que esta consumindo a fatura selecionada.</p></div>
+      <aside className="rounded-[22px] border border-slate-200 bg-white p-5 shadow-[0_16px_44px_rgba(15,23,42,0.05)] dark:border-white/10 dark:bg-slate-800">
+        <div className="mb-4"><h3 className="text-sm font-extrabold text-slate-950 dark:text-white">Distribuição de gastos</h3><p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">O que está consumindo a fatura selecionada.</p></div>
         <CreditDistributionChart items={distribution} height={260} />
         <div className="mt-5"><DistributionLegend items={distribution} /></div>
       </aside>
@@ -1385,10 +1385,10 @@ function CreditDistributionModal({
     <Dialog open={open} onClose={onClose} className="relative z-50">
       <div className="fixed inset-0 bg-slate-950/30" aria-hidden="true" />
       <div className="fixed inset-0 flex items-center justify-center p-4">
-        <DialogPanel className="w-full max-w-4xl rounded-[24px] bg-white p-6 shadow-2xl">
+        <DialogPanel className="w-full max-w-4xl rounded-[24px] bg-white p-6 shadow-2xl dark:bg-slate-800">
           <div className="mb-5 flex items-start justify-between gap-4">
-            <div><DialogTitle className="text-lg font-extrabold text-slate-950">{title}</DialogTitle><p className="mt-1 text-sm font-medium text-slate-500">Distribuicao por categoria dos gastos no credito.</p></div>
-            <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+            <div><DialogTitle className="text-lg font-extrabold text-slate-950 dark:text-white">{title}</DialogTitle><p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">Distribuição por categoria dos gastos no crédito.</p></div>
+            <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"><X className="h-5 w-5" /></button>
           </div>
           <div className="grid gap-5 lg:grid-cols-[1.3fr_0.8fr]"><CreditDistributionChart items={items} height={380} /><DistributionLegend items={items} /></div>
         </DialogPanel>
@@ -1449,11 +1449,11 @@ function InstallmentPlansModal({
       <div className="fixed inset-0 flex items-center justify-center p-4">
         <DialogPanel className="flex max-h-[86vh] w-full max-w-5xl flex-col overflow-hidden rounded-[24px] bg-white shadow-2xl">
           <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
-            <div><DialogTitle className="text-lg font-extrabold text-slate-950">Gerenciamento de parcelamentos</DialogTitle><p className="mt-1 text-sm font-medium text-slate-500">Parcelamentos vinculados ao cartao selecionado.</p></div>
+            <div><DialogTitle className="text-lg font-extrabold text-slate-950 dark:text-white">Gerenciamento de parcelamentos</DialogTitle><p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">Parcelamentos vinculados ao cartão selecionado.</p></div>
             <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
           </div>
           <div className="min-h-0 overflow-y-auto">
-            {plans.length ? plans.map((plan) => <InstallmentPlanRow key={plan.id} plan={plan} onEdit={onEdit} onDelete={onDelete} />) : <div className="px-6 py-10 text-center text-sm font-medium text-slate-500">Nenhum parcelamento ativo neste cartao.</div>}
+            {plans.length ? plans.map((plan) => <InstallmentPlanRow key={plan.id} plan={plan} onEdit={onEdit} onDelete={onDelete} />) : <div className="px-6 py-10 text-center text-sm font-medium text-slate-500">Nenhum parcelamento ativo neste cartão.</div>}
           </div>
           <div className="border-t border-slate-100 px-6 py-4">
             <button type="button" onClick={onOpenManagement} className="inline-flex h-10 items-center justify-center rounded-full bg-primary px-5 text-sm font-extrabold text-white transition-colors hover:bg-secondary">Abrir gerenciamento completo</button>
@@ -1496,7 +1496,7 @@ function CardHistoryModal({
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex h-[260px] items-center justify-center rounded-[16px] border border-dashed border-slate-200 bg-slate-50 text-sm font-medium text-slate-500">Historico indisponivel para este cartao.</div>
+            <div className="flex h-[260px] items-center justify-center rounded-[16px] border border-dashed border-slate-200 bg-slate-50 text-sm font-medium text-slate-500 dark:border-white/10 dark:bg-slate-700/40 dark:text-slate-400">Histórico indisponível para este cartão.</div>
           )}
         </DialogPanel>
       </div>
@@ -1585,7 +1585,7 @@ function PayStatementConfirmModal({
             </label>
 
             <div className="rounded-[18px] border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900">
-              Sera criada uma unica transacao de saida consolidada. As compras desta fatura ficam apenas como detalhes do pagamento.
+              Será criada uma única transação de saída consolidada. As compras desta fatura ficam apenas como detalhes do pagamento.
             </div>
           </div>
 
@@ -2495,10 +2495,10 @@ function FuturosPageContent() {
                 <FinancialScopeSwitcher />
               </div>
               <p className="mt-2 text-sm font-extrabold text-slate-700">
-                Central de gestao de cartoes, faturas, compras no credito e parcelamentos.
+                Central de gestão de cartões, faturas, compras no crédito e parcelamentos.
               </p>
               <p className="mt-1 max-w-3xl text-sm font-medium text-slate-500">
-                Troque de cartao no filtro superior e acompanhe a HUD sem multiplicar containers.
+                Troque de cartão no filtro superior e acompanhe a HUD sem multiplicar containers.
               </p>
             </div>
           </div>
@@ -2511,7 +2511,7 @@ function FuturosPageContent() {
               className="h-12 w-auto rounded-full px-5 text-sm font-extrabold shadow-[0_14px_28px_rgba(0,102,163,0.24)]"
             >
               <CreditCard className="h-4 w-4" />
-              Compra no credito
+              Compra no crédito
             </Button>
             <Button
               type="button"
@@ -2572,7 +2572,7 @@ function FuturosPageContent() {
           <SummaryCard
             title="A pagar"
             value={formatCurrencyBRL(creditInvoiceTotalThisMonth)}
-            subtext={`${activeCreditCardCount} ${activeCreditCardCount === 1 ? 'cartao' : 'cartoes'}`}
+            subtext={`${activeCreditCardCount} ${activeCreditCardCount === 1 ? 'cartão' : 'cartões'}`}
             icon={ArrowDownRight}
             tone="red"
             loading={currentMonthForecastQuery.isLoading}
@@ -2586,7 +2586,7 @@ function FuturosPageContent() {
             loading={currentMonthForecastQuery.isLoading}
           />
           <SummaryCard
-            title="Cartao de credito"
+            title="Cartão de crédito"
             value={activeCreditCardCount}
             subtext="Gerenciar cartoes"
             icon={WalletCards}
@@ -3107,7 +3107,7 @@ function FuturosPageContent() {
 
       <CreditDistributionModal
         open={distributionModalOpen}
-        title="Gastos no credito este mes"
+        title="Gastos no crédito este mês"
         items={monthCreditDistribution}
         onClose={() => setDistributionModalOpen(false)}
       />
@@ -3137,14 +3137,14 @@ function FuturosPageContent() {
 
       <CardHistoryModal
         open={historyModalOpen}
-        title={selectedCard ? `Historico do ${selectedCard.name}` : 'Historico do cartao'}
+        title={selectedCard ? `Histórico do ${selectedCard.name}` : 'Histórico do cartão'}
         data={selectedCardHistoryData}
         onClose={() => setHistoryModalOpen(false)}
       />
 
       <PayStatementConfirmModal
         open={payStatementConfirmOpen}
-        cardName={selectedCard ? formatCardDisplayName(selectedCard) : 'Cartao'}
+        cardName={selectedCard ? formatCardDisplayName(selectedCard) : 'Cartão'}
         amount={selectedInvoiceGroup?.totalAmount ?? 0}
         dueAt={selectedInvoiceGroup?.statement?.dueAt}
         closingAt={selectedInvoiceGroup?.statement?.closingAt}

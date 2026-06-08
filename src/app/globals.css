@@ -462,3 +462,81 @@
 .dark .border-green-400 {
   border-color: rgb(62 175 102 / 0.38) !important;
 }
+
+/* ── Advisor page: branded color overrides ──────────────── */
+:root[data-theme='dark'] .bg-\[\#F5F7FA\],
+.dark .bg-\[\#F5F7FA\] {
+  background-color: hsl(var(--background)) !important;
+}
+
+:root[data-theme='dark'] .text-\[\#253140\],
+.dark .text-\[\#253140\] {
+  color: hsl(var(--foreground)) !important;
+}
+
+:root[data-theme='dark'] .bg-\[\#F0F7FB\],
+:root[data-theme='dark'] .bg-\[\#F3FAFF\],
+:root[data-theme='dark'] .bg-\[\#EAF4FA\],
+:root[data-theme='dark'] .bg-\[\#FAFCFD\],
+.dark .bg-\[\#F0F7FB\],
+.dark .bg-\[\#F3FAFF\],
+.dark .bg-\[\#EAF4FA\],
+.dark .bg-\[\#FAFCFD\] {
+  background-color: hsl(var(--muted)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+:root[data-theme='dark'] .text-\[\#2F6E91\],
+:root[data-theme='dark'] .text-\[\#4F98C2\],
+.dark .text-\[\#2F6E91\],
+.dark .text-\[\#4F98C2\] {
+  color: hsl(var(--primary)) !important;
+}
+
+:root[data-theme='dark'] .border-\[\#B7D7E8\],
+:root[data-theme='dark'] .border-\[\#4F98C2\],
+:root[data-theme='dark'] .border-\[\#7CB8D8\],
+:root[data-theme='dark'] .border-\[\#D7EAF5\],
+.dark .border-\[\#B7D7E8\],
+.dark .border-\[\#4F98C2\],
+.dark .border-\[\#7CB8D8\],
+.dark .border-\[\#D7EAF5\] {
+  border-color: hsl(var(--border) / 0.28) !important;
+}
+
+:root[data-theme='dark'] .hover\:border-\[\#B7D7E8\]:hover,
+.dark .hover\:border-\[\#B7D7E8\]:hover {
+  border-color: hsl(var(--primary) / 0.4) !important;
+}
+
+:root[data-theme='dark'] .hover\:bg-\[\#EAF4FA\]:hover,
+.dark .hover\:bg-\[\#EAF4FA\]:hover {
+  background-color: hsl(var(--muted)) !important;
+}
+
+:root[data-theme='dark'] .hover\:bg-\[\#3f86b0\]:hover,
+.dark .hover\:bg-\[\#3f86b0\]:hover {
+  background-color: hsl(var(--primary) / 0.85) !important;
+}
+
+:root[data-theme='dark'] .bg-primary\/10,
+.dark .bg-primary\/10 {
+  background-color: hsl(var(--primary) / 0.18) !important;
+}
+
+:root[data-theme='dark'] .bg-amber-50,
+:root[data-theme='dark'] .bg-amber-100,
+.dark .bg-amber-50,
+.dark .bg-amber-100 {
+  background-color: rgb(146 64 14 / 0.22) !important;
+}
+
+:root[data-theme='dark'] .text-amber-700,
+.dark .text-amber-700 {
+  color: #fbbf24 !important;
+}
+
+:root[data-theme='dark'] .border-amber-200,
+.dark .border-amber-200 {
+  border-color: rgb(146 64 14 / 0.38) !important;
+}

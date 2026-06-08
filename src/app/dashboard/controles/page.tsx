@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Pencil, Trash2, Plus, ExternalLink, X } from 'lucide-react'
+import { Pencil, Trash2, Plus, ExternalLink, X, Lock } from 'lucide-react'
 import { StarIcon } from '@phosphor-icons/react'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
@@ -199,7 +199,7 @@ export default function SpendingControlPage() {
   const getCategoryName = (c: ControlWithProgress) =>
     c.categoryId ? categoryNameById.get(c.categoryId) ?? t('card.defaultCategory') : t('card.general')
   const canWriteControl = (control: ControlWithProgress) =>
-    !control.userId || control.userId === currentUserId
+    (!control.userId || control.userId === currentUserId) && !control.managedByAdvisorId
 
   const idxLocalFor = (id: string): number => controls.findIndex((x) => x.id === id)
 
@@ -492,6 +492,16 @@ export default function SpendingControlPage() {
                       </div>
 
                       <div className="flex items-center gap-4">
+                        {c.managedByAdvisorId && (
+                          <span
+                            className="flex items-center gap-1 text-xs text-indigo-500 font-medium"
+                            title={t('card.advisorLocked')}
+                          >
+                            <Lock size={14} />
+                            {t('card.advisor')}
+                          </span>
+                        )}
+
                         <button
                           type="button"
                           onClick={(event) => {

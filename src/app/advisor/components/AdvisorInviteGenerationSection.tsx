@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
@@ -84,6 +84,7 @@ type AdvisorInviteGenerationSectionProps = {
   showGenerator?: boolean
   showList?: boolean
   generatorSurface?: 'page' | 'drawer'
+  isOrgAdmin?: boolean
 }
 
 const INVITE_OPTIONS: InviteOption[] = [
@@ -173,7 +174,9 @@ function accountTypeLabel(value: AdvisorInviteAccountType) {
 }
 
 function paymentResponsibleLabel(value: AdvisorInvitePaymentResponsible) {
-  return value === 'ADVISOR' ? 'Consultor' : 'Cliente'
+  if (value === 'ADVISOR') return 'Consultor'
+  if (value === 'ORG') return 'Organização'
+  return 'Cliente'
 }
 
 function resolveInviteStatus(invite: AdvisorGeneratedInvite): AdvisorGeneratedInvite['status'] {
@@ -195,6 +198,7 @@ export default function AdvisorInviteGenerationSection({
   showGenerator = true,
   showList = true,
   generatorSurface = 'page',
+  isOrgAdmin = false,
 }: AdvisorInviteGenerationSectionProps) {
   const locale = useLocale()
   const invitesQuery = useAdvisorGeneratedInvites()
@@ -485,7 +489,7 @@ export default function AdvisorInviteGenerationSection({
                           quantity,
                         })
                       }
-                      className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-white hover:bg-[#3f86b0] disabled:opacity-60"
+                      className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-[#3f86b0] disabled:opacity-60"
                     >
                       <CreditCard className="h-4 w-4" />
                       Prosseguir para pagamento
@@ -502,10 +506,19 @@ export default function AdvisorInviteGenerationSection({
                       <button
                         type="button"
                         onClick={() => openNameDialog({ option, paymentResponsible: 'ADVISOR' })}
-                        className="h-10 rounded-xl bg-primary px-3 text-sm font-semibold text-white hover:bg-[#3f86b0]"
+                        className="h-10 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-[#3f86b0]"
                       >
                         Consultor paga
                       </button>
+                      {isOrgAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => openNameDialog({ option, paymentResponsible: 'ORG' })}
+                          className="h-10 rounded-xl border border-purple-300 bg-purple-50 px-3 text-sm font-semibold text-purple-700 hover:bg-purple-100"
+                        >
+                          Organização paga
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -584,7 +597,7 @@ export default function AdvisorInviteGenerationSection({
           </div>
         ) : (
           <div className="mt-4">
-            <div className="space-y-3 md:hidden">
+            <div className="space-y-3">
               {visibleInvites.map((invite) => {
                 const effectiveStatus = resolveInviteStatus(invite)
                 return (
@@ -653,86 +666,6 @@ export default function AdvisorInviteGenerationSection({
               })}
             </div>
 
-            <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[1080px] text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 text-left text-slate-500">
-                    <th className="pb-2 font-medium">Cliente</th>
-                    <th className="pb-2 font-medium">Tipo</th>
-                    <th className="pb-2 font-medium">Quem paga</th>
-                    <th className="pb-2 font-medium">Status</th>
-                    <th className="pb-2 font-medium">Criação</th>
-                    <th className="pb-2 font-medium">Expiração</th>
-                    <th className="pb-2 font-medium">Link</th>
-                    <th className="pb-2 font-medium text-right">Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleInvites.map((invite) => {
-                    const effectiveStatus = resolveInviteStatus(invite)
-                    return (
-                      <tr key={invite.id} className="border-b border-slate-100 align-top">
-                        <td className="py-3">
-                          <p className="font-medium text-[#333C4D]">{getInviteDisplayName(invite)}</p>
-                          {effectiveStatus === 'ACCEPTED' && invite.acceptedAt && (
-                            <p className="mt-1 text-xs text-emerald-700">
-                              Convite aceito por {getInviteDisplayName(invite)} em {formatDate(invite.acceptedAt, locale)}.
-                            </p>
-                          )}
-                        </td>
-                        <td className="py-3">{accountTypeLabel(invite.accountType)}</td>
-                        <td className="py-3">{paymentResponsibleLabel(invite.paymentResponsible)}</td>
-                        <td className="py-3">
-                          <Badge variant="outline" className={statusClasses[effectiveStatus]}>
-                            {statusLabel(effectiveStatus)}
-                          </Badge>
-                        </td>
-                        <td className="py-3">{formatDate(invite.createdAt, locale)}</td>
-                        <td className="py-3">{formatDate(invite.expiresAt, locale)}</td>
-                        <td className="max-w-[260px] py-3">
-                          <span className="line-clamp-2 break-all text-xs text-slate-600">
-                            {invite.inviteUrl || '-'}
-                          </span>
-                        </td>
-                        <td className="py-3">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => copyInviteLink(invite)}
-                              className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
-                              aria-label="Copiar link"
-                              title="Copiar link"
-                            >
-                              <Copy className="h-4 w-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => openEditDialog(invite)}
-                              disabled={effectiveStatus !== 'PENDING'}
-                              className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-                              aria-label="Editar nome"
-                              title="Editar nome"
-                            >
-                              <Edit3 className="h-4 w-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleCancelInvite(invite)}
-                              disabled={effectiveStatus !== 'PENDING' || cancelInviteMutation.isPending}
-                              className="grid h-8 w-8 place-items-center rounded-lg border border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-50"
-                              aria-label="Cancelar convite"
-                              title="Cancelar convite"
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
           </div>
         )}
       </article>
@@ -799,7 +732,7 @@ export default function AdvisorInviteGenerationSection({
             <button
               type="button"
               onClick={handleNameSubmit}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white hover:bg-[#3f86b0] disabled:opacity-60"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-[#3f86b0] disabled:opacity-60"
               disabled={nameDialogPending}
             >
               {nameDialogPending && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -1013,7 +946,7 @@ function AdvisorInvitePaymentForm({
           type="button"
           onClick={handleSubmit}
           disabled={busy}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white hover:bg-[#3f86b0] disabled:opacity-60"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-[#3f86b0] disabled:opacity-60"
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
           Confirmar pagamento
@@ -1022,3 +955,4 @@ function AdvisorInvitePaymentForm({
     </div>
   )
 }
+

@@ -125,17 +125,23 @@ const Header = () => {
             ))}
           </div>
           
-          <div className="lg:flex gap-4 hidden ">
+          <div className="lg:flex gap-3 hidden ">
+            <Link
+              href="/advisor/login"
+              className="px-5 py-2 font-bold flex items-center gap-2 text-[#1a3050] bg-[#F0C040] rounded-lg hover:bg-[#E8B830] transition"
+            >
+              Sou Advisor
+            </Link>
             <Link
               href="/login"
-              className="px-6 py-2 font-bold flex items-center gap-2 text-white bg-primary rounded-lg hover:bg-secondary transition"
+              className="px-5 py-2 font-bold flex items-center gap-2 text-white bg-primary rounded-lg hover:bg-secondary transition"
             >
               <LogIn size={20} />
               Login
             </Link>
             <Link
               href="#pricing"
-              className="px-6 py-2 font-bold flex items-center gap-2 text-primary border border-primary rounded-lg hover:bg-secondary hover:text-white transition-all hover:border-secondary"
+              className="px-5 py-2 font-bold flex items-center gap-2 text-primary border border-primary rounded-lg hover:bg-secondary hover:text-white transition-all hover:border-secondary"
             >
               Começar Agora
             </Link>
@@ -234,10 +240,18 @@ const Header = () => {
             ))}
           </nav>
 
-          <div className="w-full">
+          <div className="w-full space-y-2">
+            <Link
+              href="/advisor/login"
+              className="px-6 py-2 font-bold flex items-center justify-center gap-2 text-[#1a3050] bg-[#F0C040] rounded-lg hover:bg-[#E8B830] transition"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Sou Advisor
+            </Link>
             <Link
               href="/login"
               className="px-6 py-2 font-bold flex items-center justify-center gap-2 text-white bg-primary rounded-lg hover:bg-secondary transition"
+              onClick={() => setIsMobileMenuOpen(false)}
             >
               <LogIn size={20} />
               Login
