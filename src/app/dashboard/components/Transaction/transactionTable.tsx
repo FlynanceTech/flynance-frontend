@@ -8,6 +8,9 @@ import { formatCurrency } from '@/utils/formatter'
 import { toFirstName } from '@/utils/actorName'
 import { resolveDisplayDescription } from '@/utils/displayDescription'
 import { getCreditCardStatementPaymentDetails } from '@/utils/cashflowTransactions'
+import { useAdvisorActing } from '@/stores/useAdvisorActing'
+
+const MASKED_DESCRIPTION = '*************'
 
 type SortField = 'date' | 'value' | null
 type SortDirection = 'asc' | 'desc'
@@ -68,6 +71,7 @@ export function TransactionTable({
 }: Props) {
   const t = useTranslations('transactionTable')
   const locale = useLocale()
+  const actingAsClient = useAdvisorActing((s) => s.actingAsClient)
   const hasData = transactions?.length > 0
   const rows = useMemo(() => transactions ?? [], [transactions])
   const [expandedStatementIds, setExpandedStatementIds] = React.useState<Set<string>>(new Set())
@@ -166,7 +170,9 @@ export function TransactionTable({
               const categoryColor = tx.category?.color ?? '#CBD5E1'
               const isExpense = tx.type === 'EXPENSE'
               const value = Number(tx.value ?? 0)
-              const description = resolveDisplayDescription(tx.description, tx.sourceDescription, t('noDescription'))
+              const rawDescription = resolveDisplayDescription(tx.description, tx.sourceDescription, t('noDescription'))
+              // Quando advisor está vendo cliente, mascara descrições de transações que ele não criou
+              const description = actingAsClient && !rowCanWrite ? MASKED_DESCRIPTION : rawDescription
               const actorLabel = getActorLabel(tx)
               const actorFirstName = toFirstName(actorLabel) || actorLabel
               const statementDetails = getCreditCardStatementPaymentDetails(tx)

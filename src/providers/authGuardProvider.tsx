@@ -1,10 +1,15 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useUserSession } from "@/stores/useUserSession";
 import { useAdvisorActing } from "@/stores/useAdvisorActing";
-import { canActAsClientRole, isAdminRole } from "@/utils/roles";
+import {
+  canActAsClientRole,
+  canAccessAdvisorRole,
+  getAdvisorHomePath,
+  isAdminRole,
+} from "@/utils/roles";
 
 const DEV_RESTRICTED_HOST = "dev.flynance.tec.br";
 const PROD_DASHBOARD_URL = "https://flynance.tec.br/dashboard";
@@ -26,19 +31,31 @@ export function AuthGuardProvider({ children }: Props) {
   const pathname = usePathname();
   const { user, status, fetchAccount } = useUserSession();
   const clearActingClient = useAdvisorActing((s) => s.clearActingClient);
+  const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId);
 
   const isPublicRoute = isAuthPublicRoute(pathname);
-
-  const isRestrictedDevHost = () =>
-    typeof window !== "undefined" && window.location.hostname === DEV_RESTRICTED_HOST;
-
-  const isDevAccessBlockedByRole = () =>
+  const role = user?.userData?.user?.role;
+  const shouldRedirectAdvisorHome =
     status === "authenticated" &&
-    isRestrictedDevHost() &&
-    !isAdminRole(user?.userData?.user?.role);
+    canAccessAdvisorRole(role) &&
+    !isAdminRole(role) &&
+    !activeClientId &&
+    pathname?.startsWith("/dashboard") === true;
 
-  const computeAccessFlags = () => {
-    const role = user?.userData?.user?.role;
+  const isRestrictedDevHost = useCallback(
+    () => typeof window !== "undefined" && window.location.hostname === DEV_RESTRICTED_HOST,
+    []
+  );
+
+  const isDevAccessBlockedByRole = useCallback(
+    () =>
+      status === "authenticated" &&
+      isRestrictedDevHost() &&
+      !isAdminRole(role),
+    [isRestrictedDevHost, role, status]
+  );
+
+  const computeAccessFlags = useCallback(() => {
     const signature = user?.userData?.signature;
     const hasActiveSignature = user?.userData?.hasActiveSignature ?? false;
     const hasRoleBypass = canActAsClientRole(role);
@@ -76,7 +93,7 @@ export function AuthGuardProvider({ children }: Props) {
       canAccessPlatform,
       endDateIso,
     };
-  };
+  }, [role, user?.userData?.hasActiveSignature, user?.userData?.signature]);
 
   useEffect(() => {
     if (isPublicRoute) return;
@@ -103,13 +120,28 @@ export function AuthGuardProvider({ children }: Props) {
       return;
     }
 
+    if (shouldRedirectAdvisorHome) {
+      router.replace(getAdvisorHomePath(role));
+      return;
+    }
+
     const { canAccessPlatform } = computeAccessFlags();
 
     if (!canAccessPlatform && pathname !== "/WinbackPage") {
       router.replace("/WinbackPage");
       return;
     }
-  }, [isPublicRoute, status, user, pathname, router, clearActingClient]);
+  }, [
+    isPublicRoute,
+    status,
+    pathname,
+    router,
+    clearActingClient,
+    shouldRedirectAdvisorHome,
+    role,
+    isDevAccessBlockedByRole,
+    computeAccessFlags,
+  ]);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -167,6 +199,10 @@ export function AuthGuardProvider({ children }: Props) {
   }
 
   if (isDevAccessBlockedByRole()) {
+    return Loader;
+  }
+
+  if (shouldRedirectAdvisorHome) {
     return Loader;
   }
 

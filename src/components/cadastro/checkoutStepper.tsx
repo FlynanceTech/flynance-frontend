@@ -206,6 +206,7 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
   const searchParams = useSearchParams();
   const revalidate = searchParams.get("revalidate");
   const advisorInviteToken = (searchParams.get("advisorInviteToken") ?? "").trim();
+  const skipCard = searchParams.get("skipCard") === "true" && Boolean(advisorInviteToken);
 
   const [view, setView] = useState<ViewState>("CHECKOUT");
 
@@ -601,13 +602,13 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
         throw new Error("Preencha nome, e-mail, WhatsApp válido e CPF.");
       }
 
-      if (!form.cardName?.trim()) {
-        throw new Error("Informe o nome no cartão.");
-      }
-
-      // Validação rápida do Stripe Elements
-      if (!cardNumberComplete || !cardExpiryComplete || !cardCvcComplete) {
-        throw new Error("Preencha corretamente os dados do cartão.");
+      if (!skipCard) {
+        if (!form.cardName?.trim()) {
+          throw new Error("Informe o nome no cartão.");
+        }
+        if (!cardNumberComplete || !cardExpiryComplete || !cardCvcComplete) {
+          throw new Error("Preencha corretamente os dados do cartão.");
+        }
       }
 
       // Determina caminho: usuário autenticado (tem JWT) ou novo usuário (fluxo lead)
@@ -650,6 +651,15 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
           }
           throw err;
         }
+      }
+
+      // Fluxo sem cartão: advisor/org paga — só cria a conta e volta ao convite
+      if (skipCard) {
+        setLoading(false);
+        clearCheckoutDraft();
+        const inviteUrl = `/advisor/client-invite/accept?token=${encodeURIComponent(advisorInviteToken)}`;
+        router.replace(inviteUrl);
+        return;
       }
 
       // 1) SetupIntent — token identifica lead ou user
@@ -844,7 +854,16 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
                 </div>
               </div>
 
-              {/* Cartão de crédito (Stripe Elements) */}
+              {/* Cartão de crédito (Stripe Elements) — oculto quando advisor/org paga */}
+              {skipCard && (
+                <div className="rounded-xl border border-[#D7EAF5] bg-[#F3FAFF] p-4 text-sm text-[#2F6E91]">
+                  <p className="font-semibold">Sem cobrança necessária</p>
+                  <p className="mt-1 text-xs">
+                    O responsável financeiro desta conta é o seu consultor. Não é necessário cadastrar cartão de crédito.
+                  </p>
+                </div>
+              )}
+              {!skipCard && (
               <div className="bg-white rounded-lg border border-gray-200 p-4 flex flex-col gap-4">
                 <div className="flex flex-col lg:flex-row gap-2 justify-between lg:items-center">
                   <h2 className="text-2xl font-bold flex items-center gap-2">
@@ -919,19 +938,16 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
                   </div>
                 )}
               </div>
+              )}
 
               {/* Botões */}
               <div className="flex justify-end">
                 <button
-                  disabled={
-                    loading ||
-                    !stripe ||
-                    !elements
-                  }
+                  disabled={loading || (!skipCard && (!stripe || !elements))}
                   onClick={handleSubmit}
                   className={clsx(
                     "px-6 py-2 rounded-md font-medium cursor-pointer flex items-center justify-center gap-2",
-                    loading ? "bg-gray-300" : "bg-primary text-white hover:opacity-90"
+                    loading ? "bg-gray-300" : "bg-primary text-primary-foreground hover:opacity-90"
                   )}
                 >
                   {loading ? (
@@ -962,6 +978,7 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
                 trialDays={trialDays}
                 onChangePeriod={handleChangePeriod}
                 form={form}
+                skipCard={skipCard}
               />
             </div>
           </div>
@@ -1099,6 +1116,7 @@ interface PlanResumeProps {
   annualBilling: AnnualBilling;
   onAnnualBillingChange: (v: AnnualBilling) => void;
   onChangePeriod: (period: "MONTHLY" | "ANNUAL") => void;
+  skipCard?: boolean;
 }
 
 function PlanResume({
@@ -1110,6 +1128,7 @@ function PlanResume({
   onChangePeriod,
   annualBilling,
   onAnnualBillingChange,
+  skipCard = false,
 }: PlanResumeProps) {
   const effectivePromo = (form.promoCode ?? "").trim().toUpperCase();
   const promoTrialDays = isAnnual && effectivePromo === ANNUAL_COUPON_CODE ? 30 : trialDays;
@@ -1126,34 +1145,36 @@ function PlanResume({
 
   return (
     <div className="bg-white rounded-md shadow-md flex flex-col h-full overflow-hidden">
-      <div className="flex bg-slate-100">
-        <button
-          type="button"
-          onClick={() => onChangePeriod("MONTHLY")}
-          aria-pressed={!isAnnual}
-          className={clsx(
-            "flex-1 py-2 text-sm md:text-sm font-semibold transition-colors",
-            !isAnnual
-              ? "bg-white text-primary"
-              : "bg-slate-100 text-slate-500 hover:text-slate-700"
-          )}
-        >
-          Mensal
-        </button>
-        <button
-          type="button"
-          onClick={() => onChangePeriod("ANNUAL")}
-          aria-pressed={isAnnual}
-          className={clsx(
-            "flex-1 py-2 text-sm md:text-sm font-semibold transition-colors",
-            isAnnual
-              ? "bg-white text-primary"
-              : "bg-slate-100 text-slate-500 hover:text-slate-700"
-          )}
-        >
-          Anual
-        </button>
-      </div>
+      {!skipCard && (
+        <div className="flex bg-slate-100">
+          <button
+            type="button"
+            onClick={() => onChangePeriod("MONTHLY")}
+            aria-pressed={!isAnnual}
+            className={clsx(
+              "flex-1 py-2 text-sm md:text-sm font-semibold transition-colors",
+              !isAnnual
+                ? "bg-white text-primary"
+                : "bg-slate-100 text-slate-500 hover:text-slate-700"
+            )}
+          >
+            Mensal
+          </button>
+          <button
+            type="button"
+            onClick={() => onChangePeriod("ANNUAL")}
+            aria-pressed={isAnnual}
+            className={clsx(
+              "flex-1 py-2 text-sm md:text-sm font-semibold transition-colors",
+              isAnnual
+                ? "bg-white text-primary"
+                : "bg-slate-100 text-slate-500 hover:text-slate-700"
+            )}
+          >
+            Anual
+          </button>
+        </div>
+      )}
 
       <div className="p-4 md:p-5 flex-1 flex flex-col gap-4">
         <div className="flex flex-col">

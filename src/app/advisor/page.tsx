@@ -1,13 +1,30 @@
-'use client'
+﻿'use client'
 
-import { useMemo, useState } from 'react'
+import React, { useMemo, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { GripVertical } from 'lucide-react'
 import { Toaster } from 'react-hot-toast'
 import {
   Activity,
   AlertTriangle,
   ArrowUpRight,
   BarChart3,
+  Building2,
   CalendarDays,
   ChevronDown,
   ClipboardList,
@@ -20,19 +37,16 @@ import {
   Search,
   ShieldAlert,
   Sparkles,
+  SlidersHorizontal,
+  TrendingUp,
+  UserCheck,
+  UserPlus,
   UsersRound,
   WalletCards,
 } from 'lucide-react'
 
 import AdvisorGuard from './components/AdvisorGuard'
 import AdvisorInviteGenerationSection from './components/AdvisorInviteGenerationSection'
-import Sidebar from '../dashboard/components/Sidebar'
-import BottomMenu from '../dashboard/components/buttonMenu'
-import AdvisorActingPill from '../dashboard/components/AdvisorActingPill'
-import {
-  DESKTOP_SIDEBAR_COLLAPSED_OFFSET_CLASS,
-  DESKTOP_SIDEBAR_EXPANDED_OFFSET_CLASS,
-} from '../dashboard/components/Sidebar/sidebar.config'
 import {
   useAdvisorClients,
   useAdvisorGeneratedInvites,
@@ -42,6 +56,7 @@ import type { AdvisorClient, AdvisorPermission } from '@/services/advisor'
 import { useAdvisorActing } from '@/stores/useAdvisorActing'
 import { useUserSession } from '@/stores/useUserSession'
 import { formatCurrency as formatCurrencyByPreference } from '@/utils/formatter'
+import { isOrgAdminRole } from '@/utils/roles'
 import {
   Sheet,
   SheetContent,
@@ -102,6 +117,23 @@ type AdvisorAlertGroup = {
   alerts: AdvisorAlert[]
 }
 
+type AdvisorInsightItem = {
+  id: string
+  text: string
+  clients: EnrichedClient[]
+  insightLabel: string
+}
+
+type MockConsultor = {
+  id: string
+  name: string
+  email: string
+  activeClients: number
+  pendingInvites: number
+  criticalClients: number
+  status: 'active' | 'pending' | 'inactive'
+}
+
 const filterLabels: Record<ClientFilter, string> = {
   ALL: 'Todos',
   INDIVIDUAL: 'Individuais',
@@ -109,6 +141,35 @@ const filterLabels: Record<ClientFilter, string> = {
   OVERDUE: 'Inadimplentes',
   INACTIVE: 'Sem movimentação',
   CRITICAL: 'Críticos',
+}
+
+const MOCK_CONSULTORES: MockConsultor[] = [
+  { id: 'c1', name: 'Rafael Mendes', email: 'rafael@flynadvisory.com', activeClients: 12, pendingInvites: 2, criticalClients: 1, status: 'active' },
+  { id: 'c2', name: 'Camila Torres', email: 'camila@flynadvisory.com', activeClients: 8, pendingInvites: 0, criticalClients: 0, status: 'active' },
+  { id: 'c3', name: 'Lucas Ferreira', email: 'lucas@flynadvisory.com', activeClients: 5, pendingInvites: 1, criticalClients: 2, status: 'active' },
+  { id: 'c4', name: 'Beatriz Lima', email: 'beatriz@flynadvisory.com', activeClients: 0, pendingInvites: 0, criticalClients: 0, status: 'pending' },
+]
+
+function SortableClientCard({ id, children }: { id: string; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={isDragging ? 'opacity-50 z-50 relative' : 'relative'}
+    >
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        className="absolute left-2 top-1/2 z-10 -translate-y-1/2 cursor-grab touch-none text-slate-300 hover:text-slate-500 active:cursor-grabbing"
+        aria-label="Reordenar cliente"
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <div className="pl-7">{children}</div>
+    </div>
+  )
 }
 
 function hashText(value: string) {
@@ -208,7 +269,7 @@ function enrichClient(client: AdvisorClient): EnrichedClient {
     categoryMix: [
       { label: 'Moradia', value: clamp(24 + (seed % 18), 12, 52), color: 'bg-[#4F98C2]' },
       { label: 'Alimentação', value: clamp(18 + (seed % 16), 10, 44), color: 'bg-[#78B7A0]' },
-      { label: 'Crédito', value: clamp(12 + (seed % 22), 8, 48), color: 'bg-[#E7B75F]' },
+      { label: 'Cartão de Crédito', value: clamp(12 + (seed % 22), 8, 48), color: 'bg-[#E7B75F]' },
     ],
     trend: Array.from({ length: 7 }, (_, index) =>
       clamp(42 + trendSeed * 4 + index * 5 + (index % 2 === 0 ? 8 : -4), 20, 96)
@@ -231,10 +292,15 @@ function openWhatsApp(phone?: string | null) {
   window.open(digits ? `https://wa.me/55${digits}` : 'https://wa.me/', '_blank', 'noopener,noreferrer')
 }
 
-export default function AdvisorPage() {
+function currentPeriodLabel() {
+  return new Intl.DateTimeFormat('pt-BR', { month: 'short', year: 'numeric' })
+    .format(new Date())
+    .replace(/^\w/, (c) => c.toUpperCase())
+}
+
+function AdvisorPageInner() {
   const router = useRouter()
   const [clientsPage, setClientsPage] = useState(1)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<ClientFilter>('ALL')
   const [alertsOpen, setAlertsOpen] = useState(true)
@@ -242,6 +308,9 @@ export default function AdvisorPage() {
   const [inviteDrawerOpen, setInviteDrawerOpen] = useState(false)
   const [selectedAlertGroup, setSelectedAlertGroup] = useState<AdvisorAlertGroup | null>(null)
   const [selectedClient, setSelectedClient] = useState<EnrichedClient | null>(null)
+  const [selectedInsight, setSelectedInsight] = useState<AdvisorInsightItem | null>(null)
+  const [consultorFilter, setConsultorFilter] = useState<string>('all')
+  const [addConsultorOpen, setAddConsultorOpen] = useState(false)
 
   const session = useUserSession((state) => state.user)
   const setActingClient = useAdvisorActing((s) => s.setActingClient)
@@ -250,15 +319,20 @@ export default function AdvisorPage() {
   const revokeClientMutation = useRevokeAdvisorClientLink()
 
   const advisorName = session?.userData?.user?.name?.split(' ')?.[0] || 'Advisor'
+  const userRole = session?.userData?.user?.role ?? ''
+  const isMaster = isOrgAdminRole(userRole)
+
   const clients = useMemo(() => clientsQuery.data?.clients ?? [], [clientsQuery.data?.clients])
   const clientsMeta = clientsQuery.data?.meta
   const enrichedClients = useMemo(() => clients.map(enrichClient), [clients])
+  const [clientOrder, setClientOrder] = useState<string[]>([])
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
   const invites = invitesQuery.data ?? []
   const pendingInvites = invites.filter((invite) => invite.status === 'PENDING').length
 
-  const filteredClients = useMemo(() => {
+  const filteredAndSortedClients = useMemo(() => {
     const term = search.trim().toLowerCase()
-    return enrichedClients.filter((client) => {
+    const filtered = enrichedClients.filter((client) => {
       const matchesSearch =
         !term ||
         client.name.toLowerCase().includes(term) ||
@@ -271,7 +345,28 @@ export default function AdvisorPage() {
       if (filter === 'CRITICAL') return client.healthScore <= 39
       return true
     })
-  }, [enrichedClients, filter, search])
+    if (clientOrder.length === 0) return filtered
+    const posMap = new Map(clientOrder.map((id, i) => [id, i]))
+    return [...filtered].sort((a, b) => {
+      const ia = posMap.get(a.clientUserId) ?? 999
+      const ib = posMap.get(b.clientUserId) ?? 999
+      return ia - ib
+    })
+  }, [enrichedClients, filter, search, clientOrder])
+
+  const filteredClients = filteredAndSortedClients
+
+  const handleClientDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    setClientOrder((prev) => {
+      const ids = prev.length > 0 ? prev : filteredClients.map((c) => c.clientUserId)
+      const oldIndex = ids.indexOf(String(active.id))
+      const newIndex = ids.indexOf(String(over.id))
+      if (oldIndex === -1 || newIndex === -1) return prev
+      return arrayMove(ids, oldIndex, newIndex)
+    })
+  }, [filteredClients])
 
   const activeClients = clientsMeta?.total ?? enrichedClients.length
   const criticalClients = enrichedClients.filter((client) => client.healthScore <= 39).length
@@ -280,8 +375,12 @@ export default function AdvisorPage() {
   const kpis = [
     { label: 'Clientes ativos', value: activeClients, detail: '+3 este mês', Icon: UsersRound },
     { label: 'Convites pendentes', value: pendingInvites, detail: 'uso único, 3 dias', Icon: ClipboardList },
-    { label: 'Clientes críticos', value: criticalClients, detail: 'necessitam atenção', Icon: ShieldAlert },
-    { label: 'Sem movimentação', value: inactiveClients, detail: 'últimos 10+ dias', Icon: Activity },
+    {
+      label: 'Clientes críticos',
+      value: criticalClients,
+      detail: `${inactiveClients} sem movimentação`,
+      Icon: ShieldAlert,
+    },
   ]
 
   const alerts = useMemo<AdvisorAlert[]>(() => {
@@ -299,7 +398,7 @@ export default function AdvisorPage() {
         if (client.debtRatio >= 75) {
           clientAlerts.push({
             client,
-            title: `Uso de crédito em ${client.debtRatio}% da renda`,
+            title: `Uso de cartão de crédito em ${client.debtRatio}% da renda`,
             impact: 'Revisar faturas e recorrências',
             tone: 'amber' as const,
           })
@@ -350,6 +449,40 @@ export default function AdvisorPage() {
     })
   }, [alerts])
 
+  const insights = useMemo<AdvisorInsightItem[]>(() => {
+    const creditClients = enrichedClients.filter((c) => c.debtRatio >= 40)
+    const inactiveList = enrichedClients.filter((c) => c.lastActivityDays >= 10)
+    const coupleClients = enrichedClients.filter((c) => c.accountType === 'COUPLE')
+    const highExpenseClients = enrichedClients.filter((c) => c.debtRatio >= 30)
+
+    return [
+      {
+        id: 'credit',
+        text: `${criticalClients} cliente${criticalClients !== 1 ? 's' : ''} pode${criticalClients !== 1 ? 'm' : ''} se beneficiar de reorganização de cartão de crédito.`,
+        clients: creditClients,
+        insightLabel: 'Alto uso de cartão de crédito',
+      },
+      {
+        id: 'inactive',
+        text: `${inactiveClients} cliente${inactiveClients !== 1 ? 's' : ''} está${inactiveClients !== 1 ? 'o' : ''} com baixa frequência de lançamentos.`,
+        clients: inactiveList,
+        insightLabel: 'Baixa frequência de lançamentos',
+      },
+      {
+        id: 'couple',
+        text: 'Clientes casal tendem a apresentar maior retenção quando revisados quinzenalmente.',
+        clients: coupleClients,
+        insightLabel: 'Revisão quinzenal recomendada',
+      },
+      {
+        id: 'expenses',
+        text: 'Alimentação e recorrências aparecem como principais pontos de ajuste da carteira.',
+        clients: highExpenseClients,
+        insightLabel: 'Gastos relevantes em alimentação',
+      },
+    ]
+  }, [enrichedClients, criticalClients, inactiveClients])
+
   const clientsTotalPages = useMemo(() => {
     if (!clientsMeta) return 1
     return Math.max(1, clientsMeta.totalPages || Math.ceil(clientsMeta.total / Math.max(1, clientsMeta.limit)))
@@ -367,20 +500,8 @@ export default function AdvisorPage() {
 
   return (
     <AdvisorGuard>
-      <main className={`relative h-screen w-full gap-8 bg-[#F5F7FA] text-[hsl(var(--foreground))] transition-colors lg:flex lg:py-8 lg:pr-8 ${
-        sidebarCollapsed ? DESKTOP_SIDEBAR_COLLAPSED_OFFSET_CLASS : DESKTOP_SIDEBAR_EXPANDED_OFFSET_CLASS
-      }`}>
-        <AdvisorActingPill />
-        <aside className="hidden lg:block">
-          <Sidebar collapsed={sidebarCollapsed} onCollapsedChange={setSidebarCollapsed} />
-        </aside>
-
-        <aside className="flex lg:hidden">
-          <BottomMenu />
-        </aside>
-
-        <section className="w-full overflow-y-auto px-4 pb-28 pt-6 md:px-6 lg:pr-8 lg:pb-6 lg:pt-0">
-          <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-5">
+      <section className="w-full px-4 pb-28 pt-6 md:px-6 lg:px-8 lg:pt-8 lg:pb-8">
+        <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-5">
             <header
               className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm"
               data-onboarding-target="advisor-header"
@@ -395,13 +516,26 @@ export default function AdvisorPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
+                  {isMaster && (
+                    <select
+                      value={consultorFilter}
+                      onChange={(e) => setConsultorFilter(e.target.value)}
+                      className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-[#7CB8D8]"
+                      aria-label="Visualizando consultor"
+                    >
+                      <option value="all">Todos os consultores</option>
+                      {MOCK_CONSULTORES.filter((c) => c.status === 'active').map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  )}
                   <button
                     type="button"
                     onClick={() => setInviteDrawerOpen(true)}
-                    className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white hover:bg-[#3f86b0]"
+                    className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-[#3f86b0]"
                   >
                     <Plus className="h-4 w-4" />
-                    Gerar convite
+                    Gerar convites
                   </button>
                 </div>
               </div>
@@ -437,7 +571,8 @@ export default function AdvisorPage() {
               </div>
             </header>
 
-            <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {/* KPIs */}
+            <section className="grid gap-3 md:grid-cols-3">
               {kpis.map(({ label, value, detail, Icon }) => (
                 <button
                   key={label}
@@ -459,345 +594,511 @@ export default function AdvisorPage() {
             </section>
 
             <div className="space-y-5">
-                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <button
-                    type="button"
-                    onClick={() => setAlertsOpen((current) => !current)}
-                    className="flex w-full items-center justify-between gap-3 text-left"
-                    aria-expanded={alertsOpen}
-                  >
-                    <span>
-                      <span className="block text-base font-semibold text-[#253140]">
-                        Clientes que precisam da sua atenção
-                      </span>
-                      <span className="mt-1 block text-sm font-normal text-slate-600">
-                        Alertas priorizados por urgência, uso e risco financeiro.
-                      </span>
+              {/* Alertas */}
+              <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setAlertsOpen((current) => !current)}
+                  className="flex w-full items-center justify-between gap-3 text-left"
+                  aria-expanded={alertsOpen}
+                >
+                  <span>
+                    <span className="block text-base font-semibold text-[#253140]">
+                      Clientes que precisam da sua atenção
                     </span>
-                    <span className="flex items-center gap-3">
-                      <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-                        {alerts.length} alertas ativos
-                      </span>
-                      <ChevronDown
-                        className={[
-                          'h-5 w-5 flex-shrink-0 text-slate-500 transition-transform',
-                          alertsOpen ? 'rotate-180' : '',
-                        ].join(' ')}
-                      />
+                    <span className="mt-1 block text-sm font-normal text-slate-600">
+                      Alertas priorizados por urgência, uso e risco financeiro.
                     </span>
-                  </button>
-
-                  {alertsOpen && (
-                    alertGroups.length === 0 ? (
-                      <div className="mt-4 rounded-xl border border-dashed border-slate-200 p-5 text-sm text-slate-500">
-                        Nenhum cliente em estado crítico no momento.
-                      </div>
-                    ) : (
-                      <div className="mt-4 grid gap-3 lg:grid-cols-2">
-                        {alertGroups.map((group) => {
-                          const mainAlert = group.alerts[0]
-                          const hasMultipleAlerts = group.alerts.length > 1
-                          return (
-                          <article
-                            key={group.client.id}
-                            className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-[#B7D7E8] hover:bg-white"
-                          >
-                            <button
-                              type="button"
-                              onClick={() => setSelectedAlertGroup(group)}
-                              className="w-full text-left"
-                            >
-                              <div className="flex items-start gap-3">
-                                <div className={[
-                                  'mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl',
-                                  mainAlert?.tone === 'red'
-                                    ? 'bg-red-100 text-red-600'
-                                    : mainAlert?.tone === 'amber'
-                                      ? 'bg-amber-100 text-amber-700'
-                                      : 'bg-slate-200 text-slate-600',
-                                ].join(' ')}>
-                                  <AlertTriangle className="h-5 w-5" />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <p className="truncate text-sm font-semibold text-[#253140]">{group.client.name}</p>
-                                    <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
-                                      {group.alerts.length} alerta{group.alerts.length > 1 ? 's' : ''}
-                                    </span>
-                                  </div>
-                                  <p className="mt-1 text-sm font-medium text-slate-800">
-                                    {hasMultipleAlerts
-                                      ? `${group.alerts.length} pontos precisam de atenção`
-                                      : mainAlert?.title}
-                                  </p>
-                                  <p className="mt-1 text-xs text-slate-500">
-                                    {hasMultipleAlerts
-                                      ? mainAlert?.title
-                                      : mainAlert?.impact}
-                                  </p>
-                                </div>
-                              </div>
-                            </button>
-                            <div className="mt-3 flex justify-end">
-                              <button
-                                type="button"
-                                onClick={() => openClientDashboard(group.client)}
-                                className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                              >
-                                Abrir Dashboard
-                                <ArrowUpRight className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                          </article>
-                          )
-                        })}
-                      </div>
-                    )
-                  )}
-                </section>
-
-                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <button
-                    type="button"
-                    onClick={() => setInsightsOpen((current) => !current)}
-                    className="flex w-full items-center justify-between gap-3 text-left"
-                    aria-expanded={insightsOpen}
-                  >
-                    <span className="flex items-center gap-2">
-                      <Sparkles className="h-5 w-5 text-[#2F6E91]" />
-                      <span>
-                        <span className="block text-base font-semibold text-[#253140]">Insights da Fly</span>
-                        <span className="mt-1 block text-sm font-normal text-slate-600">
-                          Leituras automáticas sobre carteira, uso e oportunidades de ação.
-                        </span>
-                      </span>
+                  </span>
+                  <span className="flex items-center gap-3">
+                    <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                      {alerts.length} alertas ativos
                     </span>
                     <ChevronDown
                       className={[
                         'h-5 w-5 flex-shrink-0 text-slate-500 transition-transform',
-                        insightsOpen ? 'rotate-180' : '',
+                        alertsOpen ? 'rotate-180' : '',
                       ].join(' ')}
                     />
-                  </button>
+                  </span>
+                </button>
 
-                  {insightsOpen && (
-                    <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                      <Insight text={`${criticalClients} clientes podem se beneficiar de reorganização de crédito.`} />
-                      <Insight text={`${inactiveClients} clientes estão com baixa frequência de lançamentos.`} />
-                      <Insight text="Clientes casal tendem a apresentar maior retenção quando revisados quinzenalmente." />
-                      <Insight text="Alimentação e recorrências aparecem como principais pontos de ajuste da carteira." />
+                {alertsOpen && (
+                  alertGroups.length === 0 ? (
+                    <div className="mt-4 rounded-xl border border-dashed border-slate-200 p-5 text-sm text-slate-500">
+                      Nenhum cliente em estado crítico no momento.
                     </div>
-                  )}
-                </section>
+                  ) : (
+                    <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                      {alertGroups.map((group) => {
+                        const mainAlert = group.alerts[0]
+                        const hasMultipleAlerts = group.alerts.length > 1
+                        return (
+                        <article
+                          key={group.client.id}
+                          className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-[#B7D7E8] hover:bg-white"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => setSelectedAlertGroup(group)}
+                            className="w-full text-left"
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className={[
+                                'mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl',
+                                mainAlert?.tone === 'red'
+                                  ? 'bg-red-100 text-red-600'
+                                  : mainAlert?.tone === 'amber'
+                                    ? 'bg-amber-100 text-amber-700'
+                                    : 'bg-slate-200 text-slate-600',
+                              ].join(' ')}>
+                                <AlertTriangle className="h-5 w-5" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="truncate text-sm font-semibold text-[#253140]">{group.client.name}</p>
+                                  <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                                    {group.alerts.length} alerta{group.alerts.length > 1 ? 's' : ''}
+                                  </span>
+                                </div>
+                                <p className="mt-1 text-sm font-medium text-slate-800">
+                                  {hasMultipleAlerts
+                                    ? `${group.alerts.length} pontos precisam de atenção`
+                                    : mainAlert?.title}
+                                </p>
+                                <p className="mt-1 text-xs text-slate-500">
+                                  {hasMultipleAlerts
+                                    ? mainAlert?.title
+                                    : mainAlert?.impact}
+                                </p>
+                              </div>
+                            </div>
+                          </button>
+                          <div className="mt-3 flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() => openClientDashboard(group.client)}
+                              className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                            >
+                              Abrir Dashboard
+                              <ArrowUpRight className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </article>
+                        )
+                      })}
+                    </div>
+                  )
+                )}
+              </section>
 
-                <section
-                  className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-                  data-onboarding-target="advisor-clients"
+              {/* Insights da Fly */}
+              <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setInsightsOpen((current) => !current)}
+                  className="flex w-full items-center justify-between gap-3 text-left"
+                  aria-expanded={insightsOpen}
                 >
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <h2 className="text-base font-semibold text-[#253140]">Carteira de clientes</h2>
-                      <p className="mt-1 text-sm text-slate-600">
-                        Resumo financeiro, saúde, atividade e atalhos de atendimento.
-                      </p>
+                  <span className="flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-[#2F6E91]" />
+                    <span>
+                      <span className="block text-base font-semibold text-[#253140]">Insights da Fly</span>
+                      <span className="mt-1 block text-sm font-normal text-slate-600">
+                        Leituras automáticas sobre carteira, uso e oportunidades de ação.
+                      </span>
+                    </span>
+                  </span>
+                  <ChevronDown
+                    className={[
+                      'h-5 w-5 flex-shrink-0 text-slate-500 transition-transform',
+                      insightsOpen ? 'rotate-180' : '',
+                    ].join(' ')}
+                  />
+                </button>
+
+                {insightsOpen && (
+                  <div className="mt-4 space-y-3">
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                      {insights.map((insight) => (
+                        <button
+                          key={insight.id}
+                          type="button"
+                          onClick={() => setSelectedInsight(insight)}
+                          className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-left text-sm leading-5 text-slate-700 transition hover:border-[#B7D7E8] hover:bg-white"
+                        >
+                          {insight.text}
+                          {insight.clients.length > 0 && (
+                            <span className="mt-2 block text-[11px] font-semibold text-[#2F6E91]">
+                              {insight.clients.length} cliente{insight.clients.length !== 1 ? 's' : ''} — clique para ver
+                            </span>
+                          )}
+                        </button>
+                      ))}
                     </div>
+                    <div className="flex justify-end pt-1">
+                      <button
+                        type="button"
+                        onClick={() => router.push('/advisor/relatorio-cliente')}
+                        className="inline-flex h-9 items-center gap-2 rounded-xl border border-[#4F98C2] bg-white px-4 text-sm font-semibold text-[#2F6E91] hover:bg-[#EAF4FA]"
+                      >
+                        <TrendingUp className="h-4 w-4" />
+                        Ir para Relatórios
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </section>
+
+              {/* Carteira de Clientes */}
+              <section
+                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                data-onboarding-target="advisor-clients"
+              >
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="text-base font-semibold text-[#253140]">Carteira de clientes</h2>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Resumo financeiro, saúde, atividade e atalhos de atendimento.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-500">
+                      Período: {currentPeriodLabel()}
+                    </span>
                     <span className="text-xs font-semibold text-slate-500">
                       {filteredClients.length} de {enrichedClients.length} exibidos
                     </span>
                   </div>
+                </div>
 
-                  {clientsQuery.isLoading ? (
-                    <div className="mt-4 h-64 animate-pulse rounded-xl bg-slate-100" />
-                  ) : clientsQuery.isError ? (
-                    <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                      {clientsQuery.error instanceof Error
-                        ? clientsQuery.error.message
-                        : 'Erro ao carregar clientes.'}
-                    </div>
-                  ) : filteredClients.length === 0 ? (
-                    <div className="mt-4 rounded-xl border border-dashed border-slate-200 p-8 text-sm text-slate-500">
-                      Nenhum cliente encontrado para os filtros atuais.
-                    </div>
-                  ) : (
-                    <div className="mt-4 space-y-3">
-                      {filteredClients.map((client) => (
-                        <article
-                          key={client.id}
-                          className="rounded-2xl border border-slate-200 bg-[linear-gradient(180deg,#FFFFFF_0%,#FAFCFD_100%)] p-4"
-                        >
-                          <div className="grid gap-4 xl:grid-cols-[minmax(260px,1.1fr)_1.3fr_260px] xl:items-center">
-                            <div className="flex min-w-0 items-center gap-3">
-                              {client.accountType === 'COUPLE' ? (
-                                <div className="relative h-11 w-14 flex-shrink-0">
-                                  <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-full bg-[#253140] text-xs font-semibold text-white">
-                                    {initials(client.coupleNames[0])}
-                                  </div>
-                                  <div className="absolute right-0 top-1 flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-[#4F98C2] text-xs font-semibold text-white">
-                                    {initials(client.coupleNames[1])}
-                                  </div>
+                {clientsQuery.isLoading ? (
+                  <div className="mt-4 h-64 animate-pulse rounded-xl bg-slate-100" />
+                ) : clientsQuery.isError ? (
+                  <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                    {clientsQuery.error instanceof Error
+                      ? clientsQuery.error.message
+                      : 'Erro ao carregar clientes.'}
+                  </div>
+                ) : filteredClients.length === 0 ? (
+                  <div className="mt-4 rounded-xl border border-dashed border-slate-200 p-8 text-sm text-slate-500">
+                    Nenhum cliente encontrado para os filtros atuais.
+                  </div>
+                ) : (
+                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleClientDragEnd}>
+                    <SortableContext items={filteredClients.map((c) => c.clientUserId)} strategy={verticalListSortingStrategy}>
+                      <div className="mt-4 space-y-3">
+                        {filteredClients.map((client) => (
+                          <SortableClientCard key={client.clientUserId} id={client.clientUserId}>
+                          <article
+                            className="rounded-2xl border border-slate-200 bg-white p-4"
+                          >
+                        <div className="grid gap-4 xl:grid-cols-[minmax(260px,1.1fr)_1.3fr_260px] xl:items-center">
+                          <div className="flex min-w-0 items-center gap-3">
+                            {client.accountType === 'COUPLE' ? (
+                              <div className="relative h-11 w-14 flex-shrink-0">
+                                <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-full bg-[#253140] text-xs font-semibold text-white">
+                                  {initials(client.coupleNames[0])}
                                 </div>
-                              ) : (
-                                <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-[#253140] text-sm font-semibold text-white">
-                                  {initials(client.name)}
+                                <div className="absolute right-0 top-1 flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-[#4F98C2] text-xs font-semibold text-white">
+                                  {initials(client.coupleNames[1])}
                                 </div>
-                              )}
-                              <div className="min-w-0">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <h3 className="truncate text-sm font-semibold text-[#253140]">{client.name}</h3>
-                                  <span className="rounded-full border border-[#D7EAF5] bg-[#F3FAFF] px-2 py-0.5 text-[11px] font-semibold text-[#2F6E91]">
-                                    {client.accountType === 'COUPLE' ? 'Casal' : 'Individual'}
-                                  </span>
-                                  <span className={['rounded-full border px-2 py-0.5 text-[11px] font-semibold', statusBadgeClass(client.riskStatus)].join(' ')}>
-                                    {client.riskStatus}
-                                  </span>
-                                </div>
-                                <p className="mt-1 truncate text-xs text-slate-500">{client.email || 'E-mail não informado'}</p>
-                                <p className="mt-1 text-xs text-slate-500">Última atividade: {client.lastActivityLabel}</p>
                               </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                              <Metric label="Receitas" value={formatCurrency(client.income)} tone="emerald" />
-                              <Metric label="Despesas" value={formatCurrency(client.expense)} tone="red" />
-                              <Metric label="Saldo" value={formatCurrency(client.balance)} />
-                              <Metric label="Crédito" value={formatCurrency(client.creditSpending)} tone="amber" />
-                            </div>
-
-                            <div>
-                              <div className="flex items-center justify-between gap-3">
-                                <div>
-                                  <p className="text-xs font-semibold uppercase text-slate-500">Saúde financeira</p>
-                                  <p className="mt-1 text-xl font-semibold text-[#253140]">{client.healthScore}</p>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => setSelectedClient(client)}
-                                  className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                                >
-                                  Visualização rápida
-                                </button>
+                            ) : (
+                              <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-[#253140] text-sm font-semibold text-white">
+                                {initials(client.name)}
                               </div>
-                              <div className="mt-2 h-2 rounded-full bg-slate-100">
-                                <div
-                                  className={['h-2 rounded-full', scoreClass(client.healthScore)].join(' ')}
-                                  style={{ width: `${client.healthScore}%` }}
-                                />
+                            )}
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h3 className="truncate text-sm font-semibold text-[#253140]">{client.name}</h3>
+                                <span className="rounded-full border border-[#D7EAF5] bg-[#F3FAFF] px-2 py-0.5 text-[11px] font-semibold text-[#2F6E91]">
+                                  {client.accountType === 'COUPLE' ? 'Casal' : 'Individual'}
+                                </span>
+                                <span className={['rounded-full border px-2 py-0.5 text-[11px] font-semibold', statusBadgeClass(client.riskStatus)].join(' ')}>
+                                  {client.riskStatus}
+                                </span>
                               </div>
-                              <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] text-slate-500">
-                                <span>Dívida {client.debtRatio}%</span>
-                                <span>Uso {client.usageFrequency}%</span>
-                                <span>Evol. {client.financialEvolution}%</span>
-                              </div>
+                              <p className="mt-1 truncate text-xs text-slate-500">{client.email || 'E-mail não informado'}</p>
+                              <p className="mt-1 text-xs text-slate-500">Última atividade: {client.lastActivityLabel}</p>
                             </div>
                           </div>
 
-                          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
-                            <div className="flex flex-wrap gap-2">
-                              {client.accountType === 'COUPLE' && (
-                                <div className="inline-flex overflow-hidden rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-600">
-                                  <button type="button" className="bg-[#EAF4FA] px-3 py-1.5 text-[#2F6E91]">Consolidado</button>
-                                  <button type="button" className="px-3 py-1.5 hover:bg-slate-50">{client.coupleNames[0]}</button>
-                                  <button type="button" className="px-3 py-1.5 hover:bg-slate-50">{client.coupleNames[1]}</button>
-                                </div>
-                              )}
-                              <span className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500">
-                                {permissionLabel(client.permission)}
-                              </span>
-                            </div>
+                          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                            <Metric label="Receitas" value={formatCurrency(client.income)} tone="emerald" />
+                            <Metric label="Despesas" value={formatCurrency(client.expense)} tone="red" />
+                            <Metric label="Saldo" value={formatCurrency(client.balance)} />
+                            <Metric label="Cartão de Crédito" value={formatCurrency(client.creditSpending)} tone="amber" />
+                          </div>
 
-                            <div className="flex flex-wrap gap-2">
-                              <ClientAction label="Abrir Dashboard" Icon={LayoutDashboard} onClick={() => openClientDashboard(client)} />
-                              <ClientAction
-                                label="Relatórios"
-                                Icon={FileText}
-                                onClick={() =>
-                                  openClientDashboard(
-                                    client,
-                                    `/advisor/relatorio-cliente?clientId=${encodeURIComponent(client.clientUserId)}`
-                                  )
-                                }
-                              />
-                              <ClientAction label="Cartões" Icon={CreditCard} onClick={() => openClientDashboard(client, '/dashboard/futuros')} />
-                              <ClientAction label="WhatsApp" Icon={MessageCircle} onClick={() => openWhatsApp(client.phone)} />
+                          <div>
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <p className="text-xs font-semibold uppercase text-slate-500">Saúde financeira</p>
+                                <p className="mt-1 text-xl font-semibold text-[#253140]">{client.healthScore}</p>
+                              </div>
                               <button
                                 type="button"
-                                disabled={revokeClientMutation.isPending}
-                                onClick={() => revokeClientMutation.mutate(client.id)}
-                                className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-60"
-                                aria-label="Mais opções"
-                                title="Mais opções"
+                                onClick={() => setSelectedClient(client)}
+                                className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                               >
-                                <MoreHorizontal className="h-4 w-4" />
+                                Visualização rápida
                               </button>
                             </div>
+                            <div className="mt-2 h-2 rounded-full bg-slate-100">
+                              <div
+                                className={['h-2 rounded-full', scoreClass(client.healthScore)].join(' ')}
+                                style={{ width: `${client.healthScore}%` }}
+                              />
+                            </div>
+                            <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] text-slate-500">
+                              <span>Dívida {client.debtRatio}%</span>
+                              <span>Uso {client.usageFrequency}%</span>
+                              <span>Evol. {client.financialEvolution}%</span>
+                            </div>
                           </div>
-                        </article>
-                      ))}
-                    </div>
-                  )}
+                        </div>
 
-                  <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-xs text-slate-500">
-                      Página {clientsPage} de {clientsTotalPages}
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setClientsPage((prev) => Math.max(1, prev - 1))}
-                        disabled={clientsPage <= 1}
-                        className="rounded-lg border border-slate-200 px-3 py-1 text-xs disabled:opacity-50"
-                      >
-                        Anterior
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setClientsPage((prev) => Math.min(clientsTotalPages, prev + 1))}
-                        disabled={!clientsMeta?.hasNext || clientsPage >= clientsTotalPages}
-                        className="rounded-lg border border-slate-200 px-3 py-1 text-xs disabled:opacity-50"
-                      >
-                        Próxima
-                      </button>
+                        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
+                          <div className="flex flex-wrap gap-2">
+                            {client.accountType === 'COUPLE' && (
+                              <div className="inline-flex overflow-hidden rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-600">
+                                <button type="button" className="bg-[#EAF4FA] px-3 py-1.5 text-[#2F6E91]">Consolidado</button>
+                                <button type="button" className="px-3 py-1.5 hover:bg-slate-50">{client.coupleNames[0]}</button>
+                                <button type="button" className="px-3 py-1.5 hover:bg-slate-50">{client.coupleNames[1]}</button>
+                              </div>
+                            )}
+                            <span className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500">
+                              {permissionLabel(client.permission)}
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            <ClientAction label="Abrir Dashboard" Icon={LayoutDashboard} onClick={() => openClientDashboard(client)} />
+                            <ClientAction
+                              label="Relatórios"
+                              Icon={FileText}
+                              onClick={() =>
+                                openClientDashboard(
+                                  client,
+                                  `/advisor/relatorio-cliente?clientId=${encodeURIComponent(client.clientUserId)}`
+                                )
+                              }
+                            />
+                            <button
+                              type="button"
+                              onClick={() => router.push(`/advisor/planejamento/${encodeURIComponent(client.clientUserId)}?name=${encodeURIComponent(client.name)}`)}
+                              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#4F98C2] px-3 text-xs font-semibold text-white hover:bg-[#3f86b0] transition"
+                            >
+                              <SlidersHorizontal className="h-3.5 w-3.5" />
+                              Editar planejamento
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => router.push(`/advisor/planejamento/${encodeURIComponent(client.clientUserId)}/progresso?name=${encodeURIComponent(client.name)}`)}
+                              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+                            >
+                              <TrendingUp className="h-3.5 w-3.5" />
+                              Acompanhar progresso
+                            </button>
+                            <ClientAction label="Cartões" Icon={CreditCard} onClick={() => openClientDashboard(client, '/dashboard/futuros')} />
+                            <ClientAction label="WhatsApp" Icon={MessageCircle} onClick={() => openWhatsApp(client.phone)} />
+                            <button
+                              type="button"
+                              disabled={revokeClientMutation.isPending}
+                              onClick={() => revokeClientMutation.mutate(client.id)}
+                              className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-60"
+                              aria-label="Mais opções"
+                              title="Mais opções"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                          </article>
+                          </SortableClientCard>
+                        ))}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
+                )}
+
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs text-slate-500">
+                    Página {clientsPage} de {clientsTotalPages}
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setClientsPage((prev) => Math.max(1, prev - 1))}
+                      disabled={clientsPage <= 1}
+                      className="rounded-lg border border-slate-200 px-3 py-1 text-xs disabled:opacity-50"
+                    >
+                      Anterior
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setClientsPage((prev) => Math.min(clientsTotalPages, prev + 1))}
+                      disabled={!clientsMeta?.hasNext || clientsPage >= clientsTotalPages}
+                      className="rounded-lg border border-slate-200 px-3 py-1 text-xs disabled:opacity-50"
+                    >
+                      Próxima
+                    </button>
+                  </div>
+                </div>
+              </section>
+
+              {/* Lista de convites pendentes */}
+              <AdvisorInviteGenerationSection showGenerator={false} />
+
+              {/* Consultores da organização — visível apenas para MASTER */}
+              {isMaster && (
+                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-5 w-5 text-[#2F6E91]" />
+                      <div>
+                        <h2 className="text-base font-semibold text-[#253140]">Consultores da organização</h2>
+                        <p className="mt-0.5 text-sm text-slate-600">
+                          Visão consolidada da equipe de consultores.
+                        </p>
+                      </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setAddConsultorOpen(true)}
+                      className="inline-flex h-9 items-center gap-2 rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground hover:bg-[#3f86b0]"
+                    >
+                      <UserPlus className="h-4 w-4" />
+                      Novo Consultor
+                    </button>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    {MOCK_CONSULTORES.map((consultor) => (
+                      <article
+                        key={consultor.id}
+                        className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#253140] text-sm font-semibold text-white">
+                            {initials(consultor.name)}
+                          </div>
+                          <span className={[
+                            'rounded-full border px-2 py-0.5 text-[11px] font-semibold',
+                            consultor.status === 'active'
+                              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                              : consultor.status === 'pending'
+                                ? 'border-amber-200 bg-amber-50 text-amber-700'
+                                : 'border-slate-200 bg-slate-100 text-slate-600',
+                          ].join(' ')}>
+                            {consultor.status === 'active' ? 'Ativo' : consultor.status === 'pending' ? 'Pendente' : 'Inativo'}
+                          </span>
+                        </div>
+                        <div className="mt-3">
+                          <p className="text-sm font-semibold text-[#253140]">{consultor.name}</p>
+                          <p className="mt-0.5 truncate text-xs text-slate-500">{consultor.email}</p>
+                        </div>
+                        <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                          <div>
+                            <p className="text-base font-semibold text-[#253140]">{consultor.activeClients}</p>
+                            <p className="text-[10px] text-slate-500">Clientes</p>
+                          </div>
+                          <div>
+                            <p className="text-base font-semibold text-[#253140]">{consultor.pendingInvites}</p>
+                            <p className="text-[10px] text-slate-500">Convites</p>
+                          </div>
+                          <div>
+                            <p className={['text-base font-semibold', consultor.criticalClients > 0 ? 'text-red-600' : 'text-[#253140]'].join(' ')}>
+                              {consultor.criticalClients}
+                            </p>
+                            <p className="text-[10px] text-slate-500">Críticos</p>
+                          </div>
+                        </div>
+                        {consultor.status === 'active' && (
+                          <button
+                            type="button"
+                            onClick={() => setConsultorFilter(consultor.id)}
+                            className="mt-3 inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                          >
+                            <UserCheck className="h-3.5 w-3.5" />
+                            Ver carteira
+                          </button>
+                        )}
+                      </article>
+                    ))}
                   </div>
                 </section>
-
-                <AdvisorInviteGenerationSection showGenerator={false} />
+              )}
             </div>
           </div>
-        </section>
-      </main>
+      </section>
 
+      {/* Drawer de convites */}
       <Sheet open={inviteDrawerOpen} onOpenChange={setInviteDrawerOpen}>
         <SheetContent className="!w-[min(960px,94vw)] overflow-y-auto border-slate-200 bg-[#F5F7FA] p-0 sm:!max-w-[960px]">
           <div className="p-6">
             <SheetHeader className="mb-5 text-left">
-              <SheetTitle className="text-xl text-[#253140]">Gerar convite</SheetTitle>
+              <SheetTitle className="text-xl text-[#253140]">Gerar convites</SheetTitle>
               <SheetDescription>
                 Escolha o tipo de conta, defina quem paga e gere o link de acesso do cliente.
               </SheetDescription>
             </SheetHeader>
 
             <AdvisorInviteGenerationSection
-              showList={false}
               generatorSurface="drawer"
+              isOrgAdmin={isMaster}
             />
           </div>
         </SheetContent>
       </Sheet>
 
+      {/* Drawer rápido do cliente */}
       <ClientQuickViewDrawer
         client={selectedClient}
         onClose={() => setSelectedClient(null)}
         onOpenDashboard={(client) => openClientDashboard(client)}
+        onOpenReport={(client) =>
+          openClientDashboard(
+            client,
+            `/advisor/relatorio-cliente?clientId=${encodeURIComponent(client.clientUserId)}`
+          )
+        }
       />
+
+      {/* Modal de alertas */}
       <ClientAlertsDialog
         group={selectedAlertGroup}
         onClose={() => setSelectedAlertGroup(null)}
         onOpenDashboard={(client) => openClientDashboard(client)}
       />
+
+      {/* Modal de clientes por insight */}
+      <InsightClientsDialog
+        insight={selectedInsight}
+        onClose={() => setSelectedInsight(null)}
+        onOpenDashboard={(client) => openClientDashboard(client)}
+        onOpenReport={(client) =>
+          openClientDashboard(
+            client,
+            `/advisor/relatorio-cliente?clientId=${encodeURIComponent(client.clientUserId)}`
+          )
+        }
+      />
+
+      {/* Modal adicionar consultor */}
+      <AddConsultorDialog
+        open={addConsultorOpen}
+        onClose={() => setAddConsultorOpen(false)}
+      />
+
       <Toaster />
     </AdvisorGuard>
   )
+}
+
+export default function AdvisorPage() {
+  return <AdvisorPageInner />
 }
 
 function Metric({ label, value, tone }: { label: string; value: string; tone?: 'emerald' | 'red' | 'amber' }) {
@@ -824,10 +1125,17 @@ function ClientAction({ label, Icon, onClick }: { label: string; Icon: typeof La
   )
 }
 
-function Insight({ text }: { text: string }) {
+function MovimentacaoItem({ label, value, date }: { label: string; value: number; date?: string }) {
+  const isPositive = value >= 0
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-sm leading-5 text-slate-700">
-      {text}
+    <div className="flex items-center justify-between gap-2">
+      <div className="min-w-0">
+        <p className="truncate text-sm text-slate-700">{label}</p>
+        {date && <p className="text-[11px] text-slate-400">{date}</p>}
+      </div>
+      <p className={['flex-shrink-0 text-sm font-semibold', isPositive ? 'text-emerald-700' : 'text-red-700'].join(' ')}>
+        {isPositive ? '+' : ''}{formatCurrencyByPreference(Math.abs(value))}
+      </p>
     </div>
   )
 }
@@ -892,10 +1200,104 @@ function ClientAlertsDialog({
               <button
                 type="button"
                 onClick={() => onOpenDashboard(group.client)}
-                className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white hover:bg-[#3f86b0]"
+                className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-[#3f86b0]"
               >
                 Abrir Dashboard
                 <ArrowUpRight className="h-4 w-4" />
+              </button>
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function InsightClientsDialog({
+  insight,
+  onClose,
+  onOpenDashboard,
+  onOpenReport,
+}: {
+  insight: AdvisorInsightItem | null
+  onClose: () => void
+  onOpenDashboard: (client: EnrichedClient) => void
+  onOpenReport: (client: EnrichedClient) => void
+}) {
+  return (
+    <Dialog open={Boolean(insight)} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="border-slate-200 bg-white sm:max-w-2xl sm:rounded-2xl">
+        {insight && (
+          <>
+            <DialogHeader>
+              <DialogTitle className="text-[#253140]">
+                Clientes relacionados a este insight
+              </DialogTitle>
+              <DialogDescription>
+                {insight.insightLabel} — {insight.clients.length} cliente{insight.clients.length !== 1 ? 's' : ''} identificado{insight.clients.length !== 1 ? 's' : ''}.
+              </DialogDescription>
+            </DialogHeader>
+
+            {insight.clients.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">
+                Nenhum cliente relacionado a este insight no momento.
+              </div>
+            ) : (
+              <div className="max-h-[480px] space-y-3 overflow-y-auto">
+                {insight.clients.map((client) => (
+                  <article key={client.id} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#253140] text-xs font-semibold text-white">
+                        {initials(client.name)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-semibold text-[#253140]">{client.name}</p>
+                          <span className="rounded-full border border-[#D7EAF5] bg-[#F3FAFF] px-2 py-0.5 text-[11px] font-semibold text-[#2F6E91]">
+                            {client.accountType === 'COUPLE' ? 'Casal' : 'Individual'}
+                          </span>
+                          <span className={['rounded-full border px-2 py-0.5 text-[11px] font-semibold', statusBadgeClass(client.riskStatus)].join(' ')}>
+                            {client.riskStatus}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Saúde financeira: {client.healthScore}/100 — Última atividade: {client.lastActivityLabel}
+                        </p>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          {insight.insightLabel}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => { onOpenReport(client); onClose() }}
+                        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                        Ver Relatório
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { onOpenDashboard(client); onClose() }}
+                        className="inline-flex h-8 items-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-[#3f86b0]"
+                      >
+                        <LayoutDashboard className="h-3.5 w-3.5" />
+                        Abrir Dashboard
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Fechar
               </button>
             </div>
           </>
@@ -909,11 +1311,15 @@ function ClientQuickViewDrawer({
   client,
   onClose,
   onOpenDashboard,
+  onOpenReport,
 }: {
   client: EnrichedClient | null
   onClose: () => void
   onOpenDashboard: (client: EnrichedClient) => void
+  onOpenReport: (client: EnrichedClient) => void
 }) {
+  const formatCurrency = (value?: number | null) => formatCurrencyByPreference(Number(value ?? 0))
+
   return (
     <Sheet open={Boolean(client)} onOpenChange={(open) => !open && onClose()}>
       <SheetContent className="!w-[min(760px,92vw)] overflow-y-auto border-slate-200 bg-white p-0 sm:!max-w-[760px]">
@@ -948,7 +1354,7 @@ function ClientQuickViewDrawer({
             </div>
 
             <div className="mt-5 grid gap-4 lg:grid-cols-2">
-              <Panel title="Receitas x despesas" Icon={BarChart3}>
+              <Panel title="Receitas × Despesas" Icon={BarChart3}>
                 <div className="flex h-36 items-end gap-2">
                   {client.trend.map((value, index) => (
                     <div key={index} className="flex flex-1 flex-col items-center gap-1">
@@ -959,7 +1365,7 @@ function ClientQuickViewDrawer({
                 </div>
               </Panel>
 
-              <Panel title="Categorias principais" Icon={WalletCards}>
+              <Panel title="Situação atual dos gastos" Icon={WalletCards}>
                 <div className="space-y-3">
                   {client.categoryMix.map((item) => (
                     <div key={item.label}>
@@ -984,10 +1390,22 @@ function ClientQuickViewDrawer({
               </Panel>
 
               <Panel title="Últimas movimentações" Icon={Activity}>
-                <div className="space-y-2 text-sm text-slate-700">
-                  <p>Supermercado - {formatCurrency(client.expense * 0.08)}</p>
-                  <p>Receita registrada - {formatCurrency(client.income * 0.42)}</p>
-                  <p>Fatura de crédito - {formatCurrency(client.creditSpending)}</p>
+                <div className="space-y-3">
+                  <MovimentacaoItem
+                    label="Alimentação"
+                    value={-(client.expense * 0.08)}
+                    date="Hoje"
+                  />
+                  <MovimentacaoItem
+                    label="Salário"
+                    value={client.income * 0.42}
+                    date="Ontem"
+                  />
+                  <MovimentacaoItem
+                    label="Cartão de Crédito"
+                    value={-client.creditSpending}
+                    date="Há 2 dias"
+                  />
                 </div>
               </Panel>
             </div>
@@ -996,10 +1414,18 @@ function ClientQuickViewDrawer({
               <button
                 type="button"
                 onClick={() => onOpenDashboard(client)}
-                className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white hover:bg-[#3f86b0]"
+                className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-[#3f86b0]"
               >
                 <LayoutDashboard className="h-4 w-4" />
                 Entrar no dashboard completo
+              </button>
+              <button
+                type="button"
+                onClick={() => { onOpenReport(client); onClose() }}
+                className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                <FileText className="h-4 w-4" />
+                Ver Relatório
               </button>
               <button
                 type="button"
@@ -1008,13 +1434,6 @@ function ClientQuickViewDrawer({
               >
                 <MessageCircle className="h-4 w-4" />
                 Abrir WhatsApp
-              </button>
-              <button
-                type="button"
-                className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                <FileText className="h-4 w-4" />
-                Gerar relatório PDF
               </button>
             </div>
           </div>
@@ -1035,3 +1454,80 @@ function Panel({ title, Icon, children }: { title: string; Icon: typeof BarChart
     </section>
   )
 }
+
+function AddConsultorDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [nome, setNome] = useState('')
+  const [email, setEmail] = useState('')
+  const [funcao, setFuncao] = useState('ADVISOR')
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    onClose()
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="border-slate-200 bg-white sm:rounded-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-[#253140]">Novo consultor</DialogTitle>
+          <DialogDescription>
+            Preencha os dados e envie o convite de acesso ao consultor.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="grid gap-3">
+          <label className="grid gap-1 text-sm">
+            <span className="font-medium text-slate-700">Nome completo</span>
+            <input
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              required
+              placeholder="Ex: Rafael Mendes"
+              className="h-10 rounded-xl border border-slate-200 px-3 outline-none focus:border-[#7CB8D8]"
+            />
+          </label>
+          <label className="grid gap-1 text-sm">
+            <span className="font-medium text-slate-700">E-mail</span>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              placeholder="consultor@escritorio.com"
+              className="h-10 rounded-xl border border-slate-200 px-3 outline-none focus:border-[#7CB8D8]"
+            />
+          </label>
+          <label className="grid gap-1 text-sm">
+            <span className="font-medium text-slate-700">Função</span>
+            <select
+              value={funcao}
+              onChange={(e) => setFuncao(e.target.value)}
+              className="h-10 rounded-xl border border-slate-200 px-3 outline-none focus:border-[#7CB8D8]"
+            >
+              <option value="ADVISOR">Consultor</option>
+              <option value="ORG_ADMIN">Administrador</option>
+            </select>
+          </label>
+
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-[#3f86b0]"
+            >
+              <UserPlus className="h-4 w-4" />
+              Enviar convite
+            </button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+

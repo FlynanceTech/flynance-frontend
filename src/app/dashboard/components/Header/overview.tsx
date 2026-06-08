@@ -103,7 +103,9 @@ export default function Header({
   const [isApplyingFilters, setIsApplyingFilters] = useState(false)
   const { scope, houseContext } = useFinancialScope()
   const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
+  const activeClientName = useAdvisorActing((s) => s.activeClientName ?? s.selectedClientName)
   const activePermission = useAdvisorActing((s) => s.activePermission ?? s.selectedPermission)
+  const isActingAsClient = Boolean(activeClientId)
   const isAdvisorReadOnly = isAdvisorReadOnlyTransactionAccess(activeClientId, activePermission)
   const canWriteTransactions = canWriteTransactionsProp && !isAdvisorReadOnly
   const canCreateTransactions = Boolean(newTransation && canWriteTransactions)
@@ -259,7 +261,9 @@ export default function Header({
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
             <h3 className="text-[1.7rem] font-bold text-[#333C4D] lg:text-[2rem]">
-              {t('greeting', { name: greetingName })}
+              {isActingAsClient
+                ? `Dashboard de ${toFirstName(activeClientName) || activeClientName || 'Cliente'}`
+                : t('greeting', { name: greetingName })}
             </h3>
             {showAccountTypeBadge && (
               <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -359,7 +363,11 @@ export default function Header({
       </div>
 
       <div className="flex flex-col gap-2 pt-2 md:pt-0">
-        <p className="whitespace-pre-line text-sm font-light text-slate-500">{subtitle}</p>
+        <p className="whitespace-pre-line text-sm font-light text-slate-500">
+          {isActingAsClient
+            ? 'Confira como anda a vida financeira do seu cliente e identifique oportunidades de melhoria.'
+            : subtitle}
+        </p>
       </div>
     </header>
   )

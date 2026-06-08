@@ -594,39 +594,39 @@ const summaryToneClasses: Record<
   { card: string; icon: string; title: string; value: string; pulse: string }
 > = {
   red: {
-    card: 'border-red-100 bg-red-50/40',
-    icon: 'bg-red-100 text-red-600',
-    title: 'text-red-600',
-    value: 'text-red-700',
-    pulse: 'bg-red-100',
+    card: 'border-red-100 bg-red-50/40 dark:border-red-900/40 dark:bg-red-950/20',
+    icon: 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400',
+    title: 'text-red-600 dark:text-red-400',
+    value: 'text-red-700 dark:text-red-400',
+    pulse: 'bg-red-100 dark:bg-red-900/40',
   },
   green: {
-    card: 'border-emerald-100 bg-emerald-50/40',
-    icon: 'bg-emerald-100 text-emerald-600',
-    title: 'text-emerald-600',
-    value: 'text-emerald-700',
-    pulse: 'bg-emerald-100',
+    card: 'border-emerald-100 bg-emerald-50/40 dark:border-emerald-900/40 dark:bg-emerald-950/20',
+    icon: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400',
+    title: 'text-emerald-600 dark:text-emerald-400',
+    value: 'text-emerald-700 dark:text-emerald-400',
+    pulse: 'bg-emerald-100 dark:bg-emerald-900/40',
   },
   amber: {
-    card: 'border-amber-100 bg-amber-50/40',
-    icon: 'bg-amber-100 text-amber-600',
-    title: 'text-amber-700',
-    value: 'text-amber-700',
-    pulse: 'bg-amber-100',
+    card: 'border-amber-100 bg-amber-50/40 dark:border-amber-900/40 dark:bg-amber-950/20',
+    icon: 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400',
+    title: 'text-amber-700 dark:text-amber-400',
+    value: 'text-amber-700 dark:text-amber-400',
+    pulse: 'bg-amber-100 dark:bg-amber-900/40',
   },
   blue: {
-    card: 'border-blue-100 bg-blue-50/40',
-    icon: 'bg-blue-100 text-primary',
-    title: 'text-primary',
-    value: 'text-primary',
-    pulse: 'bg-blue-100',
+    card: 'border-blue-100 bg-blue-50/40 dark:border-blue-900/40 dark:bg-blue-950/20',
+    icon: 'bg-blue-100 text-primary dark:bg-blue-900/40 dark:text-blue-400',
+    title: 'text-primary dark:text-blue-400',
+    value: 'text-primary dark:text-blue-400',
+    pulse: 'bg-blue-100 dark:bg-blue-900/40',
   },
   purple: {
-    card: 'border-violet-100 bg-violet-50/40',
-    icon: 'bg-violet-100 text-violet-700',
-    title: 'text-violet-700',
-    value: 'text-violet-700',
-    pulse: 'bg-violet-100',
+    card: 'border-violet-100 bg-violet-50/40 dark:border-violet-900/40 dark:bg-violet-950/20',
+    icon: 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400',
+    title: 'text-violet-700 dark:text-violet-400',
+    value: 'text-violet-700 dark:text-violet-400',
+    pulse: 'bg-violet-100 dark:bg-violet-900/40',
   },
 }
 
@@ -665,9 +665,9 @@ function SummaryCard({
           </p>
         )}
         {details ? (
-          <p className="mt-2 truncate text-xs font-medium text-slate-500">{details}</p>
+          <p className="mt-2 truncate text-xs font-medium text-slate-500 dark:text-slate-400">{details}</p>
         ) : null}
-        <p className="mt-2 truncate text-xs font-medium text-slate-500">{subtext}</p>
+        <p className="mt-2 truncate text-xs font-medium text-slate-500 dark:text-slate-400">{subtext}</p>
       </div>
     </div>
   )
@@ -768,7 +768,7 @@ function InvoiceGroupAccordion({
       <button
         type="button"
         onClick={() => onToggle(groupKey)}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors hover:bg-gray-50 sm:gap-4 sm:px-5 sm:py-4"
+        className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors hover:bg-gray-50 dark:hover:bg-slate-700/40 sm:gap-4 sm:px-5 sm:py-4"
       >
         <div className="flex min-w-0 items-center gap-4">
           <div
@@ -780,28 +780,28 @@ function InvoiceGroupAccordion({
           <div className="min-w-0">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: accent }} />
-              <p className="truncate text-sm font-extrabold text-slate-900">{cardLabel}</p>
+              <p className="truncate text-sm font-extrabold text-slate-900 dark:text-white">{cardLabel}</p>
               {group.statement && (
                 <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-extrabold ${statementStatusBadge(group.statement.status)}`}>
                   {statementStatusLabel(group.statement.status)}
                 </span>
               )}
             </div>
-            <p className="mt-1 truncate text-xs font-medium text-slate-500">{statementLine}</p>
+            <p className="mt-1 truncate text-xs font-medium text-slate-500 dark:text-slate-400">{statementLine}</p>
           </div>
         </div>
 
         <div className="flex shrink-0 items-center gap-4">
           <div className="hidden text-right sm:block">
-            <p className="text-[11px] font-bold text-slate-500">Total da fatura</p>
-            <p className="mt-1 text-sm font-extrabold text-slate-900">{formatCurrencyBRL(group.totalAmount)}</p>
+            <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Total da fatura</p>
+            <p className="mt-1 text-sm font-extrabold text-slate-900 dark:text-white">{formatCurrencyBRL(group.totalAmount)}</p>
           </div>
-          <ChevronDown className={`h-5 w-5 text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`h-5 w-5 text-slate-500 transition-transform dark:text-slate-400 ${isOpen ? 'rotate-180' : ''}`} />
         </div>
       </button>
 
       {isOpen && (
-        <div className="border-t border-gray-100">
+        <div className="border-t border-gray-100 dark:border-white/5">
           <div className={`${futurosUi.tableHead} grid-cols-[1.2fr_1.7fr_0.9fr_0.9fr_1fr] gap-4`}>
             <span>Categoria</span>
             <span>Descrição</span>
@@ -809,7 +809,7 @@ function InvoiceGroupAccordion({
             <span>Status</span>
             <span className="text-right">Valor</span>
           </div>
-          <div className={`divide-y divide-gray-100 ${group.items.length > 6 ? futurosUi.listScrollSm : ''}`}>
+          <div className={`divide-y divide-gray-100 dark:divide-white/5 ${group.items.length > 6 ? futurosUi.listScrollSm : ''}`}>
             {group.items.map((item) => {
               const categoryName = item.category?.name ?? 'Sem categoria'
               const categoryColor = getCategoryColor(item.category?.id ?? categoryName)
@@ -817,27 +817,27 @@ function InvoiceGroupAccordion({
               return (
                 <div
                   key={item.id}
-                  className="grid gap-3 px-5 py-4 text-sm transition-colors hover:bg-slate-50/70 md:grid-cols-[1.2fr_1.7fr_0.9fr_0.9fr_1fr] md:items-center md:gap-4"
+                  className="grid gap-3 px-5 py-4 text-sm transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-700/30 md:grid-cols-[1.2fr_1.7fr_0.9fr_0.9fr_1fr] md:items-center md:gap-4"
                 >
                   <div className="flex min-w-0 items-center gap-2">
                     <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${categoryColor}`}>
                       <span className="h-2 w-2 rounded-full bg-current" />
                     </span>
-                    <span className="truncate font-medium text-slate-600">{categoryName}</span>
+                    <span className="truncate font-medium text-slate-600 dark:text-slate-300">{categoryName}</span>
                   </div>
-                  <p className="min-w-0 truncate font-semibold text-slate-800">{item.description ?? 'Sem descrição'}</p>
-                  <p className="text-slate-600">{installmentTableLabel(item.installmentNumber, item.installmentCount)}</p>
+                  <p className="min-w-0 truncate font-semibold text-slate-800 dark:text-white">{item.description ?? 'Sem descrição'}</p>
+                  <p className="text-slate-600 dark:text-slate-400">{installmentTableLabel(item.installmentNumber, item.installmentCount)}</p>
                   <span>
                     <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-extrabold ${forecastStatusBadge(item.status)}`}>
                       {forecastStatusLabel(item.status)}
                     </span>
                   </span>
-                  <p className="font-extrabold text-slate-900 md:text-right">{formatCurrencyBRL(item.amount)}</p>
+                  <p className="font-extrabold text-slate-900 dark:text-white md:text-right">{formatCurrencyBRL(item.amount)}</p>
                 </div>
               )
             })}
           </div>
-          <div className="border-t border-slate-100 px-5 py-3 text-xs font-medium text-slate-500">
+          <div className="border-t border-slate-100 px-5 py-3 text-xs font-medium text-slate-500 dark:border-white/5 dark:text-slate-400">
             {group.items.length} {group.items.length === 1 ? 'item nesta fatura' : 'itens nesta fatura'}
           </div>
         </div>
@@ -863,48 +863,48 @@ function CommitmentCard({
   const categoryName = item.category?.name ?? 'Sem categoria'
 
   return (
-    <article className="border-t border-gray-100 bg-white px-4 py-4 first:border-t-0 sm:px-5 md:grid md:grid-cols-[84px_1.5fr_0.75fr_1fr_0.9fr_0.8fr_42px] md:items-center md:gap-4">
+    <article className="border-t border-gray-100 bg-white px-4 py-4 first:border-t-0 dark:border-white/5 dark:bg-slate-800 sm:px-5 md:grid md:grid-cols-[84px_1.5fr_0.75fr_1fr_0.9fr_0.8fr_42px] md:items-center md:gap-4">
       <div className="flex items-center gap-3 md:block md:text-center">
-        <div className="text-2xl font-extrabold leading-none text-slate-900">{dateParts.day}</div>
-        <div className="mt-1 text-xs font-extrabold text-slate-500">{dateParts.month}</div>
+        <div className="text-2xl font-extrabold leading-none text-slate-900 dark:text-white">{dateParts.day}</div>
+        <div className="mt-1 text-xs font-extrabold text-slate-500 dark:text-slate-400">{dateParts.month}</div>
       </div>
 
       <div className="flex min-w-0 items-center gap-4">
-        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${isIncome ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'}`}>
+        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${isIncome ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400'}`}>
           <ReceiptText className="h-5 w-5" />
         </div>
         <div className="min-w-0">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <p className="truncate text-sm font-extrabold text-slate-900">{item.description ?? 'Sem descrição'}</p>
-            <span className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold ${isIncome ? 'bg-emerald-50 text-emerald-700' : 'bg-orange-50 text-orange-700'}`}>
+            <p className="truncate text-sm font-extrabold text-slate-900 dark:text-white">{item.description ?? 'Sem descrição'}</p>
+            <span className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold ${isIncome ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'}`}>
               {installmentBadge(item.installmentNumber, item.installmentCount)}
             </span>
           </div>
-          <p className="mt-1 truncate text-xs font-medium text-slate-500">{categoryName}</p>
+          <p className="mt-1 truncate text-xs font-medium text-slate-500 dark:text-slate-400">{categoryName}</p>
         </div>
       </div>
 
       <div>
-        <p className="text-sm font-extrabold text-slate-900">
+        <p className="text-sm font-extrabold text-slate-900 dark:text-white">
           {Number(item.installmentCount || 1) > 1
             ? `${item.installmentNumber}/${item.installmentCount}`
             : '1 parcela'}
         </p>
-        <p className="mt-1 text-xs font-medium text-slate-500">
+        <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
           {Number(item.installmentCount || 1) > 1 ? 'Parcelamento' : 'À vista'}
         </p>
       </div>
 
       <div>
-        <p className="text-sm font-extrabold text-slate-900">{formatDateBR(item.dueDate)}</p>
-        <p className="mt-1 text-xs font-medium text-slate-500">Vencimento</p>
+        <p className="text-sm font-extrabold text-slate-900 dark:text-white">{formatDateBR(item.dueDate)}</p>
+        <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">Vencimento</p>
       </div>
 
       <div>
-        <p className={`text-sm font-extrabold ${isIncome ? 'text-emerald-700' : 'text-rose-700'}`}>
+        <p className={`text-sm font-extrabold ${isIncome ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
           {isIncome ? '' : '-'}{formatCurrencyBRL(item.amount)}
         </p>
-        <p className="mt-1 text-xs font-medium text-slate-500">{isIncome ? 'Receita' : 'Despesa'}</p>
+        <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">{isIncome ? 'Receita' : 'Despesa'}</p>
       </div>
 
       <span className={`w-fit rounded-full px-3 py-1 text-[11px] font-extrabold ${forecastStatusBadge(item.status)}`}>
@@ -912,10 +912,10 @@ function CommitmentCard({
       </span>
 
       <Menu as="div" className="relative justify-self-start md:justify-self-end">
-        <MenuButton className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800">
+        <MenuButton className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200">
           <MoreHorizontal className="h-5 w-5" />
         </MenuButton>
-        <MenuItems anchor="bottom end" className="z-20 w-44 rounded-xl border border-slate-200 bg-white p-1 text-sm shadow-xl outline-none">
+        <MenuItems anchor="bottom end" className="z-20 w-44 rounded-xl border border-slate-200 bg-white p-1 text-sm shadow-xl outline-none dark:border-white/10 dark:bg-slate-700">
           <MenuItem>
             {({ focus }) => (
               <button
@@ -964,8 +964,8 @@ function ForecastEmptyState({ onCreate }: { onCreate: () => void }) {
       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-primary">
         <CalendarDays className="h-6 w-6" />
       </div>
-      <h3 className="mt-4 text-base font-semibold text-gray-900">Nenhum compromisso futuro no período selecionado</h3>
-      <p className="mt-2 max-w-md text-sm text-gray-500">
+      <h3 className="mt-4 text-base font-semibold text-gray-900 dark:text-white">Nenhum compromisso futuro no período selecionado</h3>
+      <p className="mt-2 max-w-md text-sm text-gray-500 dark:text-slate-400">
         Quando você registrar uma despesa futura, parcelamento ou compra no cartão, ela aparecerá aqui.
       </p>
       <button
@@ -1092,22 +1092,22 @@ function CreditMonthDistributionCard({
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(240px,1fr)_auto] lg:items-center lg:gap-5">
         <div>
           <div className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-sky-50 text-primary">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-sky-50 text-primary dark:bg-sky-900/30 dark:text-blue-400">
               <BarChart3 className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-sm font-extrabold text-slate-950">Gastos no credito este mes</h2>
-              <p className="mt-1 text-xs font-medium text-slate-500">Distribuicao consolidada das faturas vigentes.</p>
+              <h2 className="text-sm font-extrabold text-slate-950 dark:text-white">Gastos no credito este mes</h2>
+              <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">Distribuicao consolidada das faturas vigentes.</p>
             </div>
           </div>
-          {loading ? <div className="mt-4 h-8 w-32 animate-pulse rounded-lg bg-slate-100" /> : <p className="mt-4 text-2xl font-extrabold text-slate-950">{formatCurrencyBRL(total)}</p>}
+          {loading ? <div className="mt-4 h-8 w-32 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-700" /> : <p className="mt-4 text-2xl font-extrabold text-slate-950 dark:text-white">{formatCurrencyBRL(total)}</p>}
         </div>
 
         <div className="min-w-0">
           {loading ? (
-            <div className="h-16 animate-pulse rounded-[14px] bg-slate-100" />
+            <div className="h-16 animate-pulse rounded-[14px] bg-slate-100 dark:bg-slate-700" />
           ) : items.length ? (
-            <div className="overflow-hidden rounded-full bg-slate-100">
+            <div className="overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
               <div className="flex h-4 w-full">
                 {items.slice(0, 7).map((item) => (
                   <div key={item.id} title={`${item.name}: ${formatCurrencyBRL(item.value)}`} style={{ width: `${Math.max(4, item.percent)}%`, backgroundColor: item.color }} />
@@ -1115,7 +1115,7 @@ function CreditMonthDistributionCard({
               </div>
             </div>
           ) : (
-            <p className="rounded-[14px] border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500">Sem gastos no credito neste mes.</p>
+            <p className="rounded-[14px] border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500 dark:border-white/10 dark:bg-slate-700/50 dark:text-slate-400">Sem gastos no credito neste mes.</p>
           )}
           {!loading && items.length > 0 && <div className="mt-3"><DistributionLegend items={items.slice(0, 4)} /></div>}
         </div>
@@ -1185,7 +1185,7 @@ function CardFilterRail({
                 <button
                   type="button"
                   onClick={onNewCard}
-                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-dashed border-slate-300 bg-slate-50 text-slate-500 transition-colors hover:border-blue-200 hover:text-primary"
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-dashed border-slate-300 bg-slate-50 text-slate-500 transition-colors hover:border-blue-200 hover:text-primary dark:border-white/20 dark:bg-slate-700 dark:text-slate-400 dark:hover:border-blue-500 dark:hover:text-blue-400"
                   title="Novo cartao"
                 >
                   <Plus className="h-4 w-4" />
@@ -1220,20 +1220,20 @@ function CreditPurchaseRow({
   const actionDisabled = !charge || readOnly
 
   return (
-    <div className="grid gap-3 border-t border-slate-100 px-4 py-3 first:border-t-0 md:grid-cols-[0.9fr_1.4fr_0.9fr_0.8fr_0.8fr_34px] md:items-center">
-      <p className="text-sm font-semibold text-slate-900">{dateLabel}</p>
-      <p className="truncate text-sm font-extrabold text-slate-900">{item.description ?? charge?.description ?? 'Sem descricao'}</p>
+    <div className="grid gap-3 border-t border-slate-100 px-4 py-3 first:border-t-0 dark:border-white/5 md:grid-cols-[0.9fr_1.4fr_0.9fr_0.8fr_0.8fr_34px] md:items-center">
+      <p className="text-sm font-semibold text-slate-900 dark:text-slate-200">{dateLabel}</p>
+      <p className="truncate text-sm font-extrabold text-slate-900 dark:text-white">{item.description ?? charge?.description ?? 'Sem descricao'}</p>
       <div className="flex min-w-0 items-center gap-2">
         <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: categoryColor }} />
-        <span className="truncate text-xs font-bold text-slate-600">{categoryName}</span>
+        <span className="truncate text-xs font-bold text-slate-600 dark:text-slate-400">{categoryName}</span>
       </div>
       <span className={`w-fit rounded-full px-2.5 py-1 text-[11px] font-extrabold ${forecastStatusBadge(item.status)}`}>{forecastStatusLabel(item.status)}</span>
-      <p className="text-sm font-extrabold text-slate-950 md:text-right">{formatCurrencyBRL(item.amount)}</p>
+      <p className="text-sm font-extrabold text-slate-950 dark:text-white md:text-right">{formatCurrencyBRL(item.amount)}</p>
       <Menu as="div" className="relative">
-        <MenuButton className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800">
+        <MenuButton className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200">
           <MoreHorizontal className="h-4 w-4" />
         </MenuButton>
-        <MenuItems anchor="bottom end" className="z-20 w-40 rounded-xl border border-slate-200 bg-white p-1 text-sm shadow-xl outline-none">
+        <MenuItems anchor="bottom end" className="z-20 w-40 rounded-xl border border-slate-200 bg-white p-1 text-sm shadow-xl outline-none dark:border-white/10 dark:bg-slate-700">
           <MenuItem>
             {({ focus }) => (
               <button
@@ -1372,43 +1372,58 @@ function SelectedCardHud({
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="h-3 w-3 rounded-full" style={{ backgroundColor: cardColor }} />
-                  <h2 className="truncate text-2xl font-extrabold text-slate-950">{formatCardDisplayName(card)}</h2>
+                  <h2 className="truncate text-2xl font-extrabold text-slate-950 dark:text-white">{formatCardDisplayName(card)}</h2>
                   {ownerLabel && (
-                    <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-extrabold text-slate-700">
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-extrabold text-slate-700 dark:bg-slate-700 dark:text-slate-300">
                       {ownerLabel}
                     </span>
                   )}
                   <span className={`rounded-full px-3 py-1 text-[11px] font-extrabold ${statementStatusBadge(statementStatus)}`}>{statementStatusLabel(statementStatus)}</span>
                 </div>
-                <p className="mt-4 text-xs font-medium uppercase tracking-wide text-gray-400 sm:mt-6">Fatura atual</p>
-                <p className="mt-2 text-3xl font-semibold text-gray-950 sm:mt-3 sm:text-4xl">{formatCurrencyBRL(invoiceTotal)}</p>
+                <p className="mt-4 text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-slate-500 sm:mt-6">Fatura atual</p>
+                <p className="mt-2 text-3xl font-semibold text-gray-950 dark:text-white sm:mt-3 sm:text-4xl">{formatCurrencyBRL(invoiceTotal)}</p>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 lg:min-w-[220px]">
-                <div className="rounded-xl bg-gray-50 px-3 py-3 text-sm text-gray-700 sm:px-4 sm:py-4">
-                  <p className="font-medium text-gray-900">Vence</p>
-                  <p className="mt-1 text-base font-semibold text-gray-950">{formatDateShort(invoiceGroup?.statement?.dueAt)}</p>
+                <div className="rounded-xl bg-gray-50 px-3 py-3 text-sm text-gray-700 dark:bg-slate-700/60 dark:text-slate-300 sm:px-4 sm:py-4">
+                  <p className="font-medium text-gray-900 dark:text-white">Vence</p>
+                  <p className="mt-1 text-base font-semibold text-gray-950 dark:text-white">{formatDateShort(invoiceGroup?.statement?.dueAt)}</p>
                 </div>
-                <div className="rounded-xl bg-gray-50 px-3 py-3 text-sm text-gray-700 sm:px-4 sm:py-4">
-                  <p className="font-medium text-gray-900">Fecha</p>
-                  <p className="mt-1 text-base font-semibold text-gray-950">{formatDateShort(invoiceGroup?.statement?.closingAt)}</p>
+                <div className="rounded-xl bg-gray-50 px-3 py-3 text-sm text-gray-700 dark:bg-slate-700/60 dark:text-slate-300 sm:px-4 sm:py-4">
+                  <p className="font-medium text-gray-900 dark:text-white">Fecha</p>
+                  <p className="mt-1 text-base font-semibold text-gray-950 dark:text-white">{formatDateShort(invoiceGroup?.statement?.closingAt)}</p>
                 </div>
               </div>
             </div>
 
             <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-              <button type="button" onClick={() => onManageCard(card.id)} className={futurosUi.btnPrimary}>
-                Gerenciar cartao
+              <button type="button" onClick={onCreateCharge} className={futurosUi.btnPrimary}>
+                <Plus className="h-4 w-4" />
+                Compra no crédito
+              </button>
+              <button type="button" onClick={() => onManageCard(card.id)} className={futurosUi.btnOutline}>
+                Gerenciar cartão
               </button>
               <button type="button" onClick={onOpenHistory} className={futurosUi.btnOutline}>
                 Ver histórico
               </button>
+              {invoiceGroup?.statement?.id && statementStatus !== 'paid' && (
+                <button
+                  type="button"
+                  onClick={onPayStatement}
+                  disabled={payingStatement}
+                  className="inline-flex h-10 items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 text-sm font-extrabold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  {payingStatement ? 'Pagando...' : 'Pagar fatura'}
+                </button>
+              )}
             </div>
           </div>
         </article>
 
         <article className={futurosUi.surface}>
-          <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-3.5 sm:px-5 sm:py-4">
+          <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-3.5 dark:border-white/5 sm:px-5 sm:py-4">
             <div>
               <h3 className={futurosUi.sectionTitle}>Histórico do cartão</h3>
               <p className={futurosUi.sectionSubtitle}>Faturas anteriores e ciclo atual.</p>
@@ -1421,19 +1436,19 @@ function SelectedCardHud({
               Ver histórico
             </button>
           </div>
-          <div className="px-5 py-6 text-sm font-medium text-slate-500">
+          <div className="px-5 py-6 text-sm font-medium text-slate-500 dark:text-slate-400">
             Um gráfico de barras simples mostra o valor de cada fatura por mês, incluindo o ciclo atual quando disponível.
           </div>
         </article>
 
         <div className="grid gap-4 lg:grid-cols-2">
           <article className={futurosUi.surface}>
-            <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-3.5 sm:px-5 sm:py-4">
+            <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-3.5 dark:border-white/5 sm:px-5 sm:py-4">
               <div><h3 className={futurosUi.sectionTitle}>Compras da fatura atual</h3><p className={futurosUi.sectionSubtitle}>Até 7 compras recentes deste ciclo.</p></div>
               {purchases.length > 7 && <button type="button" onClick={onOpenPurchases} className="text-xs font-extrabold text-primary hover:text-secondary">Ver todas as {purchases.length}</button>}
             </div>
             {loadingPurchases ? (
-              <div className="space-y-3 p-4">{[1, 2, 3].map((item) => <div key={item} className="h-12 animate-pulse rounded-xl bg-slate-100" />)}</div>
+              <div className="space-y-3 p-4">{[1, 2, 3].map((item) => <div key={item} className="h-12 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-700" />)}</div>
             ) : visiblePurchases.length ? (
               <div className={`space-y-1 px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-3 ${purchases.length > 5 ? futurosUi.listScrollSm : ''}`}>
                 <div className={`${futurosUi.tableHead} grid-cols-[0.9fr_1.4fr_0.9fr_0.8fr_0.8fr_34px] gap-3`}>
@@ -1456,12 +1471,12 @@ function SelectedCardHud({
                 ))}
               </div>
             ) : (
-              <div className="px-5 py-8 text-sm font-medium text-slate-500">Nenhuma compra nesta fatura.</div>
+              <div className="px-5 py-8 text-sm font-medium text-slate-500 dark:text-slate-400">Nenhuma compra nesta fatura.</div>
             )}
           </article>
 
           <article className={futurosUi.surface}>
-            <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-3.5 sm:px-5 sm:py-4">
+            <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-3.5 dark:border-white/5 sm:px-5 sm:py-4">
               <div><h3 className={futurosUi.sectionTitle}>Parcelamentos</h3><p className={futurosUi.sectionSubtitle}>Planos vinculados a este cartao.</p></div>
               {installments.length > 7 && <button type="button" onClick={onOpenInstallments} className="text-xs font-extrabold text-primary hover:text-secondary">Ver todos os {installments.length}</button>}
             </div>
@@ -1568,7 +1583,7 @@ function PurchasesModal({
                 ))}
               </div>
             ) : (
-              <div className="px-6 py-10 text-center text-sm font-medium text-slate-500">Nenhuma compra nesta fatura.</div>
+              <div className="px-6 py-10 text-center text-sm font-medium text-slate-500 dark:text-slate-400">Nenhuma compra nesta fatura.</div>
             )}
           </div>
         </DialogPanel>
@@ -2989,7 +3004,7 @@ function FuturosPageContent() {
 
                 {otherCommitments.length > 0 ? (
                   <section className={futurosUi.surface}>
-                    <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-3.5 sm:px-5 sm:py-4">
+                    <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-3.5 dark:border-white/5 sm:px-5 sm:py-4">
                       <CalendarDays className="h-4 w-4 text-gray-500" />
                       <h2 className={futurosUi.sectionTitle}>Outros compromissos futuros</h2>
                     </div>
@@ -3018,7 +3033,7 @@ function FuturosPageContent() {
               </div>
             ) : (
               <section className={futurosUi.surface}>
-                <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-3.5 sm:px-5 sm:py-4">
+                <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-3.5 dark:border-white/5 sm:px-5 sm:py-4">
                   <CircleDollarSign className="h-4 w-4 text-emerald-600" />
                   <h2 className={futurosUi.sectionTitle}>Receitas futuras</h2>
                 </div>

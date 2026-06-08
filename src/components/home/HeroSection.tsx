@@ -46,12 +46,20 @@ const HeroSection = () => {
             sem complicação, direto no WhatsApp.
           </p>
 
-          <Link href="#pricing" className="bg-primary hover:bg-primary/90 rounded-full shadow-lg px-10 py-4">
-            <span className="text-white flex items-center justify-center text-lg font-semibold">
-              Começar agora
-              <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-            </span>
-          </Link>
+          <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+            <Link href="#pricing" className="bg-primary hover:bg-primary/90 rounded-full shadow-lg px-10 py-4">
+              <span className="text-white flex items-center justify-center text-lg font-semibold">
+                Começar agora
+                <ArrowRight className="ml-2 h-5 w-5 transition-transform" />
+              </span>
+            </Link>
+            <Link
+              href="/advisor/login"
+              className="rounded-full border-2 border-[#1a3050] bg-[#1a3050] px-8 py-4 text-base font-semibold text-[#F0C040] shadow-lg transition hover:bg-[#253140]"
+            >
+              Sou Advisor
+            </Link>
+          </div>
         </div>
 
         {/* ✅ MOBILE: Slider (video + imagens) */}

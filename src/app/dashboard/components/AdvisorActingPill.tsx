@@ -4,7 +4,7 @@ import { useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUserSession } from '@/stores/useUserSession'
 import { useAdvisorActing } from '@/stores/useAdvisorActing'
-import { canAccessAdvisorRole } from '@/utils/roles'
+import { canAccessAdvisorRole, getAdvisorHomePath } from '@/utils/roles'
 
 export default function AdvisorActingPill() {
   const router = useRouter()
@@ -35,12 +35,11 @@ export default function AdvisorActingPill() {
           type="button"
           onClick={() => {
             clearActingClient()
-            router.push('/dashboard')
-            router.refresh()
+            router.push(getAdvisorHomePath(role))
           }}
           className="whitespace-nowrap rounded-full border border-[#94C9E7] bg-white px-3 py-1 text-xs font-semibold text-[#1E5F86] hover:bg-[#F4FAFF]"
         >
-          Sair do cliente
+          ← Voltar ao Advisor
         </button>
       </div>
     </div>

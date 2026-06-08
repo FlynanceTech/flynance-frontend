@@ -252,7 +252,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       errorLoading: 'Erro ao carregar transacoes.',
       guideButton: 'Ver guia de transacoes',
       readOnlyBanner:
-        'Voce esta atuando com permissao somente leitura para este cliente.',
+        'Você está atuando com permissão somente leitura para este cliente.',
       csvTip:
         'Indicamos pedir ao aplicativo do banco o arquivo .csv para a importacao dos dados',
       close: 'Fechar',
@@ -319,43 +319,43 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         confirm: 'Aplicar a todas',
       },
       onboarding: {
-        filtersTitle: 'Filtros e importacao',
+        filtersTitle: 'Filtros e importação',
         filtersDescription:
-          'Use os filtros do cabecalho para refinar suas transacoes e o botao de importacao para subir arquivo CSV.',
-        listTitle: 'Lista de transacoes',
+          'Use os filtros do cabeçalho para refinar suas transações e o botão de importação para subir arquivo CSV.',
+        listTitle: 'Lista de transações',
         listDescription:
-          'Aqui voce visualiza suas movimentacoes, pode editar com rapidez e alternar entre visualizacao de tabela ou cards.',
-        summaryTitle: 'Resumo e acoes',
+          'Aqui você visualiza suas movimentações, pode editar com rapidez e alternar entre visualização de tabela ou cards.',
+        summaryTitle: 'Resumo e ações',
         summaryDescription:
-          'Acompanhe o intervalo exibido, paginacao e acoes em lote quando houver itens selecionados.',
+          'Acompanhe o intervalo exibido, paginação e ações em lote quando houver itens selecionados.',
       },
       authorFilter: {
         label: 'Quem realizou',
-        helper: 'Filtre as transacoes pelo membro da casa.',
+        helper: 'Filtre as transações pelo membro da casa.',
         all: 'Todos da casa',
-        currentUser: 'Voce',
-        unknownMember: 'Membro nao identificado',
+        currentUser: 'Você',
+        unknownMember: 'Membro não identificado',
       },
       cardFilter: {
-        label: 'Filtrar por cartao',
-        all: 'Todos os cartoes',
-        empty: 'Nenhum cartao ativo',
+        label: 'Filtrar por cartão',
+        all: 'Todos os cartões',
+        empty: 'Nenhum cartão ativo',
       },
     },
     transactionTable: {
-      selectAllAria: 'Selecionar todas as transacoes desta pagina',
+      selectAllAria: 'Selecionar todas as transações desta página',
       selectRowAria: 'Selecionar transação {description}',
       sortByDate: 'Ordenar por data',
       sortByValue: 'Ordenar por valor',
       date: 'Data',
-      description: 'Descricao',
+      description: 'Descrição',
       actor: 'Quem realizou',
       category: 'Categoria',
       type: 'Tipo',
       value: 'Valor',
-      actions: 'Acoes',
+      actions: 'Ações',
       noData: 'Nenhuma transação encontrada.',
-      noDescription: 'Sem descricao',
+      noDescription: 'Sem descrição',
       expense: 'Despesa',
       income: 'Receita',
       edit: 'Editar',
@@ -370,7 +370,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         detailsTitle: 'Compras desta fatura',
         detailsSubtitle: 'Itens consolidados no pagamento da fatura.',
         itemsCount: '{count} item(ns)',
-        description: 'Descricao',
+        description: 'Descrição',
         category: 'Categoria',
         installment: 'Parcela',
         date: 'Data',
@@ -841,7 +841,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           'Voce ainda nao possui assinatura ativa. Quando contratar um plano, os detalhes aparecerao aqui.',
         valueWithSource: 'Valor: {value} - Fonte: {source}',
         valueOnly: 'Valor: {value}',
-        nextBilling: 'Proxima cobranca: {date}',
+        nextBilling: 'Próxima cobrança: {date}',
         cancelAtPeriodEndLabel: 'Cancelamento no fim do periodo: {value}',
         endedAt: 'Encerrada em: {date}',
         common: {
@@ -1345,6 +1345,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           edit: 'Editar',
           delete: 'Excluir',
         },
+        advisor: 'Advisor',
+        advisorLocked: 'Gerenciado pelo seu advisor — edição bloqueada',
       },
       toasts: {
         controlRemoved: 'Controle removido',
@@ -1460,7 +1462,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           revoke: 'Revogar',
         },
         pagination: {
-          pageOf: 'Pagina {page} de {totalPages}',
+          pageOf: 'Página {page} de {totalPages}',
         },
       },
       invites: {
@@ -1488,12 +1490,12 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           revoke: 'Revogar',
         },
         pagination: {
-          pageOf: 'Pagina {page} de {totalPages}',
+          pageOf: 'Página {page} de {totalPages}',
         },
       },
       pagination: {
         previous: 'Anterior',
-        next: 'Proxima',
+        next: 'Próxima',
       },
       drawer: {
         title: 'Convidar cliente',
@@ -1623,7 +1625,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         },
       },
       sidebar: {
-        nextLessonsTitle: 'Proximas aulas',
+        nextLessonsTitle: 'Próximas aulas',
         progressLabel: '{done}/{total} concluidas',
       },
       materials: {
@@ -1668,7 +1670,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         noResults: 'Nenhuma transação futura encontrada.',
       },
       tablePlans: {
-        description: 'Descricao',
+        description: 'Descrição',
         type: 'Tipo',
         installments: 'Parcelas',
         total: 'Total',
@@ -1700,7 +1702,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         noResults: 'Nenhuma parcela encontrada para esta transação futura.',
       },
       tableInstallments: {
-        description: 'Descricao',
+        description: 'Descrição',
         type: 'Tipo',
         installment: 'Parcela',
         value: 'Valor',
@@ -1777,7 +1779,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         },
       },
       forms: {
-        description: 'Descricao',
+        description: 'Descrição',
         type: 'Tipo',
         payment: 'Pagamento',
         totalValue: 'Valor total',
@@ -1909,9 +1911,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         copyContact: 'Copiar contato',
       },
       pagination: {
-        pageOf: 'Pagina {page} de {totalPages}',
+        pageOf: 'Página {page} de {totalPages}',
         previous: 'Anterior',
-        next: 'Proxima',
+        next: 'Próxima',
       },
     },
     adminUsersPage: {
@@ -1955,10 +1957,10 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         updating: 'Atualizando...',
       },
       pagination: {
-        pageOf: 'Pagina {page} de {totalPages}',
+        pageOf: 'Página {page} de {totalPages}',
         total: 'Total: {total}',
         previous: 'Anterior',
-        next: 'Proxima',
+        next: 'Próxima',
       },
     },
     adminAdvisorsPage: {
@@ -2021,9 +2023,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         used: 'Usado',
       },
       pagination: {
-        pageOf: 'Pagina {page} de {totalPages}',
+        pageOf: 'Página {page} de {totalPages}',
         previous: 'Anterior',
-        next: 'Proxima',
+        next: 'Próxima',
       },
     },
     adminBillingPlansPage: {
@@ -2083,10 +2085,10 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         hardDelete: 'Definitivo',
       },
       pagination: {
-        pageOf: 'Pagina {page} de {totalPages}',
+        pageOf: 'Página {page} de {totalPages}',
         total: 'Total: {total}',
         previous: 'Anterior',
-        next: 'Proxima',
+        next: 'Próxima',
       },
       confirm: {
         delete: 'Tem certeza que deseja excluir este plano?',
@@ -2104,7 +2106,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       fields: {
         name: 'Nome',
         slug: 'Slug',
-        description: 'Descricao',
+        description: 'Descrição',
         priceCents: 'Preco (centavos)',
         currency: 'Moeda',
         period: 'Periodo',
@@ -3790,6 +3792,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           edit: 'Edit',
           delete: 'Delete',
         },
+        advisor: 'Advisor',
+        advisorLocked: 'Managed by your advisor — editing locked',
       },
       toasts: {
         controlRemoved: 'Control removed',
@@ -6241,6 +6245,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           edit: 'Editar',
           delete: 'Eliminar',
         },
+        advisor: 'Asesor',
+        advisorLocked: 'Gestionado por tu asesor — edición bloqueada',
       },
       toasts: {
         controlRemoved: 'Control eliminado',
@@ -6356,7 +6362,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           revoke: 'Revocar',
         },
         pagination: {
-          pageOf: 'Pagina {page} de {totalPages}',
+          pageOf: 'Página {page} de {totalPages}',
         },
       },
       invites: {
@@ -6384,7 +6390,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           revoke: 'Revocar',
         },
         pagination: {
-          pageOf: 'Pagina {page} de {totalPages}',
+          pageOf: 'Página {page} de {totalPages}',
         },
       },
       pagination: {
@@ -6805,7 +6811,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         copyContact: 'Copiar contacto',
       },
       pagination: {
-        pageOf: 'Pagina {page} de {totalPages}',
+        pageOf: 'Página {page} de {totalPages}',
         previous: 'Anterior',
         next: 'Siguiente',
       },
@@ -6851,7 +6857,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         updating: 'Actualizando...',
       },
       pagination: {
-        pageOf: 'Pagina {page} de {totalPages}',
+        pageOf: 'Página {page} de {totalPages}',
         total: 'Total: {total}',
         previous: 'Anterior',
         next: 'Siguiente',
@@ -6916,7 +6922,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         used: 'Usado',
       },
       pagination: {
-        pageOf: 'Pagina {page} de {totalPages}',
+        pageOf: 'Página {page} de {totalPages}',
         previous: 'Anterior',
         next: 'Siguiente',
       },
@@ -6978,7 +6984,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         hardDelete: 'Definitivo',
       },
       pagination: {
-        pageOf: 'Pagina {page} de {totalPages}',
+        pageOf: 'Página {page} de {totalPages}',
         total: 'Total: {total}',
         previous: 'Anterior',
         next: 'Siguiente',

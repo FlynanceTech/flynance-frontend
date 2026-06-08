@@ -6,7 +6,7 @@ export type AdvisorPermission = 'READ_ONLY' | 'READ_WRITE'
 export type AdvisorClientStatus = 'ACTIVE' | 'PENDING' | 'REVOKED'
 export type AdvisorClientInviteStatus = 'ACTIVE' | 'EXPIRED' | 'EXHAUSTED' | 'REVOKED'
 export type AdvisorInviteAccountType = 'INDIVIDUAL' | 'COUPLE'
-export type AdvisorInvitePaymentResponsible = 'CLIENT' | 'ADVISOR'
+export type AdvisorInvitePaymentResponsible = 'CLIENT' | 'ADVISOR' | 'ORG'
 export type AdvisorGeneratedInviteStatus = 'PENDING' | 'ACCEPTED' | 'EXPIRED' | 'CANCELLED'
 export type AdvisorInvitePackageStatus = 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED'
 export type AdvisorInvitePaymentStatus = 'PENDING' | 'APPROVED' | 'FAILED' | 'NOT_REQUIRED'
@@ -306,7 +306,9 @@ function toAdvisorInvitePaymentResponsible(value: unknown): AdvisorInvitePayment
     .trim()
     .toUpperCase()
     .replace(/[\s-]+/g, '_')
-  return normalized === 'ADVISOR' || normalized === 'CONSULTOR' ? 'ADVISOR' : 'CLIENT'
+  if (normalized === 'ADVISOR' || normalized === 'CONSULTOR') return 'ADVISOR'
+  if (normalized === 'ORG' || normalized === 'ORGANIZACAO' || normalized === 'ORGANIZATION') return 'ORG'
+  return 'CLIENT'
 }
 
 function toAdvisorGeneratedInviteStatus(value: unknown): AdvisorGeneratedInviteStatus {
@@ -1559,5 +1561,356 @@ export async function acceptAdvisorInvite(token: string): Promise<void> {
     await api.post('/advisor/invites/accept', { token: safeToken })
   } catch (error: unknown) {
     throw new Error(toAdvisorErrorMessage(error, 'Erro ao aceitar convite de advisor.'))
+  }
+}
+
+export type RegisterAdvisorPayload = {
+  name: string
+  email: string
+  phone: string
+}
+
+export type RegisterOrganizationPayload = {
+  orgName: string
+  responsibleName: string
+  email: string
+  phone: string
+}
+
+export type RegisterResponse = {
+  token: string
+  access_token: string
+  user: { id: string; name: string; email: string; phone: string; role: string }
+  advisor: { id: string; publicSlug: string }
+}
+
+export async function registerAdvisor(data: RegisterAdvisorPayload): Promise<RegisterResponse> {
+  try {
+    const res = await api.post('/advisor/register', data, { withCredentials: true })
+    return res.data
+  } catch (error: unknown) {
+    throw new Error(toAdvisorErrorMessage(error, 'Erro ao criar conta. Tente novamente.'))
+  }
+}
+
+export async function registerOrganization(data: RegisterOrganizationPayload): Promise<RegisterResponse> {
+  try {
+    const res = await api.post('/organization/register', data, { withCredentials: true })
+    return res.data
+  } catch (error: unknown) {
+    throw new Error(toAdvisorErrorMessage(error, 'Erro ao criar conta. Tente novamente.'))
+  }
+}
+
+export type OrgAdvisorStatus = 'active' | 'pending'
+
+export type OrgAdvisor = {
+  id: string
+  userId: string | null
+  name: string
+  email: string
+  phone: string
+  status: OrgAdvisorStatus
+  activeClients: number
+  pendingInvites: number
+  criticalClients: number
+  inactiveClients: number
+  lastAccess: string | null
+}
+
+function toOrgAdvisor(raw: unknown): OrgAdvisor | null {
+  const source = toRecord(raw)
+  const id = toOptionalString(source.id)
+  if (!id) return null
+
+  const statusRaw = String(source.status ?? '').toLowerCase()
+  const status: OrgAdvisorStatus = statusRaw === 'pending' ? 'pending' : 'active'
+
+  return {
+    id,
+    userId: toOptionalString(source.userId),
+    name: String(source.name ?? 'Advisor').trim() || 'Advisor',
+    email: String(source.email ?? '').trim(),
+    phone: String(source.phone ?? '').trim(),
+    status,
+    activeClients: toInteger(source.activeClients, 0),
+    pendingInvites: toInteger(source.pendingInvites, 0),
+    criticalClients: toInteger(source.criticalClients, 0),
+    inactiveClients: toInteger(source.inactiveClients, 0),
+    lastAccess: toIsoDate(source.lastAccess),
+  }
+}
+
+export type OrgDashboardKpis = {
+  totalAdvisors: number
+  activeAdvisors: number
+  pendingAdvisors: number
+  totalClients: number
+  totalPendingClientInvites: number
+  newAdvisorsThisMonth: number
+}
+
+export type OrgDashboardAdvisor = {
+  id: string
+  userId: string | null
+  name: string
+  email: string
+  status: 'active' | 'pending'
+  activeClients: number
+  pendingClientInvites: number
+  joinedAt: string | null
+}
+
+export type OrgDashboardData = {
+  kpis: OrgDashboardKpis
+  advisors: OrgDashboardAdvisor[]
+}
+
+function toOrgDashboardAdvisor(raw: unknown): OrgDashboardAdvisor | null {
+  const source = toRecord(raw)
+  const id = toOptionalString(source.id)
+  if (!id) return null
+  const statusRaw = String(source.status ?? '').toLowerCase()
+  return {
+    id,
+    userId: toOptionalString(source.userId),
+    name: String(source.name ?? 'Advisor').trim() || 'Advisor',
+    email: String(source.email ?? '').trim(),
+    status: statusRaw === 'pending' ? 'pending' : 'active',
+    activeClients: toInteger(source.activeClients, 0),
+    pendingClientInvites: toInteger(source.pendingClientInvites, 0),
+    joinedAt: toIsoDate(source.joinedAt),
+  }
+}
+
+export async function getOrgDashboard(): Promise<OrgDashboardData> {
+  try {
+    const res = await api.get('/organization/dashboard')
+    const data = res.data ?? {}
+    const kpisRaw = toRecord(data.kpis)
+    const kpis: OrgDashboardKpis = {
+      totalAdvisors: toInteger(kpisRaw.totalAdvisors, 0),
+      activeAdvisors: toInteger(kpisRaw.activeAdvisors, 0),
+      pendingAdvisors: toInteger(kpisRaw.pendingAdvisors, 0),
+      totalClients: toInteger(kpisRaw.totalClients, 0),
+      totalPendingClientInvites: toInteger(kpisRaw.totalPendingClientInvites, 0),
+      newAdvisorsThisMonth: toInteger(kpisRaw.newAdvisorsThisMonth, 0),
+    }
+    const rawAdvisors = data?.advisors ?? []
+    const advisors = (Array.isArray(rawAdvisors) ? rawAdvisors : [])
+      .map(toOrgDashboardAdvisor)
+      .filter((a): a is OrgDashboardAdvisor => Boolean(a))
+    return { kpis, advisors }
+  } catch (error: unknown) {
+    throw new Error(toAdvisorErrorMessage(error, 'Erro ao carregar dashboard da organização.'))
+  }
+}
+
+export type InviteOrgAdvisorPayload = {
+  email: string
+  expiresInDays?: number
+}
+
+export type InviteOrgAdvisorResponse = {
+  inviteId: string
+  token: string
+  inviteUrl: string
+  email: string | null
+  expiresAt: string
+}
+
+export async function inviteOrgAdvisor(data: InviteOrgAdvisorPayload): Promise<InviteOrgAdvisorResponse> {
+  try {
+    const res = await api.post('/organization/advisors/invite', data)
+    return res.data
+  } catch (error: unknown) {
+    throw new Error(toAdvisorErrorMessage(error, 'Erro ao enviar convite.'))
+  }
+}
+
+export type OrgAdvisorClient = {
+  id: string
+  clientUserId: string
+  name: string
+  email: string
+  phone: string | null
+  permission: string
+  createdAt: string | null
+}
+
+export async function getOrgAdvisorClients(advisorUserId: string): Promise<OrgAdvisorClient[]> {
+  const safeId = String(advisorUserId ?? '').trim()
+  if (!safeId) throw new Error('ID inválido.')
+  try {
+    const res = await api.get(`/organization/advisors/${safeId}/clients`)
+    const data = res.data ?? {}
+    const raw = data?.clients ?? data?.data ?? (Array.isArray(data) ? data : [])
+    return Array.isArray(raw) ? raw : []
+  } catch (error: unknown) {
+    throw new Error(toAdvisorErrorMessage(error, 'Erro ao carregar clientes do advisor.'))
+  }
+}
+
+export async function removeOrgAdvisor(inviteId: string): Promise<void> {
+  const safeId = String(inviteId ?? '').trim()
+  if (!safeId) throw new Error('ID inválido.')
+  try {
+    await requestWithFallback(
+      [
+        () => api.delete(`/organization/advisors/${safeId}`),
+        () => api.post(`/organization/advisors/${safeId}/remove`, {}),
+      ],
+      'Erro ao remover advisor.'
+    )
+  } catch (error: unknown) {
+    throw new Error(toAdvisorErrorMessage(error, 'Erro ao remover advisor.'))
+  }
+}
+
+export async function leaveOrg(): Promise<void> {
+  try {
+    await requestWithFallback(
+      [
+        () => api.post('/advisor/org/leave', {}),
+        () => api.delete('/advisor/org/membership'),
+      ],
+      'Erro ao sair da organização.'
+    )
+  } catch (error: unknown) {
+    throw new Error(toAdvisorErrorMessage(error, 'Erro ao sair da organização.'))
+  }
+}
+
+export async function getOrgAdvisors(): Promise<OrgAdvisor[]> {
+  try {
+    const res = await api.get('/organization/advisors')
+    const data = res.data ?? {}
+    const raw = data?.advisors ?? data?.data ?? data?.items ?? (Array.isArray(data) ? data : [])
+    return (Array.isArray(raw) ? raw : [])
+      .map(toOrgAdvisor)
+      .filter((item): item is OrgAdvisor => Boolean(item))
+  } catch (error: unknown) {
+    throw new Error(toAdvisorErrorMessage(error, 'Erro ao carregar advisors da organização.'))
+  }
+}
+
+// ─── Delegation: org delegates subscription invites to advisors ───────────────
+
+export type DelegateInvitePayload = {
+  clientName?: string
+  clientName2?: string
+  accountType?: 'INDIVIDUAL' | 'COUPLE'
+  planSlug?: string
+  expiresInDays?: number
+}
+
+export type DelegatedInviteResult = {
+  id: string
+  token: string
+  inviteUrl: string
+  clientName: string | null
+  clientName2: string | null
+  accountType: string | null
+  planSlug: string | null
+  expiresAt: string
+  createdAt: string
+}
+
+export type OrgDelegatedInviteStatus = 'PENDING' | 'ACCEPTED' | 'EXPIRED' | 'CANCELLED'
+
+export type OrgDelegatedInvite = {
+  id: string
+  token: string | null
+  inviteUrl: string
+  clientName: string | null
+  clientName2: string | null
+  accountType: string | null
+  planSlug: string | null
+  status: OrgDelegatedInviteStatus
+  advisorName: string
+  advisorEmail: string
+  advisorUserId: string
+  expiresAt: string
+  acceptedAt: string | null
+  createdAt: string
+}
+
+function toOrgDelegatedInviteStatus(value: unknown): OrgDelegatedInviteStatus {
+  const normalized = String(value ?? '').trim().toUpperCase().replace(/[\s-]+/g, '_')
+  if (normalized === 'ACCEPTED') return 'ACCEPTED'
+  if (normalized === 'EXPIRED') return 'EXPIRED'
+  if (normalized === 'CANCELLED' || normalized === 'CANCELED' || normalized === 'REVOKED') return 'CANCELLED'
+  return 'PENDING'
+}
+
+function toOrgDelegatedInvite(raw: unknown): OrgDelegatedInvite | null {
+  const source = toRecord(raw)
+  const id = toOptionalString(source.id)
+  if (!id) return null
+  return {
+    id,
+    token: toOptionalString(source.token),
+    inviteUrl: String(source.inviteUrl ?? ''),
+    clientName: toOptionalString(source.clientName),
+    clientName2: toOptionalString(source.clientName2),
+    accountType: toOptionalString(source.accountType),
+    planSlug: toOptionalString(source.planSlug),
+    status: toOrgDelegatedInviteStatus(source.status),
+    advisorName: String(source.advisorName ?? 'Advisor').trim() || 'Advisor',
+    advisorEmail: String(source.advisorEmail ?? '').trim(),
+    advisorUserId: String(source.advisorUserId ?? '').trim(),
+    expiresAt: toIsoDate(source.expiresAt) ?? new Date().toISOString(),
+    acceptedAt: toIsoDate(source.acceptedAt),
+    createdAt: toIsoDate(source.createdAt) ?? new Date().toISOString(),
+  }
+}
+
+export async function delegateInviteToAdvisor(
+  advisorUserId: string,
+  payload: DelegateInvitePayload
+): Promise<DelegatedInviteResult> {
+  const safeId = String(advisorUserId ?? '').trim()
+  if (!safeId) throw new Error('ID do advisor inválido.')
+  try {
+    const res = await api.post(`/organization/advisors/${safeId}/invites`, payload)
+    const data = res.data ?? {}
+    const inv = toRecord(data.invite ?? data)
+    return {
+      id: String(inv.id ?? ''),
+      token: String(inv.token ?? ''),
+      inviteUrl: String(inv.inviteUrl ?? ''),
+      clientName: toOptionalString(inv.clientName),
+      clientName2: toOptionalString(inv.clientName2),
+      accountType: toOptionalString(inv.accountType),
+      planSlug: toOptionalString(inv.planSlug),
+      expiresAt: toIsoDate(inv.expiresAt) ?? new Date().toISOString(),
+      createdAt: toIsoDate(inv.createdAt) ?? new Date().toISOString(),
+    }
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      const data = (error.response?.data ?? {}) as ApiErrorShape
+      const apiMsg =
+        (typeof data.error === 'string' && data.error.trim()) ||
+        (typeof data.message === 'string' && data.message.trim())
+      if (apiMsg) throw new Error(apiMsg)
+    }
+    throw new Error(toAdvisorErrorMessage(error, 'Erro ao delegar assinatura.'))
+  }
+}
+
+export async function getOrgAdvisorDelegatedInvites(
+  advisorUserId: string
+): Promise<OrgDelegatedInvite[]> {
+  const safeId = String(advisorUserId ?? '').trim()
+  if (!safeId) throw new Error('ID inválido.')
+  try {
+    const res = await api.get(`/organization/advisors/${safeId}/invites`)
+    const data = res.data ?? {}
+    const raw = data?.invites ?? data?.data ?? (Array.isArray(data) ? data : [])
+    return (Array.isArray(raw) ? raw : [])
+      .map(toOrgDelegatedInvite)
+      .filter((item): item is OrgDelegatedInvite => Boolean(item))
+  } catch (error: unknown) {
+    throw new Error(toAdvisorErrorMessage(error, 'Erro ao carregar convites delegados.'))
   }
 }
