@@ -232,6 +232,7 @@ export default function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) 
                     items={section.items.map((item) => ({
                       ...item,
                       active: isSidebarPathActive(pathname ?? '', item.path),
+                      onClick: item.path ? () => router.push(item.path!) : undefined,
                     }))}
                   />
                 )

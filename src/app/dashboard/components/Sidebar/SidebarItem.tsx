@@ -2,7 +2,6 @@
 
 import clsx from 'clsx'
 import type { LucideIcon } from 'lucide-react'
-import Link from 'next/link'
 
 export interface SidebarItemProps {
   label: string
