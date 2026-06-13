@@ -20,6 +20,7 @@ import { ControlWithProgress, useControls } from '@/hooks/query/useSpendingContr
 import { useCategoryStore } from '@/stores/useCategoryStore'
 import { useSpendingControlStore } from '@/stores/useSpendingControlStore'
 import { useUserSession } from '@/stores/useUserSession'
+import { useMyAdvisor } from '@/hooks/query/useAdvisorStatus'
 import ControlsPageSkeleton from './ControlsPageSkeleton'
 
 type TranslatorFn = (key: string, values?: Record<string, string | number | Date>) => string
@@ -148,6 +149,8 @@ export default function SpendingControlPage() {
   const router = useRouter()
   const onboardingSteps = useMemo(() => buildControlsOnboardingSteps(t), [t])
   const currentUserId = useUserSession((state) => state.user?.userData?.user?.id ?? '')
+  const { hasAdvisor, myAdvisor, isAdvisorActing } = useMyAdvisor()
+  const clientIsReadOnly = hasAdvisor && !isAdvisorActing
 
   const [selectedDate, setSelectedDate] = useState(new Date())
   const { controlsQuery, deleteMutation, favoriteMutation } = useControls(undefined, selectedDate)
@@ -198,8 +201,10 @@ export default function SpendingControlPage() {
 
   const getCategoryName = (c: ControlWithProgress) =>
     c.categoryId ? categoryNameById.get(c.categoryId) ?? t('card.defaultCategory') : t('card.general')
-  const canWriteControl = (control: ControlWithProgress) =>
-    (!control.userId || control.userId === currentUserId) && !control.managedByAdvisorId
+  const canWriteControl = (control: ControlWithProgress) => {
+    if (clientIsReadOnly) return false
+    return (!control.userId || control.userId === currentUserId) && !control.managedByAdvisorId
+  }
 
   const idxLocalFor = (id: string): number => controls.findIndex((x) => x.id === id)
 
@@ -286,6 +291,20 @@ export default function SpendingControlPage() {
 
   return (
     <section className="w-full h-full pt-8 lg:px-8 px-4 pb-24 lg:pb-0 flex flex-col gap-6 overflow-auto">
+      {clientIsReadOnly && myAdvisor && (
+        <div className="flex items-start gap-3 rounded-xl border border-[#C8E2EF] bg-[#EAF4FA] px-4 py-3">
+          <span className="mt-0.5 shrink-0 text-[#2F6E91]">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-[#2F6E91]">Planejamento acompanhado pelo seu Advisor</p>
+            <p className="text-xs text-[#3a7da0]">
+              {myAdvisor.advisorName} define suas metas. Para alterar limites ou categorias, entre em contato com ele.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div data-onboarding-target="controles-header">
         <Header
           title={t('header.title')}
@@ -298,14 +317,16 @@ export default function SpendingControlPage() {
                 storageKeyBase="flynance:dashboard:onboarding:controles:v1"
                 triggerLabel={t('header.guideButton')}
               />
-              <ActionTriggerButton
-                onClick={() => {
-                  setEditingControl(null)
-                  setDrawerOpen(true)
-                }}
-                label={t('top.newControl')}
-                icon={Plus}
-              />
+              {!clientIsReadOnly && (
+                <ActionTriggerButton
+                  onClick={() => {
+                    setEditingControl(null)
+                    setDrawerOpen(true)
+                  }}
+                  label={t('top.newControl')}
+                  icon={Plus}
+                />
+              )}
             </div>
           }
         />

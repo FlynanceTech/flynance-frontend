@@ -215,3 +215,20 @@ export async function updateClientCategoryClassification(
     throw new Error(toBudgetError(error, 'Erro ao atualizar classificação.'))
   }
 }
+
+/**
+ * Sincroniza os limites do budget plan do advisor com os GoalControls do cliente.
+ * O backend cria/atualiza os controles com managedByAdvisorId preenchido,
+ * garantindo idempotência (não duplica se chamado múltiplas vezes).
+ */
+export async function syncBudgetToGoalControls(
+  clientUserId: string,
+  monthYear?: string
+): Promise<void> {
+  try {
+    const query = monthYear ? `?monthYear=${encodeURIComponent(monthYear)}` : ''
+    await api.post(`/advisor/clients/${clientUserId}/budget-plan/sync-controls${query}`)
+  } catch (error) {
+    throw new Error(toBudgetError(error, 'Erro ao sincronizar metas com o planejamento.'))
+  }
+}

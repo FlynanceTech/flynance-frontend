@@ -1898,6 +1898,32 @@ export async function delegateInviteToAdvisor(
   }
 }
 
+// ─── Client-side advisor status ───────────────────────────────────────────────
+
+export type MyAdvisorInfo = {
+  advisorUserId: string
+  advisorName: string
+  advisorEmail: string
+  permission: AdvisorPermission
+  status: AdvisorClientStatus
+}
+
+/**
+ * Called from the CLIENT's perspective to check if they have an active advisor.
+ * Returns null when the user has no advisor linked.
+ */
+export async function getMyAdvisor(): Promise<MyAdvisorInfo | null> {
+  try {
+    const res = await api.get<MyAdvisorInfo | null>('/advisor/my-advisor')
+    return res.data ?? null
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error) && (error.response?.status === 404 || error.response?.status === 204)) {
+      return null
+    }
+    return null
+  }
+}
+
 export async function getOrgAdvisorDelegatedInvites(
   advisorUserId: string
 ): Promise<OrgDelegatedInvite[]> {

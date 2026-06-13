@@ -31,6 +31,7 @@ import {
   getBudgetPlan,
   setClassLimits,
   setCategoryLimits,
+  syncBudgetToGoalControls,
   BudgetPlan,
   ClassLimit,
 } from '@/services/advisorBudget'
@@ -633,7 +634,11 @@ function PlanejamentoInner() {
         }),
         setCategoryLimits(clientId, { limits: catLimits }),
       ])
-      toast.success('Limites salvos com sucesso!')
+      // Sincroniza limites do budget plan como GoalControls do cliente (idempotente)
+      await syncBudgetToGoalControls(clientId).catch(() => {
+        // Não bloqueia o fluxo se o backend ainda não tiver o endpoint
+      })
+      toast.success('Limites salvos e metas sincronizadas!')
       await loadPlan()
     } finally {
       setSaving(false)

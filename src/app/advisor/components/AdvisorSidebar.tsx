@@ -40,6 +40,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard, path: '/advisor' },
   { id: 'reports', label: 'Relatórios', Icon: FileText, path: '/advisor/relatorio-cliente' },
   { id: 'planning', label: 'Planejamento', Icon: SlidersHorizontal, path: '/advisor/planejamento' },
+  { id: 'goal-controls', label: 'Controle de Metas', Icon: Target, path: '/advisor/controle-metas' },
   { id: 'organization', label: 'Organização', Icon: Building2, path: '/advisor/organization', masterOnly: true },
   { id: 'settings', label: 'Configurações', Icon: Settings, path: '/advisor/configuracoes' },
 ]

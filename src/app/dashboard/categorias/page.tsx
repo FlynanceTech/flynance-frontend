@@ -74,6 +74,7 @@ import {
 import { useCategoryClassificationBoard } from '@/hooks/query/useCategoryClassification'
 import { useCategories } from '@/hooks/query/useCategory'
 import { useUserSession } from '@/stores/useUserSession'
+import { useMyAdvisor } from '@/hooks/query/useAdvisorStatus'
 import { getErrorMessage } from '@/utils/getErrorMessage'
 import { IconMap, IconName } from '@/utils/icon-map'
 
@@ -901,6 +902,10 @@ export default function CategoriasPage() {
   const onboardingSteps = useMemo(() => createCategoriesOnboardingSteps(t), [t])
   const currentUserId = useUserSession((state) => state.user?.userData?.user?.id ?? '')
   const queryClient = useQueryClient()
+  const { hasAdvisor, myAdvisor, isAdvisorActing } = useMyAdvisor()
+  // Quando o ADVISOR está atuando como cliente (isAdvisorActing=true), ele pode editar.
+  // Quando o próprio CLIENTE tem um advisor, ele é somente visualizador.
+  const clientIsReadOnly = hasAdvisor && !isAdvisorActing
   const {
     categoriesQuery: {
       data: categories = [],
@@ -1071,8 +1076,10 @@ export default function CategoriasPage() {
     reorderSaveStatus === 'saved'
       ? t('classification.saved')
       : t('classification.saving')
-  const canManageCategory = (category: Pick<CategoryResponse, 'userId'>) =>
-    Boolean(category.userId && category.userId === currentUserId)
+  const canManageCategory = (category: Pick<CategoryResponse, 'userId'>) => {
+    if (clientIsReadOnly) return false
+    return Boolean(category.userId && category.userId === currentUserId)
+  }
   const canDragCategory = (category: Pick<CategoryResponse, 'type'>) =>
     category.type === 'EXPENSE'
   const boardLoading = isLoading || isLoadingCategories
@@ -1092,6 +1099,10 @@ export default function CategoriasPage() {
   }
 
   const openCreateDrawer = () => {
+    if (clientIsReadOnly) {
+      toast.error('Esse planejamento é acompanhado pelo seu Advisor. Para criar categorias, fale com ele.')
+      return
+    }
     setEditingCategory(null)
     setDrawerOpen(true)
   }
@@ -1437,6 +1448,11 @@ export default function CategoriasPage() {
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveCategoryId(null)
 
+    if (clientIsReadOnly) {
+      toast.error('Esse planejamento é acompanhado pelo seu Advisor. Para reorganizar categorias, fale com ele.')
+      return
+    }
+
     const activeId = parseItemId(String(event.active.id))
     const overRaw = event.over ? String(event.over.id) : null
     if (!activeId || !overRaw) return
@@ -1495,6 +1511,20 @@ export default function CategoriasPage() {
 
   return (
     <section className="flex h-full min-h-0 w-full flex-col gap-4 px-4 pb-28 pt-8 lg:px-8 lg:pb-0">
+      {clientIsReadOnly && myAdvisor && (
+        <div className="flex items-start gap-3 rounded-xl border border-[#C8E2EF] bg-[#EAF4FA] px-4 py-3">
+          <span className="mt-0.5 text-[#2F6E91]">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-[#2F6E91]">Planejamento acompanhado pelo seu Advisor</p>
+            <p className="text-xs text-[#3a7da0]">
+              {myAdvisor.advisorName} gerencia suas categorias. Para fazer alterações, entre em contato com ele.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div
         className="flex w-full flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"
         data-onboarding-target="categorias-header"
