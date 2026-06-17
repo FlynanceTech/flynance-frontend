@@ -17,6 +17,7 @@ import {
   createAdvisorGeneratedInvite,
   createAdvisorClientInvite,
   createAdvisorInvitePackage,
+  deleteAdvisorGeneratedInvite,
   getAdvisorGeneratedInviteByToken,
   getAdvisorGeneratedInvites,
   getAdvisorClientInvites,
@@ -161,6 +162,20 @@ export function useAcceptAdvisorGeneratedInvite() {
     },
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : 'Erro ao aceitar convite.')
+    },
+  })
+}
+
+export function useDeleteAdvisorGeneratedInvite() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (inviteId: string) => deleteAdvisorGeneratedInvite(inviteId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: advisorKeys.generatedInvites() })
+      toast.success('Convite excluído.')
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Erro ao excluir convite.')
     },
   })
 }

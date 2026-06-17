@@ -27,6 +27,8 @@ export type AdvisorGeneratedInvite = {
   uses: number
   expiresAt: string | null
   acceptedAt?: string | null
+  acceptedByUserId?: string | null
+  acceptedByUserName?: string | null
   createdAt: string | null
   updatedAt: string | null
   unitPriceCents?: number | null
@@ -192,6 +194,14 @@ function toAdvisorErrorMessage(error: unknown, fallback: string): string {
       (typeof data.message === 'string' && data.message.trim()) ||
       (typeof data.error === 'string' && data.error.trim())
 
+    if (
+      apiMessage &&
+      /incomplete_expired|cannot update a subscription that is/i.test(apiMessage)
+    ) {
+      logAdvisorInviteEvent('stripe_subscription_incomplete_expired', { apiMessage })
+      return 'Não conseguimos atualizar essa assinatura antiga. Gere um novo link de pagamento.'
+    }
+
     if (status === 401) return 'Sua sessao expirou. Faca login novamente.'
     if (status === 403) return 'Voce nao tem permissao para acessar este recurso.'
     if (status === 400 && apiMessage) return apiMessage
@@ -201,6 +211,14 @@ function toAdvisorErrorMessage(error: unknown, fallback: string): string {
   }
 
   return getErrorMessage(error, fallback)
+}
+
+export function logAdvisorInviteEvent(event: string, data?: Record<string, unknown>): void {
+  if (typeof window === 'undefined') return
+  const entry = { event, ts: new Date().toISOString(), ...(data ?? {}) }
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[advisor-invite]', entry)
+  }
 }
 
 function toIsoDate(value: unknown): string | null {
@@ -428,6 +446,12 @@ function toAdvisorGeneratedInvite(
     uses: toInteger(source.uses ?? source.usedCount ?? defaults.uses, 0),
     expiresAt: toIsoDate(source.expiresAt ?? defaults.expiresAt),
     acceptedAt: toIsoDate(source.acceptedAt ?? defaults.acceptedAt),
+    acceptedByUserId:
+      toOptionalString(source.acceptedByUserId ?? source.acceptedUserId ?? defaults.acceptedByUserId) ?? null,
+    acceptedByUserName:
+      toOptionalString(
+        source.acceptedByUserName ?? source.acceptedByName ?? source.acceptedUserName ?? defaults.acceptedByUserName
+      ) ?? null,
     createdAt: toIsoDate(source.createdAt ?? defaults.createdAt ?? new Date().toISOString()),
     updatedAt: toIsoDate(source.updatedAt ?? defaults.updatedAt ?? new Date().toISOString()),
     unitPriceCents: toNumberOrNull(source.unitPriceCents ?? source.priceCents ?? defaults.unitPriceCents),
@@ -1246,6 +1270,40 @@ export async function cancelAdvisorGeneratedInvite(inviteId: string): Promise<vo
     }
 
     throw new Error(toAdvisorErrorMessage(error, 'Erro ao cancelar convite.'))
+  }
+}
+
+function removeLocalAdvisorGeneratedInvite(inviteIdOrToken: string): boolean {
+  const safeId = String(inviteIdOrToken ?? '').trim()
+  if (!safeId) return false
+  const current = readLocalAdvisorGeneratedInvites()
+  const next = current.filter((invite) => invite.id !== safeId && invite.token !== safeId)
+  if (next.length === current.length) return false
+  writeLocalAdvisorGeneratedInvites(next)
+  return true
+}
+
+export async function deleteAdvisorGeneratedInvite(inviteId: string): Promise<void> {
+  const safeId = String(inviteId ?? '').trim()
+  if (!safeId) throw new Error('Convite inválido.')
+
+  try {
+    await requestAdvisorInviteFeature(
+      [
+        () => api.delete(`/advisor/invites/${safeId}`),
+        () => api.post(`/advisor/invites/${safeId}/delete`, {}),
+        () => api.delete(`/advisor/client-invites/commercial/${safeId}`),
+        () => api.post(`/advisor/client-invites/commercial/${safeId}/delete`, {}),
+      ],
+      'Erro ao excluir convite.'
+    )
+    removeLocalAdvisorGeneratedInvite(safeId)
+  } catch (error: unknown) {
+    if (canUseLocalInviteFallback(error)) {
+      removeLocalAdvisorGeneratedInvite(safeId)
+      return
+    }
+    throw new Error(toAdvisorErrorMessage(error, 'Erro ao excluir convite.'))
   }
 }
 

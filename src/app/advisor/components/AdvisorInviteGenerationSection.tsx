@@ -14,7 +14,9 @@ import {
   Minus,
   Package,
   Plus,
+  RefreshCw,
   ShieldCheck,
+  Trash2,
   UserRound,
   UsersRound,
   XCircle,
@@ -28,6 +30,7 @@ import {
   useCancelAdvisorGeneratedInvite,
   useCreateAdvisorGeneratedInvite,
   useCreateAdvisorInvitePackage,
+  useDeleteAdvisorGeneratedInvite,
   useUpdateAdvisorGeneratedInviteName,
 } from '@/hooks/query/useAdvisor'
 import { createBillingSetupIntentMe } from '@/services/billing'
@@ -206,6 +209,7 @@ export default function AdvisorInviteGenerationSection({
   const createPackageMutation = useCreateAdvisorInvitePackage()
   const updateNameMutation = useUpdateAdvisorGeneratedInviteName()
   const cancelInviteMutation = useCancelAdvisorGeneratedInvite()
+  const deleteInviteMutation = useDeleteAdvisorGeneratedInvite()
 
   const [quantities, setQuantities] = useState<Record<InviteOptionId, number>>({
     individual: 1,
@@ -361,6 +365,31 @@ export default function AdvisorInviteGenerationSection({
     const confirmed = window.confirm(`Cancelar o convite de ${getInviteDisplayName(invite)}?`)
     if (!confirmed) return
     await cancelInviteMutation.mutateAsync(invite.id)
+  }
+
+  async function handleDeleteInvite(invite: AdvisorGeneratedInvite) {
+    const confirmed = window.confirm(
+      `Excluir permanentemente o convite de ${getInviteDisplayName(invite)}? Esta ação não pode ser desfeita.`
+    )
+    if (!confirmed) return
+    await deleteInviteMutation.mutateAsync(invite.id)
+  }
+
+  function handleReactivateInvite(invite: AdvisorGeneratedInvite) {
+    const option = INVITE_OPTIONS.find(
+      (o) => o.accountType === invite.accountType && !o.packageOnly
+    )
+    if (!option) {
+      toast.error('Tipo de conta não encontrado para reativação.')
+      return
+    }
+    setEditingInvite(null)
+    setNameAction({
+      option,
+      paymentResponsible: invite.paymentResponsible as AdvisorInvitePaymentResponsible,
+    })
+    setName1(invite.clientName || '')
+    setName2(invite.clientName2 || '')
   }
 
   const nameDialogOpen = Boolean(nameAction || editingInvite)
@@ -617,9 +646,21 @@ export default function AdvisorInviteGenerationSection({
                     </div>
 
                     {effectiveStatus === 'ACCEPTED' && invite.acceptedAt && (
-                      <p className="mt-3 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs text-emerald-700">
-                        Convite aceito por {getInviteDisplayName(invite)} em {formatDate(invite.acceptedAt, locale)}.
-                      </p>
+                      <div className="mt-3 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs text-emerald-700">
+                        <p>
+                          Aceito por{' '}
+                          <strong>
+                            {invite.acceptedByUserName ?? getInviteDisplayName(invite)}
+                          </strong>
+                          {invite.acceptedByUserName &&
+                            invite.acceptedByUserName !== invite.clientName && (
+                              <span className="ml-1 text-emerald-600">
+                                (convidado como {getInviteDisplayName(invite)})
+                              </span>
+                            )}{' '}
+                          em {formatDate(invite.acceptedAt, locale)}.
+                        </p>
+                      </div>
                     )}
 
                     <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
@@ -633,34 +674,59 @@ export default function AdvisorInviteGenerationSection({
                       </div>
                     </dl>
 
-                    <div className="mt-3 flex flex-wrap justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => copyInviteLink(invite)}
-                        className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-700 hover:bg-slate-50"
-                      >
-                        <Copy className="h-3.5 w-3.5" />
-                        Copiar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openEditDialog(invite)}
-                        disabled={effectiveStatus !== 'PENDING'}
-                        className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                      >
-                        <Edit3 className="h-3.5 w-3.5" />
-                        Editar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleCancelInvite(invite)}
-                        disabled={effectiveStatus !== 'PENDING' || cancelInviteMutation.isPending}
-                        className="inline-flex h-8 items-center gap-1 rounded-lg border border-red-200 bg-white px-2 text-xs text-red-500 hover:bg-red-50 disabled:opacity-50"
-                      >
-                        <XCircle className="h-3.5 w-3.5" />
-                        Cancelar
-                      </button>
-                    </div>
+                    {effectiveStatus === 'PENDING' && (
+                      <div className="mt-3 flex flex-wrap justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => copyInviteLink(invite)}
+                          className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-700 hover:bg-slate-50"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                          Copiar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openEditDialog(invite)}
+                          className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-700 hover:bg-slate-50"
+                        >
+                          <Edit3 className="h-3.5 w-3.5" />
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleCancelInvite(invite)}
+                          disabled={cancelInviteMutation.isPending}
+                          className="inline-flex h-8 items-center gap-1 rounded-lg border border-red-200 bg-white px-2 text-xs text-red-500 hover:bg-red-50 disabled:opacity-50"
+                        >
+                          <XCircle className="h-3.5 w-3.5" />
+                          Cancelar
+                        </button>
+                      </div>
+                    )}
+
+                    {(effectiveStatus === 'CANCELLED' || effectiveStatus === 'EXPIRED') && (
+                      <div className="mt-3 flex flex-wrap justify-end gap-2">
+                        {effectiveStatus === 'CANCELLED' && (
+                          <button
+                            type="button"
+                            onClick={() => handleReactivateInvite(invite)}
+                            className="inline-flex h-8 items-center gap-1 rounded-lg border border-[#4F98C2] bg-white px-2 text-xs text-[#2F6E91] hover:bg-[#EAF4FA]"
+                          >
+                            <RefreshCw className="h-3.5 w-3.5" />
+                            Reativar
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteInvite(invite)}
+                          disabled={deleteInviteMutation.isPending}
+                          className="inline-flex h-8 items-center gap-1 rounded-lg border border-red-200 bg-white px-2 text-xs text-red-500 hover:bg-red-50 disabled:opacity-50"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Excluir
+                        </button>
+                      </div>
+                    )}
                   </article>
                 )
               })}
