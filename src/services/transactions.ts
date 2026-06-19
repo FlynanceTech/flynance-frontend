@@ -5,14 +5,48 @@ import { getErrorMessage } from "@/utils/getErrorMessage"
 
 export type PaymentType =
   | 'DEBIT_CARD'
+  | 'DEBIT'       // legacy alias → normaliza para DEBIT_CARD
   | 'CREDIT_CARD'
+  | 'CREDIT'      // legacy alias → normaliza para CREDIT_CARD
+  | 'CARD'        // legacy alias → normaliza para CREDIT_CARD
   | 'PIX'
   | 'BOLETO'
+  | 'BANK_SLIP'   // legacy alias → normaliza para BOLETO
   | 'TED'
   | 'DOC'
   | 'MONEY'
   | 'CASH'
+  | 'ACCOUNT'     // usado em alguns fluxos WhatsApp
   | 'OTHER'
+
+const CREDIT_CARD_ALIASES = new Set(['CREDIT_CARD', 'CREDIT', 'CARD'])
+
+/**
+ * Retorna true se o paymentType representa um cartão de crédito.
+ * Usado para separar as abas de Transações e Cartão de Crédito.
+ */
+export function isCreditCardPaymentType(
+  paymentType: PaymentType | string | null | undefined
+): boolean {
+  if (!paymentType) return false
+  return CREDIT_CARD_ALIASES.has(String(paymentType).toUpperCase().replace(/[\s-]+/g, '_'))
+}
+
+/**
+ * Normaliza aliases legados para o valor canônico de PaymentType.
+ * Garante que transações históricas com enums antigos apareçam corretamente.
+ */
+export function normalizePaymentType(value: string | null | undefined): PaymentType {
+  if (!value) return 'OTHER'
+  const upper = String(value).trim().toUpperCase().replace(/[\s-]+/g, '_')
+  if (upper === 'BANK_SLIP' || upper === 'BILL') return 'BOLETO'
+  if (upper === 'DEBIT') return 'DEBIT_CARD'
+  if (upper === 'CREDIT' || upper === 'CARD') return 'CREDIT_CARD'
+  if (upper === 'DINHEIRO') return 'CASH'
+  if (upper === 'CREDITO') return 'CREDIT_CARD'
+  if (upper === 'DEBITO') return 'DEBIT_CARD'
+  return upper as PaymentType
+}
 
 export interface TransactionDTO {
   value: number,
@@ -204,6 +238,7 @@ export type ImportTransactionsPreviewResponse<TTransaction = any> =
   | {
       transactions: TTransaction[]
       warnings?: string[]
+      isCreditCardStatement?: boolean
       meta?: {
         fileName?: string
         fileMime?: string
@@ -261,6 +296,7 @@ export const importTransactionsPreview = async (
 
 export type ImportConfirmPayload<TTransaction = any> = {
   mode: 'import'
+  cardId?: string | null
   transactions: TTransaction[]
 }
 

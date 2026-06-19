@@ -26,7 +26,7 @@ import { useCreditCardCharges } from '@/hooks/query/useCreditCardCharges'
 import type { CreditCardChargeItem } from '@/services/creditCardCharges'
 import { useCardMutations } from '@/hooks/query/useCreditCards'
 import toast from 'react-hot-toast'
-import { ADVISOR_READ_ONLY_FRIENDLY_MESSAGE, type PaymentType } from '@/services/transactions'
+import { ADVISOR_READ_ONLY_FRIENDLY_MESSAGE, isCreditCardPaymentType } from '@/services/transactions'
 import { isAdvisorReadOnlyTransactionAccess } from '@/utils/transactionWriteAccess'
 import { formatCurrency } from '@/utils/formatter'
 import { useLocale, useTranslations } from 'next-intl'
@@ -59,7 +59,6 @@ const typeSelectStyles: StylesConfig<TypeOption, false> = {
 
 const PAGE_SIZE = 10
 const CSV_TIP_AUTO_CLOSE_MS = 8000
-const CASHFLOW_PAYMENT_TYPES = new Set<PaymentType>(['PIX', 'DEBIT_CARD', 'MONEY', 'CASH'])
 function createTransactionsOnboardingSteps(
   tr: (key: string, values?: Record<string, string | number | Date>) => string
 ): ReadonlyArray<PageOnboardingStep> {
@@ -301,6 +300,9 @@ export default function TransactionsPage() {
     enabled: activeTab === 'credit_card',
   })
 
+  const [importCardId, setImportCardId] = useState<string | null>(null)
+  const [importIsCreditCard, setImportIsCreditCard] = useState(false)
+
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [importedTransactions, setImportedTransactions] = useState<Transaction[]>([])
   const [importError, setImportError] = useState<string | null>(null)
@@ -516,11 +518,15 @@ export default function TransactionsPage() {
       const list = isArrayResponse ? response : response?.transactions ?? []
       const warnings = !isArrayResponse && Array.isArray(response?.warnings) ? response.warnings : []
       const meta = !isArrayResponse ? response?.meta ?? null : null
+      const isCCStatement =
+        (!isArrayResponse && (response as any)?.isCreditCardStatement === true) ||
+        (list as Transaction[]).some((t) => t.paymentType === 'CREDIT_CARD')
       const withIds = (list as Transaction[]).map((t, idx) => ({
         ...t,
         id: t.id ?? `import-preview-${idx}`,
       }))
       setImportedTransactions(withIds)
+      setImportIsCreditCard(isCCStatement)
       setPreviewWarnings(warnings)
       setPreviewMeta(meta)
       setImportFile(file)
@@ -540,12 +546,19 @@ export default function TransactionsPage() {
       setImportError(null)
       const payload = {
         mode: 'import' as const,
+        cardId: importIsCreditCard ? importCardId : undefined,
         transactions: importedTransactions,
       }
       await importConfirmMutation.mutateAsync({ userId, payload })
       setImportedTransactions([])
       setImportFile(null)
       setPreviewOpen(false)
+      if (importIsCreditCard && importCardId) {
+        setActiveTab('credit_card')
+        setSelectedCardId(importCardId)
+      }
+      setImportCardId(null)
+      setImportIsCreditCard(false)
     } catch (err: unknown) {
       setImportError(err instanceof Error ? err.message : 'Erro ao importar transacoes.')
     } finally {
@@ -557,6 +570,8 @@ export default function TransactionsPage() {
     setPreviewOpen(false)
     setImportedTransactions([])
     setImportFile(null)
+    setImportCardId(null)
+    setImportIsCreditCard(false)
     setEditingPreviewId(null)
     setEditingPreviewValue('')
     setEditingPreviewOriginal('')
@@ -631,8 +646,8 @@ export default function TransactionsPage() {
 
   // Se backend ja filtra por categoria/search/days, aqui fica so ordenacao local (opcional)
   const displayedTransactions = useMemo(() => {
-    let result = apiTransactions.filter((transaction) =>
-      CASHFLOW_PAYMENT_TYPES.has(transaction.paymentType)
+    let result = apiTransactions.filter(
+      (transaction) => !isCreditCardPaymentType(transaction.paymentType)
     )
 
     if (selectedAuthorId !== 'ALL') {
@@ -881,6 +896,26 @@ export default function TransactionsPage() {
         <div className="fixed inset-0 flex items-center justify-center p-3 md:p-6">
           <DialogPanel className="flex h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl md:h-[85vh]">
             <div className="flex-1 overflow-auto p-3 md:p-4">
+              {importIsCreditCard && (
+                <div className="mb-3 rounded-xl border border-blue-200 bg-blue-50 p-3 flex flex-col sm:flex-row sm:items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-blue-500 shrink-0" />
+                  <span className="text-sm text-blue-700 font-medium">{tr('previewDialog.creditCardDetected')}</span>
+                  <select
+                    value={importCardId ?? ''}
+                    onChange={(e) => setImportCardId(e.target.value || null)}
+                    className="ml-auto rounded-lg border border-blue-300 bg-white px-3 py-1.5 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  >
+                    <option value="">{tr('previewDialog.selectCard')}</option>
+                    {(cardQuery.data ?? [])
+                      .filter((card) => card.isActive !== false)
+                      .map((card) => (
+                        <option key={card.id} value={card.id}>
+                          {formatCardFilterLabel(card)}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
               <div className="rounded-xl border border-gray-200 bg-secondary/10 p-3">
                 <div className="hidden md:block">
                   <div className="grid grid-cols-[110px_minmax(240px,1fr)_220px_160px_140px_48px] items-center gap-0 rounded-lg border border-gray-200 bg-secondary/30 px-4 py-3 text-sm font-semibold text-primary">
@@ -1212,7 +1247,11 @@ export default function TransactionsPage() {
                 <button
                   type="button"
                   onClick={handleConfirmImport}
-                  disabled={isImporting || importedTransactions.length === 0}
+                  disabled={
+                    isImporting ||
+                    importedTransactions.length === 0 ||
+                    (importIsCreditCard && !importCardId)
+                  }
                   className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isImporting ? tr('previewDialog.importing') : tr('previewDialog.confirmImport')}

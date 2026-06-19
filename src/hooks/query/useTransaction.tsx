@@ -188,6 +188,7 @@ export function useTranscation(params: UseTransactionParams) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
       queryClient.invalidateQueries({ queryKey: ['fixed-accounts'] })
+      queryClient.invalidateQueries({ queryKey: ['credit-card-charges'] })
     },
   })
 

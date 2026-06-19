@@ -294,6 +294,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         importing: 'Importando...',
         confirmImport: 'Confirmar importacao',
         tip: 'Dica: duplo clique na descricao para editar. Use o select de categoria para ajustar.',
+        creditCardDetected: 'Fatura de cartão detectada. Selecione o cartão correspondente:',
+        selectCard: 'Selecionar cartão',
       },
       bulkRename: {
         title: 'Renomear descricoes iguais?',
@@ -2722,6 +2724,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         importing: 'Importing...',
         confirmImport: 'Confirm import',
         tip: 'Tip: double click description to edit. Use category select to adjust.',
+        creditCardDetected: 'Credit card statement detected. Select the corresponding card:',
+        selectCard: 'Select card',
       },
       bulkRename: {
         title: 'Rename matching descriptions?',
@@ -5139,6 +5143,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         importing: 'Importando...',
         confirmImport: 'Confirmar importacion',
         tip: 'Tip: doble clic en la descripcion para editar. Usa el selector de categoria para ajustar.',
+        creditCardDetected: 'Extracto de tarjeta detectado. Selecciona la tarjeta correspondiente:',
+        selectCard: 'Seleccionar tarjeta',
       },
       bulkRename: {
         title: 'Renombrar descripciones iguales?',
