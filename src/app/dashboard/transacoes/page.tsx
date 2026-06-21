@@ -28,9 +28,9 @@ import { useCardMutations } from '@/hooks/query/useCreditCards'
 import toast from 'react-hot-toast'
 import {
   ADVISOR_READ_ONLY_FRIENDLY_MESSAGE,
+  isCreditCardPaymentType,
   type ImportConfirmPayload as ImportTransactionsConfirmPayload,
   type ImportTransactionsPreviewMeta,
-  type PaymentType,
 } from '@/services/transactions'
 import { isAdvisorReadOnlyTransactionAccess } from '@/utils/transactionWriteAccess'
 import { formatCurrency } from '@/utils/formatter'
@@ -73,7 +73,6 @@ const typeSelectStyles: StylesConfig<TypeOption, false> = {
 
 const PAGE_SIZE = 10
 const CSV_TIP_AUTO_CLOSE_MS = 8000
-const CASHFLOW_PAYMENT_TYPES = new Set<PaymentType>(['PIX', 'DEBIT_CARD', 'MONEY', 'CASH'])
 function createTransactionsOnboardingSteps(
   tr: (key: string, values?: Record<string, string | number | Date>) => string
 ): ReadonlyArray<PageOnboardingStep> {
@@ -603,6 +602,7 @@ export default function TransactionsPage() {
       const meta = (!isArrayResponse ? response?.meta ?? null : null) as ImportTransactionsPreviewMeta | null
       const rawTransactions = list as Transaction[]
       const isCreditCard =
+        (!isArrayResponse && response?.isCreditCardStatement === true) ||
         meta?.isCreditCardStatement ||
         Boolean(meta?.detectedCardName) ||
         rawTransactions.some((t) => t.paymentType === 'CREDIT_CARD')
@@ -613,6 +613,7 @@ export default function TransactionsPage() {
       const withIds = guardedTransactions.importable.map((t, idx) => ({
         ...t,
         id: t.id ?? `import-preview-${idx}`,
+        type: isCreditCard ? 'EXPENSE' as const : t.type,
       }))
       const normalizedPreviewTransactions = isCreditCard
         ? normalizeCreditCardStatementImportTransactions(withIds, resolvedCardId)
@@ -866,8 +867,8 @@ export default function TransactionsPage() {
 
   // Se backend ja filtra por categoria/search/days, aqui fica so ordenacao local (opcional)
   const displayedTransactions = useMemo(() => {
-    let result = apiTransactions.filter((transaction) =>
-      CASHFLOW_PAYMENT_TYPES.has(transaction.paymentType)
+    let result = apiTransactions.filter(
+      (transaction) => !isCreditCardPaymentType(transaction.paymentType)
     )
 
     if (selectedAuthorId !== 'ALL') {

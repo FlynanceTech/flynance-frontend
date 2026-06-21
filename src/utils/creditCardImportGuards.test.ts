@@ -64,6 +64,7 @@ test('normalizes imported card purchases away from cash payment types', () => {
   const [normalized] = normalizeCreditCardStatementImportTransactions([purchase], 'card-1')
 
   assert.equal(normalized.paymentType, 'CREDIT_CARD')
+  assert.equal(normalized.type, 'EXPENSE')
   assert.equal(normalized.cardId, 'card-1')
   assert.equal(normalized.metadata?.importKind, 'CREDIT_CARD_STATEMENT')
   assert.equal(normalized.metadata?.createEffectiveTransaction, false)

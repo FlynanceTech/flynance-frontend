@@ -5,14 +5,39 @@ import { getErrorMessage } from "@/utils/getErrorMessage"
 
 export type PaymentType =
   | 'DEBIT_CARD'
+  | 'DEBIT'
   | 'CREDIT_CARD'
+  | 'CREDIT'
+  | 'CARD'
   | 'PIX'
   | 'BOLETO'
+  | 'BANK_SLIP'
   | 'TED'
   | 'DOC'
   | 'MONEY'
   | 'CASH'
+  | 'ACCOUNT'
   | 'OTHER'
+
+const CREDIT_CARD_ALIASES = new Set(['CREDIT_CARD', 'CREDIT', 'CARD'])
+
+export function isCreditCardPaymentType(
+  paymentType: PaymentType | string | null | undefined
+): boolean {
+  if (!paymentType) return false
+  return CREDIT_CARD_ALIASES.has(String(paymentType).toUpperCase().replace(/[\s-]+/g, '_'))
+}
+
+export function normalizePaymentType(value: string | null | undefined): PaymentType {
+  if (!value) return 'OTHER'
+  const upper = String(value).trim().toUpperCase().replace(/[\s-]+/g, '_')
+  if (upper === 'BANK_SLIP' || upper === 'BILL') return 'BOLETO'
+  if (upper === 'DEBIT') return 'DEBIT_CARD'
+  if (upper === 'CREDIT' || upper === 'CARD' || upper === 'CREDITO') return 'CREDIT_CARD'
+  if (upper === 'DINHEIRO') return 'CASH'
+  if (upper === 'DEBITO') return 'DEBIT_CARD'
+  return upper as PaymentType
+}
 
 export interface TransactionDTO {
   value: number,
@@ -219,6 +244,7 @@ export type ImportTransactionsPreviewResponse<TTransaction = Transaction> =
   | {
       transactions: TTransaction[]
       warnings?: string[]
+      isCreditCardStatement?: boolean
       meta?: ImportTransactionsPreviewMeta
     }
   | TTransaction[]
@@ -271,6 +297,7 @@ export const importTransactionsPreview = async (
 
 export type ImportConfirmPayload<TTransaction = Transaction> = {
   mode: 'import'
+  cardId?: string | null
   transactions: TTransaction[]
   importKind?: 'BANK_ACCOUNT' | 'CREDIT_CARD_STATEMENT'
   sourceType?: 'BANK_ACCOUNT' | 'CREDIT_CARD_STATEMENT'

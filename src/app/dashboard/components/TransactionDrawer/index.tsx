@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { NumericFormat } from 'react-number-format'
 import type { Transaction } from '@/types/Transaction'
+import { normalizePaymentType } from '@/services/transactions'
 import type { PaymentType, TransactionDTO } from '@/services/transactions'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import CreditCardDrawer from '../CreditCardDrawer'
@@ -178,7 +179,7 @@ export default function TransactionDrawer({
       categoryId: '',
       value: undefined,
       type: 'EXPENSE',
-      paymentType: defaultPaymentType,
+      paymentType: normalizePaymentType(defaultPaymentType) as FormData['paymentType'],
       date: nowDateTimeLocalValue(),
       cardId: '',
       installmentCount: 1,
@@ -207,7 +208,7 @@ export default function TransactionDrawer({
         categoryId: initialData.category?.id ?? '',
         value: initialData.value ?? undefined,
         type: (initialData.type as CategoryType) ?? 'EXPENSE',
-        paymentType: (initialData.paymentType as PaymentType) ?? 'MONEY',
+        paymentType: normalizePaymentType(initialData.paymentType ?? 'MONEY') as FormData['paymentType'],
         date: initialData.date ? isoToDateTimeLocalValue(initialData.date) : nowDateTimeLocalValue(),
         cardId: initialData.cardId ?? initialData.card?.id ?? '',
         installmentCount: initialData.installmentCount ?? 1,

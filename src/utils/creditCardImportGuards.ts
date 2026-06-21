@@ -154,6 +154,7 @@ export function normalizeCreditCardStatementImportTransactions(
 ): Transaction[] {
   return transactions.map((transaction) => ({
     ...transaction,
+    type: 'EXPENSE',
     paymentType: CREDIT_CARD_PAYMENT_TYPE,
     cardId: cardId || transaction.cardId || null,
     metadata: {
