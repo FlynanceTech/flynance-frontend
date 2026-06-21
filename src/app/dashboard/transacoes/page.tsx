@@ -45,6 +45,7 @@ import {
   splitCreditCardStatementImportTransactions,
   type CreditCardIgnoredImportItem,
 } from '@/utils/creditCardImportGuards'
+import { getBrowserTimezone, resolveTransactionPeriod } from '@/utils/transactionPeriod'
 
 type TypeOption = { value: CategoryType; label: string }
 type AuthorOption = { value: string; label: string }
@@ -346,8 +347,23 @@ export default function TransactionsPage() {
   const includeFuture = useTransactionFilter((s) => s.appliedIncludeFuture)
   const rangeStart = useTransactionFilter((s) => s.appliedRangeStart)
   const rangeEnd = useTransactionFilter((s) => s.appliedRangeEnd)
+  const selectedMonth = useTransactionFilter((s) => s.appliedSelectedMonth)
+  const selectedYear = useTransactionFilter((s) => s.appliedSelectedYear)
 
   const typeFilter = useTransactionFilter((s) => s.appliedTypeFilter)
+  const creditCardPeriod = useMemo(
+    () => resolveTransactionPeriod({
+      mode,
+      days: dateRange,
+      includeFuture,
+      month: selectedMonth,
+      year: selectedYear,
+      rangeStart,
+      rangeEnd,
+      timezone: getBrowserTimezone(),
+    }),
+    [dateRange, includeFuture, mode, rangeEnd, rangeStart, selectedMonth, selectedYear]
+  )
 
   const { transactionsQuery, deleteMutation, updateMutation, createMutation, importPreviewMutation, importConfirmMutation } = useTranscation({
     userId,
@@ -363,6 +379,10 @@ export default function TransactionsPage() {
   const { cardQuery } = useCardMutations()
   const { chargesQuery, deleteChargeMutation } = useCreditCardCharges({
     cardId: selectedCardId !== 'ALL' ? selectedCardId : undefined,
+    categoryIds: selectedCategories.length ? selectedCategories.map((category) => category.id) : undefined,
+    search: searchTerm?.trim() || undefined,
+    from: creditCardPeriod.dateFrom,
+    to: creditCardPeriod.dateTo,
     page: currentPage,
     limit: PAGE_SIZE,
     enabled: activeTab === 'credit_card',
@@ -751,9 +771,13 @@ export default function TransactionsPage() {
       setImportedTransactions([])
       setIgnoredImportItems([])
       setImportFile(null)
+      setCurrentPage(1)
+      setSelectedCardId(resolvedCardId || 'ALL')
+      setActiveTab('credit_card')
       setPreviewOpen(false)
       setImportStep('review')
       setSelectedImportCardId('')
+      toast.success('Importação concluída com sucesso.')
     } catch (err: unknown) {
       setImportError(err instanceof Error ? err.message : 'Erro ao importar transações.')
     } finally {

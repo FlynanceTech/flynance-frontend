@@ -14,6 +14,8 @@ import {
 export interface UseCreditCardChargesParams {
   cardId?: string
   categoryId?: string
+  categoryIds?: string[]
+  search?: string
   from?: string
   to?: string
   page?: number

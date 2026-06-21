@@ -18,6 +18,7 @@
     "jsx": "react-jsx",
     "incremental": true,
     "allowArbitraryExtensions": true,
+    "allowImportingTsExtensions": true,
     "types": [
       "node"
     ],

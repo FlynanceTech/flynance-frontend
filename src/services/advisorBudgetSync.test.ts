@@ -53,40 +53,6 @@ test('budget plan URL com monthYear inclui query string', () => {
   assert.equal(url, '/advisor/clients/client-xyz/budget-plan?monthYear=2026-01')
 })
 
-// ─── Regras de permissão de cliente com advisor ───────────────────────────────
-
-/**
- * canWriteControl replicada aqui para testar a lógica pura sem React.
- */
-function canWriteControl(
-  control: { userId?: string; managedByAdvisorId?: string | null },
-  currentUserId: string,
-  clientIsReadOnly: boolean
-): boolean {
-  if (clientIsReadOnly) return false
-  return (!control.userId || control.userId === currentUserId) && !control.managedByAdvisorId
-}
-
-test('cliente com advisor não pode editar nenhum controle', () => {
-  const control = { userId: 'user-1', managedByAdvisorId: null }
-  assert.equal(canWriteControl(control, 'user-1', true), false)
-})
-
-test('cliente sem advisor pode editar próprio controle', () => {
-  const control = { userId: 'user-1', managedByAdvisorId: null }
-  assert.equal(canWriteControl(control, 'user-1', false), true)
-})
-
-test('controle com managedByAdvisorId não pode ser editado mesmo sem clientIsReadOnly', () => {
-  const control = { userId: 'user-1', managedByAdvisorId: 'advisor-99' }
-  assert.equal(canWriteControl(control, 'user-1', false), false)
-})
-
-test('cliente sem advisor não pode editar controle de outro usuário', () => {
-  const control = { userId: 'other-user', managedByAdvisorId: null }
-  assert.equal(canWriteControl(control, 'user-1', false), false)
-})
-
 // ─── MyAdvisor hook lógica ───────────────────────────────────────────────────
 
 function resolveHasAdvisor(

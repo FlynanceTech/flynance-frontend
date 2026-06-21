@@ -53,6 +53,8 @@ export interface CreateCreditCardChargeDTO {
 export async function getCreditCardCharges(params: {
   cardId?: string
   categoryId?: string
+  categoryIds?: string[]
+  search?: string
   from?: string
   to?: string
   page?: number
@@ -65,6 +67,8 @@ export async function getCreditCardCharges(params: {
         {
           cardId: params.cardId,
           categoryId: params.categoryId,
+          categoryIds: params.categoryIds?.join(','),
+          search: params.search,
           from: params.from,
           to: params.to,
           page: params.page,

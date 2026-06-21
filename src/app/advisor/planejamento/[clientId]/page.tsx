@@ -3,7 +3,9 @@
 import { Suspense, useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
+  AlertTriangle,
   ArrowLeft,
+  Check,
   DollarSign,
   Loader2,
   Pencil,
@@ -16,6 +18,7 @@ import {
   X,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useQueryClient } from '@tanstack/react-query'
 
 import AdvisorGuard from '@/app/advisor/components/AdvisorGuard'
 import {
@@ -36,6 +39,19 @@ import {
   ClassLimit,
 } from '@/services/advisorBudget'
 import { IconMap, IconName } from '@/utils/icon-map'
+import {
+  amountToPercentage,
+  buildBudgetLimitPayload,
+  calculateBudgetSummary,
+  calculateDistribution,
+  maxCategoryValue,
+  parseBudgetValue,
+  percentageToAmount,
+  resolveBudgetAmount,
+  resolveBudgetMode,
+  roundBudgetValue,
+  type BudgetInputMode,
+} from '@/utils/advisorBudget'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -73,6 +89,10 @@ function formatCurrency(value: number) {
   })
 }
 
+function getUiErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback
+}
+
 // ─── Category Form Modal ──────────────────────────────────────────────────────
 
 function CategoryFormModal({
@@ -101,8 +121,8 @@ function CategoryFormModal({
     try {
       await onSave({ name: name.trim(), icon: icon.trim() || '💰', color, classification })
       onClose()
-    } catch (err: any) {
-      toast.error(err?.message ?? 'Erro ao salvar categoria.')
+    } catch (error: unknown) {
+      toast.error(getUiErrorMessage(error, 'Erro ao salvar categoria.'))
     } finally {
       setSaving(false)
     }
@@ -236,6 +256,7 @@ function ClassLimitsModal({
   categories,
   existingClassLimit,
   monthlyIncome,
+  otherGroupsBudget,
   onSave,
   onClose,
 }: {
@@ -243,46 +264,132 @@ function ClassLimitsModal({
   categories: EnrichedPlanCategory[]
   existingClassLimit: ClassLimit | undefined
   monthlyIncome: number
+  otherGroupsBudget: number
   onSave: (
     classLimit: { nominalLimit: number | null; percentLimit: number | null },
     catLimits: { categoryId: string; nominalLimit: number | null; percentLimit: number | null }[]
   ) => Promise<void>
   onClose: () => void
 }) {
-  const [mode, setMode] = useState<'nominal' | 'percent'>('nominal')
-  const [classValue, setClassValue] = useState(
-    existingClassLimit?.nominalLimit?.toString() ?? existingClassLimit?.percentLimit?.toString() ?? ''
-  )
+  const initialMode: BudgetInputMode = existingClassLimit?.percentLimit != null
+    ? 'percent'
+    : existingClassLimit?.nominalLimit != null
+      ? 'nominal'
+      : categories.some((category) => category.percentLimit != null)
+        ? 'percent'
+        : resolveBudgetMode(existingClassLimit)
+  const [mode, setMode] = useState<BudgetInputMode>(initialMode)
+  const [classValue, setClassValue] = useState(() => {
+    const value = initialMode === 'percent'
+      ? existingClassLimit?.percentLimit
+        ?? amountToPercentage(parseBudgetValue(existingClassLimit?.nominalLimit), monthlyIncome)
+      : existingClassLimit?.nominalLimit
+        ?? percentageToAmount(parseBudgetValue(existingClassLimit?.percentLimit), monthlyIncome)
+    return parseBudgetValue(value) > 0 ? value.toString() : ''
+  })
   const [catValues, setCatValues] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {}
-    categories.forEach((c) => { init[c.id] = c.nominalLimit?.toString() ?? '' })
+    categories.forEach((category) => {
+      const value = initialMode === 'percent'
+        ? category.percentLimit ?? amountToPercentage(parseBudgetValue(category.nominalLimit), monthlyIncome)
+        : category.nominalLimit ?? percentageToAmount(parseBudgetValue(category.percentLimit), monthlyIncome)
+      init[category.id] = parseBudgetValue(value) > 0 ? value.toString() : ''
+    })
     return init
   })
-  const [saving, setSaving] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [inputError, setInputError] = useState<string | null>(null)
 
-  const classNominal = mode === 'nominal' ? parseFloat(classValue) || null : null
-  const classPercent = mode === 'percent' ? parseFloat(classValue) || null : null
-  const totalFromIncome = mode === 'percent' && classPercent ? (monthlyIncome * classPercent) / 100 : null
+  const distribution = calculateDistribution(classValue, Object.values(catValues))
+  const groupAmount = mode === 'percent'
+    ? percentageToAmount(distribution.total, monthlyIncome)
+    : distribution.total
+  const availableForGroup = monthlyIncome > 0
+    ? Math.max(0, monthlyIncome - otherGroupsBudget)
+    : Number.POSITIVE_INFINITY
+  const maxGroupInput = mode === 'percent'
+    ? amountToPercentage(availableForGroup, monthlyIncome)
+    : availableForGroup
+  const exceedsIncome = monthlyIncome > 0 && groupAmount > availableForGroup + 0.000001
+  const totalFromIncome = mode === 'percent' && distribution.total > 0 ? groupAmount : null
+  const saving = saveStatus === 'saving'
+
+  function formatInputValue(value: number): string {
+    return roundBudgetValue(value).toString()
+  }
+
+  function handleModeChange(nextMode: BudgetInputMode) {
+    if (nextMode === mode || (nextMode === 'percent' && monthlyIncome <= 0)) return
+    const convert = (raw: string) => {
+      const value = parseBudgetValue(raw)
+      if (value === 0) return ''
+      const converted = nextMode === 'percent'
+        ? amountToPercentage(value, monthlyIncome)
+        : percentageToAmount(value, monthlyIncome)
+      return formatInputValue(converted)
+    }
+    setClassValue((current) => convert(current))
+    setCatValues((current) => Object.fromEntries(
+      Object.entries(current).map(([categoryId, value]) => [categoryId, convert(value)])
+    ))
+    setMode(nextMode)
+    setInputError(null)
+  }
+
+  function handleClassValueChange(rawValue: string) {
+    const nextValue = parseBudgetValue(rawValue)
+    if (monthlyIncome > 0 && nextValue > maxGroupInput) {
+      setClassValue(formatInputValue(maxGroupInput))
+      setInputError('O orçamento definido ultrapassa a receita estimada do cliente.')
+      return
+    }
+    setClassValue(rawValue)
+    setInputError(null)
+  }
+
+  function handleCategoryValueChange(categoryId: string, rawValue: string) {
+    const otherValues = Object.entries(catValues)
+      .filter(([id]) => id !== categoryId)
+      .map(([, value]) => value)
+    const maxValue = maxCategoryValue(classValue, otherValues)
+    const nextValue = parseBudgetValue(rawValue)
+
+    if (nextValue > maxValue + 0.000001) {
+      setCatValues((current) => ({
+        ...current,
+        [categoryId]: maxValue > 0 ? formatInputValue(maxValue) : '',
+      }))
+      setInputError('Saldo restante insuficiente para este limite.')
+      return
+    }
+
+    setCatValues((current) => ({ ...current, [categoryId]: rawValue }))
+    setInputError(null)
+  }
 
   async function handleSave() {
-    setSaving(true)
+    if (distribution.exceedsGroup || exceedsIncome || saving) return
+    setSaveStatus('saving')
     try {
       const catLimits = categories.map((c) => ({
         categoryId: c.id,
-        nominalLimit: parseFloat(catValues[c.id] ?? '') || null,
-        percentLimit: null,
+        ...buildBudgetLimitPayload(mode, catValues[c.id]),
       }))
-      await onSave({ nominalLimit: classNominal, percentLimit: classPercent }, catLimits)
+      await onSave(buildBudgetLimitPayload(mode, classValue), catLimits)
+      setSaveStatus('saved')
+      await new Promise((resolve) => setTimeout(resolve, 350))
       onClose()
-    } catch (err: any) {
-      toast.error(err?.message ?? 'Erro ao salvar limites.')
-    } finally {
-      setSaving(false)
+    } catch (error: unknown) {
+      toast.error(getUiErrorMessage(error, 'Erro ao salvar limites.'))
+      setSaveStatus('idle')
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
+      onClick={() => { if (!saving) onClose() }}
+    >
       <div
         className="w-full max-w-md rounded-t-2xl border border-slate-200 bg-white shadow-xl sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
@@ -292,7 +399,7 @@ function ClassLimitsModal({
             <p className="text-xs font-semibold uppercase text-slate-500">Estabelecer limites</p>
             <h2 className="text-base font-semibold text-[#253140]">{colLabel}</h2>
           </div>
-          <button type="button" onClick={onClose} className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50">
+          <button type="button" onClick={onClose} disabled={saving} className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 disabled:opacity-50">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -304,12 +411,14 @@ function ClassLimitsModal({
               <button
                 key={m}
                 type="button"
-                onClick={() => setMode(m)}
+                onClick={() => handleModeChange(m)}
+                disabled={m === 'percent' && monthlyIncome <= 0}
+                title={m === 'percent' && monthlyIncome <= 0 ? 'Informe a receita estimada para usar percentuais.' : undefined}
                 className={[
                   'flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl border text-xs font-semibold transition',
                   mode === m
                     ? 'border-[#4F98C2] bg-[#EAF4FA] text-[#2F6E91]'
-                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
+                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50',
                 ].join(' ')}
               >
                 {m === 'nominal'
@@ -332,9 +441,10 @@ function ClassLimitsModal({
               <input
                 type="number"
                 min="0"
+                max={Number.isFinite(maxGroupInput) ? roundBudgetValue(maxGroupInput) : undefined}
                 step={mode === 'nominal' ? '100' : '1'}
                 value={classValue}
-                onChange={(e) => setClassValue(e.target.value)}
+                onChange={(e) => handleClassValueChange(e.target.value)}
                 placeholder={mode === 'nominal' ? '0,00' : '0'}
                 className="h-11 w-full rounded-xl border border-slate-200 pl-9 pr-3 text-sm outline-none focus:border-[#7CB8D8]"
               />
@@ -347,11 +457,18 @@ function ClassLimitsModal({
           {/* Per-category limits */}
           {categories.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-slate-600">Limite por categoria (R$)</p>
+              <p className="text-xs font-semibold text-slate-600">
+                Limite por categoria {mode === 'percent' ? '(% da receita)' : '(R$)'}
+              </p>
               {categories.map((cat) => {
                 const IconComponent = cat.icon ? IconMap[cat.icon as IconName] : null
+                const otherValues = Object.entries(catValues)
+                  .filter(([id]) => id !== cat.id)
+                  .map(([, value]) => value)
+                const maxValue = maxCategoryValue(classValue, otherValues)
+                const categoryValue = parseBudgetValue(catValues[cat.id])
                 return (
-                  <div key={cat.id} className="flex items-center gap-2">
+                  <div key={cat.id} className="flex items-center gap-2 rounded-xl border border-slate-100 px-2 py-1.5">
                     <span
                       className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs"
                       style={{ backgroundColor: `${cat.color}22`, color: cat.color }}
@@ -360,35 +477,89 @@ function ClassLimitsModal({
                         ? <IconComponent size={14} />
                         : (cat.icon?.slice(0, 2) ?? '◆')}
                     </span>
-                    <span className="flex-1 truncate text-sm text-slate-700">{cat.name}</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="50"
-                      value={catValues[cat.id] ?? ''}
-                      onChange={(e) => setCatValues((prev) => ({ ...prev, [cat.id]: e.target.value }))}
-                      placeholder="—"
-                      className="h-8 w-28 rounded-xl border border-slate-200 px-2 text-right text-sm outline-none focus:border-[#7CB8D8]"
-                    />
+                    <span className="min-w-0 flex-1 truncate text-sm text-slate-700">{cat.name}</span>
+                    <div className="text-right">
+                      <div className="relative">
+                        <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                          {mode === 'nominal' ? 'R$' : '%'}
+                        </span>
+                        <input
+                          type="number"
+                          min="0"
+                          max={roundBudgetValue(maxValue)}
+                          step={mode === 'nominal' ? '50' : '1'}
+                          value={catValues[cat.id] ?? ''}
+                          onChange={(e) => handleCategoryValueChange(cat.id, e.target.value)}
+                          placeholder="—"
+                          className="h-8 w-28 rounded-xl border border-slate-200 pl-7 pr-2 text-right text-sm outline-none focus:border-[#7CB8D8]"
+                        />
+                      </div>
+                      {mode === 'percent' && categoryValue > 0 && (
+                        <span className="text-[10px] text-slate-400">
+                          ≈ {formatCurrency(percentageToAmount(categoryValue, monthlyIncome))}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 )
               })}
             </div>
           )}
+
+          <div className="grid grid-cols-3 gap-2 rounded-xl bg-slate-50 p-3 text-center">
+            <div>
+              <p className="text-[10px] font-semibold uppercase text-slate-500">Limite total</p>
+              <p className="text-sm font-bold text-slate-700">
+                {mode === 'nominal' ? formatCurrency(distribution.total) : `${roundBudgetValue(distribution.total)}%`}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase text-slate-500">Distribuído</p>
+              <p className="text-sm font-bold text-slate-700">
+                {mode === 'nominal' ? formatCurrency(distribution.distributed) : `${roundBudgetValue(distribution.distributed)}%`}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase text-slate-500">Restante</p>
+              <p className={['text-sm font-bold', distribution.remaining < 0 ? 'text-red-600' : 'text-emerald-600'].join(' ')}>
+                {mode === 'nominal' ? formatCurrency(distribution.remaining) : `${roundBudgetValue(distribution.remaining)}%`}
+              </p>
+            </div>
+          </div>
+
+          {distribution.exceedsGroup && (
+            <p className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              Os limites das categorias ultrapassam o limite total do grupo.
+            </p>
+          )}
+          {exceedsIncome && (
+            <p className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              O orçamento definido ultrapassa a receita estimada do cliente.
+            </p>
+          )}
+          {inputError && !distribution.exceedsGroup && !exceedsIncome && (
+            <p className="text-xs font-semibold text-red-600">{inputError}</p>
+          )}
         </div>
 
         <div className="flex items-center justify-end gap-2 border-t border-slate-100 px-5 py-3">
-          <button type="button" onClick={onClose} className="h-9 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+          <button type="button" onClick={onClose} disabled={saving} className="h-9 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">
             Cancelar
           </button>
           <button
             type="button"
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || saveStatus === 'saved' || distribution.exceedsGroup || exceedsIncome}
             className="inline-flex h-9 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-[#3f86b0] disabled:opacity-60"
           >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {saving ? 'Salvando...' : 'Salvar limites'}
+            {saving
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : saveStatus === 'saved'
+                ? <Check className="h-4 w-4" />
+                : <Save className="h-4 w-4" />}
+            {saving ? 'Salvando...' : saveStatus === 'saved' ? 'Salvo' : 'Salvar limites'}
           </button>
         </div>
       </div>
@@ -400,11 +571,13 @@ function ClassLimitsModal({
 
 function CategoryCard({
   cat,
+  monthlyIncome,
   onSetLimit,
   onEdit,
   onDelete,
 }: {
   cat: EnrichedPlanCategory
+  monthlyIncome: number
   onSetLimit: () => void
   onEdit: (cat: EnrichedPlanCategory) => void
   onDelete: (cat: EnrichedPlanCategory) => void
@@ -420,6 +593,8 @@ function CategoryCard({
   const kwCount = cat.keywords?.length ?? 0
 
   const IconComponent = cat.icon ? IconMap[cat.icon as IconName] : null
+  const limitAmount = resolveBudgetAmount(cat, monthlyIncome)
+  const hasLimit = cat.percentLimit != null || cat.nominalLimit != null
 
   if (confirmDelete) {
     return (
@@ -459,21 +634,31 @@ function CategoryCard({
           </span>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-[#253140]">{cat.name}</p>
-            {cat.nominalLimit != null && (
-              <p className="text-[11px] text-slate-500">Limite: {formatCurrency(cat.nominalLimit)}</p>
-            )}
           </div>
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            onClick={onSetLimit}
-            className="hidden h-7 items-center gap-1 rounded-lg border border-slate-200 px-2 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 group-hover:flex"
-          >
-            <DollarSign className="h-3 w-3" />
-            Limite
-          </button>
+          {hasLimit ? (
+            <button
+              type="button"
+              onClick={onSetLimit}
+              className="inline-flex min-h-7 items-center rounded-full border border-[#B9DAEA] bg-gradient-to-r from-[#EAF4FA] to-white px-2.5 py-1 text-[11px] font-bold text-[#2F6E91] shadow-sm transition hover:border-[#7CB8D8]"
+              title="Editar limite"
+            >
+              Limite: {cat.percentLimit != null
+                ? `${roundBudgetValue(cat.percentLimit)}% · ${formatCurrency(limitAmount)}`
+                : formatCurrency(limitAmount)}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onSetLimit}
+              className="inline-flex h-7 items-center gap-1 rounded-lg border border-slate-200 px-2 text-[11px] font-semibold text-slate-600 hover:bg-slate-50"
+            >
+              <DollarSign className="h-3 w-3" />
+              Limite
+            </button>
+          )}
           <button
             type="button"
             onClick={() => onEdit(cat)}
@@ -540,6 +725,7 @@ function PlanejamentoFallback() {
 
 function PlanejamentoInner() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const params = useParams<{ clientId: string }>()
   const searchParams = useSearchParams()
   const clientId = String(params?.clientId ?? '').trim()
@@ -558,9 +744,9 @@ function PlanejamentoInner() {
   // Optimistic classification overrides
   const [localClassifications, setLocalClassifications] = useState<Record<string, CategoryClassification>>({})
 
-  const loadPlan = useCallback(async () => {
+  const loadPlan = useCallback(async (silent = false) => {
     if (!clientId) return
-    setLoading(true)
+    if (!silent) setLoading(true)
     try {
       // Load classification board (all client categories) + budget plan limits in parallel
       const [board, planData] = await Promise.all([
@@ -591,10 +777,10 @@ function PlanejamentoInner() {
       const initCls: Record<string, CategoryClassification> = {}
       enriched.forEach((c) => { initCls[c.id] = c.classification })
       setLocalClassifications(initCls)
-    } catch (err: any) {
-      toast.error(err?.message ?? 'Erro ao carregar planejamento.')
+    } catch (error: unknown) {
+      toast.error(getUiErrorMessage(error, 'Erro ao carregar planejamento.'))
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [clientId])
 
@@ -606,40 +792,56 @@ function PlanejamentoInner() {
       .sort((a, b) => a.classificationOrder - b.classificationOrder)
   }
 
-  async function handleMoveToColumn(cat: EnrichedPlanCategory, newClass: CategoryClassification) {
-    const colCategories = getCategoriesByClass(newClass)
-    setLocalClassifications((prev) => ({ ...prev, [cat.id]: newClass }))
-    try {
-      await updateCategoryClassification(
-        cat.id,
-        { classification: newClass, order: colCategories.length + 1 },
-        { actingClientId: clientId }
-      )
-    } catch (err: any) {
-      toast.error(err?.message ?? 'Erro ao mover categoria.')
-      setLocalClassifications((prev) => ({ ...prev, [cat.id]: cat.classification }))
-    }
-  }
-
   async function handleSaveLimits(
     classLimit: { nominalLimit: number | null; percentLimit: number | null },
     catLimits: { categoryId: string; nominalLimit: number | null; percentLimit: number | null }[]
   ) {
     if (!modalCol) return
+    const targetClass = modalCol
+    const previousPlan = plan
+    const previousCategories = categories
+    const currentClassLimit = plan?.classLimits.find((limit) => limit.class === targetClass)
+    const optimisticClassLimit: ClassLimit = {
+      id: currentClassLimit?.id ?? `optimistic-${targetClass}`,
+      class: targetClass,
+      ...classLimit,
+    }
+
+    setPlan((currentPlan) => ({
+      id: currentPlan?.id ?? 'optimistic',
+      monthYear: currentPlan?.monthYear ?? '',
+      totalBudget: currentPlan?.totalBudget ?? null,
+      totalBudgetPct: currentPlan?.totalBudgetPct ?? null,
+      notes: currentPlan?.notes ?? null,
+      isActive: currentPlan?.isActive ?? true,
+      classLimits: [
+        ...(currentPlan?.classLimits ?? []).filter((limit) => limit.class !== targetClass),
+        optimisticClassLimit,
+      ],
+    }))
+    const optimisticCategoryLimits = new Map(catLimits.map((limit) => [limit.categoryId, limit]))
+    setCategories((currentCategories) => currentCategories.map((category) => {
+      const limit = optimisticCategoryLimits.get(category.id)
+      return limit ? { ...category, ...limit } : category
+    }))
+
     setSaving(true)
     try {
       await Promise.all([
         setClassLimits(clientId, {
-          limits: [{ class: modalCol, nominalLimit: classLimit.nominalLimit, percentLimit: classLimit.percentLimit }],
+          limits: [{ class: targetClass, nominalLimit: classLimit.nominalLimit, percentLimit: classLimit.percentLimit }],
         }),
         setCategoryLimits(clientId, { limits: catLimits }),
       ])
-      // Sincroniza limites do budget plan como GoalControls do cliente (idempotente)
-      await syncBudgetToGoalControls(clientId).catch(() => {
-        // Não bloqueia o fluxo se o backend ainda não tiver o endpoint
-      })
-      toast.success('Limites salvos e metas sincronizadas!')
-      await loadPlan()
+      await syncBudgetToGoalControls(clientId)
+      await queryClient.invalidateQueries({ queryKey: ['controls'] })
+      toast.success('Limites salvos com sucesso.')
+      await loadPlan(true)
+    } catch (error) {
+      setPlan(previousPlan)
+      setCategories(previousCategories)
+      await loadPlan(true)
+      throw error
     } finally {
       setSaving(false)
     }
@@ -695,8 +897,8 @@ function PlanejamentoInner() {
         toast.success('Categoria criada.')
       }
       await loadPlan()
-    } catch (err: any) {
-      toast.error(err?.message ?? 'Erro ao salvar categoria.')
+    } catch (error: unknown) {
+      toast.error(getUiErrorMessage(error, 'Erro ao salvar categoria.'))
     } finally {
       setSaving(false)
       setEditingCat(null)
@@ -709,19 +911,28 @@ function PlanejamentoInner() {
       await deleteCategory(cat.id, { actingClientId: clientId })
       toast.success('Categoria excluída.')
       await loadPlan()
-    } catch (err: any) {
-      toast.error(err?.message ?? 'Erro ao excluir categoria.')
+    } catch (error: unknown) {
+      toast.error(getUiErrorMessage(error, 'Erro ao excluir categoria.'))
     }
   }
 
   function columnTotalBudget(cls: CategoryClassification): number {
     const classLimit = plan?.classLimits.find((l) => l.class === cls)
-    if (classLimit?.nominalLimit) return classLimit.nominalLimit
-    return getCategoriesByClass(cls).reduce((s, c) => s + (c.nominalLimit ?? 0), 0)
+    if (classLimit && (classLimit.nominalLimit != null || classLimit.percentLimit != null)) {
+      return resolveBudgetAmount(classLimit, monthlyIncome)
+    }
+    return getCategoriesByClass(cls).reduce(
+      (sum, category) => sum + resolveBudgetAmount(category, monthlyIncome),
+      0
+    )
   }
 
-  const totalBudgeted = COLUMNS.reduce((s, col) => s + columnTotalBudget(col.key), 0)
-  const pctBudgeted = monthlyIncome > 0 ? Math.round((totalBudgeted / monthlyIncome) * 100) : null
+  const budgetSummary = calculateBudgetSummary(
+    COLUMNS.map((column) => columnTotalBudget(column.key)),
+    monthlyIncome
+  )
+  const totalBudgeted = budgetSummary.totalBudgeted
+  const pctBudgeted = budgetSummary.percentage
 
   if (loading) {
     return (
@@ -778,12 +989,23 @@ function PlanejamentoInner() {
                 <div className="text-center">
                   <p className="text-xs font-semibold uppercase text-slate-500">% da receita</p>
                   <p className={['mt-1 text-xl font-bold', pctBudgeted > 100 ? 'text-red-600' : 'text-[#2F6E91]'].join(' ')}>
-                    {pctBudgeted}%
+                    {roundBudgetValue(pctBudgeted)}%
                   </p>
                 </div>
               )}
             </div>
           </div>
+          {budgetSummary.exceedsIncome ? (
+            <p className="mt-3 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              O orçamento definido ultrapassa a receita estimada do cliente.
+            </p>
+          ) : budgetSummary.shouldWarn ? (
+            <p className="mt-3 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              Atenção: este planejamento já compromete 80% da receita estimada.
+            </p>
+          ) : null}
         </div>
       )}
 
@@ -793,7 +1015,7 @@ function PlanejamentoInner() {
           const colCategories = getCategoriesByClass(col.key)
           const colBudget = columnTotalBudget(col.key)
           const colPct = monthlyIncome > 0 && colBudget > 0
-            ? Math.round((colBudget / monthlyIncome) * 100)
+            ? roundBudgetValue((colBudget / monthlyIncome) * 100)
             : null
           const classLimit = plan?.classLimits.find((l) => l.class === col.key)
 
@@ -812,9 +1034,11 @@ function PlanejamentoInner() {
                         {colPct}%
                       </span>
                     )}
-                    {classLimit?.nominalLimit && (
+                    {classLimit && (classLimit.nominalLimit != null || classLimit.percentLimit != null) && (
                       <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600">
-                        {formatCurrency(classLimit.nominalLimit)}
+                        {classLimit.percentLimit != null
+                          ? `${roundBudgetValue(classLimit.percentLimit)}% · ${formatCurrency(resolveBudgetAmount(classLimit, monthlyIncome))}`
+                          : formatCurrency(resolveBudgetAmount(classLimit, monthlyIncome))}
                       </span>
                     )}
                   </div>
@@ -841,6 +1065,7 @@ function PlanejamentoInner() {
                     <CategoryCard
                       key={cat.id}
                       cat={{ ...cat, classification: localClassifications[cat.id] ?? cat.classification }}
+                      monthlyIncome={monthlyIncome}
                       onSetLimit={() => setModalCol(col.key)}
                       onEdit={(c) => setEditingCat(c)}
                       onDelete={handleDeleteCategory}
@@ -869,6 +1094,7 @@ function PlanejamentoInner() {
           categories={getCategoriesByClass(modalCol)}
           existingClassLimit={plan?.classLimits.find((l) => l.class === modalCol)}
           monthlyIncome={monthlyIncome}
+          otherGroupsBudget={Math.max(0, totalBudgeted - columnTotalBudget(modalCol))}
           onSave={handleSaveLimits}
           onClose={() => setModalCol(null)}
         />

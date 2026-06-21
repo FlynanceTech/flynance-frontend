@@ -195,6 +195,15 @@ export const deleteTransaction = async (id: string): Promise<{ message: string }
 
 export type ImportTransactionsResponse<TTransaction = Transaction> =
   | { transactions: TTransaction[] }
+  | {
+      ok: true
+      model: 'CreditCardCharge'
+      importBatchId: string
+      imported: number
+      skipped: number
+      charges: unknown[]
+      transactions: TTransaction[]
+    }
   | TTransaction[]
 
 export type ImportTransactionsPreviewMeta = {
