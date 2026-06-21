@@ -524,6 +524,8 @@ export default function TransactionsPage() {
       const withIds = (list as Transaction[]).map((t, idx) => ({
         ...t,
         id: t.id ?? `import-preview-${idx}`,
+        // Fatura de cartão → todas EXPENSE no preview, independente do sinal original
+        type: (isCCStatement || t.paymentType === 'CREDIT_CARD') ? 'EXPENSE' : t.type,
       }))
       setImportedTransactions(withIds)
       setImportIsCreditCard(isCCStatement)
@@ -541,13 +543,25 @@ export default function TransactionsPage() {
 
   const handleConfirmImport = async () => {
     if (!importedTransactions.length) return
+
+    // Fatura de cartão sem cartão selecionado → transações ficariam invisíveis
+    if (importIsCreditCard && !importCardId) {
+      setImportError(tr('previewDialog.selectCardRequired'))
+      return
+    }
+
     try {
       setIsImporting(true)
       setImportError(null)
       const payload = {
         mode: 'import' as const,
         cardId: importIsCreditCard ? importCardId : undefined,
-        transactions: importedTransactions,
+        // Garante que CC sai como EXPENSE no payload final
+        transactions: importedTransactions.map((t) =>
+          (importIsCreditCard || t.paymentType === 'CREDIT_CARD')
+            ? { ...t, type: 'EXPENSE' as const }
+            : t
+        ),
       }
       await importConfirmMutation.mutateAsync({ userId, payload })
       setImportedTransactions([])
@@ -1240,6 +1254,11 @@ export default function TransactionsPage() {
                   </p>
                 )}
               </div>
+              {importIsCreditCard && !importCardId && (
+                <p className="text-xs font-medium text-amber-700 bg-amber-50 rounded-lg px-3 py-2 border border-amber-200">
+                  {tr('previewDialog.selectCardRequired')}
+                </p>
+              )}
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <span className="rounded-full bg-secondary/30 px-3 py-1 text-xs font-semibold text-[#333C4D]">
                   {tr('previewDialog.newCount', { count: importedTransactions.length })}

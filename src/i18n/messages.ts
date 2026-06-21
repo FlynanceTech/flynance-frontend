@@ -296,6 +296,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         tip: 'Dica: duplo clique na descricao para editar. Use o select de categoria para ajustar.',
         creditCardDetected: 'Fatura de cartão detectada. Selecione o cartão correspondente:',
         selectCard: 'Selecionar cartão',
+        selectCardRequired: 'Selecione um cartão para importar esta fatura. Sem cartão selecionado as transações ficam invisíveis.',
       },
       bulkRename: {
         title: 'Renomear descricoes iguais?',
@@ -2726,6 +2727,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         tip: 'Tip: double click description to edit. Use category select to adjust.',
         creditCardDetected: 'Credit card statement detected. Select the corresponding card:',
         selectCard: 'Select card',
+        selectCardRequired: 'Select a card to import this statement. Without a card selected, transactions will be invisible.',
       },
       bulkRename: {
         title: 'Rename matching descriptions?',
@@ -5145,6 +5147,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         tip: 'Tip: doble clic en la descripcion para editar. Usa el selector de categoria para ajustar.',
         creditCardDetected: 'Extracto de tarjeta detectado. Selecciona la tarjeta correspondiente:',
         selectCard: 'Seleccionar tarjeta',
+        selectCardRequired: 'Selecciona una tarjeta para importar este extracto. Sin tarjeta seleccionada las transacciones serán invisibles.',
       },
       bulkRename: {
         title: 'Renombrar descripciones iguales?',
