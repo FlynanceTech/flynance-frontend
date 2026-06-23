@@ -53,9 +53,7 @@ function isInviteBlocked(invite: AdvisorGeneratedInvite | null | undefined) {
 
 function validateBrazilianPhone(phone: string): boolean {
   const digits = phone.replace(/\D/g, '')
-  // 10 = landline (DDD + 8), 11 = mobile (DDD + 9)
   if (digits.length === 10 || digits.length === 11) return true
-  // With country code 55
   if (digits.startsWith('55') && (digits.length === 12 || digits.length === 13)) return true
   return false
 }
@@ -75,26 +73,43 @@ function resolveStripeErrorMessage(error: unknown): string {
   return msg
 }
 
+type InviteStep =
+  | 'prefill'          // Formulário inicial (nome, e-mail, telefone) — unauthenticated
+  | 'checking'         // Verificando existência do usuário
+  | 'existing-login'   // Conta encontrada + auto-aceita → redirecionar para login
+  | 'existing-payment' // Conta encontrada sem plano + CLIENT paga → login antes do checkout
+  | 'signup-otp'       // Conta não existe + ADVISOR/ORG paga → criar conta via OTP
+  | 'otp-verify'       // Verificar código OTP
+  | 'done'             // Authenticated, invite accepted
+
 // ─── component ────────────────────────────────────────────────────────────────
 
 export default function AdvisorClientInviteAcceptClient() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = String(searchParams.get('token') ?? '').trim()
+  const justAccepted = searchParams.get('just_accepted') === '1'
   const { status, fetchAccount } = useUserSession()
   const inviteQuery = useAdvisorGeneratedInviteByToken(token)
   const acceptInviteMutation = useAcceptAdvisorGeneratedInvite()
   const [legalOpen, setLegalOpen] = useState(false)
   const [legalDoc, setLegalDoc] = useState<LegalDocKey>('termos')
-
-  // Welcome popup (shown after accepting invite)
   const [welcomeOpen, setWelcomeOpen] = useState(false)
 
-  // Inline signup form
-  const [signupStep, setSignupStep] = useState<'hidden' | 'form' | 'otp'>('hidden')
-  const [signupName, setSignupName] = useState('')
-  const [signupEmail, setSignupEmail] = useState('')
-  const [signupPhone, setSignupPhone] = useState('')
+  // ─── Prefill form (step 1 for unauthenticated) ────────────────────────────
+  const [step, setStep] = useState<InviteStep>('prefill')
+  const [prefillName, setPrefillName] = useState('')
+  const [prefillEmail, setPrefillEmail] = useState('')
+  const [prefillPhone, setPrefillPhone] = useState('')
+  // Couple: second person
+  const [prefillName2, setPrefillName2] = useState('')
+  const [prefillEmail2, setPrefillEmail2] = useState('')
+  const [prefillPhone2, setPrefillPhone2] = useState('')
+  const [prefillError, setPrefillError] = useState<string | null>(null)
+  const [prefillLoading, setPrefillLoading] = useState(false)
+  const [autoAcceptAdvisorName, setAutoAcceptAdvisorName] = useState('')
+
+  // ─── OTP signup (new user, advisor/org pays) ──────────────────────────────
   const [signupCode, setSignupCode] = useState('')
   const [signupLoading, setSignupLoading] = useState(false)
   const [signupError, setSignupError] = useState<string | null>(null)
@@ -102,7 +117,12 @@ export default function AdvisorClientInviteAcceptClient() {
   const invite = inviteQuery.data ?? null
   const isValidToken = token.length >= 10
   const isClientPays = invite?.paymentResponsible === 'CLIENT'
+  const isCouple = invite?.accountType === 'COUPLE'
   const blocked = isInviteBlocked(invite)
+
+  const advisorName = getAdvisorName(invite)
+  const displayName = getDisplayName(invite)
+  const accountType = invite?.accountType ?? 'INDIVIDUAL'
 
   const nextToLogin = useMemo(
     () => `/login?next=${encodeURIComponent(`/advisor/client-invite/accept?token=${token}`)}`,
@@ -115,23 +135,41 @@ export default function AdvisorClientInviteAcceptClient() {
     return `/cadastro/checkout?${qs.toString()}`
   }, [invite, token])
 
-  const advisorName = getAdvisorName(invite)
-  const displayName = getDisplayName(invite)
-  const accountType = invite?.accountType ?? 'INDIVIDUAL'
+  // Login + checkout (existing user without subscription, client pays)
+  const loginThenCheckout = useMemo(() => {
+    return `/login?next=${encodeURIComponent(checkoutHref)}`
+  }, [checkoutHref])
 
-  // Auto-redirect when user is authenticated and invite is already ACCEPTED
+  // Login after auto-accept (shows welcome popup on return)
+  const loginAfterAutoAccept = useMemo(
+    () =>
+      `/login?next=${encodeURIComponent(
+        `/advisor/client-invite/accept?token=${token}&just_accepted=1`
+      )}`,
+    [token]
+  )
+
+  // ─── Auto-redirect when authenticated and invite already ACCEPTED ──────────
   const hasAutoRedirectedRef = useRef(false)
   useEffect(() => {
-    if (
-      status === 'authenticated' &&
-      invite?.status === 'ACCEPTED' &&
-      !hasAutoRedirectedRef.current
-    ) {
-      hasAutoRedirectedRef.current = true
-      logAdvisorInviteEvent('invite_already_accepted', { token })
-      router.replace('/dashboard')
+    if (!status || status === 'idle' || status === 'loading') return
+    if (status !== 'authenticated') return
+    if (!invite) return
+
+    if (invite.status === 'ACCEPTED') {
+      if (justAccepted && !hasAutoRedirectedRef.current) {
+        // Mostrar welcome popup antes de ir ao dashboard
+        setWelcomeOpen(true)
+        hasAutoRedirectedRef.current = true
+        return
+      }
+      if (!justAccepted && !hasAutoRedirectedRef.current) {
+        hasAutoRedirectedRef.current = true
+        logAdvisorInviteEvent('invite_already_accepted', { token })
+        router.replace('/dashboard')
+      }
     }
-  }, [status, invite?.status, token, router])
+  }, [status, invite, token, router, justAccepted])
 
   useEffect(() => {
     if (status === 'idle') {
@@ -144,10 +182,10 @@ export default function AdvisorClientInviteAcceptClient() {
     setLegalOpen(true)
   }
 
+  // ─── Authenticated flow: accept button ────────────────────────────────────
   async function acceptAndRedirect() {
     logAdvisorInviteEvent('invite_accept_started', { token })
 
-    // Idempotency: if already accepted, just redirect
     if (invite?.status === 'ACCEPTED') {
       logAdvisorInviteEvent('invite_already_accepted', { token })
       router.replace('/dashboard')
@@ -157,98 +195,194 @@ export default function AdvisorClientInviteAcceptClient() {
     try {
       await acceptInviteMutation.mutateAsync(token)
       await fetchAccount()
-      logAdvisorInviteEvent('invite_status_updated', { token, status: 'ACCEPTED' })
+      logAdvisorInviteEvent('invite_status_marked_accepted', { token })
       setWelcomeOpen(true)
     } catch {
-      // erro já tratado no hook (toast)
+      // handled by mutation hook
     }
   }
 
-  async function handleSendCode() {
-    setSignupError(null)
-    if (!signupName.trim()) {
-      setSignupError('Informe seu nome completo.')
+  async function handlePrimaryAction() {
+    if (!isValidToken || acceptInviteMutation.isPending) return
+    if (invite?.status === 'ACCEPTED') { router.replace('/dashboard'); return }
+    if (blocked) return
+    if (isClientPays) { router.push(checkoutHref); return }
+    if (status === 'idle' || status === 'loading') return
+    if (status === 'unauthenticated') { router.push(nextToLogin); return }
+    await acceptAndRedirect()
+  }
+
+  // ─── Prefill step: submit ─────────────────────────────────────────────────
+  async function handlePrefillSubmit() {
+    setPrefillError(null)
+
+    if (!prefillName.trim()) { setPrefillError('Informe o nome completo.'); return }
+    if (!prefillEmail.trim()) { setPrefillError('Informe o e-mail.'); return }
+    if (!prefillPhone.trim()) { setPrefillError('Informe o telefone/WhatsApp.'); return }
+    if (!validateBrazilianPhone(prefillPhone)) {
+      setPrefillError('Informe um telefone válido com DDD (ex: 11 91234-5678).')
       return
     }
-    if (!signupEmail.trim()) {
-      setSignupError('Informe seu e-mail.')
-      return
-    }
-    if (!signupPhone.trim()) {
-      setSignupError('Informe seu telefone/WhatsApp.')
-      return
-    }
-    if (!validateBrazilianPhone(signupPhone)) {
-      setSignupError('Informe um telefone válido com DDD (ex: 11 91234-5678).')
-      return
+    if (isCouple) {
+      if (!prefillName2.trim()) { setPrefillError('Informe o nome da segunda pessoa.'); return }
+      if (!prefillEmail2.trim()) { setPrefillError('Informe o e-mail da segunda pessoa.'); return }
+      if (!prefillPhone2.trim()) { setPrefillError('Informe o telefone da segunda pessoa.'); return }
+      if (!validateBrazilianPhone(prefillPhone2)) {
+        setPrefillError('Informe um telefone válido para a segunda pessoa.')
+        return
+      }
     }
 
-    setSignupLoading(true)
+    setPrefillLoading(true)
+    setStep('checking')
+
+    logAdvisorInviteEvent('invite_prefill_submitted', { email: prefillEmail })
+
+    try {
+      const checkRes = await axios.post(`${API_BASE}/advisor/invites/${token}/check-prefill`, {
+        email: prefillEmail.trim(),
+        phone: normalizeBrazilianPhone(prefillPhone),
+      })
+
+      const { userExists, conflictError, inviteAlreadyAccepted } = checkRes.data
+
+      if (inviteAlreadyAccepted) {
+        setPrefillError('Este convite já foi aceito. Faça login para acessar o painel.')
+        setStep('prefill')
+        return
+      }
+
+      if (conflictError) {
+        logAdvisorInviteEvent('invite_existing_user_checked', { conflict: true })
+        setPrefillError(conflictError)
+        setStep('prefill')
+        return
+      }
+
+      logAdvisorInviteEvent(
+        userExists ? 'invite_existing_user_found' : 'invite_existing_user_not_found',
+        { email: prefillEmail }
+      )
+
+      if (userExists) {
+        logAdvisorInviteEvent('invite_existing_user_checked', { userExists: true })
+
+        // Tenta auto-aceitar
+        try {
+          const acceptRes = await axios.post(`${API_BASE}/advisor/invites/${token}/auto-accept`, {
+            email: prefillEmail.trim(),
+            phone: normalizeBrazilianPhone(prefillPhone),
+          })
+
+          const { ok, needsPayment, advisorName: aName } = acceptRes.data
+          setAutoAcceptAdvisorName(aName || advisorName)
+
+          if (needsPayment) {
+            // Usuário existe mas não tem plano ativo — fazer login primeiro, depois checkout
+            logAdvisorInviteEvent('invite_redirect_to_payment', { existingUser: true })
+            setStep('existing-payment')
+          } else {
+            // Auto-aceito com sucesso — redirecionar para login
+            logAdvisorInviteEvent('invite_auto_accepted_existing_user', { ok })
+            logAdvisorInviteEvent('invite_redirect_to_login', {})
+            setStep('existing-login')
+          }
+        } catch (autoErr: unknown) {
+          const axErr = autoErr as { response?: { data?: { error?: string }; status?: number } }
+          const msg = axErr?.response?.data?.error ?? 'Não foi possível vincular a conta.'
+          setPrefillError(msg)
+          setStep('prefill')
+        }
+      } else {
+        // Usuário novo
+        logAdvisorInviteEvent('invite_redirect_to_payment', { newUser: true })
+
+        if (isClientPays) {
+          // Checkout cria conta + vincula convite
+          router.push(checkoutHref)
+        } else {
+          // ADVISOR/ORG paga — criar conta via OTP
+          await sendOtpForNewUser()
+        }
+      }
+    } catch (err: unknown) {
+      const axErr = err as { response?: { data?: { error?: string } } }
+      const msg = axErr?.response?.data?.error ?? 'Erro ao verificar dados. Tente novamente.'
+      setPrefillError(msg)
+      setStep('prefill')
+    } finally {
+      setPrefillLoading(false)
+    }
+  }
+
+  // ─── OTP para conta nova (advisor/org paga) ───────────────────────────────
+  async function sendOtpForNewUser() {
+    setSignupError(null)
+    setPrefillLoading(true)
     try {
       await axios.post(`${API_BASE}/auth/send-code`, {
-        email: signupEmail.trim(),
+        email: prefillEmail.trim(),
         register: true,
-        phone: normalizeBrazilianPhone(signupPhone),
+        phone: normalizeBrazilianPhone(prefillPhone),
       })
-      setSignupStep('otp')
+      setStep('signup-otp')
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { status?: number; data?: { error?: string; message?: string } } }
+      const axErr = err as {
+        response?: { status?: number; data?: { error?: string; message?: string } }
+      }
       const msg =
-        axiosErr?.response?.data?.error ||
-        axiosErr?.response?.data?.message ||
+        axErr?.response?.data?.error ||
+        axErr?.response?.data?.message ||
         'Erro ao enviar código.'
-      const isExistingUser =
-        axiosErr?.response?.status === 409 ||
+      const isExisting =
+        axErr?.response?.status === 409 ||
         /já existe|already exists|email.*cadastrado|already registered/i.test(msg)
-      if (isExistingUser) {
-        logAdvisorInviteEvent('invite_existing_user_detected', { email: signupEmail })
-        setSignupError(
+      if (isExisting) {
+        // Usuário existe mas check-prefill não pegou — trata como existente
+        logAdvisorInviteEvent('invite_existing_user_detected', { email: prefillEmail })
+        setPrefillError(
           `Este e-mail já tem uma conta na Flynance. Faça login para vincular ao consultor ${advisorName}.`
         )
+        setStep('prefill')
       } else {
-        setSignupError(msg)
+        setPrefillError(msg)
+        setStep('prefill')
       }
     } finally {
-      setSignupLoading(false)
+      setPrefillLoading(false)
     }
   }
 
-  async function handleVerifyAndCreate() {
-    if (!signupCode.trim()) {
-      setSignupError('Informe o código recebido.')
-      return
-    }
+  async function handleVerifyOtpAndCreate() {
+    if (!signupCode.trim()) { setSignupError('Informe o código recebido.'); return }
     setSignupLoading(true)
     setSignupError(null)
     try {
       await axios.post(
         `${API_BASE}/auth/verify-code`,
         {
-          email: signupEmail.trim(),
+          email: prefillEmail.trim(),
           code: signupCode.trim(),
-          name: signupName.trim(),
-          phone: normalizeBrazilianPhone(signupPhone),
+          name: prefillName.trim(),
+          phone: normalizeBrazilianPhone(prefillPhone),
         },
         { withCredentials: true }
       )
       await fetchAccount()
-      logAdvisorInviteEvent('invite_user_created', { email: signupEmail })
-      setSignupStep('hidden')
+      logAdvisorInviteEvent('invite_user_created', { email: prefillEmail })
+      setStep('prefill') // reset
       toast.success('Conta criada com sucesso!')
 
-      // After account creation: auto-accept (advisor/org pays) or go to checkout (client pays)
-      if (isClientPays) {
-        router.push(checkoutHref)
-      } else if (invite && !isInviteBlocked(invite)) {
+      if (!isClientPays && invite && !isInviteBlocked(invite)) {
         await acceptAndRedirect()
       } else {
         router.replace('/dashboard')
       }
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { error?: string; message?: string } } }
+      const axErr = err as { response?: { data?: { error?: string; message?: string } } }
       const msg =
-        axiosErr?.response?.data?.error ||
-        axiosErr?.response?.data?.message ||
+        axErr?.response?.data?.error ||
+        axErr?.response?.data?.message ||
         'Código inválido.'
       setSignupError(msg)
     } finally {
@@ -256,40 +390,191 @@ export default function AdvisorClientInviteAcceptClient() {
     }
   }
 
-  const handlePrimaryAction = async () => {
-    if (!isValidToken || acceptInviteMutation.isPending) return
-
-    // Idempotency
-    if (invite?.status === 'ACCEPTED') {
-      router.replace('/dashboard')
-      return
-    }
-
-    if (blocked) return
-
-    if (isClientPays) {
-      router.push(checkoutHref)
-      return
-    }
-
-    if (status === 'idle' || status === 'loading') return
-
-    if (status === 'unauthenticated') {
-      router.push(nextToLogin)
-      return
-    }
-
-    await acceptAndRedirect()
-  }
+  // ─── render helpers ───────────────────────────────────────────────────────
 
   const title =
     accountType === 'COUPLE'
       ? `${displayName}, vamos controlar o orçamento de vocês?`
       : `${displayName}, vamos controlar o seu orçamento?`
+
   const primaryLabel = isClientPays ? 'Prosseguir para pagamento' : 'Aceitar convite'
   const primaryLoading =
     acceptInviteMutation.isPending || (!isClientPays && (status === 'idle' || status === 'loading'))
 
+  const resolvedAdvisorName = autoAcceptAdvisorName || advisorName
+
+  // ─── Formulário de prefill ────────────────────────────────────────────────
+  function renderPrefillForm() {
+    const isLoading = prefillLoading || step === 'checking'
+    return (
+      <div className="mt-5 space-y-3">
+        <p className="text-sm font-semibold text-slate-700">
+          {isCouple ? 'Informe os dados do casal' : 'Informe seus dados para continuar'}
+        </p>
+
+        {isCouple && (
+          <p className="text-xs font-medium uppercase tracking-wide text-[#2F6E91]">Pessoa 1</p>
+        )}
+        <input
+          type="text"
+          placeholder="Nome completo *"
+          value={prefillName}
+          onChange={(e) => setPrefillName(e.target.value)}
+          disabled={isLoading}
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#4F98C2] disabled:opacity-60"
+        />
+        <input
+          type="email"
+          placeholder="E-mail *"
+          value={prefillEmail}
+          onChange={(e) => setPrefillEmail(e.target.value)}
+          disabled={isLoading}
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#4F98C2] disabled:opacity-60"
+        />
+        <input
+          type="tel"
+          placeholder="Telefone/WhatsApp com DDD * (ex: 11 91234-5678)"
+          value={prefillPhone}
+          onChange={(e) => setPrefillPhone(e.target.value)}
+          disabled={isLoading}
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#4F98C2] disabled:opacity-60"
+        />
+
+        {isCouple && (
+          <>
+            <p className="mt-2 text-xs font-medium uppercase tracking-wide text-[#2F6E91]">Pessoa 2</p>
+            <input
+              type="text"
+              placeholder="Nome completo *"
+              value={prefillName2}
+              onChange={(e) => setPrefillName2(e.target.value)}
+              disabled={isLoading}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#4F98C2] disabled:opacity-60"
+            />
+            <input
+              type="email"
+              placeholder="E-mail *"
+              value={prefillEmail2}
+              onChange={(e) => setPrefillEmail2(e.target.value)}
+              disabled={isLoading}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#4F98C2] disabled:opacity-60"
+            />
+            <input
+              type="tel"
+              placeholder="Telefone/WhatsApp com DDD * (ex: 11 91234-5678)"
+              value={prefillPhone2}
+              onChange={(e) => setPrefillPhone2(e.target.value)}
+              disabled={isLoading}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#4F98C2] disabled:opacity-60"
+            />
+          </>
+        )}
+
+        <p className="text-xs text-slate-400">
+          Usado para verificar sua conta e receber mensagens da Fly via WhatsApp.
+        </p>
+
+        {prefillError && (
+          <p className="text-xs text-red-600">{prefillError}</p>
+        )}
+
+        <button
+          type="button"
+          onClick={handlePrefillSubmit}
+          disabled={isLoading}
+          className="h-10 w-full rounded-xl bg-[#4F98C2] text-sm font-semibold text-white hover:bg-[#3f86b0] disabled:opacity-60"
+        >
+          {isLoading ? 'Verificando...' : 'Continuar'}
+        </button>
+      </div>
+    )
+  }
+
+  // ─── Tela de conta existente: auto-aceite OK → ir para login ─────────────
+  function renderExistingLoginScreen() {
+    return (
+      <div className="mt-5 space-y-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+        <p className="text-sm font-semibold text-emerald-800">Conta identificada!</p>
+        <p className="text-sm leading-6 text-emerald-700">
+          Sua conta foi vinculada ao consultor <strong>{resolvedAdvisorName}</strong>.
+          Faça login para acessar o painel.
+        </p>
+        <Link
+          href={loginAfterAutoAccept}
+          className="inline-flex h-10 items-center justify-center rounded-xl bg-[#4F98C2] px-6 text-sm font-semibold text-white hover:bg-[#3f86b0]"
+        >
+          Fazer login
+        </Link>
+      </div>
+    )
+  }
+
+  // ─── Tela de conta existente: sem plano, client paga → login + checkout ──
+  function renderExistingPaymentScreen() {
+    return (
+      <div className="mt-5 space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+        <p className="text-sm font-semibold text-amber-800">Conta encontrada!</p>
+        <p className="text-sm leading-6 text-amber-700">
+          Encontramos sua conta na Flynance. Para concluir a vinculação com{' '}
+          <strong>{resolvedAdvisorName}</strong>, faça login e conclua o pagamento do plano.
+        </p>
+        <Link
+          href={loginThenCheckout}
+          className="inline-flex h-10 items-center justify-center rounded-xl bg-[#4F98C2] px-6 text-sm font-semibold text-white hover:bg-[#3f86b0]"
+        >
+          Fazer login e prosseguir
+        </Link>
+        <button
+          type="button"
+          onClick={() => { setPrefillError(null); setStep('prefill') }}
+          className="ml-2 text-sm text-slate-500 underline"
+        >
+          Corrigir dados
+        </button>
+      </div>
+    )
+  }
+
+  // ─── OTP verificação ──────────────────────────────────────────────────────
+  function renderOtpVerify() {
+    return (
+      <div className="mt-5 space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <p className="text-sm font-semibold text-slate-700">Verifique seu e-mail</p>
+        <p className="text-xs text-slate-500">
+          Enviamos um código para <strong>{prefillEmail}</strong>. Verifique sua caixa de entrada.
+        </p>
+        <input
+          type="text"
+          placeholder="Código de verificação"
+          value={signupCode}
+          onChange={(e) => setSignupCode(e.target.value)}
+          maxLength={6}
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#4F98C2]"
+        />
+        {signupError && <p className="text-xs text-red-600">{signupError}</p>}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={handleVerifyOtpAndCreate}
+            disabled={signupLoading}
+            className="h-9 rounded-xl bg-[#4F98C2] px-4 text-sm font-semibold text-white hover:bg-[#3f86b0] disabled:opacity-60"
+          >
+            {signupLoading ? 'Verificando...' : 'Verificar e criar conta'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setStep('prefill')}
+            disabled={signupLoading}
+            className="h-9 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+          >
+            Voltar
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ─── render ───────────────────────────────────────────────────────────────
   return (
     <main className="min-h-screen bg-[hsl(var(--background))] px-4 py-8 text-[hsl(var(--foreground))] transition-colors">
       <section className="mx-auto w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6">
@@ -298,7 +583,6 @@ export default function AdvisorClientInviteAcceptClient() {
             <p className="text-xs font-semibold uppercase text-[#2F6E91]">Convite Flynance</p>
             <h1 className="mt-2 text-xl font-semibold leading-7 text-[#333C4D]">{title}</h1>
           </div>
-          {/* Badge: mostrar quem paga — apenas quando não é o cliente */}
           {invite?.paymentResponsible && invite.paymentResponsible !== 'CLIENT' && (
             <span className="max-w-[180px] rounded-full border border-[#D7EAF5] bg-[#F3FAFF] px-3 py-1 text-center text-xs font-semibold leading-4 text-[#2F6E91]">
               {invite.paymentResponsible === 'ADVISOR'
@@ -316,8 +600,8 @@ export default function AdvisorClientInviteAcceptClient() {
               <>
                 <p>
                   Sejam bem-vindos à Flynance, a nossa nova plataforma de controle orçamentário.
-                  Aqui vamos controlar as finanças do casal pela inteligência artificial da Fly no WhatsApp
-                  e pelo painel conjunto, personalizado.
+                  Aqui vamos controlar as finanças do casal pela inteligência artificial da Fly no
+                  WhatsApp e pelo painel conjunto, personalizado.
                 </p>
                 <p>Ao aceitar este convite, vocês permitem que {advisorName}:</p>
               </>
@@ -325,8 +609,8 @@ export default function AdvisorClientInviteAcceptClient() {
               <>
                 <p>
                   Seja bem-vindo(a) à Flynance, a nossa nova plataforma de controle orçamentário.
-                  Aqui vamos controlar as suas finanças pela inteligência artificial da Fly no WhatsApp
-                  e pelo seu painel personalizado.
+                  Aqui vamos controlar as suas finanças pela inteligência artificial da Fly no
+                  WhatsApp e pelo seu painel personalizado.
                 </p>
                 <p>Ao aceitar este convite, você permite que {advisorName}:</p>
               </>
@@ -344,9 +628,9 @@ export default function AdvisorClientInviteAcceptClient() {
               <p className="font-medium text-[#333C4D]">Limites de acesso do Advisor</p>
               <p className="mt-1">
                 {advisorName} não verá os estabelecimentos em que{' '}
-                {accountType === 'COUPLE' ? 'vocês estão' : 'você está'}
-                {' '}transacionando, não terá acesso a senhas, dados completos de cartão, CVV, dados bancários
-                sensíveis ou qualquer credencial.
+                {accountType === 'COUPLE' ? 'vocês estão' : 'você está'} transacionando, não terá
+                acesso a senhas, dados completos de cartão, CVV, dados bancários sensíveis ou
+                qualquer credencial.
               </p>
             </div>
 
@@ -358,8 +642,8 @@ export default function AdvisorClientInviteAcceptClient() {
                 className="font-semibold text-primary underline"
               >
                 Termos de Uso
-              </button>
-              {' '}e{' '}
+              </button>{' '}
+              e{' '}
               <button
                 type="button"
                 onClick={() => openLegal('privacidade')}
@@ -372,6 +656,7 @@ export default function AdvisorClientInviteAcceptClient() {
           </div>
         )}
 
+        {/* Erros de token inválido */}
         {!isValidToken && (
           <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
             Token de convite inválido.
@@ -404,157 +689,71 @@ export default function AdvisorClientInviteAcceptClient() {
           </div>
         )}
 
-        {/* Formulário inline de cadastro (advisor/org paga, usuário sem conta) */}
-        {!isClientPays && status === 'unauthenticated' && signupStep !== 'hidden' && (
-          <div className="mt-4 space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm font-semibold text-slate-700">
-              {signupStep === 'form' ? 'Crie sua conta' : 'Verifique seu e-mail'}
-            </p>
+        {/* ── Fluxo por estado ──────────────────────────────────────────────── */}
 
-            {signupStep === 'form' && (
-              <>
-                <input
-                  type="text"
-                  placeholder="Nome completo *"
-                  value={signupName}
-                  onChange={(e) => setSignupName(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#4F98C2]"
-                />
-                <input
-                  type="email"
-                  placeholder="E-mail *"
-                  value={signupEmail}
-                  onChange={(e) => setSignupEmail(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#4F98C2]"
-                />
-                <input
-                  type="tel"
-                  placeholder="Telefone/WhatsApp com DDD * (ex: 11 91234-5678)"
-                  value={signupPhone}
-                  onChange={(e) => setSignupPhone(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#4F98C2]"
-                />
-                <p className="text-xs text-slate-400">
-                  Necessário para receber mensagens da Fly via WhatsApp.
-                </p>
-              </>
+        {isValidToken && !blocked && (
+          <>
+            {/* UNAUTHENTICATED: prefill form primeiro */}
+            {status === 'unauthenticated' && step === 'prefill' && renderPrefillForm()}
+            {status === 'unauthenticated' && step === 'checking' && (
+              <div className="mt-5 h-24 animate-pulse rounded-xl bg-slate-100" />
+            )}
+            {status === 'unauthenticated' && step === 'existing-login' && renderExistingLoginScreen()}
+            {status === 'unauthenticated' && step === 'existing-payment' && renderExistingPaymentScreen()}
+            {status === 'unauthenticated' && step === 'signup-otp' && renderOtpVerify()}
+
+            {/* AUTHENTICATED: accept button */}
+            {status === 'authenticated' && invite?.status !== 'ACCEPTED' && (
+              <div className="mt-6 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handlePrimaryAction}
+                  disabled={!isValidToken || primaryLoading || blocked || inviteQuery.isLoading}
+                  className="h-10 rounded-xl bg-[#4F98C2] px-4 text-sm font-semibold text-white hover:bg-[#3f86b0] disabled:opacity-60"
+                >
+                  {primaryLoading ? 'Confirmando...' : primaryLabel}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.back()}
+                  className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Voltar
+                </button>
+              </div>
             )}
 
-            {signupStep === 'otp' && (
-              <>
-                <p className="text-xs text-slate-500">
-                  Enviamos um código para <strong>{signupEmail}</strong>. Verifique sua caixa de entrada.
-                </p>
-                <input
-                  type="text"
-                  placeholder="Código de verificação"
-                  value={signupCode}
-                  onChange={(e) => setSignupCode(e.target.value)}
-                  maxLength={6}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#4F98C2]"
-                />
-              </>
+            {/* loading / idle session */}
+            {(status === 'idle' || status === 'loading') && (
+              <div className="mt-5 h-10 animate-pulse rounded-xl bg-slate-100" />
             )}
-
-            {signupError && (
-              <p className="text-xs text-red-600">{signupError}</p>
-            )}
-
-            <div className="flex gap-2">
-              {signupStep === 'form' && (
-                <>
-                  <button
-                    type="button"
-                    onClick={handleSendCode}
-                    disabled={signupLoading}
-                    className="h-9 rounded-xl bg-[#4F98C2] px-4 text-sm font-semibold text-white hover:bg-[#3f86b0] disabled:opacity-60"
-                  >
-                    {signupLoading ? 'Enviando...' : 'Enviar código'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSignupStep('hidden')}
-                    className="h-9 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-600 hover:bg-slate-100"
-                  >
-                    Cancelar
-                  </button>
-                </>
-              )}
-              {signupStep === 'otp' && (
-                <>
-                  <button
-                    type="button"
-                    onClick={handleVerifyAndCreate}
-                    disabled={signupLoading}
-                    className="h-9 rounded-xl bg-[#4F98C2] px-4 text-sm font-semibold text-white hover:bg-[#3f86b0] disabled:opacity-60"
-                  >
-                    {signupLoading ? 'Verificando...' : 'Verificar e criar conta'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSignupStep('form')}
-                    disabled={signupLoading}
-                    className="h-9 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-600 hover:bg-slate-100"
-                  >
-                    Voltar
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
+          </>
         )}
 
-        <div className="mt-6 flex flex-wrap items-center gap-2">
-          {/* Botão principal */}
-          {(isClientPays || status === 'authenticated') && (
+        {/* Botão voltar nas telas de unauthenticated que não sejam o form principal */}
+        {status === 'unauthenticated' && !['prefill', 'checking'].includes(step) && (
+          <div className="mt-4">
             <button
               type="button"
-              onClick={handlePrimaryAction}
-              disabled={!isValidToken || primaryLoading || blocked || inviteQuery.isLoading}
-              className="h-10 rounded-xl bg-[#4F98C2] px-4 text-sm font-semibold text-white hover:bg-[#3f86b0] disabled:opacity-60"
+              onClick={() => router.back()}
+              className="text-sm text-slate-500 underline"
             >
-              {primaryLoading ? 'Confirmando...' : primaryLabel}
+              Voltar
             </button>
-          )}
-
-          {!isClientPays && status === 'unauthenticated' && signupStep === 'hidden' && (
-            <>
-              <button
-                type="button"
-                onClick={() => setSignupStep('form')}
-                className="h-10 rounded-xl bg-[#4F98C2] px-4 text-sm font-semibold text-white hover:bg-[#3f86b0]"
-              >
-                Criar conta
-              </button>
-              <Link
-                href={nextToLogin}
-                className="inline-flex h-10 items-center rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                Fazer login
-              </Link>
-            </>
-          )}
-
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-          >
-            Voltar
-          </button>
-        </div>
+          </div>
+        )}
       </section>
 
-      {/* Welcome popup — mostrado após aceitar convite com sucesso */}
+      {/* Welcome popup */}
       {welcomeOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-2xl border border-[#D7EAF5] bg-white p-6 shadow-xl">
             <p className="text-2xl">🎉</p>
             <h2 className="mt-3 text-xl font-semibold text-[#333C4D]">
-              Parabéns pela decisão de controlar seu orçamento junto ao {advisorName}!
+              Tudo certo! Sua conta foi vinculada ao consultor {resolvedAdvisorName}.
             </h2>
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              Está tudo pronto. Agora você já pode começar a usar a Fly pelo WhatsApp e pelo seu painel.
+              Agora você já pode usar a Fly normalmente com acompanhamento profissional.
             </p>
             <button
               type="button"
