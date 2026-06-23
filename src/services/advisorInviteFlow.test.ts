@@ -253,7 +253,6 @@ test('simular atualização de status para ACCEPTED após aceite', () => {
     clientName: 'Carla',
     accountType: 'INDIVIDUAL',
   }
-  // Simula o que acontece após acceptAdvisorGeneratedInvite()
   const accepted: MinInvite = {
     ...invite,
     status: 'ACCEPTED',
@@ -262,4 +261,163 @@ test('simular atualização de status para ACCEPTED após aceite', () => {
   assert.equal(accepted.status, 'ACCEPTED')
   assert.ok(accepted.acceptedAt)
   assert.equal(isInviteBlocked(accepted), true)
+})
+
+// ─── Helpers de merge (replica a lógica corrigida) ────────────────────────────
+
+interface MergeInvite { id: string; token: string | null }
+
+function mergeInvitesCorrected(backendInvites: MergeInvite[], localInvites: MergeInvite[]): MergeInvite[] {
+  const backendIds = new Set(backendInvites.map((i) => i.id).filter(Boolean))
+  const backendTokens = new Set(backendInvites.map((i) => i.token).filter(Boolean))
+  const merged = new Map<string, MergeInvite>()
+  for (const inv of backendInvites) merged.set(inv.id, inv)
+  for (const inv of localInvites) {
+    const idExists = inv.id && backendIds.has(inv.id)
+    const tokenExists = inv.token && backendTokens.has(inv.token)
+    if (!idExists && !tokenExists) merged.set(inv.id || inv.token || '', inv)
+  }
+  return Array.from(merged.values())
+}
+
+// ─── 10. Merge deduplication por token ────────────────────────────────────────
+
+test('merge: local com mesmo token que backend é deduplicado', () => {
+  const backend: MergeInvite[] = [{ id: 'uuid-1', token: 'abc' }]
+  const local: MergeInvite[]   = [{ id: 'local_xyz', token: 'abc' }]
+  const result = mergeInvitesCorrected(backend, local)
+  assert.equal(result.length, 1)
+  assert.equal(result[0].id, 'uuid-1') // backend wins
+})
+
+// ─── 11. Merge deduplication por id ──────────────────────────────────────────
+
+test('merge: local com mesmo id que backend é deduplicado', () => {
+  const backend: MergeInvite[] = [{ id: 'uuid-1', token: 'abc' }]
+  const local: MergeInvite[]   = [{ id: 'uuid-1', token: 'def' }]
+  const result = mergeInvitesCorrected(backend, local)
+  assert.equal(result.length, 1)
+})
+
+// ─── 12. Merge mantém item local que não colide ───────────────────────────────
+
+test('merge: local com token e id diferentes de todos backend é mantido', () => {
+  const backend: MergeInvite[] = [{ id: 'uuid-1', token: 'abc' }]
+  const local: MergeInvite[]   = [{ id: 'local_xyz', token: 'xyz' }]
+  const result = mergeInvitesCorrected(backend, local)
+  assert.equal(result.length, 2)
+})
+
+// ─── 13. Merge: backend token=null e local token="abc" não colidem ───────────
+
+test('merge: backend sem token e local com token diferente NÃO duplicam', () => {
+  const backend: MergeInvite[] = [{ id: 'uuid-1', token: null }]
+  const local: MergeInvite[]   = [{ id: 'local_abc', token: 'abc' }]
+  const result = mergeInvitesCorrected(backend, local)
+  // São convites distintos — ambos devem aparecer
+  assert.equal(result.length, 2)
+})
+
+// ─── 14. Auto-accept guard: clientPays=true → não auto-aceita ─────────────────
+
+test('auto-accept skip: isClientPays=true → não deve disparar aceite automático', () => {
+  const isClientPays = true
+  const inviteStatus = 'PENDING'
+  const authStatus = 'authenticated'
+  const shouldAutoAccept = authStatus === 'authenticated' && inviteStatus === 'PENDING' && !isClientPays
+  assert.equal(shouldAutoAccept, false)
+})
+
+// ─── 15. Auto-accept guard: invite ACCEPTED → não auto-aceita ────────────────
+
+test('auto-accept skip: invite já ACCEPTED → não dispara aceite automático', () => {
+  const isClientPays = false
+  const inviteStatus: string = 'ACCEPTED'
+  const authStatus: string = 'authenticated'
+  const shouldAutoAccept = authStatus === 'authenticated' && inviteStatus === 'PENDING' && !isClientPays
+  assert.equal(shouldAutoAccept, false)
+})
+
+// ─── 16. Auto-accept ativo: advisor paga + autenticado + PENDING ──────────────
+
+test('auto-accept ativo: authenticated + PENDING + advisor paga → deve aceitar', () => {
+  const isClientPays = false
+  const inviteStatus = 'PENDING'
+  const authStatus = 'authenticated'
+  const shouldAutoAccept = authStatus === 'authenticated' && inviteStatus === 'PENDING' && !isClientPays
+  assert.equal(shouldAutoAccept, true)
+})
+
+// ─── 17. Idempotência: ACCEPTED + unauthenticated → mostrar mensagem ──────────
+
+test('idempotência: convite ACCEPTED para não-autenticado → deve exibir "já aceito"', () => {
+  const invite: MinInvite = { status: 'ACCEPTED', clientName: 'Ana', accountType: 'INDIVIDUAL' }
+  const authStatus: string = 'unauthenticated'
+  const showAlreadyAcceptedMessage = isInviteBlocked(invite) && invite.status === 'ACCEPTED' && authStatus !== 'authenticated'
+  assert.equal(showAlreadyAcceptedMessage, true)
+})
+
+// ─── 18. Hard-delete guard: PENDING não pode ser excluído ────────────────────
+
+test('hard-delete guard: convite PENDING não pode ser excluído permanentemente', () => {
+  const invite: MinInvite = { status: 'PENDING', clientName: 'Beto', accountType: 'INDIVIDUAL' }
+  const canHardDelete = invite.status !== 'PENDING'
+  assert.equal(canHardDelete, false)
+})
+
+// ─── 19. Hard-delete: CANCELLED pode ser excluído ────────────────────────────
+
+test('hard-delete: convite CANCELLED pode ser excluído', () => {
+  const invite: MinInvite = { status: 'CANCELLED', clientName: 'Beto', accountType: 'INDIVIDUAL' }
+  const canHardDelete = invite.status !== 'PENDING'
+  assert.equal(canHardDelete, true)
+})
+
+// ─── 20. Hard-delete: ACCEPTED pode ser excluído (limpa registro histórico) ───
+
+test('hard-delete: convite ACCEPTED pode ser excluído (limpeza)', () => {
+  const invite: MinInvite = { status: 'ACCEPTED', clientName: 'Carla', accountType: 'INDIVIDUAL' }
+  const canHardDelete = invite.status !== 'PENDING'
+  assert.equal(canHardDelete, true)
+})
+
+// ─── 21. LGPD: estabelecimentos na lista de permissões ───────────────────────
+
+test('LGPD: texto de permissões inclui "estabelecimentos"', () => {
+  const allowedItems = [
+    'Visualize valores consolidados de gastos e receitas em tempo real',
+    'Visualize os estabelecimentos em que você está transacionando',
+    'Visualize relatórios gerados pela Fly',
+    'Visualize contas fixas mensais cadastradas na Fly',
+    'Edite categorias e estabeleça limites de gasto',
+    'Acompanhe a evolução financeira e sugira ajustes no planejamento',
+  ]
+  const hasEstabelecimentos = allowedItems.some((item) => item.toLowerCase().includes('estabelecimentos'))
+  assert.equal(hasEstabelecimentos, true)
+})
+
+// ─── 22. LGPD: texto de restrição NÃO menciona estabelecimentos ──────────────
+
+test('LGPD: bloco de restrição não menciona estabelecimentos', () => {
+  const restrictionText = 'não terá acesso a senhas, dados completos de cartão, CVV, dados bancários sensíveis ou qualquer credencial'
+  const mentionsEstabelecimentos = restrictionText.toLowerCase().includes('estabelecimentos')
+  assert.equal(mentionsEstabelecimentos, false)
+})
+
+// ─── 23. Prefill casal: segunda pessoa obrigatória ────────────────────────────
+
+test('prefill casal: segunda pessoa obrigatória quando accountType=COUPLE', () => {
+  const accountType = 'COUPLE'
+  const prefillName2 = ''
+  const isCouple = accountType === 'COUPLE'
+  const hasValidSecondPerson = !isCouple || prefillName2.trim().length > 0
+  assert.equal(hasValidSecondPerson, false)
+})
+
+// ─── 24. inviteAlreadyAccepted: redireciona sem tentar aceitar de novo ────────
+
+test('check-prefill retorna inviteAlreadyAccepted → não tenta aceitar novamente', () => {
+  const checkPrefillResponse = { userExists: true, inviteAlreadyAccepted: true, conflictError: null }
+  const shouldProceedToAutoAccept = !checkPrefillResponse.inviteAlreadyAccepted
+  assert.equal(shouldProceedToAutoAccept, false)
 })

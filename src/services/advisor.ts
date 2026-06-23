@@ -794,24 +794,37 @@ function updateLocalAdvisorGeneratedInvite(
   return updated
 }
 
+function syncLocalWithBackend(backendInvites: AdvisorGeneratedInvite[]) {
+  const backendIds = new Set(backendInvites.map((i) => i.id).filter(Boolean))
+  const backendTokens = new Set(backendInvites.map((i) => i.token).filter(Boolean))
+  const local = readLocalAdvisorGeneratedInvites()
+  const localOnly = local.filter(
+    (inv) => !backendIds.has(inv.id) && !(inv.token && backendTokens.has(inv.token))
+  )
+  writeLocalAdvisorGeneratedInvites([...backendInvites, ...localOnly])
+}
+
 function mergeWithLocalAdvisorGeneratedInvites(
   backendInvites: AdvisorGeneratedInvite[]
 ): AdvisorGeneratedInvite[] {
   const localInvites = readLocalAdvisorGeneratedInvites()
-  const byKey = new Map<string, AdvisorGeneratedInvite>()
+  const backendIds = new Set(backendInvites.map((i) => i.id).filter(Boolean))
+  const backendTokens = new Set(backendInvites.map((i) => i.token).filter(Boolean))
+  const merged = new Map<string, AdvisorGeneratedInvite>()
 
   for (const invite of backendInvites) {
-    byKey.set(invite.token || invite.id, invite)
+    merged.set(invite.id, invite)
   }
 
   for (const invite of localInvites) {
-    const key = invite.token || invite.id
-    if (!byKey.has(key)) {
-      byKey.set(key, invite)
+    const idExists = invite.id && backendIds.has(invite.id)
+    const tokenExists = invite.token && backendTokens.has(invite.token)
+    if (!idExists && !tokenExists) {
+      merged.set(invite.id || invite.token, invite)
     }
   }
 
-  return Array.from(byKey.values()).sort((left, right) => {
+  return Array.from(merged.values()).sort((left, right) => {
     const leftDate = new Date(left.createdAt ?? 0).getTime()
     const rightDate = new Date(right.createdAt ?? 0).getTime()
     return rightDate - leftDate
@@ -1009,6 +1022,7 @@ export async function getAdvisorGeneratedInvites(): Promise<AdvisorGeneratedInvi
       .map((item) => toAdvisorGeneratedInvite(item))
       .filter((item): item is AdvisorGeneratedInvite => Boolean(item))
 
+    syncLocalWithBackend(invites)
     return mergeWithLocalAdvisorGeneratedInvites(invites)
   } catch (error: unknown) {
     if (canUseLocalInviteFallback(error)) {

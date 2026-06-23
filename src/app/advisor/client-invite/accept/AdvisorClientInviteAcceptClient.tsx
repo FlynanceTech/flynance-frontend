@@ -158,7 +158,6 @@ export default function AdvisorClientInviteAcceptClient() {
 
     if (invite.status === 'ACCEPTED') {
       if (justAccepted && !hasAutoRedirectedRef.current) {
-        // Mostrar welcome popup antes de ir ao dashboard
         setWelcomeOpen(true)
         hasAutoRedirectedRef.current = true
         return
@@ -170,6 +169,18 @@ export default function AdvisorClientInviteAcceptClient() {
       }
     }
   }, [status, invite, token, router, justAccepted])
+
+  // ─── Auto-accept when authenticated + PENDING + advisor/org pays ──────────
+  const hasAutoAcceptedRef = useRef(false)
+  useEffect(() => {
+    if (status !== 'authenticated') return
+    if (!invite || invite.status !== 'PENDING') return
+    if (isClientPays || blocked) return
+    if (hasAutoAcceptedRef.current || acceptInviteMutation.isPending) return
+    hasAutoAcceptedRef.current = true
+    acceptAndRedirect()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, invite?.status, isClientPays, blocked, acceptInviteMutation.isPending])
 
   useEffect(() => {
     if (status === 'idle') {
@@ -584,7 +595,10 @@ export default function AdvisorClientInviteAcceptClient() {
             <h1 className="mt-2 text-xl font-semibold leading-7 text-[#333C4D]">{title}</h1>
           </div>
           {invite?.paymentResponsible && invite.paymentResponsible !== 'CLIENT' && (
-            <span className="max-w-[180px] rounded-full border border-[#D7EAF5] bg-[#F3FAFF] px-3 py-1 text-center text-xs font-semibold leading-4 text-[#2F6E91]">
+            <span
+              className="max-w-[200px] break-words rounded-full border border-[#D7EAF5] bg-[#F3FAFF] px-3 py-1 text-center text-xs font-semibold leading-4 text-[#2F6E91]"
+              title={invite.paymentResponsible === 'ADVISOR' ? `Será pago por ${advisorName}` : 'Pago pela organização'}
+            >
               {invite.paymentResponsible === 'ADVISOR'
                 ? `Será pago por ${advisorName}`
                 : 'Pago pela organização'}
@@ -618,6 +632,10 @@ export default function AdvisorClientInviteAcceptClient() {
 
             <ul className="list-disc space-y-1 pl-5">
               <li>Visualize valores consolidados de gastos e receitas em tempo real;</li>
+              <li>
+                Visualize os estabelecimentos em que{' '}
+                {accountType === 'COUPLE' ? 'vocês estão' : 'você está'} transacionando;
+              </li>
               <li>Visualize relatórios gerados pela Fly;</li>
               <li>Visualize contas fixas mensais cadastradas na Fly;</li>
               <li>Edite categorias e estabeleça limites de gasto;</li>
@@ -627,10 +645,8 @@ export default function AdvisorClientInviteAcceptClient() {
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
               <p className="font-medium text-[#333C4D]">Limites de acesso do Advisor</p>
               <p className="mt-1">
-                {advisorName} não verá os estabelecimentos em que{' '}
-                {accountType === 'COUPLE' ? 'vocês estão' : 'você está'} transacionando, não terá
-                acesso a senhas, dados completos de cartão, CVV, dados bancários sensíveis ou
-                qualquer credencial.
+                {advisorName} não terá acesso a senhas, dados completos de cartão, CVV, dados
+                bancários sensíveis ou qualquer credencial.
               </p>
             </div>
 
@@ -666,6 +682,15 @@ export default function AdvisorClientInviteAcceptClient() {
         {inviteQuery.isError && (
           <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
             Não foi possível carregar todos os dados do convite agora.
+          </div>
+        )}
+
+        {blocked && invite?.status === 'ACCEPTED' && status !== 'authenticated' && (
+          <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+            Este convite já foi aceito.{' '}
+            <Link href="/login" className="font-semibold underline">
+              Ir para login
+            </Link>
           </div>
         )}
 

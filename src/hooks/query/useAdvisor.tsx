@@ -170,11 +170,22 @@ export function useDeleteAdvisorGeneratedInvite() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (inviteId: string) => deleteAdvisorGeneratedInvite(inviteId),
+    onMutate: async (inviteId) => {
+      await qc.cancelQueries({ queryKey: advisorKeys.generatedInvites() })
+      const prev = qc.getQueryData<AdvisorGeneratedInvite[]>(advisorKeys.generatedInvites())
+      qc.setQueryData<AdvisorGeneratedInvite[]>(advisorKeys.generatedInvites(), (old) =>
+        (old ?? []).filter((inv) => inv.id !== inviteId && inv.token !== inviteId)
+      )
+      return { prev }
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: advisorKeys.generatedInvites() })
       toast.success('Convite excluído.')
     },
-    onError: (error) => {
+    onError: (error, _inviteId, context) => {
+      if (context?.prev !== undefined) {
+        qc.setQueryData(advisorKeys.generatedInvites(), context.prev)
+      }
       toast.error(error instanceof Error ? error.message : 'Erro ao excluir convite.')
     },
   })

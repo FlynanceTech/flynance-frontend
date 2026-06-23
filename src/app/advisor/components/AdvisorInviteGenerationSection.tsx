@@ -564,12 +564,7 @@ export default function AdvisorInviteGenerationSection({
             <div>
               <h2 className="text-base font-semibold text-[#333C4D]">{notice.message}</h2>
               {notice.description && <p className="mt-1 text-sm text-slate-600">{notice.description}</p>}
-              {notice.invite?.inviteUrl && (
-                <p className="mt-3 break-all rounded-xl border border-[#D7EAF5] bg-white px-3 py-2 text-xs font-medium text-slate-700">
-                  {notice.invite.inviteUrl}
-                </p>
-              )}
-            </div>
+              </div>
             {notice.invite && (
               <div className="flex flex-wrap gap-2">
                 <button
@@ -660,6 +655,17 @@ export default function AdvisorInviteGenerationSection({
                             )}{' '}
                           em {formatDate(invite.acceptedAt, locale)}.
                         </p>
+                        <div className="mt-2 flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteInvite(invite)}
+                            disabled={deleteInviteMutation.isPending}
+                            className="inline-flex h-7 items-center gap-1 rounded-lg border border-red-200 bg-white px-2 text-xs text-red-500 hover:bg-red-50 disabled:opacity-50"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            Excluir registro
+                          </button>
+                        </div>
                       </div>
                     )}
 
