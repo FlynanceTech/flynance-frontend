@@ -3,7 +3,7 @@
 import { format } from 'date-fns'
 import Link from 'next/link'
 import React, { use, useState } from 'react'
-import { AlertTriangle, CheckCircle2, SquarePen, Undo2, XCircle } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Lock, SquarePen, Undo2, XCircle } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 
 import { useControls } from '@/hooks/query/useSpendingControl'
@@ -17,6 +17,8 @@ import ControlDetailsSkeleton from './ControlDetailsSkeleton'
 import { getActorFirstName } from '@/utils/actorName'
 import { resolveDisplayDescription } from '@/utils/displayDescription'
 import FinancialScopeSwitcher from '@/components/financial/FinancialScopeSwitcher'
+import { useMyAdvisor } from '@/hooks/query/useAdvisorStatus'
+import { canWriteGoalControl, isGoalControlLockedForClient } from '@/utils/controlWriteAccess'
 
 export interface Transaction {
   id: string
@@ -63,6 +65,7 @@ export interface ControlWithTransactions {
   archivedAt: string | null
   createdAt: string
   updatedAt: string
+  managedByAdvisorId?: string | null
   periodStart: string
   periodEnd: string
   spent: number
@@ -90,6 +93,7 @@ export default function ControlePage({
   const t = useTranslations('controlDetailsPage')
   const locale = useLocale()
   const currentUserId = useUserSession((state) => state.user?.userData?.user?.id ?? '')
+  const { isAdvisorActing } = useMyAdvisor()
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false)
   const { id } = use(params)
@@ -100,7 +104,8 @@ export default function ControlePage({
 
   const control = controlsByIdQuery.data as ControlWithTransactions
   const { spent, goal, categoryIconName, categoryName, transactions } = control
-  const canWriteControl = !control.userId || control.userId === currentUserId
+  const canWriteControl = canWriteGoalControl(control, currentUserId, isAdvisorActing)
+  const lockedForClient = isGoalControlLockedForClient(control, isAdvisorActing)
 
   const chartData = [...control.transactions]
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
@@ -176,13 +181,19 @@ export default function ControlePage({
             <h1 className="text-xl font-bold ">{t('title')}</h1>
             <FinancialScopeSwitcher />
           </div>
-          <button
-            onClick={() => canWriteControl && setDrawerOpen(!drawerOpen)}
-            aria-label={t('edit')}
-            disabled={!canWriteControl}
-          >
-            <SquarePen />
-          </button>
+          {lockedForClient ? (
+            <span title="Esse planejamento é gerenciado pelo seu Advisor." aria-label="Advisor">
+              <Lock className="h-5 w-5" />
+            </span>
+          ) : (
+            <button
+              onClick={() => canWriteControl && setDrawerOpen(!drawerOpen)}
+              aria-label={t('edit')}
+              disabled={!canWriteControl}
+            >
+              <SquarePen />
+            </button>
+          )}
         </div>
         <div className="flex items-center justify-between">
           <h1 className="text-md flex gap-2 font-bold lg:text-slate-500 dark:lg:text-slate-300">

@@ -34,7 +34,7 @@ export default function RootLayout({
 }>) {
 
   return (
-    <html lang="pt-BR" className={`${ubuntu.variable}`}>
+    <html lang="pt-BR" className={`${ubuntu.variable}`} suppressHydrationWarning>
       <body >
         <noscript>
           <iframe

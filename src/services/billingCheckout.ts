@@ -16,6 +16,7 @@ export type BillingCheckoutSubscriptionPayload = {
   paymentMethodId: string
   promoCode?: string
   annualBilling?: 'UPFRONT' | 'INSTALLMENTS'
+  advisorInviteToken?: string
 }
 
 export class BillingCheckoutTokenError extends Error {
@@ -23,15 +24,6 @@ export class BillingCheckoutTokenError extends Error {
     super(message)
     this.name = 'BillingCheckoutTokenError'
   }
-}
-
-function requireBillingCheckoutToken(): string {
-  const billingCheckoutToken = readBillingCheckoutToken()
-  if (!billingCheckoutToken) {
-    throw new BillingCheckoutTokenError()
-  }
-
-  return billingCheckoutToken
 }
 
 function authFromAppToken(appToken: string) {

@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect } from 'react'
+import { Suspense, useEffect } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { parseOriginFromUrl, saveOriginAttribution } from '@/utils/originAttribution'
 
-export default function SlugCapturePage() {
+function SlugCaptureContent() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -19,4 +19,12 @@ export default function SlugCapturePage() {
   }, [pathname, searchParams, router])
 
   return null
+}
+
+export default function SlugCapturePage() {
+  return (
+    <Suspense fallback={null}>
+      <SlugCaptureContent />
+    </Suspense>
+  )
 }

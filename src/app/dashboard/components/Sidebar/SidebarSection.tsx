@@ -17,7 +17,7 @@ type SidebarSectionProps = {
   items: Array<
     SidebarItemConfig & {
       active: boolean
-      onClick: () => void
+      onClick?: () => void
     }
   >
   onToggle?: () => void
@@ -97,6 +97,7 @@ export default function SidebarSection({
                 key={item.id}
                 label={item.label}
                 icon={item.icon}
+                href={item.path}
                 active={item.active}
                 disabled={item.disabled}
                 disabledReason={item.disabledReason}

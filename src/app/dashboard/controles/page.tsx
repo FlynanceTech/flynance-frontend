@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Pencil, Trash2, Plus, ExternalLink, X } from 'lucide-react'
+import { Pencil, Trash2, Plus, ExternalLink, X, Lock } from 'lucide-react'
 import { StarIcon } from '@phosphor-icons/react'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
@@ -20,6 +20,12 @@ import { ControlWithProgress, useControls } from '@/hooks/query/useSpendingContr
 import { useCategoryStore } from '@/stores/useCategoryStore'
 import { useSpendingControlStore } from '@/stores/useSpendingControlStore'
 import { useUserSession } from '@/stores/useUserSession'
+import { useMyAdvisor } from '@/hooks/query/useAdvisorStatus'
+import {
+  canCreateGoalControl,
+  canWriteGoalControl,
+  isGoalControlLockedForClient,
+} from '@/utils/controlWriteAccess'
 import ControlsPageSkeleton from './ControlsPageSkeleton'
 
 type TranslatorFn = (key: string, values?: Record<string, string | number | Date>) => string
@@ -148,6 +154,9 @@ export default function SpendingControlPage() {
   const router = useRouter()
   const onboardingSteps = useMemo(() => buildControlsOnboardingSteps(t), [t])
   const currentUserId = useUserSession((state) => state.user?.userData?.user?.id ?? '')
+  const { hasAdvisor, myAdvisor, isAdvisorActing, isLoading: advisorStatusLoading } = useMyAdvisor()
+  const canCreateControl = !advisorStatusLoading
+    && canCreateGoalControl(hasAdvisor, isAdvisorActing)
 
   const [selectedDate, setSelectedDate] = useState(new Date())
   const { controlsQuery, deleteMutation, favoriteMutation } = useControls(undefined, selectedDate)
@@ -199,11 +208,16 @@ export default function SpendingControlPage() {
   const getCategoryName = (c: ControlWithProgress) =>
     c.categoryId ? categoryNameById.get(c.categoryId) ?? t('card.defaultCategory') : t('card.general')
   const canWriteControl = (control: ControlWithProgress) =>
-    !control.userId || control.userId === currentUserId
+    canWriteGoalControl(control, currentUserId, isAdvisorActing)
 
   const idxLocalFor = (id: string): number => controls.findIndex((x) => x.id === id)
 
   const handleDelete = async (id: string) => {
+    const target = sortedControls.find((control) => control.id === id)
+    if (!target || !canWriteControl(target)) {
+      toast.error('Esse controle foi definido pelo seu Advisor e não pode ser alterado por aqui.')
+      return
+    }
     try {
       await deleteMutation.mutateAsync(id)
       const i = idxLocalFor(id)
@@ -215,6 +229,8 @@ export default function SpendingControlPage() {
   }
 
   const requestDelete = (id: string) => {
+    const target = sortedControls.find((control) => control.id === id)
+    if (!target || !canWriteControl(target)) return
     setDeleteTargetId(id)
     setDeleteConfirmOpen(true)
   }
@@ -286,6 +302,20 @@ export default function SpendingControlPage() {
 
   return (
     <section className="w-full h-full pt-8 lg:px-8 px-4 pb-24 lg:pb-0 flex flex-col gap-6 overflow-auto">
+      {!canCreateControl && myAdvisor && (
+        <div className="flex items-start gap-3 rounded-xl border border-[#C8E2EF] bg-[#EAF4FA] px-4 py-3">
+          <span className="mt-0.5 shrink-0 text-[#2F6E91]">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-[#2F6E91]">Planejamento acompanhado pelo seu Advisor</p>
+            <p className="text-xs text-[#3a7da0]">
+              {myAdvisor.advisorName} define suas metas. Para alterar limites ou categorias, entre em contato com ele.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div data-onboarding-target="controles-header">
         <Header
           title={t('header.title')}
@@ -300,11 +330,19 @@ export default function SpendingControlPage() {
               />
               <ActionTriggerButton
                 onClick={() => {
+                  if (!canCreateControl) return
                   setEditingControl(null)
                   setDrawerOpen(true)
                 }}
+                disabled={!canCreateControl}
+                title={!canCreateControl
+                  ? advisorStatusLoading
+                    ? 'Verificando vínculo com Advisor.'
+                    : 'Esse planejamento é gerenciado pelo seu Advisor.'
+                  : undefined}
                 label={t('top.newControl')}
                 icon={Plus}
+                className={!canCreateControl ? '!bg-slate-300 !text-slate-600 hover:!bg-slate-300' : undefined}
               />
             </div>
           }
@@ -420,6 +458,7 @@ export default function SpendingControlPage() {
           const cfg = toneConfig(tone, usagePct, t)
           const periodo = formatPeriodShort(c.periodStart, c.periodEnd, locale, t)
           const reinicia = formatWeekdayShort(c.nextResetAt, locale, t)
+          const lockedForClient = isGoalControlLockedForClient(c, isAdvisorActing)
 
           return (
             <li key={c.id}>
@@ -492,6 +531,16 @@ export default function SpendingControlPage() {
                       </div>
 
                       <div className="flex items-center gap-4">
+                        {lockedForClient && (
+                          <span
+                            className="flex items-center gap-1 text-xs text-indigo-500 font-medium"
+                            title={t('card.advisorLocked')}
+                          >
+                            <Lock size={14} />
+                            {t('card.advisor')}
+                          </span>
+                        )}
+
                         <button
                           type="button"
                           onClick={(event) => {
@@ -517,33 +566,37 @@ export default function SpendingControlPage() {
                           <ExternalLink size={18} />
                         </Link>
 
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            handleEdit(c)
-                          }}
-                          disabled={!canWriteControl(c)}
-                          className="text-gray-500 hover:text-blue-400 cursor-pointer"
-                          title={t('card.actions.edit')}
-                          aria-label={t('card.actions.edit')}
-                        >
-                          <Pencil size={18} />
-                        </button>
+                        {!lockedForClient && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                handleEdit(c)
+                              }}
+                              disabled={!canWriteControl(c)}
+                              className="text-gray-500 hover:text-blue-400 cursor-pointer"
+                              title={t('card.actions.edit')}
+                              aria-label={t('card.actions.edit')}
+                            >
+                              <Pencil size={18} />
+                            </button>
 
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            requestDelete(c.id)
-                          }}
-                          disabled={!canWriteControl(c)}
-                          className="text-gray-500 hover:text-red-400 cursor-pointer"
-                          title={t('card.actions.delete')}
-                          aria-label={t('card.actions.delete')}
-                        >
-                          <Trash2 size={18} />
-                        </button>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                requestDelete(c.id)
+                              }}
+                              disabled={!canWriteControl(c)}
+                              className="text-gray-500 hover:text-red-400 cursor-pointer"
+                              title={t('card.actions.delete')}
+                              aria-label={t('card.actions.delete')}
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>

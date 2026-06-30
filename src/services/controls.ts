@@ -32,9 +32,10 @@ export interface ControlResponse {
   channels: Channel[]
   createdAt: string
   updatedAt: string
-
   isFavorite: boolean
   favoriteAt?: string | null
+  /** Definido quando este controle foi criado pelo Advisor (cliente não pode editar/excluir) */
+  managedByAdvisorId?: string | null
 }
 
 // Criar

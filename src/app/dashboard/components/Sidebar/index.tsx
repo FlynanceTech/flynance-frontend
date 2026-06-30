@@ -125,7 +125,11 @@ export default function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) 
       return acc
     }, {})
 
-    setOpenSections(nextState)
+    const timerId = window.setTimeout(() => {
+      setOpenSections(nextState)
+    }, 0)
+
+    return () => window.clearTimeout(timerId)
   }, [activeSectionIds, sections])
 
   useEffect(() => {
@@ -228,10 +232,7 @@ export default function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) 
                     items={section.items.map((item) => ({
                       ...item,
                       active: isSidebarPathActive(pathname ?? '', item.path),
-                      onClick: () => {
-                        if (!item.path) return
-                        router.push(item.path)
-                      },
+                      onClick: item.path ? () => router.push(item.path!) : undefined,
                     }))}
                   />
                 )

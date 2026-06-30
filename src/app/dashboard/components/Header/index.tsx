@@ -107,6 +107,8 @@ export default function Header({
 
   const [drawerOpen, setDrawerOpen] = useState(false)
   const activeClientId = useAdvisorActing((s) => s.activeClientId ?? s.selectedClientId)
+  const activeClientName = useAdvisorActing((s) => s.activeClientName ?? s.selectedClientName)
+  const actingAsClient = useAdvisorActing((s) => s.actingAsClient)
   const activePermission = useAdvisorActing((s) => s.activePermission ?? s.selectedPermission)
   const isAdvisorReadOnly = isAdvisorReadOnlyTransactionAccess(activeClientId, activePermission)
   const canWriteTransactions = canWriteTransactionsProp && !isAdvisorReadOnly
@@ -245,6 +247,20 @@ export default function Header({
     onApplyFilters?.()
   }
 
+  const advisorTitle = actingAsClient && activeClientName
+    ? (() => {
+        const name = activeClientName
+        if (pathname === '/dashboard') return `Dashboard de ${name}`
+        if (pathname?.startsWith('/dashboard/transacoes')) return `Movimentações de ${name}`
+        if (pathname?.startsWith('/dashboard/contas')) return `As contas de ${name}`
+        if (pathname?.startsWith('/dashboard/cartao')) return `Gestão de Cartões de ${name}`
+        if (pathname?.startsWith('/dashboard/futuros')) return `Metas e limites de ${name}`
+        return title
+      })()
+    : null
+
+  const displayTitle = advisorTitle ?? title
+
   const filterButtonLabel = hasPendingFilters ? tHeader('apply') : tHeader('filter')
   return (
     <header className="flex flex-col gap-3">
@@ -253,7 +269,7 @@ export default function Header({
         <div className="w-full grid grid-cols-1 gap-3 md:grid-cols-3 md:items-start mb-4">
           <div className="col-span-1 flex flex-col gap-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-lg font-semibold text-[#333C4D] lg:text-2xl">{title}</h1>
+              <h1 className="text-lg font-semibold text-[#333C4D] lg:text-2xl">{displayTitle}</h1>
               {showFinancialScopeSwitcher && <FinancialScopeSwitcher />}
             </div>
             {subtitle ? (

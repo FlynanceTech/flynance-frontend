@@ -1,14 +1,19 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import { Loader2, LogOut, UserCheck } from 'lucide-react'
 import { acceptAdvisorInvite } from '@/services/advisor'
 import { useUserSession } from '@/stores/useUserSession'
 import { canAccessAdvisorRole } from '@/utils/roles'
 import { useTranslations } from 'next-intl'
 
-export default function AdvisorInviteAcceptPage() {
+function isEmailMismatch(msg: string) {
+  return /email.*match|email.*diferente|email.*incorreto|wrong.*email/i.test(msg)
+}
+
+function AdvisorInviteAcceptContent() {
   const t = useTranslations('advisorInvitePage')
   const router = useRouter()
   const params = useParams<{ token: string }>()
@@ -24,14 +29,17 @@ export default function AdvisorInviteAcceptPage() {
     return `/advisor/invite/${token}`
   }, [token, tokenFromQuery])
 
-  const { status, fetchAccount } = useUserSession()
+  const { status, fetchAccount, logout, user } = useUserSession()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [emailMismatch, setEmailMismatch] = useState(false)
   const [accepted, setAccepted] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
 
+  const currentEmail = user?.userData?.user?.email ?? ''
   const canAccept = token.length >= 10
   const nextToLogin = useMemo(
-    () => `/login?next=${encodeURIComponent(invitePath)}`,
+    () => `/advisor/login?next=${encodeURIComponent(invitePath)}`,
     [invitePath]
   )
 
@@ -43,7 +51,6 @@ export default function AdvisorInviteAcceptPage() {
 
   const handleAccept = async () => {
     if (!canAccept || isSubmitting) return
-
     if (status === 'idle' || status === 'loading') return
 
     if (status === 'unauthenticated') {
@@ -52,6 +59,7 @@ export default function AdvisorInviteAcceptPage() {
     }
 
     setError('')
+    setEmailMismatch(false)
     setIsSubmitting(true)
     try {
       await acceptAdvisorInvite(token)
@@ -64,9 +72,24 @@ export default function AdvisorInviteAcceptPage() {
         router.replace('/dashboard')
       }
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : t('errors.acceptFailed'))
+      const msg = e instanceof Error ? e.message : t('errors.acceptFailed')
+      if (isEmailMismatch(msg)) {
+        setEmailMismatch(true)
+      } else {
+        setError(msg)
+      }
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  async function handleSwitchAccount() {
+    try {
+      setLoggingOut(true)
+      await logout()
+      router.push(nextToLogin)
+    } finally {
+      setLoggingOut(false)
     }
   }
 
@@ -93,6 +116,32 @@ export default function AdvisorInviteAcceptPage() {
           </div>
         )}
 
+        {/* Email mismatch — wrong account */}
+        {emailMismatch && (
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            <p className="font-semibold">Conta incorreta</p>
+            <p className="mt-1">
+              Este convite foi enviado para outro e-mail.
+              {currentEmail && (
+                <> Você está logado como <span className="font-semibold">{currentEmail}</span>.</>
+              )}
+            </p>
+            <p className="mt-1">Saia da conta atual e faça login com o e-mail para o qual o convite foi enviado.</p>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleSwitchAccount}
+                disabled={loggingOut}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-60"
+              >
+                {loggingOut ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogOut className="h-3.5 w-3.5" />}
+                {loggingOut ? 'Saindo…' : 'Sair e trocar de conta'}
+              </button>
+            </div>
+          </div>
+        )}
+
         {error && (
           <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
             {error}
@@ -109,10 +158,13 @@ export default function AdvisorInviteAcceptPage() {
           <button
             type="button"
             onClick={handleAccept}
-            disabled={!canAccept || isSubmitting || status === 'idle' || status === 'loading'}
-            className="h-10 rounded-xl bg-[#4F98C2] px-4 text-sm font-semibold text-white hover:bg-[#3f86b0] disabled:opacity-60"
+            disabled={!canAccept || isSubmitting || status === 'idle' || status === 'loading' || emailMismatch}
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#4F98C2] px-4 text-sm font-semibold text-white hover:bg-[#3f86b0] disabled:opacity-60"
           >
-            {isSubmitting ? t('accepting') : t('acceptInvite')}
+            {isSubmitting
+              ? <><Loader2 className="h-4 w-4 animate-spin" />{t('accepting')}</>
+              : <><UserCheck className="h-4 w-4" />{t('acceptInvite')}</>
+            }
           </button>
 
           {status === 'unauthenticated' && (
@@ -133,5 +185,13 @@ export default function AdvisorInviteAcceptPage() {
         </div>
       </section>
     </main>
+  )
+}
+
+export default function AdvisorInviteAcceptPage() {
+  return (
+    <Suspense fallback={null}>
+      <AdvisorInviteAcceptContent />
+    </Suspense>
   )
 }

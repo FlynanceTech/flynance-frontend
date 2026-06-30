@@ -140,8 +140,6 @@ export function buildSidebarSections(t: SidebarTranslations): SidebarSectionConf
           label: t.future,
           icon: Clock3,
           path: '/dashboard/futuros',
-          disabled: true,
-          disabledReason: 'Em revisao',
         },
         {
           id: 'reports',
@@ -196,7 +194,7 @@ export function buildSidebarSections(t: SidebarTranslations): SidebarSectionConf
       items: [
         {
           id: 'clients',
-          label: t.clients,
+          label: 'Advisor',
           icon: Users,
           path: '/advisor',
           requiresAdvisor: true,
@@ -249,12 +247,19 @@ export function filterSidebarSections(
   return sections
     .map((section) => ({
       ...section,
-      items: section.items.filter((item) => {
-        if (item.featureFlag && !FEATURES[item.featureFlag]) return false
-        if (item.requiresAdmin && !permissions.isAdmin) return false
-        if (item.requiresAdvisor && !permissions.canAccessAdvisor) return false
-        return true
-      }),
+      items: section.items
+        .filter((item) => {
+          if (item.featureFlag && !FEATURES[item.featureFlag]) return false
+          if (item.requiresAdmin && !permissions.isAdmin) return false
+          if (item.requiresAdvisor && !permissions.canAccessAdvisor) return false
+          return true
+        })
+        .map((item) => ({
+          ...item,
+          // Admin sempre tem acesso, mesmo a itens desabilitados temporariamente
+          disabled: permissions.isAdmin ? false : item.disabled,
+          disabledReason: permissions.isAdmin ? undefined : item.disabledReason,
+        })),
     }))
     .filter((section) => section.items.length > 0)
 }

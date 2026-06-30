@@ -14,7 +14,7 @@ import { Category, CategoryType, Transaction } from '@/types/Transaction'
 import { useTranscation } from '@/hooks/query/useTransaction'
 import { useUserSession } from '@/stores/useUserSession'
 import { useCategories } from '@/hooks/query/useCategory'
-import { CreditCard, Pencil, Trash2, TrashIcon } from 'lucide-react'
+import { AlertTriangle, CreditCard, Sparkles, TrashIcon } from 'lucide-react'
 import DeleteConfirmModal from '../components/DeleteConfirmModal'
 import { CategorySelect } from '../components/CategorySelect'
 import Select from 'react-select'
@@ -26,12 +26,26 @@ import { useCreditCardCharges } from '@/hooks/query/useCreditCardCharges'
 import type { CreditCardChargeItem } from '@/services/creditCardCharges'
 import { useCardMutations } from '@/hooks/query/useCreditCards'
 import toast from 'react-hot-toast'
-import { ADVISOR_READ_ONLY_FRIENDLY_MESSAGE, isCreditCardPaymentType } from '@/services/transactions'
+import {
+  ADVISOR_READ_ONLY_FRIENDLY_MESSAGE,
+  isCreditCardPaymentType,
+  type ImportConfirmPayload as ImportTransactionsConfirmPayload,
+  type ImportTransactionsPreviewMeta,
+} from '@/services/transactions'
 import { isAdvisorReadOnlyTransactionAccess } from '@/utils/transactionWriteAccess'
 import { formatCurrency } from '@/utils/formatter'
 import { useLocale, useTranslations } from 'next-intl'
 import { useFinancialScope } from '@/hooks/useFinancialScope'
 import type { HouseMember } from '@/types/house'
+import {
+  buildCreditCardImportItemFingerprint,
+  buildCreditCardStatementImportKey,
+  logCreditCardImportDiagnostic,
+  normalizeCreditCardStatementImportTransactions,
+  splitCreditCardStatementImportTransactions,
+  type CreditCardIgnoredImportItem,
+} from '@/utils/creditCardImportGuards'
+import { getBrowserTimezone, resolveTransactionPeriod } from '@/utils/transactionPeriod'
 
 type TypeOption = { value: CategoryType; label: string }
 type AuthorOption = { value: string; label: string }
@@ -166,6 +180,20 @@ function getTransactionsFromQueryData(data: unknown): Transaction[] {
   return Array.isArray(transactions) ? (transactions as Transaction[]) : []
 }
 
+function getTransactionsFromImportResponse(data: unknown): Transaction[] {
+  return getTransactionsFromQueryData(data)
+}
+
+function summarizeIgnoredImportItem(item: CreditCardIgnoredImportItem) {
+  return {
+    description: item.transaction.description,
+    date: item.transaction.date,
+    value: item.transaction.value,
+    reason: item.reason,
+    message: item.message,
+  }
+}
+
 function getMetaFromQueryData(data: unknown) {
   if (!data || Array.isArray(data) || typeof data !== 'object') return undefined
   return (data as { meta?: { total?: number; totalPages?: number } }).meta
@@ -180,6 +208,46 @@ function formatChargeCardLabel(charge: CreditCardChargeItem) {
 
 function formatCardFilterLabel(card: { name: string; last4?: string | null }) {
   return card.last4 ? `${card.name} final ${card.last4}` : card.name
+}
+
+function normalizeSearchText(value: string | null | undefined) {
+  return (value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+}
+
+function resolveDetectedCardId(
+  detectedCardName: string | null | undefined,
+  cards: Array<{ id: string; name: string; last4?: string | null }>
+) {
+  const normalizedDetected = normalizeSearchText(detectedCardName)
+  if (!normalizedDetected) return ''
+
+  const exact = cards.find((card) => normalizeSearchText(card.name) === normalizedDetected)
+  if (exact) return exact.id
+
+  const partial = cards.find((card) => {
+    const normalizedName = normalizeSearchText(card.name)
+    return normalizedName.includes(normalizedDetected) || normalizedDetected.includes(normalizedName)
+  })
+  return partial?.id ?? ''
+}
+
+function isOtherCategoryName(value: string | null | undefined) {
+  const normalized = normalizeSearchText(value)
+  return normalized === 'outros' || normalized === 'other' || normalized === 'otros'
+}
+
+function hasAutoCategory(transaction: Transaction) {
+  const categoryName = transaction.category?.name
+  return Boolean((transaction.categoryId || transaction.category?.id) && !isOtherCategoryName(categoryName))
+}
+
+function isTechnicalOtherCategoryWarning(warning: string) {
+  const normalized = normalizeSearchText(warning)
+  return normalized.includes('categoria') && normalized.includes('outros')
 }
 
 function creditCardChargeToTransaction(charge: CreditCardChargeItem): Transaction {
@@ -208,6 +276,7 @@ function creditCardChargeToTransaction(charge: CreditCardChargeItem): Transactio
     updatedByUser: null,
     value: charge.amountTotal,
     description: charge.description,
+    sourceDescription: formatChargeCardLabel(charge),
     categoryId: charge.category?.id ?? '',
     category,
     date: charge.purchaseDate,
@@ -251,7 +320,6 @@ export default function TransactionsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [chargeDrawerOpen, setChargeDrawerOpen] = useState(false)
   const [editingCharge, setEditingCharge] = useState<CreditCardChargeItem | null>(null)
-  const [deletingChargeId, setDeletingChargeId] = useState<string | null>(null)
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [selectAll, setSelectAll] = useState(false)
@@ -278,8 +346,23 @@ export default function TransactionsPage() {
   const includeFuture = useTransactionFilter((s) => s.appliedIncludeFuture)
   const rangeStart = useTransactionFilter((s) => s.appliedRangeStart)
   const rangeEnd = useTransactionFilter((s) => s.appliedRangeEnd)
+  const selectedMonth = useTransactionFilter((s) => s.appliedSelectedMonth)
+  const selectedYear = useTransactionFilter((s) => s.appliedSelectedYear)
 
   const typeFilter = useTransactionFilter((s) => s.appliedTypeFilter)
+  const creditCardPeriod = useMemo(
+    () => resolveTransactionPeriod({
+      mode,
+      days: dateRange,
+      includeFuture,
+      month: selectedMonth,
+      year: selectedYear,
+      rangeStart,
+      rangeEnd,
+      timezone: getBrowserTimezone(),
+    }),
+    [dateRange, includeFuture, mode, rangeEnd, rangeStart, selectedMonth, selectedYear]
+  )
 
   const { transactionsQuery, deleteMutation, updateMutation, createMutation, importPreviewMutation, importConfirmMutation } = useTranscation({
     userId,
@@ -295,13 +378,14 @@ export default function TransactionsPage() {
   const { cardQuery } = useCardMutations()
   const { chargesQuery, deleteChargeMutation } = useCreditCardCharges({
     cardId: selectedCardId !== 'ALL' ? selectedCardId : undefined,
+    categoryIds: selectedCategories.length ? selectedCategories.map((category) => category.id) : undefined,
+    search: searchTerm?.trim() || undefined,
+    from: creditCardPeriod.dateFrom,
+    to: creditCardPeriod.dateTo,
     page: currentPage,
     limit: PAGE_SIZE,
     enabled: activeTab === 'credit_card',
   })
-
-  const [importCardId, setImportCardId] = useState<string | null>(null)
-  const [importIsCreditCard, setImportIsCreditCard] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [importedTransactions, setImportedTransactions] = useState<Transaction[]>([])
@@ -323,12 +407,10 @@ export default function TransactionsPage() {
   const [bulkCategoryToId, setBulkCategoryToId] = useState('')
   const [bulkCategoryCount, setBulkCategoryCount] = useState(0)
   const [previewWarnings, setPreviewWarnings] = useState<string[]>([])
-  const [previewMeta, setPreviewMeta] = useState<{
-    fileName?: string
-    fileMime?: string
-    count?: number
-    formatId?: string
-  } | null>(null)
+  const [previewMeta, setPreviewMeta] = useState<ImportTransactionsPreviewMeta | null>(null)
+  const [ignoredImportItems, setIgnoredImportItems] = useState<CreditCardIgnoredImportItem[]>([])
+  const [importStep, setImportStep] = useState<'review' | 'card' | 'uncategorized'>('review')
+  const [selectedImportCardId, setSelectedImportCardId] = useState<string>('')
 
   const {
     categoriesQuery: { data: categories = [] },
@@ -495,16 +577,16 @@ export default function TransactionsPage() {
     fileInputRef.current?.click()
   }
 
-  const isValidImportFile = (file: File) => {
+  const isValidImportFileFull = (file: File) => {
     const name = file.name.toLowerCase()
-    return name.endsWith('.csv')
+    return name.endsWith('.csv') || name.endsWith('.pdf')
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (!isValidImportFile(file)) {
+    if (!isValidImportFileFull(file)) {
       setImportError(tr('invalidCsvFile'))
       e.target.value = ''
       return
@@ -517,21 +599,55 @@ export default function TransactionsPage() {
       const isArrayResponse = Array.isArray(response)
       const list = isArrayResponse ? response : response?.transactions ?? []
       const warnings = !isArrayResponse && Array.isArray(response?.warnings) ? response.warnings : []
-      const meta = !isArrayResponse ? response?.meta ?? null : null
-      const isCCStatement =
-        (!isArrayResponse && (response as any)?.isCreditCardStatement === true) ||
-        (list as Transaction[]).some((t) => t.paymentType === 'CREDIT_CARD')
-      const withIds = (list as Transaction[]).map((t, idx) => ({
+      const meta = (!isArrayResponse ? response?.meta ?? null : null) as ImportTransactionsPreviewMeta | null
+      const rawTransactions = list as Transaction[]
+      const isCreditCard =
+        (!isArrayResponse && response?.isCreditCardStatement === true) ||
+        meta?.isCreditCardStatement ||
+        Boolean(meta?.detectedCardName) ||
+        rawTransactions.some((t) => t.paymentType === 'CREDIT_CARD')
+      const guardedTransactions = isCreditCard
+        ? splitCreditCardStatementImportTransactions(rawTransactions)
+        : { importable: rawTransactions, ignored: [] }
+      const resolvedCardId = resolveDetectedCardId(meta?.detectedCardName, cardQuery.data ?? [])
+      const withIds = guardedTransactions.importable.map((t, idx) => ({
         ...t,
         id: t.id ?? `import-preview-${idx}`,
-        // Fatura de cartão → todas EXPENSE no preview, independente do sinal original
-        type: (isCCStatement || t.paymentType === 'CREDIT_CARD') ? 'EXPENSE' : t.type,
+        type: isCreditCard ? 'EXPENSE' as const : t.type,
       }))
-      setImportedTransactions(withIds)
-      setImportIsCreditCard(isCCStatement)
+      const normalizedPreviewTransactions = isCreditCard
+        ? normalizeCreditCardStatementImportTransactions(withIds, resolvedCardId)
+        : withIds
+      const previewHasCardId = normalizedPreviewTransactions.some(
+        (t) => t.paymentType === 'CREDIT_CARD' && Boolean(t.cardId)
+      )
+      guardedTransactions.ignored.forEach((item) => {
+        logCreditCardImportDiagnostic('credit_card_import_item_ignored_payment', {
+          description: item.transaction.description,
+          date: item.transaction.date,
+          value: item.transaction.value,
+          fingerprint: item.fingerprint,
+        })
+      })
+      setImportedTransactions(normalizedPreviewTransactions)
+      setIgnoredImportItems(guardedTransactions.ignored)
       setPreviewWarnings(warnings)
       setPreviewMeta(meta)
       setImportFile(file)
+      setSelectedImportCardId(resolvedCardId)
+
+      // Decide initial step based on card detection and uncategorized items
+      const hasUncategorized = normalizedPreviewTransactions.some((t) => !t.categoryId && !t.category?.id)
+
+      if (isCreditCard && !resolvedCardId && !previewHasCardId) {
+        // Credit card statement but couldn't identify which card → show card selection
+        setImportStep('card')
+      } else if (hasUncategorized) {
+        setImportStep('uncategorized')
+      } else {
+        setImportStep('review')
+      }
+
       setPreviewOpen(true)
     } catch (err: unknown) {
       setImportError(err instanceof Error ? err.message : 'Erro ao pré-visualizar transações.')
@@ -543,38 +659,128 @@ export default function TransactionsPage() {
 
   const handleConfirmImport = async () => {
     if (!importedTransactions.length) return
-
-    // Fatura de cartão sem cartão selecionado → transações ficariam invisíveis
-    if (importIsCreditCard && !importCardId) {
-      setImportError(tr('previewDialog.selectCardRequired'))
-      return
-    }
-
     try {
       setIsImporting(true)
       setImportError(null)
-      const payload = {
+      const resolvedCardId =
+        selectedImportCardId ||
+        resolveDetectedCardId(previewMeta?.detectedCardName, availableCards)
+      const isCreditCardStatementImport = Boolean(
+        previewMeta?.isCreditCardStatement ||
+        previewMeta?.detectedCardName ||
+        importedTransactions.some((t) => t.paymentType === 'CREDIT_CARD')
+      )
+
+      if (
+        isCreditCardStatementImport &&
+        !resolvedCardId &&
+        !importedTransactions.some((t) => t.paymentType === 'CREDIT_CARD' && Boolean(t.cardId))
+      ) {
+        setImportStep('card')
+        setImportError('Selecione o cartao desta fatura antes de confirmar a importacao.')
+        return
+      }
+
+      const guardedTransactions = isCreditCardStatementImport
+        ? splitCreditCardStatementImportTransactions(importedTransactions)
+        : { importable: importedTransactions, ignored: [] }
+
+      if (guardedTransactions.ignored.length > 0) {
+        guardedTransactions.ignored.forEach((item) => {
+          logCreditCardImportDiagnostic('credit_card_import_item_ignored_payment', {
+            description: item.transaction.description,
+            date: item.transaction.date,
+            value: item.transaction.value,
+            fingerprint: item.fingerprint,
+          })
+        })
+        setIgnoredImportItems((prev) => [...prev, ...guardedTransactions.ignored])
+      }
+
+      if (guardedTransactions.importable.length === 0) {
+        setImportError('Nenhuma compra importavel foi encontrada nesta fatura.')
+        return
+      }
+
+      const txWithCard = isCreditCardStatementImport
+        ? normalizeCreditCardStatementImportTransactions(guardedTransactions.importable, resolvedCardId)
+        : resolvedCardId
+        ? guardedTransactions.importable.map((t) =>
+            t.paymentType === 'CREDIT_CARD' ? { ...t, cardId: resolvedCardId } : t
+          )
+        : guardedTransactions.importable
+      const payload: ImportTransactionsConfirmPayload<Transaction> = {
         mode: 'import' as const,
-        cardId: importIsCreditCard ? importCardId : undefined,
-        // Garante que CC sai como EXPENSE no payload final
-        transactions: importedTransactions.map((t) =>
-          (importIsCreditCard || t.paymentType === 'CREDIT_CARD')
-            ? { ...t, type: 'EXPENSE' as const }
-            : t
-        ),
+        transactions: txWithCard,
       }
-      await importConfirmMutation.mutateAsync({ userId, payload })
+
+      if (isCreditCardStatementImport) {
+        payload.importKind = 'CREDIT_CARD_STATEMENT'
+        payload.sourceType = 'CREDIT_CARD_STATEMENT'
+        payload.creditCardStatement = {
+          cardId: resolvedCardId || undefined,
+          detectedCardName: previewMeta?.detectedCardName ?? null,
+          fileName: previewMeta?.fileName,
+          formatId: previewMeta?.formatId,
+          idempotencyKey: buildCreditCardStatementImportKey({
+            cardId: resolvedCardId || undefined,
+            detectedCardName: previewMeta?.detectedCardName,
+            transactions: txWithCard,
+          }),
+          itemFingerprints: txWithCard.map(buildCreditCardImportItemFingerprint),
+          ignoredItems: ignoredImportItems
+            .concat(guardedTransactions.ignored)
+            .map(summarizeIgnoredImportItem),
+          createCharges: true,
+          createEffectiveTransaction: false,
+        }
+      }
+
+      if (isCreditCardStatementImport) {
+        logCreditCardImportDiagnostic('credit_card_import_skipped_transaction_creation', {
+          count: txWithCard.length,
+          cardId: resolvedCardId || null,
+          createEffectiveTransaction: false,
+        })
+      }
+
+      const response = await importConfirmMutation.mutateAsync({ userId, payload })
+
+      if (isCreditCardStatementImport) {
+        logCreditCardImportDiagnostic('credit_card_import_charge_created', {
+          count: txWithCard.length,
+          cardId: resolvedCardId || null,
+        })
+
+        const returnedTransactions = getTransactionsFromImportResponse(response)
+        const unexpectedCashTransactions = returnedTransactions.filter(
+          (transaction) => transaction.paymentType !== 'CREDIT_CARD'
+        )
+
+        if (unexpectedCashTransactions.length > 0) {
+          logCreditCardImportDiagnostic(
+            'credit_card_import_unexpected_cash_transaction_created',
+            {
+              count: unexpectedCashTransactions.length,
+              ids: unexpectedCashTransactions.map((transaction) => transaction.id),
+            },
+            'error'
+          )
+        }
+      }
+
       setImportedTransactions([])
+      setIgnoredImportItems([])
       setImportFile(null)
+      setCurrentPage(1)
+      setSelectedCardId(resolvedCardId || 'ALL')
+      setActiveTab('credit_card')
       setPreviewOpen(false)
-      if (importIsCreditCard && importCardId) {
-        setActiveTab('credit_card')
-        setSelectedCardId(importCardId)
-      }
-      setImportCardId(null)
-      setImportIsCreditCard(false)
+      setImportStep('review')
+      setSelectedImportCardId('')
+      toast.success('Importação concluída com sucesso.')
     } catch (err: unknown) {
-      setImportError(err instanceof Error ? err.message : 'Erro ao importar transacoes.')
+      setImportError(err instanceof Error ? err.message : 'Erro ao importar transações.')
     } finally {
       setIsImporting(false)
     }
@@ -584,8 +790,7 @@ export default function TransactionsPage() {
     setPreviewOpen(false)
     setImportedTransactions([])
     setImportFile(null)
-    setImportCardId(null)
-    setImportIsCreditCard(false)
+    setIgnoredImportItems([])
     setEditingPreviewId(null)
     setEditingPreviewValue('')
     setEditingPreviewOriginal('')
@@ -599,6 +804,8 @@ export default function TransactionsPage() {
     setBulkCategoryCount(0)
     setPreviewWarnings([])
     setPreviewMeta(null)
+    setImportStep('review')
+    setSelectedImportCardId('')
   }
 
   const updateImportedTransaction = (id: string, patch: Partial<Transaction>) => {
@@ -885,6 +1092,48 @@ export default function TransactionsPage() {
     updateMutation.isPending ||
     createMutation.isPending
 
+  const earliestImportDate = useMemo(() => {
+    if (!importedTransactions.length) return null
+    const dates = importedTransactions.map((t) => new Date(t.date).getTime()).filter((d) => !Number.isNaN(d))
+    if (!dates.length) return null
+    return new Date(Math.min(...dates))
+  }, [importedTransactions])
+
+  const importCountBadge = useMemo(() => {
+    const count = importedTransactions.length
+    if (!count) return ''
+    if (earliestImportDate) {
+      return tr('previewDialog.newCountSince', {
+        count,
+        date: earliestImportDate.toLocaleDateString(locale),
+      })
+    }
+    return tr('previewDialog.newCount', { count })
+  }, [importedTransactions.length, earliestImportDate, locale, tr])
+
+  const uncategorizedInPreview = useMemo(
+    () => importedTransactions.filter((t) => !t.categoryId && !t.category?.id),
+    [importedTransactions]
+  )
+
+  const availableCards = useMemo(
+    () => (cardQuery.data ?? []).filter((c) => c.isActive !== false),
+    [cardQuery.data]
+  )
+
+  const filteredPreviewWarnings = useMemo(
+    () => previewWarnings.filter((warning) => !isTechnicalOtherCategoryWarning(warning)),
+    [previewWarnings]
+  )
+
+  const previewCategorizationStats = useMemo(
+    () => ({
+      categorized: importedTransactions.filter(hasAutoCategory).length,
+      total: importedTransactions.length,
+    }),
+    [importedTransactions]
+  )
+
   if (!userId) return <SkeletonSection />
   if (activeTab === 'all' && transactionsQuery.isLoading) return <SkeletonSection />
   if (activeTab === 'credit_card' && chargesQuery.isLoading) return <SkeletonSection />
@@ -909,27 +1158,242 @@ export default function TransactionsPage() {
         <div className="fixed inset-0 bg-black/40" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-3 md:p-6">
           <DialogPanel className="flex h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl md:h-[85vh]">
-            <div className="flex-1 overflow-auto p-3 md:p-4">
-              {importIsCreditCard && (
-                <div className="mb-3 rounded-xl border border-blue-200 bg-blue-50 p-3 flex flex-col sm:flex-row sm:items-center gap-2">
-                  <CreditCard className="h-4 w-4 text-blue-500 shrink-0" />
-                  <span className="text-sm text-blue-700 font-medium">{tr('previewDialog.creditCardDetected')}</span>
-                  <select
-                    value={importCardId ?? ''}
-                    onChange={(e) => setImportCardId(e.target.value || null)}
-                    className="ml-auto rounded-lg border border-blue-300 bg-white px-3 py-1.5 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  >
-                    <option value="">{tr('previewDialog.selectCard')}</option>
-                    {(cardQuery.data ?? [])
-                      .filter((card) => card.isActive !== false)
-                      .map((card) => (
-                        <option key={card.id} value={card.id}>
-                          {formatCardFilterLabel(card)}
-                        </option>
-                      ))}
-                  </select>
+
+            {/* ── DIALOG HEADER ── */}
+            <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-5 py-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <DialogTitle className="text-base font-semibold text-[#333C4D] md:text-lg">
+                    {importStep === 'card'
+                      ? tr('previewDialog.selectCard')
+                      : importStep === 'uncategorized'
+                      ? tr('previewDialog.uncategorizedTitle')
+                      : tr('previewDialog.title')}
+                  </DialogTitle>
+                  {previewMeta?.detectedCardName && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-white px-3 py-1 text-[11px] font-extrabold text-primary shadow-[0_8px_20px_rgba(14,165,233,0.12)]">
+                      <CreditCard className="h-3.5 w-3.5" />
+                      {tr('previewDialog.cardDetected', { cardName: previewMeta.detectedCardName })}
+                    </span>
+                  )}
+                  {previewMeta?.formatId?.endsWith('_AI') && (
+                    <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                      {tr('previewDialog.aiApplied')}
+                    </span>
+                  )}
                 </div>
-              )}
+                <p className="mt-0.5 text-xs text-slate-500 md:text-sm">
+                  {importStep === 'card'
+                    ? tr('previewDialog.cardNotDetected')
+                    : importStep === 'uncategorized'
+                    ? tr('previewDialog.uncategorizedSubtitle')
+                    : tr('previewDialog.subtitle')}
+                </p>
+                {previewCategorizationStats.total > 0 && (
+                  <div className="mt-3 rounded-xl border border-amber-100 bg-gradient-to-r from-amber-50 to-yellow-50 px-4 py-3 shadow-[0_10px_24px_rgba(245,158,11,0.08)]">
+                    <div className="flex items-start gap-3">
+                      <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-amber-600 shadow-sm">
+                        <Sparkles className="h-4 w-4" />
+                      </span>
+                      <div className="space-y-1 text-xs text-amber-900">
+                        <p className="font-semibold">
+                          Categoria “Outros” representa transações não identificadas automaticamente.
+                        </p>
+                        <p>Ajuste-as como quiser.</p>
+                        <p>
+                          Apesar de {previewCategorizationStats.categorized} das {previewCategorizationStats.total} transações terem sido categorizadas automaticamente, vale revisar todas para personalizar como preferir.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {ignoredImportItems.length > 0 && (
+                  <div className="mt-2 rounded-xl border border-amber-100 bg-amber-50/80 px-4 py-2.5 shadow-[0_8px_20px_rgba(245,158,11,0.06)]">
+                    <div className="flex items-start gap-2.5">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
+                      <div className="text-xs text-amber-900">
+                        <p className="font-semibold">
+                          {ignoredImportItems.length === 1
+                            ? '1 item ignorado por parecer pagamento/ajuste da fatura.'
+                            : `${ignoredImportItems.length} itens ignorados por parecerem pagamentos/ajustes da fatura.`}
+                        </p>
+                        <p className="mt-0.5">
+                          Este item parece ser pagamento/ajuste da fatura e nao sera importado como gasto.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {filteredPreviewWarnings.length > 0 && (
+                  <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+                    <ul className="flex flex-col gap-0.5 text-[11px] text-amber-700">
+                      {filteredPreviewWarnings.map((warning, wIdx) => (
+                        <li key={`${warning}-${wIdx}`} className="flex items-start gap-1">
+                          <AlertTriangle className="mt-px h-3.5 w-3.5 flex-shrink-0" />
+                          <span>{warning}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleClosePreview}
+                className="flex-shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
+              >
+                {tr('close')}
+              </button>
+            </div>
+
+            {/* ── STEP: CARD SELECTION ── */}
+            {importStep === 'card' && (
+              <div className="flex flex-1 flex-col items-center justify-center gap-6 overflow-auto px-6 py-8">
+                {availableCards.length === 0 ? (
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-gray-700">{tr('previewDialog.noCardsRegistered')}</p>
+                    <p className="mt-1 text-xs text-slate-500">Cadastre um cartão antes de importar a fatura.</p>
+                  </div>
+                ) : (
+                  <div className="w-full max-w-sm space-y-3">
+                    {availableCards.map((card) => (
+                      <button
+                        key={card.id}
+                        type="button"
+                        onClick={() => setSelectedImportCardId(card.id)}
+                        className={[
+                          'flex w-full items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition',
+                          selectedImportCardId === card.id
+                            ? 'border-primary bg-primary/5 text-primary'
+                            : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50',
+                        ].join(' ')}
+                      >
+                        <span className="h-5 w-5 flex-shrink-0 rounded-full bg-slate-400" />
+                        <span className="flex-1 font-medium">
+                          {card.name}
+                          {card.last4 && (
+                            <span className="ml-2 text-xs font-normal text-slate-500">
+                              •••• {card.last4}
+                            </span>
+                          )}
+                        </span>
+                        {selectedImportCardId === card.id && (
+                          <span className="text-primary">✓</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const hasUncategorized = uncategorizedInPreview.length > 0
+                      setImportStep(hasUncategorized ? 'uncategorized' : 'review')
+                    }}
+                    disabled={!selectedImportCardId}
+                    className="rounded-full bg-primary px-6 py-2 text-sm font-semibold text-white hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Continuar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const hasUncategorized = uncategorizedInPreview.length > 0
+                      setImportStep(hasUncategorized ? 'uncategorized' : 'review')
+                    }}
+                    className="rounded-full border border-slate-200 px-6 py-2 text-sm text-slate-600 hover:bg-slate-50"
+                  >
+                    Pular
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── STEP: UNCATEGORIZED ── */}
+            {importStep === 'uncategorized' && (
+              <div className="flex flex-1 flex-col overflow-hidden">
+                <div className="flex-1 overflow-auto px-5 py-4">
+                  {uncategorizedInPreview.length === 0 ? (
+                    <div className="flex h-full items-center justify-center">
+                      <p className="text-sm text-green-600 font-medium">Todos os gastos foram categorizados.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {uncategorizedInPreview.map((t) => {
+                        const categoryId = t.categoryId ?? t.category?.id ?? ''
+                        const categoryType = t.type ?? 'EXPENSE'
+                        const selectedCategory =
+                          t.category ?? categories.find((c) => c.id === categoryId) ?? null
+                        return (
+                          <div
+                            key={t.id}
+                            className="flex flex-col gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 sm:flex-row sm:items-center"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="truncate text-sm font-medium text-gray-800">{t.description}</p>
+                              <p className="text-xs text-slate-400">
+                                {new Date(t.date).toLocaleDateString(locale)} • {formatCurrency(Number(t.value ?? 0))}
+                              </p>
+                            </div>
+                            <div className="w-full sm:w-56">
+                              <CategorySelect
+                                value={selectedCategory as CategoryResponse | null}
+                                onChange={(value) => {
+                                  const selected = value as CategoryResponse | null
+                                  const normalizedType = selected?.type === 'INCOME' ? 'INCOME' : 'EXPENSE'
+                                  const normalizedCategory = selected
+                                    ? {
+                                        id: selected.id,
+                                        name: selected.name,
+                                        color: selected.color,
+                                        icon: selected.icon,
+                                        type: normalizedType as 'INCOME' | 'EXPENSE',
+                                      }
+                                    : undefined
+                                  updateImportedTransaction(t.id, {
+                                    category: normalizedCategory,
+                                    categoryId: selected?.id ?? '',
+                                    type: normalizedCategory?.type ?? categoryType,
+                                  })
+                                }}
+                                allowCreate={false}
+                                typeFilter={categoryType as 'INCOME' | 'EXPENSE'}
+                                closeMenuOnSelect
+                                placeholder="Selecionar categoria"
+                                className="w-full"
+                                menuPlacement="auto"
+                              />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center justify-between gap-3 border-t border-gray-100 px-5 py-4">
+                  <button
+                    type="button"
+                    onClick={() => setImportStep('review')}
+                    className="text-xs text-slate-500 hover:text-slate-700 underline"
+                  >
+                    {tr('previewDialog.proceedAnyway')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setImportStep('review')}
+                    className="rounded-full bg-primary px-6 py-2 text-sm font-semibold text-white hover:bg-secondary"
+                  >
+                    Continuar
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── STEP: REVIEW (main table) ── */}
+            {importStep === 'review' && (
+              <>
+            <div className="flex-1 overflow-auto p-3 md:p-4">
               <div className="rounded-xl border border-gray-200 bg-secondary/10 p-3">
                 <div className="hidden md:block">
                   <div className="grid grid-cols-[110px_minmax(240px,1fr)_220px_160px_140px_48px] items-center gap-0 rounded-lg border border-gray-200 bg-secondary/30 px-4 py-3 text-sm font-semibold text-primary">
@@ -946,8 +1410,6 @@ export default function TransactionsPage() {
                       const categoryId = t.categoryId ?? t.category?.id ?? ''
                       const categoryType = t.type ?? t.category?.type ?? 'EXPENSE'
                       const rowIsEditing = editingPreviewId === t.id
-                      const confidence = t.confidence
-                      const matchedKeyword = t.matchedKeyword
                       const selectedCategory =
                         t.category ?? categories.find((c) => c.id === categoryId) ?? null
                       const selectedTypeOption =
@@ -988,23 +1450,11 @@ export default function TransactionsPage() {
                               {t.description}
                             </button>
                           )}
-                          {confidence && (
-                            <span
-                              className={[
-                                'mt-1 inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold',
-                                confidence === 'HIGH'
-                                  ? 'bg-emerald-100 text-emerald-700'
-                                  : confidence === 'MEDIUM'
-                                  ? 'bg-amber-100 text-amber-700'
-                                  : 'bg-gray-100 text-gray-600',
-                              ].join(' ')}
-                              title={
-                                matchedKeyword
-                                  ? tr('suggestedCategoryBy', { keyword: matchedKeyword })
-                                  : undefined
-                              }
-                            >
-                              {confidence}
+                          {t.isInstallment && (
+                            <span className="mt-0.5 inline-flex items-center rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700">
+                              {t.installmentCurrent && t.installmentTotal
+                                ? `${t.installmentCurrent}/${t.installmentTotal}`
+                                : tr('previewDialog.installmentBadge')}
                             </span>
                           )}
                         </div>
@@ -1086,8 +1536,6 @@ export default function TransactionsPage() {
                     const categoryId = t.categoryId ?? t.category?.id ?? ''
                     const categoryType = t.type ?? t.category?.type ?? 'EXPENSE'
                     const rowIsEditing = editingPreviewId === t.id
-                    const confidence = t.confidence
-                    const matchedKeyword = t.matchedKeyword
                     const selectedCategory =
                       t.category ?? categories.find((c) => c.id === categoryId) ?? null
                     const selectedTypeOption =
@@ -1142,25 +1590,6 @@ export default function TransactionsPage() {
                             </button>
                           )}
                         </div>
-                        {confidence && (
-                          <span
-                            className={[
-                              'mt-2 inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold',
-                              confidence === 'HIGH'
-                                ? 'bg-emerald-100 text-emerald-700'
-                                : confidence === 'MEDIUM'
-                                ? 'bg-amber-100 text-amber-700'
-                                : 'bg-gray-100 text-gray-600',
-                            ].join(' ')}
-                            title={
-                              matchedKeyword
-                                ? tr('suggestedCategoryBy', { keyword: matchedKeyword })
-                                : undefined
-                            }
-                          >
-                            {confidence}
-                          </span>
-                        )}
 
                         <div className="mt-2">
                           <CategorySelect
@@ -1226,67 +1655,38 @@ export default function TransactionsPage() {
               </div>
             </div>
             
-            <div className="flex flex-col gap-3 border-b border-gray-200 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-6">
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <DialogTitle className="text-base font-semibold text-[#333C4D] md:text-lg">
-                    {tr('previewDialog.title')}
-                  </DialogTitle>
-                  {previewMeta?.formatId?.endsWith('_AI') && (
-                    <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
-                      {tr('previewDialog.aiApplied')}
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-slate-500 md:text-sm">
-                  {tr('previewDialog.subtitle')}
-                </p>
-                {previewWarnings.length > 0 && (
-                  <ul className="mt-2 flex flex-col gap-1 text-[11px] text-amber-700">
-                    {previewWarnings.map((warning, idx) => (
-                      <li key={`${warning}-${idx}`}>- {warning}</li>
-                    ))}
-                  </ul>
-                )}
+            {/* ── REVIEW FOOTER ── */}
+            <div className="flex flex-col gap-3 border-t border-gray-100 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-6">
+              <div className="flex flex-col gap-1">
                 {importedTransactions.length === 0 && (
-                  <p className="mt-2 text-xs font-semibold text-red-400">
+                  <p className="text-xs font-semibold text-red-400">
                     {tr('previewDialog.noneFound')}
                   </p>
                 )}
+                {importCountBadge && (
+                  <span className="w-fit rounded-full bg-secondary/30 px-3 py-1 text-xs font-semibold text-[#333C4D]">
+                    {importCountBadge}
+                  </span>
+                )}
+                <p className="text-[11px] text-slate-400">{tr('previewDialog.tip')}</p>
               </div>
-              {importIsCreditCard && !importCardId && (
-                <p className="text-xs font-medium text-amber-700 bg-amber-50 rounded-lg px-3 py-2 border border-amber-200">
-                  {tr('previewDialog.selectCardRequired')}
-                </p>
-              )}
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <span className="rounded-full bg-secondary/30 px-3 py-1 text-xs font-semibold text-[#333C4D]">
-                  {tr('previewDialog.newCount', { count: importedTransactions.length })}
-                </span>
                 <button
                   type="button"
                   onClick={handleConfirmImport}
-                  disabled={
-                    isImporting ||
-                    importedTransactions.length === 0 ||
-                    (importIsCreditCard && !importCardId)
-                  }
-                  className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={isImporting || importedTransactions.length === 0}
+                  className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-white hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isImporting ? tr('previewDialog.importing') : tr('previewDialog.confirmImport')}
                 </button>
-                <button
-                  type="button"
-                  onClick={handleClosePreview}
-                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                >
-                  {tr('close')}
-                </button>
+                {importError && (
+                  <p className="text-xs text-red-500">{importError}</p>
+                )}
               </div>
             </div>
-            <div className="border-t border-gray-200 px-4 py-3 text-xs text-slate-500 md:px-6">
-              {tr('previewDialog.tip')}
-            </div>
+              </>
+            )}
+
           </DialogPanel>
         </div>
       </Dialog>
@@ -1454,7 +1854,7 @@ export default function TransactionsPage() {
       <input
         ref={fileInputRef}
         type="file"
-        accept=".csv,text/csv,application/csv,application/vnd.ms-excel"
+        accept=".csv,.pdf,text/csv,application/csv,application/vnd.ms-excel,application/pdf"
         className="hidden"
         onChange={handleFileChange}
       />

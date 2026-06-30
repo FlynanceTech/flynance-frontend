@@ -2,13 +2,22 @@
 
 import { useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
+import { Loader2 } from 'lucide-react'
 import { useUserSession } from '@/stores/useUserSession'
-import { canAccessAdvisorRole } from '@/utils/roles'
+import { canAccessAdvisorRole, isOrgAdminRole } from '@/utils/roles'
+
+const PUBLIC_ADVISOR_PATHS = [
+  '/advisor/login',
+  '/advisor/client-invite',
+  '/advisor/invite',
+]
 
 export default function AdvisorGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const { user, status, fetchAccount } = useUserSession()
+
+  const isPublicPath = PUBLIC_ADVISOR_PATHS.some((p) => pathname.startsWith(p))
 
   useEffect(() => {
     if (status === 'idle') {
@@ -16,28 +25,38 @@ export default function AdvisorGuard({ children }: { children: React.ReactNode }
     }
   }, [status, fetchAccount])
 
-  const canAccessAdvisor = canAccessAdvisorRole(user?.userData?.user?.role)
+  const role = user?.userData?.user?.role
+  const canAccessAdvisor = canAccessAdvisorRole(role)
 
   useEffect(() => {
+    if (isPublicPath) return
     if (status === 'idle' || status === 'loading') return
 
     if (status === 'unauthenticated') {
-      if (pathname !== '/login') {
-        router.replace(`/login?next=${encodeURIComponent(pathname || '/advisor')}`)
-      }
+      router.replace(`/advisor/login?next=${encodeURIComponent(pathname || '/advisor')}`)
       return
     }
 
     if (!canAccessAdvisor) {
       router.replace('/dashboard')
+      return
     }
-  }, [status, canAccessAdvisor, pathname, router])
 
-  if (status === 'idle' || status === 'loading' || status === 'unauthenticated' || !canAccessAdvisor) {
+    // Non-org advisor trying to access /advisor/organization → redirect to /advisor
+    if (!isOrgAdminRole(role) && pathname.startsWith('/advisor/organization')) {
+      router.replace('/advisor')
+    }
+  }, [status, canAccessAdvisor, pathname, router, isPublicPath, role])
+
+  if (isPublicPath) return <>{children}</>
+
+  const redirectPending = !isOrgAdminRole(role) && pathname.startsWith('/advisor/organization')
+
+  if (status === 'idle' || status === 'loading' || status === 'unauthenticated' || !canAccessAdvisor || redirectPending) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[hsl(var(--background))] text-[hsl(var(--foreground))] transition-colors">
-        <div className="h-10 w-10 rounded-full border-4 border-[#4F98C2] border-t-transparent animate-spin" />
-        <p className="mt-3 text-sm text-slate-600">Validando acesso do advisor...</p>
+        <Loader2 className="h-8 w-8 animate-spin text-[#4F98C2]" />
+        <p className="mt-3 text-sm text-slate-500">Validando acesso ao Fly Advisory...</p>
       </div>
     )
   }

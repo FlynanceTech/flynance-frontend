@@ -22,7 +22,17 @@ export type FutureEditableInstallmentStatus = 'pending' | 'canceled'
 export type FuturePlanStatus = 'active' | 'completed' | 'canceled'
 
 export type FutureItemSourceType = 'installment_plan' | 'credit_card_statement_installment'
-export type FutureItemStatus = 'pending' | 'overdue' | 'open' | 'invoiced'
+export type FutureItemStatus =
+  | 'pending'
+  | 'overdue'
+  | 'open'
+  | 'invoiced'
+  | 'paid'
+  | 'settled'
+  | 'canceled'
+  | 'PAID'
+  | 'SETTLED'
+  | 'CANCELED'
 
 export interface FutureItem {
   id: string
@@ -42,7 +52,7 @@ export interface FutureItem {
     cycleKey: string
     dueAt: string
     closingAt: string
-    status: 'open' | 'invoiced' | 'paid' | string
+    status: 'open' | 'invoiced' | 'paid' | 'PAID' | string
   } | null
 }
 
@@ -533,7 +543,10 @@ export async function getFutureForecast(params?: {
 
 export function groupCreditCardInvoices(upcoming: FutureItem[]): InvoiceGroup[] {
   const creditCardItems = upcoming.filter(
-    (i) => i.sourceType === 'credit_card_statement_installment'
+    (i) =>
+      i.sourceType === 'credit_card_statement_installment' &&
+      !['paid', 'settled', 'canceled'].includes(String(i.status ?? '').toLowerCase()) &&
+      String(i.statement?.status ?? '').toLowerCase() !== 'paid'
   )
   const invoiceGroups = new Map<string, InvoiceGroup>()
 

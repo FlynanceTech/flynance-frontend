@@ -5,26 +5,22 @@ import { getErrorMessage } from "@/utils/getErrorMessage"
 
 export type PaymentType =
   | 'DEBIT_CARD'
-  | 'DEBIT'       // legacy alias → normaliza para DEBIT_CARD
+  | 'DEBIT'
   | 'CREDIT_CARD'
-  | 'CREDIT'      // legacy alias → normaliza para CREDIT_CARD
-  | 'CARD'        // legacy alias → normaliza para CREDIT_CARD
+  | 'CREDIT'
+  | 'CARD'
   | 'PIX'
   | 'BOLETO'
-  | 'BANK_SLIP'   // legacy alias → normaliza para BOLETO
+  | 'BANK_SLIP'
   | 'TED'
   | 'DOC'
   | 'MONEY'
   | 'CASH'
-  | 'ACCOUNT'     // usado em alguns fluxos WhatsApp
+  | 'ACCOUNT'
   | 'OTHER'
 
 const CREDIT_CARD_ALIASES = new Set(['CREDIT_CARD', 'CREDIT', 'CARD'])
 
-/**
- * Retorna true se o paymentType representa um cartão de crédito.
- * Usado para separar as abas de Transações e Cartão de Crédito.
- */
 export function isCreditCardPaymentType(
   paymentType: PaymentType | string | null | undefined
 ): boolean {
@@ -32,18 +28,13 @@ export function isCreditCardPaymentType(
   return CREDIT_CARD_ALIASES.has(String(paymentType).toUpperCase().replace(/[\s-]+/g, '_'))
 }
 
-/**
- * Normaliza aliases legados para o valor canônico de PaymentType.
- * Garante que transações históricas com enums antigos apareçam corretamente.
- */
 export function normalizePaymentType(value: string | null | undefined): PaymentType {
   if (!value) return 'OTHER'
   const upper = String(value).trim().toUpperCase().replace(/[\s-]+/g, '_')
   if (upper === 'BANK_SLIP' || upper === 'BILL') return 'BOLETO'
   if (upper === 'DEBIT') return 'DEBIT_CARD'
-  if (upper === 'CREDIT' || upper === 'CARD') return 'CREDIT_CARD'
+  if (upper === 'CREDIT' || upper === 'CARD' || upper === 'CREDITO') return 'CREDIT_CARD'
   if (upper === 'DINHEIRO') return 'CASH'
-  if (upper === 'CREDITO') return 'CREDIT_CARD'
   if (upper === 'DEBITO') return 'DEBIT_CARD'
   return upper as PaymentType
 }
@@ -77,9 +68,6 @@ function getTransactionWriteErrorMessage(error: unknown, fallback: string) {
   return mapTransactionWriteErrorMessage(rawMessage)
 }
 
-type Primitive = string | number | boolean
-type FilterValue = Primitive | Primitive[] | undefined
-
 export type TransactionFilterMode = 'days' | 'month' | 'range'
 
 export type TransactionFilters = {
@@ -107,7 +95,7 @@ export type GetTransactionParams = {
   scope?: FinancialDataScope
 }
 
-export type GetTransactionResponse<TTransaction = any> = {
+export type GetTransactionResponse<TTransaction = Transaction> = {
   transactions: TTransaction[]
   meta: {
     page: number
@@ -230,21 +218,34 @@ export const deleteTransaction = async (id: string): Promise<{ message: string }
   }
 }
 
-export type ImportTransactionsResponse<TTransaction = any> =
+export type ImportTransactionsResponse<TTransaction = Transaction> =
   | { transactions: TTransaction[] }
+  | {
+      ok: true
+      model: 'CreditCardCharge'
+      importBatchId: string
+      imported: number
+      skipped: number
+      charges: unknown[]
+      transactions: TTransaction[]
+    }
   | TTransaction[]
 
-export type ImportTransactionsPreviewResponse<TTransaction = any> =
+export type ImportTransactionsPreviewMeta = {
+  fileName?: string
+  fileMime?: string
+  count?: number
+  formatId?: string
+  detectedCardName?: string | null
+  isCreditCardStatement?: boolean
+}
+
+export type ImportTransactionsPreviewResponse<TTransaction = Transaction> =
   | {
       transactions: TTransaction[]
       warnings?: string[]
       isCreditCardStatement?: boolean
-      meta?: {
-        fileName?: string
-        fileMime?: string
-        count?: number
-        formatId?: string
-      }
+      meta?: ImportTransactionsPreviewMeta
     }
   | TTransaction[]
 
@@ -294,10 +295,29 @@ export const importTransactionsPreview = async (
   }
 }
 
-export type ImportConfirmPayload<TTransaction = any> = {
+export type ImportConfirmPayload<TTransaction = Transaction> = {
   mode: 'import'
   cardId?: string | null
   transactions: TTransaction[]
+  importKind?: 'BANK_ACCOUNT' | 'CREDIT_CARD_STATEMENT'
+  sourceType?: 'BANK_ACCOUNT' | 'CREDIT_CARD_STATEMENT'
+  creditCardStatement?: {
+    cardId?: string
+    detectedCardName?: string | null
+    fileName?: string
+    formatId?: string
+    idempotencyKey?: string
+    itemFingerprints?: string[]
+    ignoredItems?: Array<{
+      description?: string | null
+      date?: string | null
+      value?: number | null
+      reason: 'statement_payment_adjustment'
+      message?: string
+    }>
+    createCharges: true
+    createEffectiveTransaction: false
+  }
 }
 
 export const importTransactionsConfirm = async (

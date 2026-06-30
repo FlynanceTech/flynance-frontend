@@ -7,6 +7,7 @@ import {
   importTransactions,
   importTransactionsConfirm,
   importTransactionsPreview,
+  ImportConfirmPayload as ImportTransactionsConfirmPayload,
   TransactionDTO,
   TransactionFilters,
   updateTransaction,
@@ -19,6 +20,7 @@ import { getBrowserTimezone, toFutureRangeFromDays } from '@/utils/transactionPe
 import toast from 'react-hot-toast'
 import { useFinancialScope } from '@/hooks/useFinancialScope'
 import type { Transaction } from '@/types/Transaction'
+import { refreshQueriesAfterImport } from '@/utils/importQueryRefresh'
 
 type Primitive = string | number | boolean
 type FilterValue = Primitive | Primitive[] | undefined
@@ -39,10 +41,7 @@ type ImportPayload = {
 
 type ImportConfirmPayload = {
   userId: string
-  payload: {
-    mode: 'import'
-    transactions: Transaction[]
-  }
+  payload: ImportTransactionsConfirmPayload<Transaction>
 }
 
 export function useTranscation(params: UseTransactionParams) {
@@ -185,10 +184,12 @@ export function useTranscation(params: UseTransactionParams) {
   const importConfirmMutation = useMutation({
     mutationFn: ({ userId, payload }: ImportConfirmPayload) =>
       importTransactionsConfirm(activeClientId ?? userId, payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] })
-      queryClient.invalidateQueries({ queryKey: ['fixed-accounts'] })
-      queryClient.invalidateQueries({ queryKey: ['credit-card-charges'] })
+    onSuccess: async (_data, variables) => {
+      const hasCreditCardStatementImport =
+        variables.payload.importKind === 'CREDIT_CARD_STATEMENT' ||
+        variables.payload.sourceType === 'CREDIT_CARD_STATEMENT' ||
+        variables.payload.transactions.some((transaction) => transaction.paymentType === 'CREDIT_CARD')
+      await refreshQueriesAfterImport(queryClient, hasCreditCardStatementImport)
     },
   })
 
