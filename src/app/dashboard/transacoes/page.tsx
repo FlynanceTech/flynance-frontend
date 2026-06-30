@@ -14,7 +14,7 @@ import { Category, CategoryType, Transaction } from '@/types/Transaction'
 import { useTranscation } from '@/hooks/query/useTransaction'
 import { useUserSession } from '@/stores/useUserSession'
 import { useCategories } from '@/hooks/query/useCategory'
-import { AlertTriangle, CreditCard, Sparkles, TrashIcon } from 'lucide-react'
+import { AlertTriangle, CreditCard, RefreshCw, Sparkles, TrashIcon } from 'lucide-react'
 import DeleteConfirmModal from '../components/DeleteConfirmModal'
 import { CategorySelect } from '../components/CategorySelect'
 import Select from 'react-select'
@@ -78,23 +78,37 @@ function createTransactionsOnboardingSteps(
 ): ReadonlyArray<PageOnboardingStep> {
   return [
     {
+      id: 'welcome',
+      selector: '[data-onboarding-target="transacoes-welcome"]',
+      title: tr('onboarding.welcomeTitle'),
+      description: tr('onboarding.welcomeDescription'),
+    },
+    {
       id: 'filters',
-      selector: '[data-onboarding-target="transacoes-filtros"]',
+      selector: '[data-onboarding-target="transacoes-area-filtros"]',
       align: 'bottom',
       title: tr('onboarding.filtersTitle'),
       description: tr('onboarding.filtersDescription'),
     },
     {
-      id: 'list',
-      selector: '[data-onboarding-target="transacoes-lista"]',
-      title: tr('onboarding.listTitle'),
-      description: tr('onboarding.listDescription'),
+      id: 'new-transaction',
+      selector: '[data-onboarding-target="transacoes-nova-transacao"]',
+      align: 'bottom',
+      title: tr('onboarding.newTransactionTitle'),
+      description: tr('onboarding.newTransactionDescription'),
     },
     {
-      id: 'summary',
-      selector: '[data-onboarding-target="transacoes-resumo"]',
-      title: tr('onboarding.summaryTitle'),
-      description: tr('onboarding.summaryDescription'),
+      id: 'import',
+      selector: '[data-onboarding-target="transacoes-importar"]',
+      align: 'bottom',
+      title: tr('onboarding.importTitle'),
+      description: tr('onboarding.importDescription'),
+    },
+    {
+      id: 'list',
+      selector: '[data-onboarding-target="transacoes-lista-area"]',
+      title: tr('onboarding.listTitle'),
+      description: tr('onboarding.listDescription'),
     },
   ]
 }
@@ -1891,6 +1905,7 @@ export default function TransactionsPage() {
         </div>
       )}
 
+      <div data-onboarding-target="transacoes-lista-area" className="flex flex-col gap-3">
       <div className="flex flex-col gap-3 border-b border-gray-200 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex gap-1">
           <button
@@ -1917,42 +1932,55 @@ export default function TransactionsPage() {
             Cartão de Crédito
           </button>
         </div>
-        {activeTab === 'credit_card' && (
-          <div className="flex flex-wrap items-center gap-2 pb-2 sm:justify-end">
-            <label htmlFor="transaction-card-filter" className="sr-only">
-              {tr('cardFilter.label')}
-            </label>
-            <select
-              id="transaction-card-filter"
-              value={selectedCardId}
-              onChange={(event) => handleCardFilterChange(event.target.value)}
-              disabled={cardQuery.isLoading || cardFilterOptions.length === 0}
-              className="h-9 min-w-[190px] rounded-full border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-              aria-label={tr('cardFilter.label')}
-            >
-              <option value="ALL">
-                {cardFilterOptions.length > 0 ? tr('cardFilter.all') : tr('cardFilter.empty')}
-              </option>
-              {cardFilterOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            {!isAdvisorReadOnly && (
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingCharge(null)
-                  setChargeDrawerOpen(true)
-                }}
-                className="flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-secondary"
+        <div className="flex flex-wrap items-center gap-2 pb-2 sm:justify-end">
+          {activeTab === 'credit_card' && (
+            <>
+              <label htmlFor="transaction-card-filter" className="sr-only">
+                {tr('cardFilter.label')}
+              </label>
+              <select
+                id="transaction-card-filter"
+                value={selectedCardId}
+                onChange={(event) => handleCardFilterChange(event.target.value)}
+                disabled={cardQuery.isLoading || cardFilterOptions.length === 0}
+                className="h-9 min-w-[190px] rounded-full border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                aria-label={tr('cardFilter.label')}
               >
-                + Nova Compra
-              </button>
-            )}
-          </div>
-        )}
+                <option value="ALL">
+                  {cardFilterOptions.length > 0 ? tr('cardFilter.all') : tr('cardFilter.empty')}
+                </option>
+                {cardFilterOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              {!isAdvisorReadOnly && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingCharge(null)
+                    setChargeDrawerOpen(true)
+                  }}
+                  className="flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-secondary"
+                >
+                  + Nova Compra
+                </button>
+              )}
+            </>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              transactionsQuery.refetch()
+              chargesQuery.refetch()
+            }}
+            className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Atualizar
+          </button>
+        </div>
       </div>
 
       {activeTab === 'credit_card' && (
@@ -2243,6 +2271,7 @@ export default function TransactionsPage() {
         )}
       </section>
       )}
+      </div>
     </section>
   )
 }

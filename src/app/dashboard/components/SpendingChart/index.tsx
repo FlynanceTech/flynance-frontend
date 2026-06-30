@@ -78,17 +78,21 @@ export function SpendingChart({
     return '#3ECC89'
   }
 
-  const chartData =
+  const rawChartData =
     data.length === 1
       ? [
           data[0],
           {
-            date: addDays(new Date(), 1).toISOString().split('T')[0],
+            date: addDays(parseISO(data[0].date), 1).toISOString().split('T')[0],
             valor: 0,
             acumulado: data[0].acumulado,
           },
         ]
       : data
+
+  const chartData = [...rawChartData].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  )
 
   const axisColor = isDark ? '#94A3B8' : '#666'
   const axisLabelColor = isDark ? '#64748B' : '#6B7280'

@@ -3,6 +3,7 @@
 import { format } from 'date-fns'
 import Link from 'next/link'
 import React, { use, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { AlertTriangle, CheckCircle2, Lock, SquarePen, Undo2, XCircle } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 
@@ -32,6 +33,11 @@ export interface Transaction {
   paymentType: 'CASH' | 'CREDIT_CARD' | 'PIX' | string
   origin: 'DASHBOARD' | string
   cardId?: string
+  sourceType?: 'credit_card_installment' | 'transaction'
+  purchaseDate?: string | null
+  installmentNumber?: number
+  installmentCount?: number
+  card?: { id: string; name: string; last4?: string | null } | null
   createdByUser?: {
     id?: string
     name?: string | null
@@ -94,7 +100,15 @@ export default function ControlePage({
   const locale = useLocale()
   const currentUserId = useUserSession((state) => state.user?.userData?.user?.id ?? '')
   const { isAdvisorActing } = useMyAdvisor()
-  const [selectedDate, setSelectedDate] = useState(new Date())
+  const searchParams = useSearchParams()
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const m = searchParams.get('month')
+    if (m && /^\d{4}-\d{2}$/.test(m)) {
+      const [year, month] = m.split('-').map(Number)
+      return new Date(year, month - 1, 15)
+    }
+    return new Date()
+  })
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false)
   const { id } = use(params)
   const { controlsByIdQuery } = useControls(id, selectedDate)
@@ -264,9 +278,30 @@ export default function ControlePage({
                   </span>
                   <span className="text-slate-900 dark:text-slate-100">{formatter(tx.value)}</span>
                 </div>
-                <span className="text-sm text-slate-400 dark:text-slate-500">
-                  {formatDateWithActor(tx.date, locale, getActorFirstName(tx))}
-                </span>
+                {tx.sourceType === 'credit_card_installment' && tx.card && (
+                  <p className="text-sm text-primary/70 font-medium">
+                    {tx.card.name}
+                    {(tx.installmentCount ?? 1) > 1
+                      ? ` • Parcela ${tx.installmentNumber} de ${tx.installmentCount}`
+                      : ' • À vista'}
+                  </p>
+                )}
+                {tx.sourceType === 'credit_card_installment' ? (
+                  <>
+                    <p className="text-sm text-slate-400 dark:text-slate-500">
+                      {`Efetivada em ${new Date(tx.purchaseDate ?? tx.date).toLocaleDateString(locale)} • A pagar em ${new Date(tx.date).toLocaleDateString(locale)}`}
+                    </p>
+                    {getActorFirstName(tx) && (
+                      <p className="text-sm text-slate-400 dark:text-slate-500">
+                        {getActorFirstName(tx)}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-sm text-slate-400 dark:text-slate-500">
+                    {formatDateWithActor(tx.date, locale, getActorFirstName(tx))}
+                  </span>
+                )}
               </li>
             ))}
           </ul>

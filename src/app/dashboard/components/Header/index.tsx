@@ -289,6 +289,7 @@ export default function Header({
               )}    
             {
               importTransations &&
+              <div data-onboarding-target="transacoes-importar">
                   <ImportTransactionsButton
                     onClick={() => {
                       if (onImportClick) onImportClick()
@@ -297,10 +298,13 @@ export default function Header({
                     disabled={importLoading}
                     label={importLoading ? tButtons('importing') : undefined}
                   />
+              </div>
             }
               {
                 canCreateTransactions &&
-                <NewTransactionButton onClick={() => setDrawerOpen(true)} />
+                <div data-onboarding-target="transacoes-nova-transacao">
+                  <NewTransactionButton onClick={() => setDrawerOpen(true)} />
+                </div>
               }
             </div>
             
@@ -394,7 +398,7 @@ export default function Header({
       </div>
 
           {asFilter && (
-          <div className="gap-4 items-center hidden md:flex ">
+          <div className="gap-4 items-center hidden md:flex" data-onboarding-target="transacoes-area-filtros">
           
             {dataToFilter && (
               <div className="flex gap-3 items-center w-full">
