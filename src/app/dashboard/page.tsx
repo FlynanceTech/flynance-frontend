@@ -15,6 +15,7 @@ import { useUserSession } from '@/stores/useUserSession'
 import { useTransactionFilter } from '@/stores/useFilter'
 import { useTranscation } from '@/hooks/query/useTransaction'
 import { useCardMutations } from '@/hooks/query/useCreditCards'
+import { useDashboardCreditCardExpense } from '@/hooks/query/useDashboardCreditCardExpense'
 import { getBrowserTimezone, toFutureRangeFromDays } from '@/utils/transactionPeriod'
 import { useLocale, useTranslations } from 'next-intl'
 import { useFinancialScope } from '@/hooks/useFinancialScope'
@@ -58,11 +59,24 @@ function createDashboardOnboardingSteps(
 ): ReadonlyArray<DashboardOnboardingStep> {
   return [
     {
+      id: 'welcome',
+      selector: '[data-onboarding-target="dashboard-welcome"]',
+      title: t('onboarding.welcomeTitle'),
+      description: t('onboarding.welcomeDescription'),
+    },
+    {
       id: 'filters',
-      selector: '[data-onboarding-target="header-filters"]',
+      selector: '[data-onboarding-target="header-date-filters"]',
       align: 'bottom',
       title: t('onboarding.filtersTitle'),
       description: t('onboarding.filtersDescription'),
+    },
+    {
+      id: 'new-transaction',
+      selector: '[data-onboarding-target="header-new-transaction"]',
+      align: 'bottom',
+      title: t('onboarding.newTransactionTitle'),
+      description: t('onboarding.newTransactionDescription'),
     },
     {
       id: 'summary',
@@ -78,9 +92,15 @@ function createDashboardOnboardingSteps(
     },
     {
       id: 'controls',
-      selector: '[data-onboarding-target="spending-control"]',
+      selector: '[data-onboarding-target="spending-control-metas"]',
       title: t('onboarding.controlsTitle'),
       description: t('onboarding.controlsDescription'),
+    },
+    {
+      id: 'invoice',
+      selector: '[data-onboarding-target="invoice-due-date"]',
+      title: t('onboarding.invoiceTitle'),
+      description: t('onboarding.invoiceDescription'),
     },
     {
       id: 'categories',
@@ -179,7 +199,7 @@ function InvoiceDueDateReminder() {
         <CreditCard className="h-4 w-4 text-gray-500" />
         <h3 className="text-sm font-semibold text-gray-700">Vencimento de faturas</h3>
       </div>
-      <div className="flex flex-col gap-2.5">
+      <div className={`flex flex-col gap-2.5 ${reminders.length > 8 ? 'max-h-52 overflow-y-auto' : ''}`}>
         {reminders.map(({ card, nextDue, diffDays }) => (
           <div key={card.id} className="flex items-center justify-between gap-2 text-sm">
             <span className="text-gray-700 truncate font-medium">
@@ -229,9 +249,21 @@ export default function Dashboard() {
   const [onboardingTargetRect, setOnboardingTargetRect] = useState<SpotlightRect | null>(null)
   const [onboardingTooltipHeight, setOnboardingTooltipHeight] = useState(300)
   const onboardingTooltipRef = useRef<HTMLDivElement | null>(null)
+  const rightColRef = useRef<HTMLDivElement | null>(null)
+  const [rightColH, setRightColH] = useState(0)
   useEffect(() => {
     const timerId = window.setTimeout(() => setHydrated(true), 0)
     return () => window.clearTimeout(timerId)
+  }, [])
+  useEffect(() => {
+    if (!rightColRef.current) return
+    const el = rightColRef.current
+    const ro = new ResizeObserver(([entry]) => {
+      setRightColH(entry.contentRect?.height ?? el.clientHeight)
+    })
+    ro.observe(el)
+    setRightColH(el.clientHeight)
+    return () => ro.disconnect()
   }, [])
 
   useEffect(() => {
@@ -279,6 +311,8 @@ export default function Dashboard() {
   }, [mode, rangeStart, rangeEnd, selectedMonth, selectedYear, includeFuture, safeDays])
 
   // Fetch using the same period semantics used in /dashboard/transacoes
+  // excludePaidCreditCardStatements: bill-payment transactions are excluded here
+  // because CC installments are added separately via useDashboardCreditCardExpense
   const { transactionsQuery } = useTranscation({
     userId,
     page: 1,
@@ -286,14 +320,61 @@ export default function Dashboard() {
     filters: {
       ...periodFilters,
       excludePaymentType: 'CREDIT_CARD',
+      excludePaidCreditCardStatements: true,
     },
     useGlobalFilters: false,
   })
-  const isTxLoading = transactionsQuery.isLoading
+  // CC installment params — backend filters by charge.purchaseDate so we pass exact date range
+  const ccPeriodParams = useMemo(() => {
+    if (mode === 'month' && selectedMonth && selectedYear) {
+      return { month: `${selectedYear}-${String(selectedMonth).padStart(2, '0')}` }
+    }
+    if (mode === 'range' && rangeStart && rangeEnd) {
+      return { from: `${rangeStart}T00:00:00.000Z`, to: `${rangeEnd}T23:59:59.999Z`, filterBy: 'statement' as const }
+    }
+    // days mode: purchase-date range matching the transaction filter
+    const now = new Date()
+    const to = new Date(now)
+    to.setHours(23, 59, 59, 999)
+    const from = new Date(to)
+    from.setDate(from.getDate() - safeDays + 1)
+    from.setHours(0, 0, 0, 0)
+    return { from: from.toISOString(), to: to.toISOString() }
+  }, [mode, selectedMonth, selectedYear, rangeStart, rangeEnd, safeDays])
 
-  const transactions = useMemo(() => {
+  const ccExpenseQuery = useDashboardCreditCardExpense({ userId, ...ccPeriodParams })
+  const isTxLoading = transactionsQuery.isLoading || ccExpenseQuery.isLoading
+
+  const regularTransactions = useMemo(() => {
     return filterEffectiveCashflowTransactions(getTransactionsFromQueryData(transactionsQuery.data))
   }, [transactionsQuery.data])
+
+  const ccSyntheticTransactions = useMemo(() => {
+    return (ccExpenseQuery.data?.items ?? []).map((item) => ({
+      id: `cc-inst-${item.id}`,
+      userId,
+      type: 'EXPENSE' as const,
+      value: item.amount,
+      categoryId: item.categoryId ?? '',
+      category: (item.category as any) ?? null,
+      date: item.purchaseDate,  // Dashboard shows purchase date
+      statementDueAt: item.statementDueAt,  // for "A pagar em" display
+      description: item.description,
+      origin: 'DASHBOARD' as const,
+      paymentType: 'OTHER' as const,
+      // Extra fields for CategorySpendingDistribution filter/display
+      _sourceType: 'cc_installment' as const,
+      card: item.card,
+      installmentNumber: item.installmentNumber,
+      installmentCount: item.installmentCount,
+      user: item.userInfo ?? null,  // for getActorFirstName (who spent)
+    }))
+  }, [ccExpenseQuery.data, userId])
+
+  const transactions = useMemo(
+    () => [...regularTransactions, ...ccSyntheticTransactions] as Transaction[],
+    [regularTransactions, ccSyntheticTransactions]
+  )
 
   const periodLabel = useMemo(() => {
     const suffix = includeFuture ? t('period.includeFutureSuffix') : ''
@@ -510,11 +591,15 @@ export default function Dashboard() {
         <section className="flex flex-col gap-4 w-full">
           <div className="flex flex-col lg:grid lg:grid-cols-5 gap-4">
             <div className="lg:col-span-3" data-onboarding-target="comparison-chart">
-              <ComparisonChart transactions={transactions} isLoading={isTxLoading} periodTag={periodLabel} />
+              <ComparisonChart transactions={transactions} isLoading={isTxLoading} periodTag={periodLabel} availableHeight={rightColH} />
             </div>
-            <div className="lg:col-span-2 flex flex-col gap-4" data-onboarding-target="spending-control">
-              <SpendingControl />
-              <InvoiceDueDateReminder />
+            <div ref={rightColRef} className="lg:col-span-2 flex flex-col gap-4">
+              <div data-onboarding-target="spending-control-metas">
+                <SpendingControl />
+              </div>
+              <div data-onboarding-target="invoice-due-date">
+                <InvoiceDueDateReminder />
+              </div>
             </div>
           </div>
 

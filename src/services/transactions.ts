@@ -85,6 +85,7 @@ export type TransactionFilters = {
   type?: 'ALL' | 'INCOME' | 'EXPENSE'
   paymentType?: PaymentType
   excludePaymentType?: PaymentType
+  excludePaidCreditCardStatements?: boolean
 }
 
 export type GetTransactionParams = {
@@ -162,6 +163,10 @@ export async function getTransaction({
 
     if (filters.excludePaymentType) {
       params.set('excludePaymentType', filters.excludePaymentType)
+    }
+
+    if (filters.excludePaidCreditCardStatements) {
+      params.set('excludePaidCreditCardStatements', '1')
     }
 
   }

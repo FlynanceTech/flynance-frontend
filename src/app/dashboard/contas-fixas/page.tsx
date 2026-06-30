@@ -706,7 +706,6 @@ export default function FixedBillsPage() {
             </div>
           }
         />
-        <p className="pt-1 text-xs text-slate-500 lg:text-sm">{t('pageHelper')}</p>
       </div>
 
 
@@ -909,19 +908,12 @@ export default function FixedBillsPage() {
                       >
                         <span>{t('dueEveryDay', { day: bill.dueDay })}</span>
                         <span>•</span>
-                        <span>{toBRL(bill.amount)}</span>
-                        {bill.currency && bill.currency !== 'BRL' && (
-                          <>
-                            <span>•</span>
-                            <span>{bill.currency}</span>
-                          </>
-                        )}
-                        {bill.categoryName && (
-                          <>
-                            <span>•</span>
-                            <span>{bill.categoryName}</span>
-                          </>
-                        )}
+                        <span>
+                          {paid
+                            ? t('valuePaid', { value: toBRL(bill.paymentCurrentCycle?.amount ?? bill.amount) })
+                            : t('valueApproximate', { value: toBRL(bill.amount) })
+                          }
+                        </span>
                       </div>
                       <div
                         className={clsx(
@@ -930,10 +922,12 @@ export default function FixedBillsPage() {
                         )}
                       >
                         <span>{t('competenceLabel', { label: competenceRange.label })}</span>
-                        <span>•</span>
-                        <span>{t('statusLabel', { status: statusLabel })}</span>
-                       {/*  <span>•</span>
-                        <span>Fim: {formatDateBR(bill.endDate) || 'Sem data fim'}</span> */}
+                        {bill.categoryName && (
+                          <>
+                            <span>•</span>
+                            <span>{t('categoryLabel', { category: bill.categoryName })}</span>
+                          </>
+                        )}
                       </div>
                       {bill.notes && (
                         <span
@@ -1040,6 +1034,10 @@ export default function FixedBillsPage() {
                 className="mt-2 w-full rounded-full border border-gray-200 px-4 py-2 text-sm"
               />
             </div>
+
+            <p className="mt-3 text-xs text-gray-400">
+              {t('payDialog.clickToTrack', { name: payTarget?.name ?? '' })}
+            </p>
 
             <div className="mt-6 flex w-full gap-2">
               <button

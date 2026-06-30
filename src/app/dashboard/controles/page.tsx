@@ -159,6 +159,7 @@ export default function SpendingControlPage() {
     && canCreateGoalControl(hasAdvisor, isAdvisorActing)
 
   const [selectedDate, setSelectedDate] = useState(new Date())
+  const monthParam = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}`
   const { controlsQuery, deleteMutation, favoriteMutation } = useControls(undefined, selectedDate)
   const categoryStore = useCategoryStore((s) => s.categoryStore)
   const { addControl, controls, removeControl, resetControls } = useSpendingControlStore()
@@ -466,11 +467,11 @@ export default function SpendingControlPage() {
                 className="relative cursor-pointer rounded-xl border border-gray-200 bg-white overflow-hidden transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-primary/30"
                 role="link"
                 tabIndex={0}
-                onClick={() => router.push(`/dashboard/controles/${c.id}`)}
+                onClick={() => router.push(`/dashboard/controles/${c.id}?month=${monthParam}`)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault()
-                    router.push(`/dashboard/controles/${c.id}`)
+                    router.push(`/dashboard/controles/${c.id}?month=${monthParam}`)
                   }
                 }}
               >
@@ -557,7 +558,7 @@ export default function SpendingControlPage() {
                         </button>
 
                         <Link
-                          href={`/dashboard/controles/${c.id}`}
+                          href={`/dashboard/controles/${c.id}?month=${monthParam}`}
                           onClick={(event) => event.stopPropagation()}
                           className="text-gray-500 hover:text-gray-700"
                           title={t('card.actions.open')}

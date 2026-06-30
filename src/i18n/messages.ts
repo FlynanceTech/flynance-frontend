@@ -94,21 +94,30 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         lastDays: 'últimos {days} dias',
       },
       onboarding: {
-        filtersTitle: 'Filtros do seu período',
+        welcomeTitle: 'Seja bem-vindo(a) à Fly!',
+        welcomeDescription:
+          'Esse é o seu Dashboard. Nessa tela, você visualiza o resumo das suas despesas e receitas. O cadastro das informações é automático, conforme você envia no seu WhatsApp ou preenche aqui no painel.',
+        filtersTitle: 'Filtre na data que quiser',
         filtersDescription:
-          'Use os filtros do cabeçalho para olhar seus números por dias, mês ou intervalo personalizado.',
+          'Use os filtros do cabeçalho para analisar seus números em diferentes períodos. Organize por dias, mês ou personalize como bem entender.',
+        newTransactionTitle: 'Adicione transações',
+        newTransactionDescription:
+          'Você também pode adicionar novas transações clicando neste botão. Bom para usar quando não quiser mandar para a Fly no WhatsApp.',
         summaryTitle: 'Resumo financeiro',
         summaryDescription:
-          'No topo você acompanha entradas, saídas, saldo e também as contas em dia ou em atraso resumidas no cabeçalho.',
+          'No topo você acompanha o seu saldo, as entradas e as saídas. Além disso, pode acompanhar um resumo das suas contas fixas.',
         comparisonTitle: 'Receitas x despesas',
         comparisonDescription:
-          'Compare o que entrou e saiu para perceber mudanças no seu ritmo financeiro.',
+          'Compare o que entrou e o que saiu, por categoria. Ótimo para acompanhar as mudanças no seu ritmo financeiro.',
         controlsTitle: 'Limites e metas',
         controlsDescription:
-          'Aqui você acompanha o quanto já gastou, o que ainda cabe no mês e onde precisa de atenção.',
+          'Aqui você estabelece e acompanha os seus limites de gasto. Ao chegar em 80% do limite estipulado, a Fly vai te alertar.',
+        invoiceTitle: 'Datas de Vencimento',
+        invoiceDescription:
+          'Um resumo das datas de vencimento do seu cartão de crédito e atual situação da fatura: se já fechou, se está atrasada, ou se ainda está aberta.',
         categoriesTitle: 'Para onde seu dinheiro foi',
         categoriesDescription:
-          'Veja as categorias que mais pesaram no período e entre nos detalhes quando quiser.',
+          'Veja a distribuição do seu dinheiro por período, e por categoria. Organize como quiser, e veja onde mais está gastando. Clique em uma categoria para expandir mais detalhes.',
       },
     },
     pageOnboarding: {
@@ -250,7 +259,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       subtitle:
         'O que entrou e o que saiu da sua conta, atualizado sempre que você adicionar uma nova transação.',
       errorLoading: 'Erro ao carregar transacoes.',
-      guideButton: 'Ver guia de transacoes',
+      guideButton: 'Ver guia de transações',
       readOnlyBanner:
         'Você está atuando com permissão somente leitura para este cliente.',
       csvTip:
@@ -321,15 +330,21 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         confirm: 'Aplicar a todas',
       },
       onboarding: {
-        filtersTitle: 'Filtros e importação',
+        welcomeTitle: 'Tela de Transações',
+        welcomeDescription:
+          'Aqui você acompanha todas as suas movimentações — Pix, débito, dinheiro e cartão de crédito.',
+        filtersTitle: 'Filtre como quiser',
         filtersDescription:
-          'Use os filtros do cabeçalho para refinar suas transações e o botão de importação para subir arquivo CSV.',
+          'Use a barra de pesquisa e os filtros para encontrar transações por período, tipo, categoria ou responsável.',
+        newTransactionTitle: 'Adicione operações manualmente',
+        newTransactionDescription:
+          'Clique em "+ Nova Transação" para registrar uma movimentação diretamente pelo painel, sem precisar enviar pelo WhatsApp.',
+        importTitle: 'Poupe tempo importando a sua fatura',
+        importDescription:
+          'Use o botão "Importar Transação" para subir a fatura do cartão em formato CSV e registrar suas compras em lote.',
         listTitle: 'Lista de transações',
         listDescription:
-          'Aqui você visualiza suas movimentações, pode editar com rapidez e alternar entre visualização de tabela ou cards.',
-        summaryTitle: 'Resumo e ações',
-        summaryDescription:
-          'Acompanhe o intervalo exibido, paginação e ações em lote quando houver itens selecionados.',
+          'Navegue entre as abas Pix/Débito/Dinheiro e Cartão de Crédito. Use o botão Atualizar para ver as últimas movimentações.',
       },
       authorFilter: {
         label: 'Quem realizou',
@@ -422,9 +437,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     fixedAccounts: {
       pageTitle: 'As contas do seu mês',
       pageSubtitle:
-        'Aqui você cuida dos seus boletos.\nCadastre e acompanhe a evolução das suas contas de água, luz, telefone, internet e qualquer outra.',
-      pageHelper:
-        'Cadastre nesta tela as suas contas com as datas de vencimento para cada competência.',
+        'Cadastre e acompanhe a evolução das suas contas fixas (água, luz, telefone, internet e qualquer outra de sua preferência).',
+      pageHelper: '',
       newButton: 'Nova conta fixa',
       guideButton: 'Ver guia de contas fixas',
       summary: {
@@ -433,7 +447,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         estimatedTotal: 'Total estimado',
         paidAmount: 'Pago',
         pendingAmount: 'Pendente',
-        competence: 'Competencia {label}',
+        competence: 'Competência {label}',
       },
       monthPrevAria: 'Mes anterior',
       monthNextAria: 'Proximo mes',
@@ -452,7 +466,10 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       remove: 'Remover',
       removing: 'Removendo...',
       dueEveryDay: 'Vence todo dia {day}',
-      competenceLabel: 'Competencia: {label}',
+      valuePaid: '{value} pagos este mês',
+      valueApproximate: '{value} aproximados a pagar este mês',
+      competenceLabel: 'Competência: {label}',
+      categoryLabel: 'Categoria do gasto: {category}',
       statusLabel: 'Status: {status}',
       status: {
         paid: 'Paga',
@@ -474,6 +491,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         cancel: 'Cancelar',
         confirm: 'Confirmar pagamento',
         confirming: 'Confirmando...',
+        clickToTrack: 'Clique no card para acompanhar a evolução dos seus gastos com {name}!',
       },
       drawer: {
         editTitle: 'Editar conta fixa',
@@ -483,16 +501,16 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         namePlaceholder: 'Ex: Internet, Aluguel',
         category: 'Categoria',
         categoryPlaceholder: 'Selecione uma categoria',
-        initialCompetenceMonth: 'Mes de competencia inicial',
+        initialCompetenceMonth: 'Mês de Competência Inicial',
         linkedFrom:
-          'Esta conta sera vinculada a partir de {month}, e se repetira todo mes daqui pra frente no valor aproximado e data de vencimento estipulados abaixo.',
+          'Esta conta será vinculada a partir de {month}, e se repetirá todo mês daqui pra frente.',
         amount: 'Valor aproximado',
         firstDueDate: 'Primeiro vencimento',
-        observation: 'Observacao',
+        observation: 'Observação',
         optional: 'Opcional',
         invalidDate: 'Informe uma data valida.',
         footnote:
-          '* As contas fixas representam obrigacoes recorrentes. Nao se esqueca de atualizar o painel sempre que efetuar o pagamento. Ao confirmar o pagamento, voce podera informar o valor exato da conta para acompanhar sua evolucao com mais detalhes.',
+          'Ao confirmar o pagamento a cada mês, você poderá informar o valor exato da conta e acompanhar a evolução com mais detalhes. Aqui colocamos o valor aproximado, somente para você ter uma ideia e conseguir se organizar com antecedência.',
         saving: 'Salvando...',
         saveChanges: 'Salvar alteracoes',
         add: 'Adicionar conta fixa',
@@ -644,21 +662,24 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       expenseTab: 'Despesas',
       incomeTab: 'Receitas',
       onboarding: {
-        headerTitle: 'Gestao de categorias',
+        headerTitle: 'Gestão de categorias',
         headerDescription:
-          'Esta area centraliza a criacao e manutencao das categorias usadas nas suas transacoes.',
-        tabsTitle: 'Separacao por tipo',
+          'Esta área centraliza a criação e manutenção das categorias usadas nas suas transações (receita ou despesa).',
+        tabsTitle: 'Separação por tipo',
         tabsDescription:
           'Alterne entre despesas e receitas para organizar melhor o conjunto de categorias.',
         formListTitle: 'Cadastro e lista',
         formListDescription:
-          'Cadastre novas categorias, edite existentes e remova o que nao faz mais sentido para seu fluxo.',
+          'Através dos cards abaixo, você edita categorias existentes e pode remover o que não faz mais sentido para seu fluxo.',
+        organizeTitle: 'Organize como quiser',
+        organizeDescription:
+          'Além disso, você pode organizar as categorias como quiser. Basta arrastar os cards para cima, para baixo e/ou para os lados.',
       },
       classification: {
         title: 'As suas categorias',
         subtitle:
           'Veja todas as categorias de receitas e despesas cadastradas. Edite como quiser e organize suas prioridades movendo os cards.',
-        tip: 'Organize as suas categorias de despesas ou receitas. Arraste as categorias entre colunas, e reordene por prioridade dentro da mesma coluna.',
+        tip: 'Essas são as suas categorias de despesas. Edite, adicione, organize ou exclua categorias como e quando quiser.',
         createButton: 'Criar nova categoria',
         saving: 'Salvando alterações...',
         saved: 'Alterações salvas',
@@ -676,7 +697,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         incomeTabHint: 'Na aba de receitas, exibimos as categorias sem classificacao por colunas.',
         emptyIncome: 'Nenhuma categoria de renda encontrada.',
         incomeListTitle: 'Categorias de receita',
-        incomeListSubtitle: 'Lista simples das categorias de receita sem classificacao por colunas.',
+        incomeListSubtitle: 'Essas são suas categorias de receita atualmente cadastradas. Edite, adicione ou exclua categorias como e quando quiser.',
         keywordsCount: '{count} palavras-chave',
         noKeywords: 'Nenhuma palavra-chave vinculada.',
         type: {
@@ -689,14 +710,14 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         },
         columns: {
           INCOME: 'Renda',
-          ESSENTIAL_EXPENSE: 'Despesa essencial',
-          NON_ESSENTIAL_EXPENSE: 'Despesa nao essencial',
+          ESSENTIAL_EXPENSE: 'Despesas Essenciais',
+          NON_ESSENTIAL_EXPENSE: 'Despesas Supérfluas',
           NEUTRAL: 'Neutro',
         },
         columnsHelp: {
-          ESSENTIAL_EXPENSE: 'Gastos fixos ou necessarios para seu dia a dia.',
-          NON_ESSENTIAL_EXPENSE: 'Gastos opcionais, de lazer ou que podem ser reduzidos.',
-          NEUTRAL: 'Categorias ainda sem prioridade definida entre essencial e nao essencial.',
+          ESSENTIAL_EXPENSE: 'Gastos indispensáveis, fixos, do seu dia a dia.',
+          NON_ESSENTIAL_EXPENSE: 'Gastos opcionais, temporários, que podem ser reduzidos.',
+          NEUTRAL: 'Categorias ainda sem prioridade definida entre essencial ou supérfluo.',
         },
       },
     },
@@ -2557,21 +2578,30 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         lastDays: 'last {days} days',
       },
       onboarding: {
-        filtersTitle: 'Filters and period',
+        welcomeTitle: 'Welcome to Fly!',
+        welcomeDescription:
+          'This is your Dashboard. Here you can see a summary of your expenses and income. Data is added automatically as you send messages on WhatsApp or fill it in here on the panel.',
+        filtersTitle: 'Filter by any date',
         filtersDescription:
-          'Use the header filters to review your numbers by days, month or a custom range.',
+          'Use the header filters to analyze your numbers across different periods. View by days, month, or set a custom range.',
+        newTransactionTitle: 'Add transactions',
+        newTransactionDescription:
+          'You can also add new transactions by clicking this button. Handy when you prefer not to send to Fly on WhatsApp.',
         summaryTitle: 'Financial summary',
         summaryDescription:
-          'At the top you can track income, expenses, balance and also bills that are due or overdue in the header summary.',
+          'At the top you can track your balance, income and expenses. You can also see a summary of your fixed bills.',
         comparisonTitle: 'Income and expense comparison',
         comparisonDescription:
-          'Compare what came in and what went out to spot changes in your money routine.',
+          'Compare what came in and what went out, by category. Great for tracking changes in your financial rhythm.',
         controlsTitle: 'Spending controls',
         controlsDescription:
-          'In Controls you track how much was already spent, what is still available and where attention is needed.',
+          'Here you set and track your spending limits. When you reach 80% of a set limit, Fly will alert you.',
+        invoiceTitle: 'Invoice due dates',
+        invoiceDescription:
+          'A summary of your credit card due dates and the current status of each bill: whether it is closed, overdue, or still open.',
         categoriesTitle: 'Category distribution',
         categoriesDescription:
-          'See which categories weighed the most in the period and dive into the details when needed.',
+          'See how your money is distributed by period and category. Organize as you like and see where you are spending the most. Click a category to expand more details.',
       },
     },
     pageOnboarding: {
@@ -2781,15 +2811,21 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         confirm: 'Apply to all',
       },
       onboarding: {
-        filtersTitle: 'Filters and import',
+        welcomeTitle: 'Transactions',
+        welcomeDescription:
+          'Here you track all your financial movements — Pix, debit, cash and credit card.',
+        filtersTitle: 'Filter however you like',
         filtersDescription:
-          'Use header filters to refine transactions and the import button to upload a CSV file.',
-        listTitle: 'Transactions list',
+          'Use the search bar and filters to find transactions by period, type, category or member.',
+        newTransactionTitle: 'Add transactions manually',
+        newTransactionDescription:
+          'Click "+ New Transaction" to record a movement directly from the panel, without needing to send it via WhatsApp.',
+        importTitle: 'Save time by importing your statement',
+        importDescription:
+          'Use the "Import Transaction" button to upload your card statement as a CSV file and log purchases in bulk.',
+        listTitle: 'Transaction list',
         listDescription:
-          'Here you can view movements, edit quickly and switch between table or cards.',
-        summaryTitle: 'Summary and actions',
-        summaryDescription:
-          'Track displayed range, pagination and bulk actions when items are selected.',
+          'Switch between the Pix/Debit/Cash and Credit Card tabs. Use the Refresh button to see the latest movements.',
       },
       authorFilter: {
         label: 'Who made it',
@@ -5003,21 +5039,30 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         lastDays: 'ultimos {days} dias',
       },
       onboarding: {
-        filtersTitle: 'Filtros y periodo',
+        welcomeTitle: '¡Bienvenido(a) a Fly!',
+        welcomeDescription:
+          'Este es tu Dashboard. En esta pantalla visualizas el resumen de tus gastos e ingresos. El registro es automatico segun lo que envias por WhatsApp o completas aqui en el panel.',
+        filtersTitle: 'Filtra en la fecha que quieras',
         filtersDescription:
-          'Usa los filtros del encabezado para revisar tus numeros por dias, mes o un rango personalizado.',
+          'Usa los filtros del encabezado para analizar tus numeros en diferentes periodos. Organiza por dias, mes o personaliza como prefieras.',
+        newTransactionTitle: 'Agrega transacciones',
+        newTransactionDescription:
+          'Tambien puedes agregar nuevas transacciones haciendo clic en este boton. Util cuando no quieras enviarlas a Fly por WhatsApp.',
         summaryTitle: 'Resumen financiero',
         summaryDescription:
-          'En la parte superior acompanias ingresos, gastos, saldo y tambien las cuentas al dia o atrasadas resumidas en el encabezado.',
+          'En la parte superior acompanias tu saldo, las entradas y las salidas. Ademas, puedes ver un resumen de tus cuentas fijas.',
         comparisonTitle: 'Comparacion de ingresos y gastos',
         comparisonDescription:
-          'Compara lo que entro y lo que salio para detectar cambios en tu rutina financiera.',
+          'Compara lo que entro y lo que salio, por categoria. Ideal para seguir los cambios en tu ritmo financiero.',
         controlsTitle: 'Controles de gasto',
         controlsDescription:
-          'En Controles sigues cuanto ya gastaste, lo que todavia tienes disponible y donde necesitas atencion.',
+          'Aqui estableces y sigues tus limites de gasto. Al llegar al 80% del limite, Fly te alertara.',
+        invoiceTitle: 'Fechas de vencimiento',
+        invoiceDescription:
+          'Un resumen de las fechas de vencimiento de tu tarjeta de credito y la situacion actual de la factura: si ya cerro, si esta atrasada o si todavia esta abierta.',
         categoriesTitle: 'Distribucion por categoria',
         categoriesDescription:
-          'Mira que categorias pesaron mas en el periodo y entra en el detalle cuando lo necesites.',
+          'Mira como se distribuye tu dinero por periodo y por categoria. Organiza como quieras y descubre donde mas estas gastando. Haz clic en una categoria para ver mas detalles.',
       },
     },
     pageOnboarding: {
@@ -5230,15 +5275,21 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         confirm: 'Aplicar a todas',
       },
       onboarding: {
-        filtersTitle: 'Filtros e importacion',
+        welcomeTitle: 'Pantalla de Transacciones',
+        welcomeDescription:
+          'Aqui acompanas todos tus movimientos — Pix, debito, efectivo y tarjeta de credito.',
+        filtersTitle: 'Filtra como quieras',
         filtersDescription:
-          'Usa los filtros del encabezado para refinar transacciones y el boton de importacion para subir CSV.',
+          'Usa la barra de busqueda y los filtros para encontrar transacciones por periodo, tipo, categoria o miembro.',
+        newTransactionTitle: 'Agrega operaciones manualmente',
+        newTransactionDescription:
+          'Haz clic en "+ Nueva Transaccion" para registrar un movimiento directamente desde el panel, sin necesidad de enviarlo por WhatsApp.',
+        importTitle: 'Ahorra tiempo importando tu estado de cuenta',
+        importDescription:
+          'Usa el boton "Importar Transaccion" para subir el estado de cuenta en formato CSV y registrar compras en lote.',
         listTitle: 'Lista de transacciones',
         listDescription:
-          'Aqui visualizas movimientos, editas rapido y alternas entre tabla o tarjetas.',
-        summaryTitle: 'Resumen y acciones',
-        summaryDescription:
-          'Acompana el intervalo mostrado, paginacion y acciones masivas.',
+          'Navega entre las pestanas Pix/Debito/Efectivo y Tarjeta de Credito. Usa Actualizar para ver los ultimos movimientos.',
       },
       authorFilter: {
         label: 'Quien la hizo',
