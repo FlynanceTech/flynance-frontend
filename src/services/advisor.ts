@@ -735,6 +735,32 @@ function canUseLocalInviteFallback(error: unknown): boolean {
 }
 
 const LOCAL_ADVISOR_INVITES_KEY = 'flynance_advisor_generated_invites_v1'
+const LOCAL_ADVISOR_DELETED_INVITE_IDS_KEY = 'flynance_advisor_deleted_invite_ids_v1'
+
+function readDeletedAdvisorInviteIds(): Set<string> {
+  if (typeof window === 'undefined') return new Set()
+  try {
+    const raw = window.localStorage.getItem(LOCAL_ADVISOR_DELETED_INVITE_IDS_KEY)
+    return new Set(raw ? JSON.parse(raw) : [])
+  } catch {
+    return new Set()
+  }
+}
+
+function trackDeletedAdvisorInviteId(id: string) {
+  if (typeof window === 'undefined') return
+  try {
+    const ids = readDeletedAdvisorInviteIds()
+    ids.add(id)
+    window.localStorage.setItem(LOCAL_ADVISOR_DELETED_INVITE_IDS_KEY, JSON.stringify([...ids]))
+  } catch { /* ignore */ }
+}
+
+function filterOutDeletedInvites(invites: AdvisorGeneratedInvite[]): AdvisorGeneratedInvite[] {
+  const deletedIds = readDeletedAdvisorInviteIds()
+  if (deletedIds.size === 0) return invites
+  return invites.filter((inv) => !deletedIds.has(inv.id) && !deletedIds.has(inv.token || ''))
+}
 
 export function readLocalAdvisorGeneratedInvites(): AdvisorGeneratedInvite[] {
   if (typeof window === 'undefined') return []
@@ -1022,14 +1048,15 @@ export async function getAdvisorGeneratedInvites(): Promise<AdvisorGeneratedInvi
       .map((item) => toAdvisorGeneratedInvite(item))
       .filter((item): item is AdvisorGeneratedInvite => Boolean(item))
 
-    syncLocalWithBackend(invites)
-    return mergeWithLocalAdvisorGeneratedInvites(invites)
+    const filteredInvites = filterOutDeletedInvites(invites)
+    syncLocalWithBackend(filteredInvites)
+    return mergeWithLocalAdvisorGeneratedInvites(filteredInvites)
   } catch (error: unknown) {
     if (canUseLocalInviteFallback(error)) {
-      return mergeWithLocalAdvisorGeneratedInvites([])
+      return filterOutDeletedInvites(mergeWithLocalAdvisorGeneratedInvites([]))
     }
 
-    const localInvites = readLocalAdvisorGeneratedInvites()
+    const localInvites = filterOutDeletedInvites(readLocalAdvisorGeneratedInvites())
     if (localInvites.length > 0) return localInvites
     throw new Error(toAdvisorErrorMessage(error, 'Erro ao carregar convites do advisor.'))
   }
@@ -1312,9 +1339,11 @@ export async function deleteAdvisorGeneratedInvite(inviteId: string): Promise<vo
       'Erro ao excluir convite.'
     )
     removeLocalAdvisorGeneratedInvite(safeId)
+    trackDeletedAdvisorInviteId(safeId)
   } catch (error: unknown) {
     if (canUseLocalInviteFallback(error)) {
       removeLocalAdvisorGeneratedInvite(safeId)
+      trackDeletedAdvisorInviteId(safeId)
       return
     }
     throw new Error(toAdvisorErrorMessage(error, 'Erro ao excluir convite.'))

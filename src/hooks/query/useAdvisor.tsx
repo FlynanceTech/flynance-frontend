@@ -178,8 +178,14 @@ export function useDeleteAdvisorGeneratedInvite() {
       )
       return { prev }
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: advisorKeys.generatedInvites() })
+    onSuccess: (_, inviteId) => {
+      // Confirm the optimistic removal without triggering a refetch.
+      // A refetch would re-fetch the backend which may still return soft-deleted invites.
+      // The service layer's filterOutDeletedInvites (backed by localStorage) ensures
+      // subsequent fetches/F5 also exclude this invite.
+      qc.setQueryData<AdvisorGeneratedInvite[]>(advisorKeys.generatedInvites(), (old) =>
+        (old ?? []).filter((inv) => inv.id !== inviteId && inv.token !== inviteId)
+      )
       toast.success('Convite excluído.')
     },
     onError: (error, _inviteId, context) => {
