@@ -65,6 +65,48 @@ export async function getPaymentTypeSummary(params?: {
   })
   return data
 }
+export interface CreditCardInstallmentItem {
+  id: string
+  chargeId: string
+  description: string
+  amount: number
+  installmentNumber: number
+  installmentCount: number
+  statementMonthKey: string
+  statementDueAt: string
+  purchaseDate: string
+  categoryId: string | null
+  category: { id: string; name: string; color: string; icon: string } | null
+  cardId: string | null
+  card: { id: string; name: string; last4: string | null } | null
+  userInfo: { id: string; name: string | null; email: string | null } | null
+}
+
+export interface DashboardCreditCardExpenseResponse {
+  totalExpense: number
+  items: CreditCardInstallmentItem[]
+}
+
+export async function getDashboardCreditCardExpense(params: {
+  month?: string
+  from?: string
+  to?: string
+  filterBy?: 'purchase' | 'statement'
+  scope?: FinancialDataScope
+}): Promise<DashboardCreditCardExpenseResponse> {
+  const query = new URLSearchParams()
+  if (params.month) query.set('month', params.month)
+  if (params.from) query.set('from', params.from)
+  if (params.to) query.set('to', params.to)
+  if (params.filterBy) query.set('filterBy', params.filterBy)
+  appendFinancialScopeToSearchParams(query, params.scope)
+
+  const response = await api.get<DashboardCreditCardExpenseResponse>(
+    `/dashboard/credit-card-expense?${query.toString()}`
+  )
+  return response.data
+}
+
 export async function getFinanceStatus(params?: GetFinanceStatusParams): Promise<FinanceStatusResponse> {
   const query = new URLSearchParams()
 

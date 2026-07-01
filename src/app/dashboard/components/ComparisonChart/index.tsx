@@ -17,6 +17,7 @@ interface ComparisonChartProps {
   transactions?: Transaction[]
   isLoading?: boolean
   periodTag?: string
+  availableHeight?: number
 }
 
 function useContainerWidth(): [number, RefObject<HTMLDivElement | null>] {
@@ -38,12 +39,15 @@ function useContainerWidth(): [number, RefObject<HTMLDivElement | null>] {
   return [w, ref]
 }
 
-export default function ComparisonChart({ transactions = [], isLoading = false, periodTag }: ComparisonChartProps) {
+export default function ComparisonChart({ transactions = [], isLoading = false, periodTag, availableHeight }: ComparisonChartProps) {
   const t = useTranslations('comparisonChart')
   const locale = useLocale()
   const isMobile = useIsMobile()
   const [showLegend, setShowLegend] = useState(false)
   const [containerW, containerRef] = useContainerWidth()
+  const chartHeight = availableHeight && availableHeight > 200
+    ? Math.max(280, Math.min(600, availableHeight - 96))
+    : (isMobile ? 300 : 320)
 
   const selectedCategories = useTransactionFilter((s) => s.selectedCategories)
   const setSelectedCategories = useTransactionFilter((s) => s.setSelectedCategories)
@@ -199,7 +203,7 @@ export default function ComparisonChart({ transactions = [], isLoading = false, 
           </div>
         ) : categoriaSelecionada ? (
           <BarDetailChart
-            height={isMobile ? 300 : 320}
+            height={chartHeight}
             yAxisWidth={yWidth}
             color={findColorCategory(categoriaSelecionada) || '#94a3b8'}
             items={dataDetalhada}
@@ -210,7 +214,7 @@ export default function ComparisonChart({ transactions = [], isLoading = false, 
         ) : (
           <BarCompareChart
             containerW={containerW}
-            height={isMobile ? 300 : 320}
+            height={chartHeight}
             yAxisWidth={yWidth}
             income={incomeForChart}
             stackedLabel={t('expensesStackedLabel')}

@@ -22,6 +22,7 @@ import { useCategories } from '@/hooks/query/useCategory'
 import { useCategoryStore } from '@/stores/useCategoryStore'
 import { formatCurrency } from '@/utils/formatter'
 import { getActorFirstName } from '@/utils/actorName'
+import { resolveDisplayDescription } from '@/utils/displayDescription'
 
 function toCurrency(v) {
   return formatCurrency(Number(v || 0))
@@ -36,6 +37,29 @@ function truncateLabel(value, maxChars) {
 function formatDateWithActor(date, locale, actorName) {
   const formattedDate = new Date(date).toLocaleDateString(locale)
   return actorName ? `${formattedDate} • ${actorName}` : formattedDate
+}
+
+const PAYMENT_LABELS = {
+  PIX: 'PIX',
+  DEBIT_CARD: 'Débito',
+  BOLETO: 'Boleto',
+  MONEY: 'Dinheiro',
+  CASH: 'Dinheiro',
+  TED: 'TED',
+  DOC: 'DOC',
+  CREDIT_CARD: 'Cartão de Crédito',
+  OTHER: 'Outro',
+}
+
+function formatPaymentMode(tx) {
+  if (tx._sourceType === 'cc_installment') {
+    const cardName = tx.card?.name || 'Cartão de Crédito'
+    if (tx.installmentCount > 1) {
+      return `${cardName} • Parcela ${tx.installmentNumber} de ${tx.installmentCount}: ${toCurrency(tx.value)}`
+    }
+    return `${cardName} • À vista`
+  }
+  return PAYMENT_LABELS[tx.paymentType] || tx.paymentType || ''
 }
 
 const CustomRect = (props) => {
@@ -86,6 +110,12 @@ const CustomRect = (props) => {
   )
 }
 
+const PAYMENT_FILTERS = [
+  { key: 'ALL', label: 'Todas as Transações' },
+  { key: 'DEBIT', label: 'Débito / PIX' },
+  { key: 'CREDIT', label: 'Cartão de Crédito' },
+]
+
 export default function CategorySpendingDistribution({ transactions, isLoading, periodTag }) {
   const t = useTranslations('categoryDistribution')
   const locale = useLocale()
@@ -94,6 +124,7 @@ export default function CategorySpendingDistribution({ transactions, isLoading, 
   const [selectedCategoryId, setSelectedCategoryId] = useState(null)
   const [selectedCategoryName, setSelectedCategoryName] = useState('')
   const [freezeAnimation, setFreezeAnimation] = useState(false)
+  const [paymentFilter, setPaymentFilter] = useState('ALL')
 
   useCategories()
   const categoryStore = useCategoryStore((s) => s.categoryStore)
@@ -102,9 +133,18 @@ export default function CategorySpendingDistribution({ transactions, isLoading, 
     [categoryStore]
   )
 
-  const despesas = transactions.filter((tx) => tx.type === 'EXPENSE')
+  const despesas = useMemo(
+    () => (transactions ?? []).filter((tx) => tx.type === 'EXPENSE'),
+    [transactions]
+  )
 
-  const map = despesas.reduce((acc, tx) => {
+  const filteredDespesas = useMemo(() => {
+    if (paymentFilter === 'CREDIT') return despesas.filter((tx) => tx._sourceType === 'cc_installment')
+    if (paymentFilter === 'DEBIT') return despesas.filter((tx) => tx._sourceType !== 'cc_installment')
+    return despesas
+  }, [despesas, paymentFilter])
+
+  const map = useMemo(() => filteredDespesas.reduce((acc, tx) => {
     const categoriaId = tx.category?.id || 'outros'
     const categoryFromStore = categoryMap.get(categoriaId)
     const rawName = tx.category?.name
@@ -118,9 +158,9 @@ export default function CategorySpendingDistribution({ transactions, isLoading, 
     }
     acc[categoriaId].value += tx.value
     return acc
-  }, {})
+  }, {}), [filteredDespesas, categoryMap, t])
 
-  const categoriasAgrupadas = despesas.reduce((acc, tx) => {
+  const categoriasAgrupadas = useMemo(() => filteredDespesas.reduce((acc, tx) => {
     const id = tx.category?.id || 'outros'
     const categoryFromStore = categoryMap.get(id)
     const rawName = tx.category?.name
@@ -136,7 +176,7 @@ export default function CategorySpendingDistribution({ transactions, isLoading, 
 
     acc[id].size += tx.value
     return acc
-  }, {})
+  }, {}), [filteredDespesas, categoryMap, t])
 
   const sortedTreemapChildren = Object.values(categoriasAgrupadas)
     .sort((a, b) => b.size - a.size)
@@ -162,7 +202,7 @@ export default function CategorySpendingDistribution({ transactions, isLoading, 
   const total = data[0]?.children?.reduce((sum, item) => sum + item.size, 0) ?? 0
   const hasCategories = dataPie.length > 0
   const selectedTransactions = selectedCategoryId
-    ? despesas.filter((tx) =>
+    ? filteredDespesas.filter((tx) =>
         selectedCategoryId === 'outros'
           ? !tx.category?.id
           : tx.category?.id === selectedCategoryId
@@ -186,17 +226,41 @@ export default function CategorySpendingDistribution({ transactions, isLoading, 
     setFreezeAnimation(true)
   }
 
+  const handleSetPaymentFilter = (key) => {
+    setPaymentFilter(key)
+    setSelectedCategoryId(null)
+    setSelectedCategoryName('')
+  }
+
   return (
     <div className="bg-white p-6 rounded-xl shadow border border-gray-200 w-full flex flex-col lg:flex-row gap-4 items-center lg:items-start">
       <div className="w-full lg:w-1/2 flex flex-col gap-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2">
-          <div className="flex flex-col">
-            <h2 className="text-lg font-semibold text-gray-800 mb-1">{t('title')}</h2>
-            {periodTag && (
-              <span className="w-fit rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
-                {periodTag}
-              </span>
-            )}
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-lg font-semibold text-gray-800">{t('title')}</h2>
+              {periodTag && (
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                  {periodTag}
+                </span>
+              )}
+            </div>
+            {/* Badge-style payment filter — same visual as the period badge */}
+            <div className="flex gap-1 flex-wrap">
+              {PAYMENT_FILTERS.map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => handleSetPaymentFilter(key)}
+                  className={`rounded-full px-2 py-0.5 text-[11px] font-medium cursor-pointer transition-colors border-0 outline-none ${
+                    paymentFilter === key
+                      ? 'bg-primary text-white'
+                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="flex items-center gap-4 justify-between">
             <button
@@ -295,13 +359,29 @@ export default function CategorySpendingDistribution({ transactions, isLoading, 
                   <div key={tx.id} className="flex items-center justify-between gap-3 text-sm">
                     <div className="min-w-0">
                       <p className="truncate text-gray-800 font-medium">
-                        {tx.description || t('defaultTransaction')}
+                        {resolveDisplayDescription(tx.description, tx.sourceDescription, t('defaultTransaction'))}
                       </p>
-                      <p className="text-xs text-gray-500">
-                        {formatDateWithActor(tx.date, locale, getActorFirstName(tx))}
-                      </p>
+                      {formatPaymentMode(tx) && (
+                        <p className="text-xs text-primary/80 font-medium truncate">
+                          {formatPaymentMode(tx)}
+                        </p>
+                      )}
+                      {tx._sourceType === 'cc_installment' ? (
+                        <>
+                          <p className="text-xs text-gray-500">
+                            {`Efetivada em ${new Date(tx.date).toLocaleDateString(locale)}${tx.statementDueAt ? ` • A pagar em ${new Date(tx.statementDueAt).toLocaleDateString(locale)}` : ''}`}
+                          </p>
+                          {getActorFirstName(tx) && (
+                            <p className="text-xs text-gray-500">{getActorFirstName(tx)}</p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-xs text-gray-500">
+                          {formatDateWithActor(tx.date, locale, getActorFirstName(tx))}
+                        </p>
+                      )}
                     </div>
-                    <span className="text-gray-900 font-semibold">
+                    <span className="text-gray-900 font-semibold shrink-0">
                       {toCurrency(tx.value)}
                     </span>
                   </div>

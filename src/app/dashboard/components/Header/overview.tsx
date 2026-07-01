@@ -283,12 +283,12 @@ export default function Header({
             )}
           </div>
 
-          <div className="flex w-full items-center justify-end gap-2 lg:w-auto lg:flex-shrink-0">
+          <div className="flex w-full items-center justify-end gap-2 lg:w-auto lg:flex-shrink-0" data-onboarding-target="header-filter-controls">
             {rightContent}
 
             <div className="hidden lg:flex gap-4 items-center justify-end">
               {asFilter && (
-                <div className="flex gap-4 items-center">
+                <div className="flex gap-4 items-center" data-onboarding-target="header-date-filters">
                   {dataToFilter && (
                     <div className="flex gap-4 items-center">
                       <SearchBar />
@@ -319,7 +319,11 @@ export default function Header({
                 </div>
               )}
 
-              {canCreateTransactions && <NewTransactionButton onClick={() => setDrawerOpen(true)} />}
+              {canCreateTransactions && (
+                <div data-onboarding-target="header-new-transaction">
+                  <NewTransactionButton onClick={() => setDrawerOpen(true)} />
+                </div>
+              )}
             </div>
 
             <div className="flex lg:hidden gap-4 items-center justify-end">

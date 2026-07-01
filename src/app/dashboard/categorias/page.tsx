@@ -138,6 +138,12 @@ function createCategoriesOnboardingSteps(t: TranslatorFn): ReadonlyArray<PageOnb
       title: t('onboarding.formListTitle'),
       description: t('onboarding.formListDescription'),
     },
+    {
+      id: 'organize',
+      selector: '[data-onboarding-target="categorias-colunas"]',
+      title: t('onboarding.organizeTitle'),
+      description: t('onboarding.organizeDescription'),
+    },
   ]
 }
 
@@ -1576,9 +1582,8 @@ export default function CategoriasPage() {
           setEditingCategory(null)
           if (drawerOpen) closeDrawer()
         }}
-        data-onboarding-target="categorias-tabs"
       >
-        <TabList className="mb-2 flex items-center gap-2 overflow-x-auto pb-1">
+        <TabList className="mb-2 flex items-center gap-2 overflow-x-auto pb-1" data-onboarding-target="categorias-tabs">
           <Tab
             className={({ selected }) =>
               clsx(
@@ -1669,7 +1674,7 @@ export default function CategoriasPage() {
                 onDragEnd={handleDragEnd}
               >
                 <TooltipProvider delayDuration={100}>
-                  <div className="flex gap-4 overflow-x-auto pb-1 lg:grid lg:grid-cols-3 lg:overflow-visible">
+                  <div className="flex gap-4 overflow-x-auto pb-1 lg:grid lg:grid-cols-3 lg:overflow-visible" data-onboarding-target="categorias-colunas">
                     {EXPENSE_CLASSIFICATIONS.map((classification) => (
                       <div
                         key={classification}
