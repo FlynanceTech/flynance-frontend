@@ -154,21 +154,29 @@ export default function AdvisorClientInviteAcceptClient() {
   useEffect(() => {
     if (!status || status === 'idle' || status === 'loading') return
     if (status !== 'authenticated') return
-    if (!invite) return
+    if (hasAutoRedirectedRef.current) return
+    if (inviteQuery.isLoading) return
 
-    if (invite.status === 'ACCEPTED') {
-      if (justAccepted && !hasAutoRedirectedRef.current) {
+    if (invite?.status === 'ACCEPTED') {
+      hasAutoRedirectedRef.current = true
+      if (justAccepted) {
         setWelcomeOpen(true)
-        hasAutoRedirectedRef.current = true
-        return
-      }
-      if (!justAccepted && !hasAutoRedirectedRef.current) {
-        hasAutoRedirectedRef.current = true
+      } else {
         logAdvisorInviteEvent('invite_already_accepted', { token })
         router.replace('/dashboard')
       }
+      return
     }
-  }, [status, invite, token, router, justAccepted])
+
+    // Returning from auto-accept+login (just_accepted=1): invite may still be PENDING
+    // if the backend didn't mark ACCEPTED synchronously. Call the authenticated accept
+    // to finalize — this handles both CLIENT-pays and ADVISOR/ORG-pays existing accounts.
+    if (justAccepted && invite && !blocked) {
+      hasAutoRedirectedRef.current = true
+      acceptAndRedirect()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, invite, token, router, justAccepted, inviteQuery.isLoading, blocked])
 
   // ─── Auto-accept when authenticated + PENDING + advisor/org pays ──────────
   const hasAutoAcceptedRef = useRef(false)
@@ -176,11 +184,12 @@ export default function AdvisorClientInviteAcceptClient() {
     if (status !== 'authenticated') return
     if (!invite || invite.status !== 'PENDING') return
     if (isClientPays || blocked) return
+    if (justAccepted) return  // just_accepted=1 path handled by the auto-redirect effect above
     if (hasAutoAcceptedRef.current || acceptInviteMutation.isPending) return
     hasAutoAcceptedRef.current = true
     acceptAndRedirect()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, invite?.status, isClientPays, blocked, acceptInviteMutation.isPending])
+  }, [status, invite?.status, isClientPays, blocked, acceptInviteMutation.isPending, justAccepted])
 
   useEffect(() => {
     if (status === 'idle') {
@@ -199,7 +208,12 @@ export default function AdvisorClientInviteAcceptClient() {
 
     if (invite?.status === 'ACCEPTED') {
       logAdvisorInviteEvent('invite_already_accepted', { token })
-      router.replace('/dashboard')
+      // When returning from auto-accept+login, show welcome popup instead of silent redirect
+      if (justAccepted) {
+        setWelcomeOpen(true)
+      } else {
+        router.replace('/dashboard')
+      }
       return
     }
 
@@ -209,7 +223,11 @@ export default function AdvisorClientInviteAcceptClient() {
       logAdvisorInviteEvent('invite_status_marked_accepted', { token })
       setWelcomeOpen(true)
     } catch {
-      // handled by mutation hook
+      // handled by mutation hook; if returning from auto-accept flow the advisor link
+      // already exists, so show the welcome popup even if this secondary call fails
+      if (justAccepted) {
+        setWelcomeOpen(true)
+      }
     }
   }
 
@@ -217,7 +235,9 @@ export default function AdvisorClientInviteAcceptClient() {
     if (!isValidToken || acceptInviteMutation.isPending) return
     if (invite?.status === 'ACCEPTED') { router.replace('/dashboard'); return }
     if (blocked) return
-    if (isClientPays) { router.push(checkoutHref); return }
+    // Only send to checkout for client-pays if we're NOT returning from a successful
+    // auto-accept (just_accepted=1 means the advisor link already exists — skip payment)
+    if (isClientPays && !justAccepted) { router.push(checkoutHref); return }
     if (status === 'idle' || status === 'loading') return
     if (status === 'unauthenticated') { router.push(nextToLogin); return }
     await acceptAndRedirect()
