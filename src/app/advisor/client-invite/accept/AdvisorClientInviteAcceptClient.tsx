@@ -154,21 +154,29 @@ export default function AdvisorClientInviteAcceptClient() {
   useEffect(() => {
     if (!status || status === 'idle' || status === 'loading') return
     if (status !== 'authenticated') return
-    if (!invite) return
+    if (hasAutoRedirectedRef.current) return
+    if (inviteQuery.isLoading) return
 
-    if (invite.status === 'ACCEPTED') {
-      if (justAccepted && !hasAutoRedirectedRef.current) {
+    if (invite?.status === 'ACCEPTED') {
+      hasAutoRedirectedRef.current = true
+      if (justAccepted) {
         setWelcomeOpen(true)
-        hasAutoRedirectedRef.current = true
-        return
-      }
-      if (!justAccepted && !hasAutoRedirectedRef.current) {
-        hasAutoRedirectedRef.current = true
+      } else {
         logAdvisorInviteEvent('invite_already_accepted', { token })
         router.replace('/dashboard')
       }
+      return
     }
-  }, [status, invite, token, router, justAccepted])
+
+    // Returning from auto-accept+login (just_accepted=1): invite may still be PENDING
+    // if the backend didn't mark ACCEPTED synchronously. Call the authenticated accept
+    // to finalize — this handles both CLIENT-pays and ADVISOR/ORG-pays existing accounts.
+    if (justAccepted && invite && !blocked) {
+      hasAutoRedirectedRef.current = true
+      acceptAndRedirect()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, invite, token, router, justAccepted, inviteQuery.isLoading, blocked])
 
   // ─── Auto-accept when authenticated + PENDING + advisor/org pays ──────────
   const hasAutoAcceptedRef = useRef(false)
@@ -176,11 +184,12 @@ export default function AdvisorClientInviteAcceptClient() {
     if (status !== 'authenticated') return
     if (!invite || invite.status !== 'PENDING') return
     if (isClientPays || blocked) return
+    if (justAccepted) return  // just_accepted=1 path handled by the auto-redirect effect above
     if (hasAutoAcceptedRef.current || acceptInviteMutation.isPending) return
     hasAutoAcceptedRef.current = true
     acceptAndRedirect()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, invite?.status, isClientPays, blocked, acceptInviteMutation.isPending])
+  }, [status, invite?.status, isClientPays, blocked, acceptInviteMutation.isPending, justAccepted])
 
   useEffect(() => {
     if (status === 'idle') {
@@ -199,7 +208,12 @@ export default function AdvisorClientInviteAcceptClient() {
 
     if (invite?.status === 'ACCEPTED') {
       logAdvisorInviteEvent('invite_already_accepted', { token })
-      router.replace('/dashboard')
+      // When returning from auto-accept+login, show welcome popup instead of silent redirect
+      if (justAccepted) {
+        setWelcomeOpen(true)
+      } else {
+        router.replace('/dashboard')
+      }
       return
     }
 
@@ -209,7 +223,11 @@ export default function AdvisorClientInviteAcceptClient() {
       logAdvisorInviteEvent('invite_status_marked_accepted', { token })
       setWelcomeOpen(true)
     } catch {
-      // handled by mutation hook
+      // handled by mutation hook; if returning from auto-accept flow the advisor link
+      // already exists, so show the welcome popup even if this secondary call fails
+      if (justAccepted) {
+        setWelcomeOpen(true)
+      }
     }
   }
 
@@ -217,7 +235,9 @@ export default function AdvisorClientInviteAcceptClient() {
     if (!isValidToken || acceptInviteMutation.isPending) return
     if (invite?.status === 'ACCEPTED') { router.replace('/dashboard'); return }
     if (blocked) return
-    if (isClientPays) { router.push(checkoutHref); return }
+    // Only send to checkout for client-pays if we're NOT returning from a successful
+    // auto-accept (just_accepted=1 means the advisor link already exists — skip payment)
+    if (isClientPays && !justAccepted) { router.push(checkoutHref); return }
     if (status === 'idle' || status === 'loading') return
     if (status === 'unauthenticated') { router.push(nextToLogin); return }
     await acceptAndRedirect()
@@ -381,7 +401,6 @@ export default function AdvisorClientInviteAcceptClient() {
       )
       await fetchAccount()
       logAdvisorInviteEvent('invite_user_created', { email: prefillEmail })
-      setStep('prefill') // reset
       toast.success('Conta criada com sucesso!')
 
       if (!isClientPays && invite && !isInviteBlocked(invite)) {
@@ -589,16 +608,13 @@ export default function AdvisorClientInviteAcceptClient() {
   return (
     <main className="min-h-screen bg-[hsl(var(--background))] px-4 py-8 text-[hsl(var(--foreground))] transition-colors">
       <section className="mx-auto w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-3">
           <div>
             <p className="text-xs font-semibold uppercase text-[#2F6E91]">Convite Flynance</p>
             <h1 className="mt-2 text-xl font-semibold leading-7 text-[#333C4D]">{title}</h1>
           </div>
           {invite?.paymentResponsible && invite.paymentResponsible !== 'CLIENT' && (
-            <span
-              className="max-w-[200px] break-words rounded-full border border-[#D7EAF5] bg-[#F3FAFF] px-3 py-1 text-center text-xs font-semibold leading-4 text-[#2F6E91]"
-              title={invite.paymentResponsible === 'ADVISOR' ? `Será pago por ${advisorName}` : 'Pago pela organização'}
-            >
+            <span className="inline-flex w-fit items-center rounded-full border border-[#D7EAF5] bg-[#F3FAFF] px-3 py-1 text-xs font-semibold text-[#2F6E91]">
               {invite.paymentResponsible === 'ADVISOR'
                 ? `Será pago por ${advisorName}`
                 : 'Pago pela organização'}
@@ -644,10 +660,14 @@ export default function AdvisorClientInviteAcceptClient() {
 
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
               <p className="font-medium text-[#333C4D]">Limites de acesso do Advisor</p>
-              <p className="mt-1">
-                {advisorName} não terá acesso a senhas, dados completos de cartão, CVV, dados
-                bancários sensíveis ou qualquer credencial.
-              </p>
+              <p className="mt-1">{advisorName} não terá acesso a:</p>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-slate-700">
+                <li>senhas;</li>
+                <li>dados completos de cartão;</li>
+                <li>CVV;</li>
+                <li>credenciais;</li>
+                <li>dados bancários sensíveis.</li>
+              </ul>
             </div>
 
             <p>
