@@ -2,7 +2,7 @@
 
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
 import { Plus, X } from 'lucide-react'
-import { Controller, useForm, useWatch } from 'react-hook-form'
+import { Controller, useForm, useWatch, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { NumericFormat } from 'react-number-format'
@@ -175,7 +175,9 @@ export default function CreditCardChargeDrawer({ open, onClose, initialData, ini
     setValue,
     formState: { errors },
   } = useForm<FormData>({
-    resolver: zodResolver(isEditing ? editSchema : createSchema),
+    resolver: (isEditing
+      ? (zodResolver(editSchema) as unknown as Resolver<FormData>)
+      : (zodResolver(createSchema) as unknown as Resolver<FormData>)),
     defaultValues: {
       cardId: '',
       description: '',
