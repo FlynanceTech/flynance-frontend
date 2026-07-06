@@ -120,11 +120,10 @@ type TranslatorFn = (key: string, values?: Record<string, string | number | Date
 function createCategoriesOnboardingSteps(t: TranslatorFn): ReadonlyArray<PageOnboardingStep> {
   return [
     {
-      id: 'header',
-      selector: '[data-onboarding-target="categorias-header"]',
-      align: 'bottom',
-      title: t('onboarding.headerTitle'),
-      description: t('onboarding.headerDescription'),
+      id: 'welcome',
+      selector: '[data-onboarding-target="categorias-welcome"]',
+      title: t('onboarding.welcomeTitle'),
+      description: t('onboarding.welcomeDescription'),
     },
     {
       id: 'tabs',
@@ -133,16 +132,30 @@ function createCategoriesOnboardingSteps(t: TranslatorFn): ReadonlyArray<PageOnb
       description: t('onboarding.tabsDescription'),
     },
     {
-      id: 'content',
-      selector: '[data-onboarding-target="categorias-conteudo"]',
-      title: t('onboarding.formListTitle'),
-      description: t('onboarding.formListDescription'),
+      id: 'create',
+      selector: '[data-onboarding-target="categorias-criar-categoria"]',
+      align: 'bottom',
+      title: t('onboarding.createTitle'),
+      description: t('onboarding.createDescription'),
     },
     {
-      id: 'organize',
+      id: 'list',
       selector: '[data-onboarding-target="categorias-colunas"]',
-      title: t('onboarding.organizeTitle'),
-      description: t('onboarding.organizeDescription'),
+      title: t('onboarding.listTitle'),
+      description: t('onboarding.listDescription'),
+    },
+    {
+      id: 'card',
+      selector: '[data-onboarding-target="categorias-card-exemplo"]',
+      title: t('onboarding.cardTitle'),
+      description: t('onboarding.cardDescription'),
+    },
+    {
+      id: 'guide-button',
+      selector: '[data-onboarding-target="categorias-guia-botao"]',
+      align: 'bottom',
+      title: t('onboarding.guideButtonTitle'),
+      description: t('onboarding.guideButtonDescription'),
     },
   ]
 }
@@ -700,6 +713,7 @@ function SortableExpenseCard({
   canDrag = true,
   canManage = false,
   colorSaving = false,
+  onboardingTarget,
 }: {
   item: CategoryClassificationItem
   labels: CardLabels
@@ -710,6 +724,7 @@ function SortableExpenseCard({
   canDrag?: boolean
   canManage?: boolean
   colorSaving?: boolean
+  onboardingTarget?: string
 }) {
   const { setNodeRef, attributes, listeners, transform, transition, isDragging } =
     useSortable({
@@ -723,7 +738,7 @@ function SortableExpenseCard({
   }
 
   return (
-    <div ref={setNodeRef} style={style}>
+    <div ref={setNodeRef} style={style} {...(onboardingTarget ? { 'data-onboarding-target': onboardingTarget } : {})}>
       <CategoryCard
         item={item}
         labels={labels}
@@ -819,7 +834,7 @@ function ExpenseClassificationColumn({
         strategy={verticalListSortingStrategy}
       >
         <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-1">
-          {items.map((item) => (
+          {items.map((item, index) => (
             <SortableExpenseCard
               key={item.id}
               item={item}
@@ -831,10 +846,14 @@ function ExpenseClassificationColumn({
               canDrag={canDragItem(item)}
               canManage={canManageItem(item)}
               colorSaving={colorSavingIds.has(item.id)}
+              onboardingTarget={classification === 'NEUTRAL' && index === 0 ? 'categorias-card-exemplo' : undefined}
             />
           ))}
           {items.length === 0 ? (
-            <div className="grid min-h-[120px] place-items-center rounded-xl border border-dashed border-slate-300 bg-white/70 p-3 text-center text-xs text-slate-500">
+            <div
+              {...(classification === 'NEUTRAL' ? { 'data-onboarding-target': 'categorias-card-exemplo' } : {})}
+              className="grid min-h-[120px] place-items-center rounded-xl border border-dashed border-slate-300 bg-white/70 p-3 text-center text-xs text-slate-500"
+            >
               {emptyPlaceholder}
             </div>
           ) : null}
@@ -1542,16 +1561,20 @@ export default function CategoriasPage() {
             newTransation={false}
             rightContent={
               <div className="hidden lg:flex lg:items-center lg:gap-3">
-                <PageOnboardingTour
-                  steps={onboardingSteps}
-                  storageKeyBase="flynance:dashboard:onboarding:categorias:v1"
-                  triggerLabel={t('guideButton')}
-                />
-                <ActionTriggerButton
-                  onClick={openCreateDrawer}
-                  label={t('classification.createButton')}
-                  icon={Plus}
-                />
+                <div data-onboarding-target="categorias-guia-botao">
+                  <PageOnboardingTour
+                    steps={onboardingSteps}
+                    storageKeyBase="flynance:dashboard:onboarding:categorias:v1"
+                    triggerLabel={t('guideButton')}
+                  />
+                </div>
+                <div data-onboarding-target="categorias-criar-categoria">
+                  <ActionTriggerButton
+                    onClick={openCreateDrawer}
+                    label={t('classification.createButton')}
+                    icon={Plus}
+                  />
+                </div>
               </div>
             }
           />

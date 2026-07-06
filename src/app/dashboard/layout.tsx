@@ -77,6 +77,7 @@ function DashboardShell({
       <AdvisorActingPill />
       <div
         ref={contentRef}
+        id="dashboard-scroll-root"
         className="flex min-h-0 max-h-screen flex-1 flex-col overflow-y-auto overflow-x-hidden"
       >
         <div className="flex align-center justify-center px-4 lg:px-0 gap-4">

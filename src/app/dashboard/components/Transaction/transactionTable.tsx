@@ -348,9 +348,6 @@ export function TransactionTable({
         </div>
       </div>
 
-      <div className="mt-2 text-xs text-gray-500 dark:text-zinc-400">
-        {t('sortTip', { data: t('date'), value: t('value') })}
-      </div>
     </div>
   )
 }

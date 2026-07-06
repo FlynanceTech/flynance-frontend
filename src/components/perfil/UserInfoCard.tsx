@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Loader2, Mail, Phone, User } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { toast } from 'sonner'
+import toast from 'react-hot-toast'
 
 import { useUsers } from '@/hooks/query/useUsers'
 import { useUserSession } from '@/stores/useUserSession'
@@ -91,14 +91,10 @@ const UserInfoCard = () => {
         },
       })
 
-      toast.success(t('toasts.updatedTitle'), {
-        description: t('toasts.updatedDescription'),
-      })
+      toast.success(t('toasts.updatedTitle'))
     } catch (error) {
       console.error(error)
-      toast.error(t('toasts.updateErrorTitle'), {
-        description: t('toasts.updateErrorDescription'),
-      })
+      toast.error(t('toasts.updateErrorTitle'))
     } finally {
       setLoading(false)
     }

@@ -8,9 +8,9 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { NumericFormat } from 'react-number-format'
 import type { Transaction } from '@/types/Transaction'
 import { normalizePaymentType } from '@/services/transactions'
-import type { PaymentType, TransactionDTO } from '@/services/transactions'
+import type { PaymentType, TransactionDTO, ConvertToChargeDTO } from '@/services/transactions'
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import CreditCardDrawer from '../CreditCardDrawer'
+import SimpleCardDrawer from '../SimpleCardDrawer'
 import { useTranscation } from '@/hooks/query/useTransaction'
 import { useCardMutations } from '@/hooks/query/useCreditCards'
 
@@ -22,6 +22,7 @@ import type { CategoryDTO, CategoryResponse } from '@/services/category'
 import { useCategories } from '@/hooks/query/useCategory'
 import type { CreateCategoryDraft } from '../Categories/createCategoryModal'
 import { Button } from '@/components/ui/button'
+import type { CreditCardResponse } from '@/services/cards'
 
 type CategoryType = 'EXPENSE' | 'INCOME'
 
@@ -39,17 +40,15 @@ const schema = z
       .refine((v) => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(v), 'Formato de data inválido'),
     type: z.enum(['EXPENSE', 'INCOME'], { required_error: 'Tipo é obrigatório' }),
     paymentType: z.enum(
-      ['DEBIT_CARD', 'CREDIT_CARD', 'PIX', 'BOLETO', 'TED', 'DOC', 'MONEY', 'CASH', 'OTHER'],
+      ['DEBIT_CARD', 'CREDIT_CARD', 'PIX', 'BOLETO', 'TED', 'MONEY'],
       { required_error: 'Forma de pagamento é obrigatória' }
     ),
     cardId: z.string().optional(),
     installmentCount: z.number().int().min(1).max(240).optional(),
   })
   .superRefine((data, ctx) => {
-    if (data.paymentType === 'CREDIT_CARD') {
-      if (!data.cardId) {
-        ctx.addIssue({ code: 'custom', path: ['cardId'], message: 'Selecione um cartão' })
-      }
+    if (data.paymentType === 'CREDIT_CARD' && !data.cardId) {
+      ctx.addIssue({ code: 'custom', path: ['cardId'], message: 'Selecione um cartão' })
     }
   })
 
@@ -97,56 +96,61 @@ const paymentTypeOptions: PaymentTypeOption[] = [
   { value: 'PIX', label: 'Pix' },
   { value: 'BOLETO', label: 'Boleto' },
   { value: 'TED', label: 'TED' },
-  { value: 'DOC', label: 'DOC' },
   { value: 'MONEY', label: 'Dinheiro' },
-  { value: 'CASH', label: 'Espécie' },
-  { value: 'OTHER', label: 'Outro' },
 ]
 
 function createSharedSelectStyles<Option>(): StylesConfig<Option, false> {
   return {
-  control: (base, state) => ({
-    ...base,
-    minHeight: 40,
-    borderRadius: 9999,
-    backgroundColor: 'hsl(var(--input))',
-    borderColor: state.isFocused ? 'hsl(var(--ring) / 0.45)' : 'hsl(var(--border) / 0.24)',
-    boxShadow: state.isFocused ? '0 0 0 2px hsl(var(--ring) / 0.22)' : 'none',
-    ':hover': { borderColor: 'hsl(var(--border) / 0.4)' },
-  }),
-  valueContainer: (base) => ({ ...base, paddingLeft: 12, paddingRight: 8 }),
-  placeholder: (base) => ({ ...base, color: 'hsl(var(--muted-foreground))' }),
-  input: (base) => ({ ...base, color: 'hsl(var(--foreground))' }),
-  singleValue: (base) => ({ ...base, color: 'hsl(var(--foreground))' }),
-  indicatorSeparator: (base) => ({ ...base, backgroundColor: 'hsl(var(--border) / 0.3)' }),
-  dropdownIndicator: (base, state) => ({
-    ...base,
-    color: state.isFocused ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))',
-    ':hover': { color: 'hsl(var(--foreground))' },
-  }),
-  menu: (base) => ({
-    ...base,
-    borderRadius: 12,
-    backgroundColor: 'hsl(var(--card))',
-    border: '1px solid hsl(var(--border) / 0.22)',
-    boxShadow: '0 12px 30px rgba(0, 0, 0, 0.35)',
-    overflow: 'hidden',
-  }),
-  menuPortal: (base) => ({ ...base, zIndex: 9999 }),
-  menuList: (base) => ({ ...base, backgroundColor: 'hsl(var(--card))' }),
-  option: (base, state) => ({
-    ...base,
-    backgroundColor: state.isSelected ? 'hsl(var(--accent))' : state.isFocused ? 'hsl(var(--muted))' : 'transparent',
-    color: 'hsl(var(--foreground))',
-    cursor: 'pointer',
-  }),
-  noOptionsMessage: (base) => ({ ...base, color: 'hsl(var(--muted-foreground))' }),
+    control: (base, state) => ({
+      ...base,
+      minHeight: 40,
+      borderRadius: 9999,
+      backgroundColor: 'white',
+      borderColor: state.isFocused ? 'hsl(var(--ring) / 0.45)' : 'hsl(var(--border) / 0.24)',
+      boxShadow: state.isFocused ? '0 0 0 2px hsl(var(--ring) / 0.22)' : 'none',
+      ':hover': { borderColor: 'hsl(var(--border) / 0.4)' },
+    }),
+    valueContainer: (base) => ({ ...base, paddingLeft: 12, paddingRight: 8 }),
+    placeholder: (base) => ({ ...base, color: 'hsl(var(--muted-foreground))' }),
+    input: (base) => ({ ...base, color: 'hsl(var(--foreground))' }),
+    singleValue: (base) => ({ ...base, color: 'hsl(var(--foreground))' }),
+    indicatorSeparator: (base) => ({ ...base, backgroundColor: 'hsl(var(--border) / 0.3)' }),
+    dropdownIndicator: (base, state) => ({
+      ...base,
+      color: state.isFocused ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))',
+      ':hover': { color: 'hsl(var(--foreground))' },
+    }),
+    menu: (base) => ({
+      ...base,
+      borderRadius: 12,
+      backgroundColor: 'hsl(var(--card))',
+      border: '1px solid hsl(var(--border) / 0.22)',
+      boxShadow: '0 12px 30px rgba(0, 0, 0, 0.35)',
+      overflow: 'hidden',
+    }),
+    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+    menuList: (base) => ({ ...base, backgroundColor: 'hsl(var(--card))' }),
+    option: (base, state) => ({
+      ...base,
+      backgroundColor: state.isSelected ? 'hsl(var(--accent))' : state.isFocused ? 'hsl(var(--muted))' : 'transparent',
+      color: 'hsl(var(--foreground))',
+      cursor: 'pointer',
+    }),
+    noOptionsMessage: (base) => ({ ...base, color: 'hsl(var(--muted-foreground))' }),
   }
 }
 
 const typeSelectStyles = createSharedSelectStyles<TypeOption>()
 const paymentTypeSelectStyles = createSharedSelectStyles<PaymentTypeOption>()
 const cardSelectStyles = createSharedSelectStyles<CardOption>()
+
+function normalizeToFormPaymentType(value: string | null | undefined): FormData['paymentType'] {
+  const normalized = normalizePaymentType(value)
+  const allowed = ['DEBIT_CARD', 'CREDIT_CARD', 'PIX', 'BOLETO', 'TED', 'MONEY'] as const
+  return (allowed as readonly string[]).includes(normalized)
+    ? (normalized as FormData['paymentType'])
+    : 'PIX'
+}
 
 export default function TransactionDrawer({
   open,
@@ -155,7 +159,7 @@ export default function TransactionDrawer({
   readOnly = false,
   defaultPaymentType = 'MONEY',
 }: TransactionDrawerProps) {
-  const { createMutation, updateMutation } = useTranscation({})
+  const { createMutation, updateMutation, convertToChargeMutation } = useTranscation({})
   const [openCardDrawer, setOpenCardDrawer] = useState(false)
 
   const {
@@ -179,7 +183,7 @@ export default function TransactionDrawer({
       categoryId: '',
       value: undefined,
       type: 'EXPENSE',
-      paymentType: normalizePaymentType(defaultPaymentType) as FormData['paymentType'],
+      paymentType: normalizeToFormPaymentType(defaultPaymentType),
       date: nowDateTimeLocalValue(),
       cardId: '',
       installmentCount: 1,
@@ -201,14 +205,13 @@ export default function TransactionDrawer({
 
   useEffect(() => {
     if (!open) return
-
     if (initialData) {
       reset({
         description: initialData.description ?? '',
         categoryId: initialData.category?.id ?? '',
         value: initialData.value ?? undefined,
         type: (initialData.type as CategoryType) ?? 'EXPENSE',
-        paymentType: normalizePaymentType(initialData.paymentType ?? 'MONEY') as FormData['paymentType'],
+        paymentType: normalizeToFormPaymentType(initialData.paymentType ?? 'PIX'),
         date: initialData.date ? isoToDateTimeLocalValue(initialData.date) : nowDateTimeLocalValue(),
         cardId: initialData.cardId ?? initialData.card?.id ?? '',
         installmentCount: initialData.installmentCount ?? 1,
@@ -223,6 +226,13 @@ export default function TransactionDrawer({
   const categoryId = useWatch({ control, name: 'categoryId' })
   const cardId = useWatch({ control, name: 'cardId' })
   const isCreditCard = paymentTypeSelected === 'CREDIT_CARD'
+
+  // Auto-open card drawer when user selects CREDIT_CARD but has no cards
+  useEffect(() => {
+    if (isCreditCard && cards.length === 0 && !openCardDrawer) {
+      setOpenCardDrawer(true)
+    }
+  }, [isCreditCard, cards.length, openCardDrawer])
 
   const selectedCategoryObj = useMemo<CategoryResponse | null>(() => {
     if (!categoryId) return null
@@ -259,8 +269,29 @@ export default function TransactionDrawer({
     return createCategoryMutation.mutateAsync(payload)
   }
 
+  const handleCardCreated = (card: CreditCardResponse) => {
+    setValue('cardId', card.id)
+  }
+
   const onSubmit = (data: FormData) => {
     if (readOnly) return
+
+    // Converting an existing Transaction to a CreditCardCharge
+    if (initialData?.id && data.paymentType === 'CREDIT_CARD' && normalizeToFormPaymentType(initialData.paymentType) !== 'CREDIT_CARD') {
+      const convertPayload: ConvertToChargeDTO = {
+        cardId: data.cardId!,
+        installmentCount: data.installmentCount ?? 1,
+        description: data.description,
+        categoryId: data.categoryId,
+        value: data.value,
+        date: dateTimeLocalToISOZ(data.date),
+      }
+      convertToChargeMutation.mutate(
+        { transactionId: initialData.id, data: convertPayload },
+        { onSuccess: () => onClose() }
+      )
+      return
+    }
 
     const payload = buildPayload(data)
 
@@ -275,6 +306,9 @@ export default function TransactionDrawer({
       })
     }
   }
+
+  const isPending = createMutation.isPending || updateMutation.isPending || convertToChargeMutation.isPending
+  const isConverting = Boolean(initialData?.id) && isCreditCard && normalizeToFormPaymentType(initialData?.paymentType) !== 'CREDIT_CARD'
 
   return (
     <>
@@ -295,6 +329,12 @@ export default function TransactionDrawer({
               {readOnly && (
                 <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
                   Voce tem acesso somente leitura para este cliente.
+                </div>
+              )}
+
+              {isConverting && (
+                <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                  Ao salvar, esta transação será convertida para uma compra no cartão de crédito com as parcelas calculadas automaticamente.
                 </div>
               )}
 
@@ -363,10 +403,10 @@ export default function TransactionDrawer({
                   render={({ field }) => (
                     <Select<PaymentTypeOption, false>
                       instanceId="tx-payment-type-select"
-                      value={paymentTypeOptions.find((o) => o.value === field.value) ?? paymentTypeOptions[0]}
+                      value={paymentTypeOptions.find((o) => o.value === field.value) ?? paymentTypeOptions[2]}
                       options={paymentTypeOptions}
                       onChange={(opt) => {
-                        field.onChange(opt?.value ?? 'MONEY')
+                        field.onChange(opt?.value ?? 'PIX')
                         if (opt?.value !== 'CREDIT_CARD') {
                           setValue('cardId', '')
                           setValue('installmentCount', 1)
@@ -407,7 +447,7 @@ export default function TransactionDrawer({
                           onChange={(opt) => field.onChange(opt?.value ?? '')}
                           isSearchable={false}
                           placeholder="Selecione um cartão"
-                          noOptionsMessage={() => 'Nenhum cartão nomeado'}
+                          noOptionsMessage={() => 'Nenhum cartão cadastrado'}
                           menuPortalTarget={typeof window !== 'undefined' ? document.body : null}
                           styles={cardSelectStyles}
                         />
@@ -473,16 +513,25 @@ export default function TransactionDrawer({
 
               <Button
                 type="submit"
-                disabled={readOnly || createMutation.isPending || updateMutation.isPending}
+                disabled={readOnly || isPending}
                 variant="default"
               >
-                {readOnly ? 'Somente leitura' : initialData ? 'Salvar Alterações' : 'Adicionar Transação'}
+                {readOnly
+                  ? 'Somente leitura'
+                  : isPending
+                  ? 'Salvando...'
+                  : isConverting
+                  ? 'Converter para Cartão de Crédito'
+                  : initialData
+                  ? 'Salvar Alterações'
+                  : 'Adicionar Transação'}
               </Button>
 
-              {(createMutation.isError || updateMutation.isError) && (
+              {(createMutation.isError || updateMutation.isError || convertToChargeMutation.isError) && (
                 <p className="text-xs text-red-500">
                   {(createMutation.error as Error | undefined)?.message ??
                     (updateMutation.error as Error | undefined)?.message ??
+                    (convertToChargeMutation.error as Error | undefined)?.message ??
                     'Erro ao salvar transação.'}
                 </p>
               )}
@@ -491,7 +540,11 @@ export default function TransactionDrawer({
         </div>
       </Dialog>
 
-      <CreditCardDrawer open={openCardDrawer} onClose={() => setOpenCardDrawer(false)} />
+      <SimpleCardDrawer
+        open={openCardDrawer}
+        onClose={() => setOpenCardDrawer(false)}
+        onCreated={handleCardCreated}
+      />
     </>
   )
 }

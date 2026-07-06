@@ -1,6 +1,7 @@
 import api from '@/lib/axios'
 import { FinancialDataScope, withFinancialScope } from '@/lib/financialScope'
 import { getErrorMessage } from '@/utils/getErrorMessage'
+import type { Transaction } from '@/types/Transaction'
 
 export interface CreditCardChargeInstallmentItem {
   id: string
@@ -89,6 +90,8 @@ export interface UpdateCreditCardChargeDTO {
   description?: string
   categoryId?: string
   purchaseDate?: string
+  cardId?: string
+  installmentCount?: number
 }
 
 export async function updateCreditCardCharge(
@@ -101,6 +104,20 @@ export async function updateCreditCardCharge(
   } catch (e: unknown) {
     const msg = getErrorMessage(e, 'Erro ao atualizar gasto no cartão.')
     console.error('Erro ao atualizar gasto:', msg)
+    throw new Error(msg)
+  }
+}
+
+export async function convertChargeToTransaction(
+  chargeId: string,
+  data: { paymentType: string; description?: string; categoryId?: string }
+): Promise<Transaction> {
+  try {
+    const response = await api.post(`/cards/charges/${chargeId}/to-transaction`, data)
+    return response.data
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, 'Erro ao converter compra para transação comum.')
+    console.error('Erro ao converter compra:', msg)
     throw new Error(msg)
   }
 }

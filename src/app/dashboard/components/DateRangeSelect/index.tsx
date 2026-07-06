@@ -8,7 +8,7 @@ export type DateFilter =
   | { mode: 'month'; month: string; year: string }
   | { mode: 'range'; start: string; end: string }
 
-const dayOptions = [7, 15, 30, 60, 90, 180]
+const dayOptions = [7, 15, 30, 60, 90, 180, 365]
 
 interface Props {
   value: DateFilter
