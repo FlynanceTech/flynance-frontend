@@ -108,6 +108,13 @@ function createDashboardOnboardingSteps(
       title: t('onboarding.categoriesTitle'),
       description: t('onboarding.categoriesDescription'),
     },
+    {
+      id: 'guide-button',
+      selector: '[data-onboarding-target="dashboard-guide-button"]',
+      align: 'bottom',
+      title: t('onboarding.guideButtonTitle'),
+      description: t('onboarding.guideButtonDescription'),
+    },
   ]
 }
 
@@ -565,15 +572,17 @@ export default function Dashboard() {
           showFutureFilter
           userId={userId}
           rightContent={
-            <button
-              type="button"
-              onClick={openOnboarding}
-              aria-label={t('guideButton')}
-              className="inline-flex items-center gap-0 rounded-full border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 sm:gap-2 sm:px-3"
-            >
-              <Info className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{t('guideButton')}</span>
-            </button>
+            <div data-onboarding-target="dashboard-guide-button">
+              <button
+                type="button"
+                onClick={openOnboarding}
+                aria-label={t('guideButton')}
+                className="inline-flex items-center gap-0 rounded-full border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 sm:gap-2 sm:px-3"
+              >
+                <Info className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{t('guideButton')}</span>
+              </button>
+            </div>
           }
         />
       </div>

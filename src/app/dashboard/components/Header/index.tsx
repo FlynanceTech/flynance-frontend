@@ -165,19 +165,19 @@ export default function Header({
     if (mode === 'range') {
       return {
         mode: 'range',
-        ...toRangeFromDays(Number(dateRange || 30)),
+        ...toRangeFromDays(Number(dateRange || 365)),
       }
     }
 
     return {
       mode: 'days',
-      days: Number(dateRange || 30),
+      days: Number(dateRange || 365),
     }
   }, [mode, dateRange, selectedMonth, selectedYear, rangeStart, rangeEnd])
 
   function handleDateChange(next: AnyDateFilter) {
     if (next?.mode === 'days') {
-      const safeDays = Number(next.days || 30)
+      const safeDays = Number(next.days || 365)
       const range = includeFuture
         ? toFutureRangeFromDays(safeDays)
         : toRangeFromDays(safeDays)
@@ -187,6 +187,8 @@ export default function Header({
       setRangeEnd(range.end)
       setSelectedMonth('')
       setSelectedYear('')
+      applyFilters()
+      onApplyFilters?.()
       return
     }
 
@@ -199,6 +201,8 @@ export default function Header({
         setRangeStart(monthRange.start)
         setRangeEnd(monthRange.end)
       }
+      applyFilters()
+      onApplyFilters?.()
       return
     }
 
@@ -210,6 +214,8 @@ export default function Header({
         setSelectedYear(fullMonth.year)
         setRangeStart(next.start)
         setRangeEnd(next.end)
+        applyFilters()
+        onApplyFilters?.()
         return
       }
 
@@ -220,6 +226,8 @@ export default function Header({
       setRangeEnd(next.end)
       setSelectedMonth('')
       setSelectedYear('')
+      applyFilters()
+      onApplyFilters?.()
     }
   }
 
@@ -232,7 +240,7 @@ export default function Header({
   const hasPendingFilters =
     !sameCategoryIds(selectedCategories, appliedCategories) ||
     (searchTerm || '') !== (appliedSearchTerm || '') ||
-    Number(dateRange || 30) !== Number(appliedDateRange || 30) ||
+    Number(dateRange || 365) !== Number(appliedDateRange || 365) ||
     typeFilter !== appliedTypeFilter ||
     includeFuture !== appliedIncludeFuture ||
     mode !== appliedMode ||

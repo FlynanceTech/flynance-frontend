@@ -71,7 +71,7 @@ const typeSelectStyles: StylesConfig<TypeOption, false> = {
   }),
 }
 
-const PAGE_SIZE = 10
+const DEFAULT_PAGE_SIZE = 10
 const CSV_TIP_AUTO_CLOSE_MS = 8000
 function createTransactionsOnboardingSteps(
   tr: (key: string, values?: Record<string, string | number | Date>) => string
@@ -109,6 +109,13 @@ function createTransactionsOnboardingSteps(
       selector: '[data-onboarding-target="transacoes-lista-area"]',
       title: tr('onboarding.listTitle'),
       description: tr('onboarding.listDescription'),
+    },
+    {
+      id: 'guide-button',
+      selector: '[data-onboarding-target="transacoes-guia-botao"]',
+      align: 'bottom',
+      title: tr('onboarding.guideButtonTitle'),
+      description: tr('onboarding.guideButtonDescription'),
     },
   ]
 }
@@ -329,6 +336,7 @@ export default function TransactionsPage() {
   }
 
   const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
   const [selectedAuthorId, setSelectedAuthorId] = useState<string>('ALL')
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -381,7 +389,7 @@ export default function TransactionsPage() {
   const { transactionsQuery, deleteMutation, updateMutation, createMutation, importPreviewMutation, importConfirmMutation } = useTranscation({
     userId,
     page: currentPage,
-    limit: PAGE_SIZE,
+    limit: pageSize,
     filters: {
       userIds: selectedAuthorId !== 'ALL' ? [selectedAuthorId] : undefined,
       excludePaymentType: 'CREDIT_CARD',
@@ -397,7 +405,7 @@ export default function TransactionsPage() {
     from: creditCardPeriod.dateFrom,
     to: creditCardPeriod.dateTo,
     page: currentPage,
-    limit: PAGE_SIZE,
+    limit: pageSize,
     enabled: activeTab === 'credit_card',
   })
 
@@ -423,6 +431,26 @@ export default function TransactionsPage() {
   const [previewWarnings, setPreviewWarnings] = useState<string[]>([])
   const [previewMeta, setPreviewMeta] = useState<ImportTransactionsPreviewMeta | null>(null)
   const [ignoredImportItems, setIgnoredImportItems] = useState<CreditCardIgnoredImportItem[]>([])
+  const [ignoredDuplicateItems, setIgnoredDuplicateItems] = useState<Array<{
+    description: string
+    installmentCurrent?: number
+    installmentTotal?: number
+    value?: number
+    date?: string
+    categoryId?: string
+    category?: Transaction['category']
+    existingCategory?: { id: string; name: string; color: string | null; icon: string | null } | null
+    type?: string
+    paymentType?: string
+    cardId?: string
+    foundCardId?: string
+    foundCardName?: string | null
+    foundDate?: string
+    foundMatches?: Array<{ cardId: string; cardName: string | null; foundDate: string }>
+  }>>([])
+  const [duplicateOverrides, setDuplicateOverrides] = useState<Record<number, 'ignore' | 'force'>>({})
+  const [duplicateCategoryOverrides, setDuplicateCategoryOverrides] = useState<Record<number, string>>({})
+  const [lastImportCardId, setLastImportCardId] = useState<string>('')
   const [importStep, setImportStep] = useState<'review' | 'card' | 'uncategorized'>('review')
   const [selectedImportCardId, setSelectedImportCardId] = useState<string>('')
 
@@ -609,6 +637,9 @@ export default function TransactionsPage() {
     try {
       setIsPreviewLoading(true)
       setImportError(null)
+      setIgnoredDuplicateItems([])
+      setDuplicateOverrides({})
+      setDuplicateCategoryOverrides({})
       const response = await importPreviewMutation.mutateAsync({ userId, file })
       const isArrayResponse = Array.isArray(response)
       const list = isArrayResponse ? response : response?.transactions ?? []
@@ -673,6 +704,7 @@ export default function TransactionsPage() {
 
   const handleConfirmImport = async () => {
     if (!importedTransactions.length) return
+    const txSnapshot = [...importedTransactions]
     try {
       setIsImporting(true)
       setImportError(null)
@@ -783,18 +815,100 @@ export default function TransactionsPage() {
         }
       }
 
+      const rawDuplicates: Array<{ description: string; installmentCurrent?: number; installmentTotal?: number; value?: number; date?: string; categoryId?: string }> = (response as any)?.ignoredDuplicates ?? []
+      const enrichedDuplicates = rawDuplicates.map((dup) => {
+        const matched = txSnapshot.find(
+          (t) => t.description === dup.description &&
+            (!dup.installmentCurrent || (t as any).installmentCurrent === dup.installmentCurrent)
+        )
+        const existingCategory = (dup as any).existingCategory ?? null
+        return {
+          description: dup.description,
+          installmentCurrent: dup.installmentCurrent,
+          installmentTotal: dup.installmentTotal,
+          value: dup.value ?? matched?.value,
+          date: dup.date ?? (matched?.date ? String(matched.date) : undefined),
+          categoryId: dup.categoryId ?? matched?.categoryId ?? matched?.category?.id,
+          category: existingCategory ?? matched?.category,
+          existingCategory,
+          type: matched?.type,
+          paymentType: matched?.paymentType,
+          cardId: matched?.cardId ?? resolvedCardId,
+          foundCardId: (dup as any).foundCardId,
+          foundCardName: (dup as any).foundCardName,
+          foundDate: (dup as any).foundDate,
+          foundMatches: (dup as any).foundMatches,
+        }
+      })
+      const overrideDefaults: Record<number, 'ignore' | 'force'> = {}
+      enrichedDuplicates.forEach((_, i) => { overrideDefaults[i] = 'ignore' })
+      setIgnoredDuplicateItems(enrichedDuplicates)
+      setDuplicateOverrides(overrideDefaults)
+      setDuplicateCategoryOverrides({})
+      setLastImportCardId(resolvedCardId || '')
       setImportedTransactions([])
       setIgnoredImportItems([])
       setImportFile(null)
       setCurrentPage(1)
       setSelectedCardId(resolvedCardId || 'ALL')
       setActiveTab('credit_card')
-      setPreviewOpen(false)
       setImportStep('review')
       setSelectedImportCardId('')
       toast.success('Importação concluída com sucesso.')
+      if (enrichedDuplicates.length === 0) {
+        setPreviewOpen(false)
+      }
     } catch (err: unknown) {
       setImportError(err instanceof Error ? err.message : 'Erro ao importar transações.')
+    } finally {
+      setIsImporting(false)
+    }
+  }
+
+  const handleForceImportDuplicates = async () => {
+    const forceItemsWithIdx = ignoredDuplicateItems
+      .map((item, origIdx) => ({ item, origIdx }))
+      .filter(({ origIdx }) => duplicateOverrides[origIdx] === 'force')
+    if (!forceItemsWithIdx.length) return
+    try {
+      setIsImporting(true)
+      setImportError(null)
+      const txs = forceItemsWithIdx.map(({ item, origIdx }, i) => ({
+        id: `force-dup-${i}`,
+        description: item.description,
+        value: item.value ?? 0,
+        date: item.date ?? new Date().toISOString().slice(0, 10),
+        categoryId: duplicateCategoryOverrides[origIdx] ?? item.categoryId ?? '',
+        category: item.category,
+        type: (item.type ?? 'EXPENSE') as 'EXPENSE' | 'INCOME',
+        paymentType: (item.paymentType ?? 'CREDIT_CARD') as Transaction['paymentType'],
+        cardId: item.cardId ?? lastImportCardId,
+        origin: 'IMPORT' as const,
+        isInstallment: Boolean(item.installmentCurrent && item.installmentTotal && item.installmentTotal > 1),
+        installmentCurrent: item.installmentCurrent,
+        installmentTotal: item.installmentTotal,
+      })) as Transaction[]
+      const normalizedTxs = normalizeCreditCardStatementImportTransactions(txs, lastImportCardId)
+      const payload: ImportTransactionsConfirmPayload<Transaction> = {
+        mode: 'import',
+        bypassDuplicateCheck: true,
+        transactions: normalizedTxs,
+        importKind: 'CREDIT_CARD_STATEMENT',
+        sourceType: 'CREDIT_CARD_STATEMENT',
+        creditCardStatement: {
+          cardId: lastImportCardId || undefined,
+          createCharges: true,
+          createEffectiveTransaction: false,
+        },
+      }
+      await importConfirmMutation.mutateAsync({ userId, payload })
+      setIgnoredDuplicateItems([])
+      setDuplicateOverrides({})
+      setDuplicateCategoryOverrides({})
+      setPreviewOpen(false)
+      toast.success('Compras importadas com sucesso.')
+    } catch (err: unknown) {
+      setImportError(err instanceof Error ? err.message : 'Erro ao importar.')
     } finally {
       setIsImporting(false)
     }
@@ -805,6 +919,9 @@ export default function TransactionsPage() {
     setImportedTransactions([])
     setImportFile(null)
     setIgnoredImportItems([])
+    setIgnoredDuplicateItems([])
+    setDuplicateOverrides({})
+    setDuplicateCategoryOverrides({})
     setEditingPreviewId(null)
     setEditingPreviewValue('')
     setEditingPreviewOriginal('')
@@ -980,8 +1097,8 @@ export default function TransactionsPage() {
     selectedAuthorId === 'ALL' ? meta?.total ?? displayedTransactions.length : displayedTransactions.length
 
   const startIndex =
-    totalFiltered === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1
-  const endIndex = Math.min(currentPage * PAGE_SIZE, totalFiltered)
+    totalFiltered === 0 ? 0 : (currentPage - 1) * pageSize + 1
+  const endIndex = Math.min(currentPage * pageSize, totalFiltered)
 
   const creditCardTotalPages = chargesQuery.data?.meta?.totalPages ?? 1
   const creditCardTotalAll = chargesQuery.data?.meta?.total ?? apiCharges.length
@@ -990,8 +1107,8 @@ export default function TransactionsPage() {
       ? chargesQuery.data?.meta?.total ?? displayedCharges.length
       : displayedCharges.length
   const creditCardStartIndex =
-    creditCardTotalFiltered === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1
-  const creditCardEndIndex = Math.min(currentPage * PAGE_SIZE, creditCardTotalFiltered)
+    creditCardTotalFiltered === 0 ? 0 : (currentPage - 1) * pageSize + 1
+  const creditCardEndIndex = Math.min(currentPage * pageSize, creditCardTotalFiltered)
 
   const isFiltered =
     selectedCategories.length > 0 ||
@@ -1000,7 +1117,7 @@ export default function TransactionsPage() {
     includeFuture ||
     mode === 'month' ||
     mode === 'range' ||
-    Number(dateRange || 30) !== 30 ||
+    Number(dateRange || 365) !== 365 ||
     (!!rangeStart && !!rangeEnd)
 
   const handleSortChange = (field: 'date' | 'value') => {
@@ -1009,6 +1126,11 @@ export default function TransactionsPage() {
       if (prev.direction === 'asc') return { field, direction: 'desc' }
       return { field: null, direction: 'asc' }
     })
+    setCurrentPage(1)
+  }
+
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize)
     setCurrentPage(1)
   }
 
@@ -1203,52 +1325,72 @@ export default function TransactionsPage() {
                     ? tr('previewDialog.uncategorizedSubtitle')
                     : tr('previewDialog.subtitle')}
                 </p>
-                {previewCategorizationStats.total > 0 && (
-                  <div className="mt-3 rounded-xl border border-amber-100 bg-gradient-to-r from-amber-50 to-yellow-50 px-4 py-3 shadow-[0_10px_24px_rgba(245,158,11,0.08)]">
-                    <div className="flex items-start gap-3">
-                      <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-amber-600 shadow-sm">
-                        <Sparkles className="h-4 w-4" />
-                      </span>
-                      <div className="space-y-1 text-xs text-amber-900">
-                        <p className="font-semibold">
-                          Categoria “Outros” representa transações não identificadas automaticamente.
-                        </p>
-                        <p>Ajuste-as como quiser.</p>
-                        <p>
-                          Apesar de {previewCategorizationStats.categorized} das {previewCategorizationStats.total} transações terem sido categorizadas automaticamente, vale revisar todas para personalizar como preferir.
-                        </p>
+                {importStep === 'review' && (
+                  <>
+                    {previewCategorizationStats.total > 0 && (
+                      <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        <div className="flex items-start gap-3">
+                          <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm">
+                            <Sparkles className="h-4 w-4" />
+                          </span>
+                          <div className="space-y-1 text-xs text-slate-500">
+                            <p className="font-semibold">
+                              Categoria "Outros" representa transações não identificadas automaticamente.
+                            </p>
+                            <p>Ajuste-as como quiser.</p>
+                            <p>
+                              Apesar de {previewCategorizationStats.categorized} das {previewCategorizationStats.total} transações terem sido categorizadas automaticamente, vale revisar todas para personalizar como preferir.
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                )}
-                {ignoredImportItems.length > 0 && (
-                  <div className="mt-2 rounded-xl border border-amber-100 bg-amber-50/80 px-4 py-2.5 shadow-[0_8px_20px_rgba(245,158,11,0.06)]">
-                    <div className="flex items-start gap-2.5">
-                      <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
-                      <div className="text-xs text-amber-900">
-                        <p className="font-semibold">
-                          {ignoredImportItems.length === 1
-                            ? '1 item ignorado por parecer pagamento/ajuste da fatura.'
-                            : `${ignoredImportItems.length} itens ignorados por parecerem pagamentos/ajustes da fatura.`}
-                        </p>
-                        <p className="mt-0.5">
-                          Este item parece ser pagamento/ajuste da fatura e nao sera importado como gasto.
-                        </p>
+                    )}
+                    {ignoredImportItems.length > 0 && (
+                      <div className="mt-2 rounded-xl border border-amber-100 bg-amber-50/80 px-4 py-2.5 shadow-[0_8px_20px_rgba(245,158,11,0.06)]">
+                        <div className="flex items-start gap-2.5">
+                          <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
+                          <div className="text-xs text-amber-900">
+                            <p className="font-semibold">
+                              {ignoredImportItems.length === 1
+                                ? '1 item ignorado por parecer pagamento/ajuste da fatura.'
+                                : `${ignoredImportItems.length} itens ignorados por parecerem pagamento/ajuste da fatura.`}
+                            </p>
+                            <p className="mt-0.5">
+                              {ignoredImportItems.length === 1
+                                ? `"${ignoredImportItems[0].transaction.description}" parece ser pagamento/ajuste da fatura passada, e não será importada como gasto.`
+                                : `${ignoredImportItems.map((item) => `"${item.transaction.description}"`).join(', ')} parecem ser pagamentos/ajustes de faturas passadas, e não serão importadas como gasto.`}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                )}
-                {filteredPreviewWarnings.length > 0 && (
-                  <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
-                    <ul className="flex flex-col gap-0.5 text-[11px] text-amber-700">
-                      {filteredPreviewWarnings.map((warning, wIdx) => (
-                        <li key={`${warning}-${wIdx}`} className="flex items-start gap-1">
-                          <AlertTriangle className="mt-px h-3.5 w-3.5 flex-shrink-0" />
-                          <span>{warning}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                    )}
+                    {ignoredDuplicateItems.length > 0 && (
+                      <div className="mt-2 rounded-xl border border-amber-100 bg-amber-50/80 px-4 py-2.5 shadow-[0_8px_20px_rgba(245,158,11,0.06)]">
+                        <div className="flex items-start gap-2.5">
+                          <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
+                          <div className="text-xs text-amber-900">
+                            <p className="font-semibold">
+                              {ignoredDuplicateItems.length === 1
+                                ? '1 compra ignorada por já estar cadastrada. Revise abaixo e escolha o que fazer.'
+                                : `${ignoredDuplicateItems.length} compras ignoradas por já estarem cadastradas. Revise abaixo e escolha o que fazer.`}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {filteredPreviewWarnings.length > 0 && (
+                      <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+                        <ul className="flex flex-col gap-0.5 text-[11px] text-amber-700">
+                          {filteredPreviewWarnings.map((warning, wIdx) => (
+                            <li key={`${warning}-${wIdx}`} className="flex items-start gap-1">
+                              <AlertTriangle className="mt-px h-3.5 w-3.5 flex-shrink-0" />
+                              <span>{warning}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
               <button
@@ -1262,40 +1404,42 @@ export default function TransactionsPage() {
 
             {/* ── STEP: CARD SELECTION ── */}
             {importStep === 'card' && (
-              <div className="flex flex-1 flex-col items-center justify-center gap-6 overflow-auto px-6 py-8">
+              <div className="flex flex-1 flex-col items-center gap-6 overflow-auto px-6 py-8">
                 {availableCards.length === 0 ? (
                   <div className="text-center">
                     <p className="text-sm font-medium text-gray-700">{tr('previewDialog.noCardsRegistered')}</p>
                     <p className="mt-1 text-xs text-slate-500">Cadastre um cartão antes de importar a fatura.</p>
                   </div>
                 ) : (
-                  <div className="w-full max-w-sm space-y-3">
-                    {availableCards.map((card) => (
-                      <button
-                        key={card.id}
-                        type="button"
-                        onClick={() => setSelectedImportCardId(card.id)}
-                        className={[
-                          'flex w-full items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition',
-                          selectedImportCardId === card.id
-                            ? 'border-primary bg-primary/5 text-primary'
-                            : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50',
-                        ].join(' ')}
-                      >
-                        <span className="h-5 w-5 flex-shrink-0 rounded-full bg-slate-400" />
-                        <span className="flex-1 font-medium">
-                          {card.name}
-                          {card.last4 && (
-                            <span className="ml-2 text-xs font-normal text-slate-500">
-                              •••• {card.last4}
-                            </span>
+                  <div className="w-full max-w-3xl">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[340px] overflow-y-auto pr-1">
+                      {availableCards.map((card) => (
+                        <button
+                          key={card.id}
+                          type="button"
+                          onClick={() => setSelectedImportCardId(card.id)}
+                          className={[
+                            'flex w-full items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition',
+                            selectedImportCardId === card.id
+                              ? 'border-primary bg-primary/5 text-primary'
+                              : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50',
+                          ].join(' ')}
+                        >
+                          <span className="h-5 w-5 flex-shrink-0 rounded-full bg-slate-400" />
+                          <span className="flex-1 font-medium">
+                            {card.name}
+                            {card.last4 && (
+                              <span className="ml-2 text-xs font-normal text-slate-500">
+                                •••• {card.last4}
+                              </span>
+                            )}
+                          </span>
+                          {selectedImportCardId === card.id && (
+                            <span className="text-primary">✓</span>
                           )}
-                        </span>
-                        {selectedImportCardId === card.id && (
-                          <span className="text-primary">✓</span>
-                        )}
-                      </button>
-                    ))}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
                 <div className="flex gap-3">
@@ -1408,6 +1552,7 @@ export default function TransactionsPage() {
             {importStep === 'review' && (
               <>
             <div className="flex-1 overflow-auto p-3 md:p-4">
+              {importedTransactions.length > 0 ? (
               <div className="rounded-xl border border-gray-200 bg-secondary/10 p-3">
                 <div className="hidden md:block">
                   <div className="grid grid-cols-[110px_minmax(240px,1fr)_220px_160px_140px_48px] items-center gap-0 rounded-lg border border-gray-200 bg-secondary/30 px-4 py-3 text-sm font-semibold text-primary">
@@ -1464,12 +1609,10 @@ export default function TransactionsPage() {
                               {t.description}
                             </button>
                           )}
-                          {t.isInstallment && (
-                            <span className="mt-0.5 inline-flex items-center rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700">
-                              {t.installmentCurrent && t.installmentTotal
-                                ? `${t.installmentCurrent}/${t.installmentTotal}`
-                                : tr('previewDialog.installmentBadge')}
-                            </span>
+                          {t.isInstallment && t.installmentCurrent && t.installmentTotal && (
+                            <p className="mt-0.5 text-[10px] font-medium text-violet-600">
+                              Parcela {t.installmentCurrent} de {t.installmentTotal}
+                            </p>
                           )}
                         </div>
                         <div className="pr-3">
@@ -1603,6 +1746,11 @@ export default function TransactionsPage() {
                               {t.description}
                             </button>
                           )}
+                          {t.isInstallment && t.installmentCurrent && t.installmentTotal && (
+                            <p className="mt-0.5 text-[10px] font-medium text-violet-600">
+                              Parcela {t.installmentCurrent} de {t.installmentTotal}
+                            </p>
+                          )}
                         </div>
 
                         <div className="mt-2">
@@ -1667,12 +1815,128 @@ export default function TransactionsPage() {
                   })}
                 </div>
               </div>
+              ) : ignoredDuplicateItems.length > 0 ? (
+              <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50">
+                      <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-500">Data</th>
+                      <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-500">Descrição</th>
+                      <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-500">Categoria</th>
+                      <th className="px-3 py-2.5 text-right text-[11px] font-semibold text-gray-500">Valor</th>
+                      <th className="px-3 py-2.5 text-center text-[11px] font-semibold text-gray-500">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ignoredDuplicateItems.map((item, idx) => {
+                      const isInstallment = item.installmentTotal != null && item.installmentTotal > 1
+                      const override = duplicateOverrides[idx] ?? 'ignore'
+                      const isForced = !isInstallment && override === 'force'
+                      const rowBg = isForced ? 'bg-white' : 'bg-gray-50/50'
+                      const overriddenCategoryId = duplicateCategoryOverrides[idx]
+                      const currentCategory = overriddenCategoryId
+                        ? (categories.find((c) => c.id === overriddenCategoryId) ?? null)
+                        : (item.category as CategoryResponse | null ?? null)
+                      return (
+                        <tr key={idx} className={`border-b border-gray-100 ${rowBg}`}>
+                          <td className="px-3 py-2.5 text-[11px] text-gray-400 whitespace-nowrap">
+                            {item.date ? new Date(item.date).toLocaleDateString(locale) : '--'}
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <p className="text-xs font-medium text-gray-500">{item.description}</p>
+                            {item.installmentCurrent && item.installmentTotal && item.installmentTotal > 1 && (
+                              <p className="mt-0.5 text-[10px] text-violet-500">
+                                Parcela {item.installmentCurrent} de {item.installmentTotal}
+                              </p>
+                            )}
+                            {item.foundMatches && item.foundMatches.length > 0 ? (
+                              <p className="mt-0.5 text-[10px] text-orange-500">
+                                {item.foundMatches.length === 1 ? (
+                                  <>
+                                    Cadastrada{item.foundMatches[0].foundDate ? ` em ${new Date(item.foundMatches[0].foundDate + 'T00:00:00').toLocaleDateString(locale)}` : ''}
+                                    {item.foundMatches[0].cardName ? ` no cartão ${item.foundMatches[0].cardName}` : ''}.
+                                  </>
+                                ) : (
+                                  <>
+                                    Encontrada em: {item.foundMatches.map((m, mi) => (
+                                      <span key={mi}>
+                                        {mi > 0 && ', '}
+                                        {m.cardName || 'cartão desconhecido'}
+                                        {m.foundDate ? ` (cadastrada em ${new Date(m.foundDate + 'T00:00:00').toLocaleDateString(locale)})` : ''}
+                                      </span>
+                                    ))}.
+                                  </>
+                                )}
+                              </p>
+                            ) : (item.foundCardName || item.foundDate) ? (
+                              <p className="mt-0.5 text-[10px] text-orange-500">
+                                Cadastrada{item.foundDate ? ` em ${new Date(item.foundDate + 'T00:00:00').toLocaleDateString(locale)}` : ''}
+                                {item.foundCardName ? ` no cartão ${item.foundCardName}` : ''}.
+                              </p>
+                            ) : null}
+                          </td>
+                          <td className="px-3 py-2.5 text-[11px] text-gray-400">
+                            {isForced ? (
+                              <CategorySelect
+                                value={currentCategory as CategoryResponse | null}
+                                onChange={(value) => {
+                                  const sel = value as CategoryResponse | null
+                                  setDuplicateCategoryOverrides((prev) => ({
+                                    ...prev,
+                                    [idx]: sel?.id ?? '',
+                                  }))
+                                }}
+                                allowCreate={false}
+                                closeMenuOnSelect
+                                placeholder="Categoria"
+                                className="min-w-[140px]"
+                                menuPlacement="auto"
+                                menuPortalTarget={typeof window !== 'undefined' ? document.body : null}
+                              />
+                            ) : (
+                              item.category?.name ?? '--'
+                            )}
+                          </td>
+                          <td className="px-3 py-2.5 text-right text-[11px] text-gray-500 whitespace-nowrap">
+                            {item.value != null ? formatCurrency(item.value) : '--'}
+                          </td>
+                          <td className="px-3 py-2.5 text-center">
+                            {isInstallment ? (
+                              <span className="rounded-full border border-gray-200 px-2.5 py-1 text-[10px] font-semibold text-gray-400 bg-gray-50">
+                                Ignorado
+                              </span>
+                            ) : (
+                              <select
+                                value={override}
+                                onChange={(e) => setDuplicateOverrides((prev) => ({
+                                  ...prev,
+                                  [idx]: e.target.value as 'ignore' | 'force',
+                                }))}
+                                className={[
+                                  'rounded-full border px-2.5 py-1 text-[10px] font-semibold focus:outline-none cursor-pointer',
+                                  isForced
+                                    ? 'border-primary text-primary bg-primary/5'
+                                    : 'border-gray-200 text-gray-500 bg-white',
+                                ].join(' ')}
+                              >
+                                <option value="ignore">Ignorado</option>
+                                <option value="force">Enviar mesmo assim</option>
+                              </select>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              ) : null}
             </div>
-            
+
             {/* ── REVIEW FOOTER ── */}
             <div className="flex flex-col gap-3 border-t border-gray-100 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-6">
               <div className="flex flex-col gap-1">
-                {importedTransactions.length === 0 && (
+                {importedTransactions.length === 0 && ignoredDuplicateItems.length === 0 && (
                   <p className="text-xs font-semibold text-red-400">
                     {tr('previewDialog.noneFound')}
                   </p>
@@ -1685,6 +1949,27 @@ export default function TransactionsPage() {
                 <p className="text-[11px] text-slate-400">{tr('previewDialog.tip')}</p>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                {importedTransactions.length === 0 && ignoredDuplicateItems.length > 0 ? (
+                  <>
+                    {Object.values(duplicateOverrides).some((v) => v === 'force') && (
+                      <button
+                        type="button"
+                        onClick={handleForceImportDuplicates}
+                        disabled={isImporting}
+                        className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-white hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {isImporting ? 'Importando...' : 'Importar selecionadas'}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleClosePreview}
+                      className="rounded-full border border-gray-300 bg-white px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+                    >
+                      Fechar
+                    </button>
+                  </>
+                ) : (
                 <button
                   type="button"
                   onClick={handleConfirmImport}
@@ -1693,6 +1978,7 @@ export default function TransactionsPage() {
                 >
                   {isImporting ? tr('previewDialog.importing') : tr('previewDialog.confirmImport')}
                 </button>
+                )}
                 {importError && (
                   <p className="text-xs text-red-500">{importError}</p>
                 )}
@@ -1835,11 +2121,13 @@ export default function TransactionsPage() {
           importLoading={isPreviewLoading || isImporting}
           onApplyFilters={() => setCurrentPage(1)}
           rightContent={
-            <PageOnboardingTour
-              steps={onboardingSteps}
-              storageKeyBase="flynance:dashboard:onboarding:transacoes:v1"
-              triggerLabel={tr('guideButton')}
-            />
+            <div data-onboarding-target="transacoes-guia-botao">
+              <PageOnboardingTour
+                steps={onboardingSteps}
+                storageKeyBase="flynance:dashboard:onboarding:transacoes:v1"
+                triggerLabel={tr('guideButton')}
+              />
+            </div>
           }
           inlineFilterSlot={
             showActorContext && authorOptions.length > 1 ? (
@@ -2042,9 +2330,19 @@ export default function TransactionsPage() {
                 onDelete={handleDeleteSingle}
               />
 
-              <div className="flex items-center justify-between lg:flex-row flex-col gap-4" data-onboarding-target="transacoes-resumo">
-                <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-                  <span className="text-sm text-muted-foreground">
+              <div className="flex flex-col gap-2 pb-24 lg:pb-0" data-onboarding-target="transacoes-resumo">
+                {!isAdvisorReadOnly && selectedIds.size > 0 && (
+                  <div className="flex justify-end">
+                    <button
+                      onClick={requestDeleteSelected}
+                      className="px-4 py-2 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+                    >
+                      {tr('deleteSelection', { count: selectedIds.size })}
+                    </button>
+                  </div>
+                )}
+                <div className="flex items-center justify-between gap-3 w-full">
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">
                     {creditCardTotalFiltered > 0 ? (
                       <>
                         {tr('showingRange', {
@@ -2063,30 +2361,28 @@ export default function TransactionsPage() {
                       </>
                     )}
                   </span>
-                </div>
-
-                {!isAdvisorReadOnly && selectedIds.size > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    <div className="flex justify-end">
-                      <button
-                        onClick={requestDeleteSelected}
-                        className="px-4 py-2 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+                  <div className="flex items-center gap-3">
+                    {creditCardTotalPages > 1 && (
+                      <Pagination
+                        currentPage={currentPage}
+                        totalPages={creditCardTotalPages}
+                        onChange={(page) => setCurrentPage(page)}
+                      />
+                    )}
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <span>Por página:</span>
+                      <select
+                        value={pageSize}
+                        onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                        className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 focus:outline-none"
                       >
-                        {tr('deleteSelection', { count: selectedIds.size })}
-                      </button>
+                        {[10, 25, 50, 100].map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
-                )}
-
-                {creditCardTotalPages > 1 && (
-                  <div className="lg:mt-4 flex justify-center pb-24 lg:pb-0">
-                    <Pagination
-                      currentPage={currentPage}
-                      totalPages={creditCardTotalPages}
-                      onChange={(page) => setCurrentPage(page)}
-                    />
-                  </div>
-                )}
+                </div>
               </div>
             </>
           )}
@@ -2181,9 +2477,19 @@ export default function TransactionsPage() {
           onDelete={handleDeleteSingle}
         />
 
-        <div className="flex items-center justify-between lg:flex-row flex-col gap-4" data-onboarding-target="transacoes-resumo">
-          <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-            <span className="text-sm text-muted-foreground">
+        <div className="flex flex-col gap-2 pb-24 lg:pb-0" data-onboarding-target="transacoes-resumo">
+          {!isAdvisorReadOnly && selectedIds.size > 0 && (
+            <div className="flex justify-end">
+              <button
+                onClick={requestDeleteSelected}
+                className="px-4 py-2 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+              >
+                {tr('deleteSelection', { count: selectedIds.size })}
+              </button>
+            </div>
+          )}
+          <div className="flex items-center justify-between gap-3 w-full mt-2">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">
               {totalFiltered > 0 ? (
                 <>
                   {tr('showingRange', {
@@ -2202,38 +2508,28 @@ export default function TransactionsPage() {
                 </>
               )}
             </span>
-          </div>
-              
-      {!isAdvisorReadOnly && selectedIds.size > 0 && (
-        <div className="flex flex-wrap gap-2">
-         {/*  {selectedCategories.map((item) => (
-            <div
-              key={item.id}
-              className="px-4 py-1 text-sm font-light flex items-center justify-center rounded-full bg-secondary/30"
-            >
-              {item.name}
+            <div className="flex items-center gap-3">
+              {totalPages > 1 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onChange={(page) => setCurrentPage(page)}
+                />
+              )}
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <span>Por página:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                  className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 focus:outline-none"
+                >
+                  {[10, 25, 50, 100].map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-          ))}
- */}
-          <div className="flex justify-end">
-            <button
-              onClick={requestDeleteSelected}
-              className="px-4 py-2 bg-red-500 text-white text-sm rounded hover:bg-red-600"
-            >
-              {tr('deleteSelection', { count: selectedIds.size })}
-            </button>
           </div>
-        </div>
-      )}
-          {totalPages > 1 && (
-            <div className="lg:mt-4 flex justify-center pb-24 lg:pb-0">
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onChange={(page) => setCurrentPage(page)}
-              />
-            </div>
-          )}
         </div>
 
         <DeleteConfirmModal
