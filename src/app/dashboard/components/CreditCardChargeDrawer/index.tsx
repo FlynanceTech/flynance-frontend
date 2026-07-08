@@ -39,6 +39,7 @@ const editSchema = z.object({
   cardId: z.string().optional(),
   description: z.string().min(1, 'Descrição obrigatória'),
   categoryId: z.string().min(1, 'Categoria obrigatória'),
+  value: z.number({ invalid_type_error: 'Informe um valor válido' }).positive('Valor deve ser maior que zero').optional(),
   purchaseDate: z
     .string()
     .min(1, 'Data obrigatória')
@@ -256,6 +257,8 @@ export default function CreditCardChargeDrawer({ open, onClose, initialData, ini
     if (!initialData) return
     const editData = data as EditFormData
     const newCount = editData.installmentCount
+    const valueChanged =
+      editData.value != null && Math.abs(Number(editData.value) - Number(initialData.amountTotal)) > 0.001
     updateChargeMutation.mutate(
       {
         chargeId: initialData.id,
@@ -265,6 +268,7 @@ export default function CreditCardChargeDrawer({ open, onClose, initialData, ini
           purchaseDate: dateTimeLocalToISOZ(data.purchaseDate),
           ...(editData.cardId && editData.cardId !== initialData.cardId ? { cardId: editData.cardId } : {}),
           ...(newCount != null && newCount !== initialData.installmentCount ? { installmentCount: newCount } : {}),
+          ...(valueChanged ? { value: editData.value } : {}),
         },
       },
       { onSuccess: () => { reset(); setConfirmModalOpen(false); setPendingFormData(null); onClose() } }
@@ -477,8 +481,8 @@ export default function CreditCardChargeDrawer({ open, onClose, initialData, ini
                 </div>
               )}
 
-              {/* Valor — só na criação */}
-              {!isEditing && (
+              {/* Valor — criação e edição (oculto apenas ao converter para outro meio) */}
+              {!isConverting && (
                 <div className="flex flex-col gap-2">
                   <label className="block text-sm text-gray-700 mb-1">Valor total</label>
                   <Controller

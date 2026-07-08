@@ -342,6 +342,9 @@ export default function TransactionsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [chargeDrawerOpen, setChargeDrawerOpen] = useState(false)
   const [editingCharge, setEditingCharge] = useState<CreditCardChargeItem | null>(null)
+  // Deep-link (?tab=credit_card&cardId=&chargeId=) opened from the Futuros screen
+  const [pendingChargeId, setPendingChargeId] = useState<string | null>(null)
+  const deepLinkConsumedRef = useRef(false)
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [selectAll, setSelectAll] = useState(false)
@@ -500,6 +503,38 @@ export default function TransactionsPage() {
     () => chargesQuery.data?.charges ?? [],
     [chargesQuery.data?.charges]
   )
+
+  // Consume a deep-link once on mount: switch to the credit-card tab and target
+  // a specific charge (used by the "✏️" in the Futuros parcelamentos panel).
+  useEffect(() => {
+    if (deepLinkConsumedRef.current) return
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('tab') !== 'credit_card') return
+    deepLinkConsumedRef.current = true
+    setActiveTab('credit_card')
+    setCurrentPage(1)
+    const cardId = params.get('cardId')
+    const chargeId = params.get('chargeId')
+    if (cardId) setSelectedCardId(cardId)
+    if (chargeId) setPendingChargeId(chargeId)
+  }, [])
+
+  // Once the targeted charge is loaded, open its edit drawer and clean the URL.
+  useEffect(() => {
+    if (!pendingChargeId || activeTab !== 'credit_card' || chargesQuery.isLoading) return
+    const charge = apiCharges.find((c) => c.id === pendingChargeId)
+    if (charge) {
+      setEditingCharge(charge)
+      setChargeDrawerOpen(true)
+    } else {
+      toast('Não encontrei este parcelamento na lista atual. Ajuste os filtros para localizá-lo.', { icon: 'ℹ️' })
+    }
+    setPendingChargeId(null)
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', '/dashboard/transacoes')
+    }
+  }, [pendingChargeId, activeTab, chargesQuery.isLoading, apiCharges])
 
   const cardFilterOptions = useMemo<CardFilterOption[]>(
     () =>

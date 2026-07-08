@@ -92,6 +92,7 @@ export interface UpdateCreditCardChargeDTO {
   purchaseDate?: string
   cardId?: string
   installmentCount?: number
+  value?: number
 }
 
 export async function updateCreditCardCharge(

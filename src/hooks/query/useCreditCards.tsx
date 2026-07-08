@@ -93,6 +93,14 @@ export function useCardMutations(cardId?: string, tz?: string) {
         qc.invalidateQueries({ queryKey: ['cards'] })
         qc.invalidateQueries({ queryKey: cardKeys.card(updated.id, actingContextKey, scopeKey) })
         qc.invalidateQueries({ queryKey: cardKeys.summary(updated.id, actingContextKey, scopeKey) })
+        // Billing-day changes re-date the statements on the backend, so the
+        // dashboard/forecast/charges views must refetch to reflect new dates.
+        qc.invalidateQueries({ queryKey: ['cards', 'statements'] })
+        qc.invalidateQueries({ queryKey: ['future-forecast'] })
+        qc.invalidateQueries({ queryKey: ['future-installments'] })
+        qc.invalidateQueries({ queryKey: ['credit-card-charges'] })
+        qc.invalidateQueries({ queryKey: ['financeStatus'] })
+        qc.invalidateQueries({ queryKey: ['payment-type-summary'] })
         },
     })
 

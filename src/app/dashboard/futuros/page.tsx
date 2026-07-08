@@ -46,6 +46,7 @@ import FeatureUnavailable from '../components/FeatureUnavailable'
 import { FEATURES } from '@/config/features'
 import { useCategories } from '@/hooks/query/useCategory'
 import { useCardMutations } from '@/hooks/query/useCreditCards'
+import { useRouter } from 'next/navigation'
 import { useCreditCardCharges } from '@/hooks/query/useCreditCardCharges'
 import {
   FutureEditableInstallmentStatus,
@@ -1301,13 +1302,54 @@ function InstallmentPlanRow({
   )
 }
 
+function InstallmentChargeRow({
+  charge,
+  onEdit,
+  readOnly,
+}: {
+  charge: CreditCardChargeItem
+  onEdit: (charge: CreditCardChargeItem) => void
+  readOnly: boolean
+}) {
+  const count = Number(charge.installmentCount || 1)
+  const installments = charge.installments ?? []
+  const paidCount = installments.filter((i) => i.status === 'paid').length
+  const nextUnpaid = installments
+    .filter((i) => i.status !== 'paid')
+    .sort((a, b) => new Date(a.statementDueAt).getTime() - new Date(b.statementDueAt).getTime())[0]
+  const monthly = installments[0]?.amount ?? Number(charge.amountTotal || 0) / (count || 1)
+
+  return (
+    <div className="grid gap-3 border-t border-slate-100 px-4 py-3 first:border-t-0 md:grid-cols-[1.2fr_0.7fr_0.9fr_0.9fr_0.8fr_34px] md:items-center dark:border-white/5">
+      <div className="min-w-0">
+        <p className="truncate text-sm font-extrabold text-slate-900 dark:text-white">{charge.description}</p>
+        <p className="mt-1 text-xs font-bold text-slate-500">{paidCount} de {count} parcelas pagas</p>
+      </div>
+      <div><p className="text-sm font-extrabold text-slate-950 dark:text-white">{count}x</p><p className="mt-1 text-xs font-medium text-slate-500">Parcelas</p></div>
+      <div><p className="text-sm font-extrabold text-slate-950 dark:text-white">{formatCurrencyBRL(Number(charge.amountTotal || 0))}</p><p className="mt-1 text-xs font-medium text-slate-500">Total</p></div>
+      <div><p className="text-sm font-extrabold text-slate-950 dark:text-white">{formatDateShort(nextUnpaid?.statementDueAt ?? null)}</p><p className="mt-1 text-xs font-medium text-slate-500">Proximo vencimento</p></div>
+      <div><p className="text-sm font-extrabold text-slate-950 dark:text-white">{formatCurrencyBRL(monthly)}</p><p className="mt-1 text-xs font-medium text-slate-500">Por mes</p></div>
+      <button
+        type="button"
+        disabled={readOnly}
+        onClick={() => onEdit(charge)}
+        title="Editar na tela de Transações"
+        aria-label="Editar parcelamento na tela de Transações"
+        className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 disabled:cursor-not-allowed disabled:text-slate-300 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+      >
+        <Pencil className="h-4 w-4" />
+      </button>
+    </div>
+  )
+}
+
 function SelectedCardHud({
   card,
   ownerLabel,
   cardColor,
   invoiceGroup,
   purchases,
-  installments,
+  installmentCharges,
   distribution,
   loadingPurchases,
   payingStatement,
@@ -1316,12 +1358,10 @@ function SelectedCardHud({
   onManageCard,
   onPayStatement,
   onOpenPurchases,
-  onOpenInstallments,
   onOpenHistory,
   onEditPurchase,
   onDeletePurchase,
-  onEditPlan,
-  onDeletePlan,
+  onEditInstallmentCharge,
   readOnly,
 }: {
   card: CreditCardResponse | null
@@ -1329,7 +1369,7 @@ function SelectedCardHud({
   cardColor: string
   invoiceGroup: InvoiceGroup | null
   purchases: Array<{ item: FutureItem; charge?: CreditCardChargeItem | null }>
-  installments: FutureInstallmentPlan[]
+  installmentCharges: CreditCardChargeItem[]
   distribution: CreditDistributionItem[]
   loadingPurchases: boolean
   payingStatement: boolean
@@ -1338,12 +1378,10 @@ function SelectedCardHud({
   onManageCard: (cardId?: string) => void
   onPayStatement: () => void
   onOpenPurchases: () => void
-  onOpenInstallments: () => void
   onOpenHistory: () => void
   onEditPurchase: (charge: CreditCardChargeItem) => void
   onDeletePurchase: (charge: CreditCardChargeItem) => void
-  onEditPlan: (plan: FutureInstallmentPlan) => void
-  onDeletePlan: (plan: FutureInstallmentPlan) => void
+  onEditInstallmentCharge: (charge: CreditCardChargeItem) => void
   readOnly: boolean
 }) {
   if (!card) {
@@ -1360,7 +1398,7 @@ function SelectedCardHud({
   const statementStatus = getStatementDisplayStatus(invoiceGroup?.statement)
   const invoiceTotal = invoiceGroup?.totalAmount ?? 0
   const visiblePurchases = purchases.slice(0, 7)
-  const visibleInstallments = installments.slice(0, 7)
+  const visibleInstallmentCharges = installmentCharges.slice(0, 7)
 
   return (
     <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] lg:gap-5">
@@ -1477,17 +1515,16 @@ function SelectedCardHud({
 
           <article className={futurosUi.surface}>
             <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-3.5 dark:border-white/5 sm:px-5 sm:py-4">
-              <div><h3 className={futurosUi.sectionTitle}>Parcelamentos</h3><p className={futurosUi.sectionSubtitle}>Planos vinculados a este cartao.</p></div>
-              {installments.length > 7 && <button type="button" onClick={onOpenInstallments} className="text-xs font-extrabold text-primary hover:text-secondary">Ver todos os {installments.length}</button>}
+              <div><h3 className={futurosUi.sectionTitle}>Parcelamentos</h3><p className={futurosUi.sectionSubtitle}>Compras parceladas neste cartão. Edite na tela de Transações.</p></div>
             </div>
-            {visibleInstallments.length ? (
-              <div className={installments.length > 5 ? futurosUi.listScrollSm : undefined}>
-              {visibleInstallments.map((plan) => (
-                <InstallmentPlanRow
-                  key={plan.id}
-                  plan={plan}
-                  onEdit={onEditPlan}
-                  onDelete={onDeletePlan}
+            {visibleInstallmentCharges.length ? (
+              <div className={installmentCharges.length > 5 ? futurosUi.listScrollSm : undefined}>
+              {visibleInstallmentCharges.map((charge) => (
+                <InstallmentChargeRow
+                  key={charge.id}
+                  charge={charge}
+                  onEdit={onEditInstallmentCharge}
+                  readOnly={readOnly}
                 />
               ))}
               </div>
@@ -1807,6 +1844,11 @@ function FuturosPageContent() {
   const { houseContext, currentUserId, scopeKey } = useFinancialScope()
   const currentUserName = user?.userData?.user?.name ?? user?.userData?.user?.email ?? ''
   const managementSectionRef = useRef<HTMLElement | null>(null)
+  const router = useRouter()
+  // Legacy bottom "Gerenciamento de parcelamentos" section is no longer shown —
+  // parcelamentos live in the per-card panel and are edited on the Transações
+  // screen. Kept behind this flag to preserve the (balanced) JSX for reference.
+  const showLegacyManagement = false as boolean
 
   const planSchema = useMemo(() => buildPlanSchema(t), [t])
   const installmentEditSchema = useMemo(() => buildInstallmentEditSchema(t), [t])
@@ -2165,6 +2207,13 @@ function FuturosPageContent() {
     [plansQuery.data?.plans, selectedCardId]
   )
 
+  // Parcelamentos of the selected card come from credit-card charges with more
+  // than one installment. This is the source shown in the per-card panel.
+  const selectedCardInstallmentCharges = useMemo(
+    () => selectedCardCharges.filter((charge) => (charge.installmentCount ?? 1) > 1),
+    [selectedCardCharges]
+  )
+
   const selectedCardDistribution = useMemo(
     () =>
       buildCreditDistribution(
@@ -2364,6 +2413,17 @@ function FuturosPageContent() {
   const openChargeDrawer = (charge?: CreditCardChargeItem | null) => {
     setEditingCharge(charge ?? null)
     setChargeDrawerOpen(true)
+  }
+
+  // Parcelamentos are edited only on the Transações screen. The "✏️" deep-links
+  // there and auto-opens the edit drawer for the chosen charge.
+  const goToTransactionEditForCharge = (charge: CreditCardChargeItem) => {
+    const params = new URLSearchParams({
+      tab: 'credit_card',
+      cardId: charge.cardId,
+      chargeId: charge.id,
+    })
+    router.push(`/dashboard/transacoes?${params.toString()}`)
   }
 
   const handleOpenChargeDrawer = (charge?: CreditCardChargeItem | null) => {
@@ -2857,7 +2917,6 @@ function FuturosPageContent() {
             icon={LayoutGrid}
             tone="purple"
             loading={currentMonthForecastQuery.isLoading}
-            onClick={openInstallmentsManagement}
           />
         </section>
 
@@ -2882,7 +2941,7 @@ function FuturosPageContent() {
           cardColor={getCardAccentColor(selectedCard?.id, cardColors)}
           invoiceGroup={selectedInvoiceGroup}
           purchases={selectedInvoicePurchases}
-          installments={selectedCardInstallmentPlans}
+          installmentCharges={selectedCardInstallmentCharges}
           distribution={selectedCardDistribution}
           loadingPurchases={selectedCardChargesQuery.isLoading}
           payingStatement={payStatementMutation.isPending}
@@ -2891,12 +2950,10 @@ function FuturosPageContent() {
           onManageCard={openEditCardForm}
           onPayStatement={requestPaySelectedStatement}
           onOpenPurchases={() => setPurchasesModalOpen(true)}
-          onOpenInstallments={() => setInstallmentPlansModalOpen(true)}
           onOpenHistory={() => setHistoryModalOpen(true)}
           onEditPurchase={handleOpenChargeDrawer}
           onDeletePurchase={handleRequestDeleteCharge}
-          onEditPlan={openEditPlanModal}
-          onDeletePlan={setDeletePlanTarget}
+          onEditInstallmentCharge={goToTransactionEditForCharge}
           readOnly={isAdvisorReadOnly}
         />
 
@@ -3067,9 +3124,11 @@ function FuturosPageContent() {
         ))}
 
       {/* ────────────────────────────────────────────────────────────────────── */}
-      {/* MANAGEMENT SECTION */}
+      {/* MANAGEMENT SECTION — removida da tela: parcelamentos agora aparecem no  */}
+      {/* painel do cartão e são editados apenas na tela de Transações.           */}
       {/* ────────────────────────────────────────────────────────────────────── */}
 
+        {showLegacyManagement && (
         <section ref={managementSectionRef} className={futurosUi.surfacePadding}>
           <button
             type="button"
@@ -3341,6 +3400,7 @@ function FuturosPageContent() {
             </div>
           )}
         </section>
+        )}
       </div>
 
       <CreditCardManagerDrawer
