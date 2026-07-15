@@ -4,12 +4,12 @@ import "./globals.css";
 import PushNotificationBootstrap from "@/components/PushNotificationBootstrap";
 import TrackingScripts from "@/components/TrackingScripts";
 import PWARegister from "@/components/PWARegister";
-import { Analytics } from "@vercel/analytics/next"
-import { SpeedInsights } from "@vercel/speed-insights/next"
 import PWAInstallListener from "@/components/PWAInstallListener";
 import { Providers } from "@/providers/Providers";
 import { IntlProvider } from "@/providers/IntlProvider";
 import ThemeScopeController from "@/components/ThemeScopeController";
+import CookieConsentProvider from "@/components/cookies/CookieConsentProvider";
+import GatedAnalytics from "@/components/cookies/GatedAnalytics";
 
 
 const ubuntu = Ubuntu({
@@ -36,24 +36,17 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className={`${ubuntu.variable}`} suppressHydrationWarning>
       <body >
-        <noscript>
-          <iframe
-            src="https://www.googletagmanager.com/ns.html?id=GTM-MR4HDQL9"
-            height="0"
-            width="0"
-            style={{ display: "none", visibility: "hidden" }}
-          ></iframe>
-        </noscript>
           <PWAInstallListener />
           <PWARegister/>
           <PushNotificationBootstrap />
-          <TrackingScripts />
-          <ThemeScopeController />
-          <Providers>
-            <IntlProvider>{children}</IntlProvider>
-          </Providers>
-          <Analytics />
-          <SpeedInsights />
+          <CookieConsentProvider>
+            <TrackingScripts />
+            <ThemeScopeController />
+            <Providers>
+              <IntlProvider>{children}</IntlProvider>
+            </Providers>
+            <GatedAnalytics />
+          </CookieConsentProvider>
       </body>
     </html>  
   );

@@ -3,6 +3,7 @@ import React from "react";
 import instagram from "../../../assets/icons/instagram-fill-icon.png"
 import tiktop from "../../../assets/icons/tiktok-icon.png"
 import logo from "../../../assets/Logo/PNG/Logo Fly variação 02 colorida.png"
+import CookiePreferencesButton from "@/components/cookies/CookiePreferencesButton"
 
 const Footer = () => {
   return (
@@ -69,6 +70,7 @@ const Footer = () => {
           <a href="#" className="self-start mt-4">
             Política de Privacidade
           </a>
+          <CookiePreferencesButton className="self-start mt-4 text-left" />
         </nav>
       </div>
 
