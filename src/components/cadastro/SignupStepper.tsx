@@ -6,8 +6,10 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { clearBillingCheckoutSession, normalizeAuthEmail } from '@/lib/authSession'
 import { captureLead } from '@/services/leads'
+import { buildSignupConsents } from '@/lib/legalConsent'
 import { readOriginAttribution } from '@/utils/originAttribution'
 import { useSignupStore } from '@/stores/useSignupStore'
+import LegalDocsModal, { type LegalDocKey } from '@/components/ui/LegalDocsModal'
 
 const initialForm = {
   name: '',
@@ -41,6 +43,7 @@ export default function SignupStepper() {
   const [step, setStep] = useState(0)
   const [error, setError] = useState('')
   const [acceptTerms, setAcceptTerms] = useState(false)
+  const [legalDoc, setLegalDoc] = useState<LegalDocKey | null>(null)
   const [loading, setLoading] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
   const router = useRouter()
@@ -114,6 +117,7 @@ export default function SignupStepper() {
         phone: form.phone,
         origin,
         originRef: originRef || undefined,
+        consents: buildSignupConsents(),
       }
 
       const result = await captureLead(body)
@@ -194,13 +198,21 @@ export default function SignupStepper() {
                 />
                 <label htmlFor='acceptTerms' className='text-sm text-gray-700'>
                   Aceito os{' '}
-                  <a href='/termos' className='text-primary underline' target='_blank'>
+                  <button
+                    type='button'
+                    onClick={() => setLegalDoc('termos')}
+                    className='text-primary underline'
+                  >
                     termos de uso
-                  </a>{' '}
+                  </button>{' '}
                   e{' '}
-                  <a href='/privacidade' className='text-primary underline' target='_blank'>
+                  <button
+                    type='button'
+                    onClick={() => setLegalDoc('privacidade')}
+                    className='text-primary underline'
+                  >
                     política de privacidade
-                  </a>
+                  </button>
                   .
                 </label>
               </div>
@@ -248,6 +260,12 @@ export default function SignupStepper() {
 
         {successMessage && <p className='text-sm text-primary text-center mt-2'>{successMessage}</p>}
       </div>
+
+      <LegalDocsModal
+        open={legalDoc !== null}
+        initialDoc={legalDoc ?? 'termos'}
+        onClose={() => setLegalDoc(null)}
+      />
     </div>
   )
 }

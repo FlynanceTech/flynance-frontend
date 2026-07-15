@@ -22,6 +22,7 @@ import {
   isBillingCheckoutTokenError,
 } from "@/services/billingCheckout";
 import { captureLead, isExistingAccountCheckoutError, updateLeadBilling } from "@/services/leads";
+import { buildSignupConsents } from "@/lib/legalConsent";
 import { useSignupStore } from "@/stores/useSignupStore";
 import { useUserSession } from "@/stores/useUserSession";
 
@@ -415,6 +416,8 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
       phone: formSnapshot.phoneE164,
       origin,
       originRef: originRef || undefined,
+      // Só registra o aceite quando afirmativo (o auto-lead dispara antes do checkbox).
+      consents: acceptedTerms ? buildSignupConsents() : undefined,
     });
   }
 

@@ -11,12 +11,15 @@ const leadsApi = axios.create({
   withCredentials: false,
 })
 
+import type { ConsentAcceptance } from '@/lib/legalConsent'
+
 export type CaptureLeadInput = {
   name: string
   email: string
   phone: string
   origin?: 'ORGANIC' | 'CAMPAIGN' | 'INFLUENCER'
   originRef?: string
+  consents?: ConsentAcceptance[]
 }
 
 export type LeadDTO = {
