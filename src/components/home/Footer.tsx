@@ -64,11 +64,14 @@ const Footer = () => {
 
         <nav className="flex  flex-col grow shrink text-sm leading-none text-gray-700 w-[129px]">
           <h3 className="text-xl font-medium leading-none">Recursos</h3>
-          <a href="#" className="mt-4">
+          <a href="/termos" className="mt-4">
             Termos de Uso
           </a>
-          <a href="#" className="self-start mt-4">
+          <a href="/privacidade" className="self-start mt-4">
             Política de Privacidade
+          </a>
+          <a href="/cookies" className="self-start mt-4">
+            Política de Cookies
           </a>
           <CookiePreferencesButton className="self-start mt-4 text-left" />
         </nav>
