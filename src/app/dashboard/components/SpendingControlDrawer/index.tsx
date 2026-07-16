@@ -6,6 +6,8 @@ import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Pencil, CalendarDays, X } from 'lucide-react'
+import axios from 'axios'
+import toast from 'react-hot-toast'
 import { ControlWithProgress, useControls } from '@/hooks/query/useSpendingControl'
 import { useCategories } from '@/hooks/query/useCategory'
 import type {  Channel, CreateControlDTO } from '@/services/controls'
@@ -82,16 +84,27 @@ export default function SpendingControlDrawer({ open, onClose, editing }: Props)
     }
   }, [editing, reset])
 
+  const isSaving = createMutation.isPending || updateMutation.isPending
+
   const onSubmit = async (data: FormData) => {
+    if (isSaving) return
     const payload: CreateControlDTO = {
       ...data,
       resetDay: 1,
     }
 
-    if (editing) {
-      await updateMutation.mutateAsync({ id: editing.id, data: payload })
-    } else {
-      await createMutation.mutateAsync(payload)
+    try {
+      if (editing) {
+        await updateMutation.mutateAsync({ id: editing.id, data: payload })
+      } else {
+        await createMutation.mutateAsync(payload)
+      }
+    } catch (error) {
+      const message = axios.isAxiosError(error)
+        ? (error.response?.data as { error?: string } | undefined)?.error
+        : undefined
+      toast.error(message ?? 'Não foi possível salvar o controle. Tente novamente.')
+      return
     }
 
     onClose()
@@ -200,13 +213,16 @@ export default function SpendingControlDrawer({ open, onClose, editing }: Props)
             
             <button
               type="submit"
-              className="w-full mt-4 bg-primary hover:bg-secondary text-white font-medium py-2 px-4 rounded-full flex justify-center items-center gap-2"
+              disabled={isSaving}
+              className="w-full mt-4 bg-primary hover:bg-secondary text-white font-medium py-2 px-4 rounded-full flex justify-center items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              
-              {editing ?<>
+
+              {isSaving
+                ? 'Salvando...'
+                : editing ? <>
                 <Pencil className="w-4 h-4" />
-                Salvar Alterações 
-              </> 
+                Salvar Alterações
+              </>
                 : 'Adicionar Controle'}
             </button>
           </form>

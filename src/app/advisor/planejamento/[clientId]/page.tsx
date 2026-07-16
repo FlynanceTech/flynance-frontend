@@ -35,6 +35,7 @@ import {
   setClassLimits,
   setCategoryLimits,
   syncBudgetToGoalControls,
+  upsertPlanSettings,
   BudgetPlan,
   ClassLimit,
 } from '@/services/advisorBudget'
@@ -249,6 +250,89 @@ function CategoryFormModal({
   )
 }
 
+// ─── Estimated Income Modal ───────────────────────────────────────────────────
+
+function EstimatedIncomeModal({
+  initialValue,
+  onSave,
+  onClose,
+}: {
+  initialValue: number
+  onSave: (value: number) => Promise<void>
+  onClose: () => void
+}) {
+  const [value, setValue] = useState(initialValue > 0 ? initialValue.toString() : '')
+  const [saving, setSaving] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const parsed = parseBudgetValue(value)
+    setSaving(true)
+    try {
+      await onSave(parsed)
+    } catch {
+      // erro já tratado (toast) por quem chamou onSave
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
+      onClick={() => { if (!saving) onClose() }}
+    >
+      <div
+        className="w-full max-w-sm rounded-t-2xl border border-slate-200 bg-white shadow-xl sm:rounded-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+          <div>
+            <p className="text-xs font-semibold uppercase text-slate-500">Receita estimada</p>
+            <h2 className="text-base font-semibold text-[#253140]">Qual é a receita mensal estimada deste cliente?</h2>
+          </div>
+          <button type="button" onClick={onClose} disabled={saving} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 disabled:opacity-50">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4 px-5 py-4">
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-slate-600">Receita estimada (R$)</label>
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">R$</span>
+              <input
+                type="number"
+                min="0"
+                step="100"
+                autoFocus
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                placeholder="0,00"
+                className="h-11 w-full rounded-xl border border-slate-200 pl-9 pr-3 text-sm outline-none focus:border-[#7CB8D8]"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <button type="button" onClick={onClose} disabled={saving} className="h-9 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex h-9 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-[#3f86b0] disabled:opacity-60"
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {saving ? 'Salvando...' : 'Salvar'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 // ─── Class Limits Modal ───────────────────────────────────────────────────────
 
 function ClassLimitsModal({
@@ -380,7 +464,8 @@ function ClassLimitsModal({
       await new Promise((resolve) => setTimeout(resolve, 350))
       onClose()
     } catch (error: unknown) {
-      toast.error(getUiErrorMessage(error, 'Erro ao salvar limites.'))
+      console.error('Erro ao salvar limites:', error)
+      toast.error('Não foi possível salvar os limites. Tente novamente.')
       setSaveStatus('idle')
     }
   }
@@ -454,6 +539,27 @@ function ClassLimitsModal({
             )}
           </div>
 
+          <div className="grid grid-cols-3 gap-2 rounded-xl bg-slate-50 p-3 text-center">
+            <div>
+              <p className="text-[10px] font-semibold uppercase text-slate-500">Limite total</p>
+              <p className="text-sm font-bold text-slate-700">
+                {mode === 'nominal' ? formatCurrency(distribution.total) : `${roundBudgetValue(distribution.total)}%`}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase text-slate-500">Distribuído</p>
+              <p className="text-sm font-bold text-slate-700">
+                {mode === 'nominal' ? formatCurrency(distribution.distributed) : `${roundBudgetValue(distribution.distributed)}%`}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase text-slate-500">Restante</p>
+              <p className={['text-sm font-bold', distribution.remaining > 0.000001 ? 'text-emerald-600' : 'text-red-600'].join(' ')}>
+                {mode === 'nominal' ? formatCurrency(distribution.remaining) : `${roundBudgetValue(distribution.remaining)}%`}
+              </p>
+            </div>
+          </div>
+
           {/* Per-category limits */}
           {categories.length > 0 && (
             <div className="space-y-2">
@@ -505,27 +611,6 @@ function ClassLimitsModal({
               })}
             </div>
           )}
-
-          <div className="grid grid-cols-3 gap-2 rounded-xl bg-slate-50 p-3 text-center">
-            <div>
-              <p className="text-[10px] font-semibold uppercase text-slate-500">Limite total</p>
-              <p className="text-sm font-bold text-slate-700">
-                {mode === 'nominal' ? formatCurrency(distribution.total) : `${roundBudgetValue(distribution.total)}%`}
-              </p>
-            </div>
-            <div>
-              <p className="text-[10px] font-semibold uppercase text-slate-500">Distribuído</p>
-              <p className="text-sm font-bold text-slate-700">
-                {mode === 'nominal' ? formatCurrency(distribution.distributed) : `${roundBudgetValue(distribution.distributed)}%`}
-              </p>
-            </div>
-            <div>
-              <p className="text-[10px] font-semibold uppercase text-slate-500">Restante</p>
-              <p className={['text-sm font-bold', distribution.remaining < 0 ? 'text-red-600' : 'text-emerald-600'].join(' ')}>
-                {mode === 'nominal' ? formatCurrency(distribution.remaining) : `${roundBudgetValue(distribution.remaining)}%`}
-              </p>
-            </div>
-          </div>
 
           {distribution.exceedsGroup && (
             <p className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
@@ -735,7 +820,9 @@ function PlanejamentoInner() {
   const [saving, setSaving] = useState(false)
   const [plan, setPlan] = useState<BudgetPlan | null>(null)
   const [categories, setCategories] = useState<EnrichedPlanCategory[]>([])
-  const [monthlyIncome, setMonthlyIncome] = useState(0)
+  const [estimatedIncome, setEstimatedIncome] = useState(0)
+  const [actualIncomeLast30Days, setActualIncomeLast30Days] = useState(0)
+  const [editingIncome, setEditingIncome] = useState(false)
   const [modalCol, setModalCol] = useState<CategoryClassification | null>(null)
 
   const [editingCat, setEditingCat] = useState<EnrichedPlanCategory | null>(null)
@@ -771,7 +858,8 @@ function PlanejamentoInner() {
 
       setPlan(planData?.plan ?? null)
       setCategories(enriched)
-      setMonthlyIncome(planData?.monthlyIncome ?? 0)
+      setEstimatedIncome(planData?.estimatedIncome ?? 0)
+      setActualIncomeLast30Days(planData?.actualIncomeLast30Days ?? 0)
 
       // Sync local classification state with loaded data
       const initCls: Record<string, CategoryClassification> = {}
@@ -810,6 +898,7 @@ function PlanejamentoInner() {
     setPlan((currentPlan) => ({
       id: currentPlan?.id ?? 'optimistic',
       monthYear: currentPlan?.monthYear ?? '',
+      estimatedIncome: currentPlan?.estimatedIncome ?? 0,
       totalBudget: currentPlan?.totalBudget ?? null,
       totalBudgetPct: currentPlan?.totalBudgetPct ?? null,
       notes: currentPlan?.notes ?? null,
@@ -919,17 +1008,32 @@ function PlanejamentoInner() {
   function columnTotalBudget(cls: CategoryClassification): number {
     const classLimit = plan?.classLimits.find((l) => l.class === cls)
     if (classLimit && (classLimit.nominalLimit != null || classLimit.percentLimit != null)) {
-      return resolveBudgetAmount(classLimit, monthlyIncome)
+      return resolveBudgetAmount(classLimit, estimatedIncome)
     }
     return getCategoriesByClass(cls).reduce(
-      (sum, category) => sum + resolveBudgetAmount(category, monthlyIncome),
+      (sum, category) => sum + resolveBudgetAmount(category, estimatedIncome),
       0
     )
   }
 
+  async function handleSaveIncome(value: number) {
+    const previous = estimatedIncome
+    setEstimatedIncome(value)
+    try {
+      await upsertPlanSettings(clientId, { estimatedIncome: value })
+      toast.success('Receita estimada salva com sucesso.')
+      setEditingIncome(false)
+    } catch (error: unknown) {
+      console.error('Erro ao salvar receita estimada:', error)
+      setEstimatedIncome(previous)
+      toast.error('Não foi possível salvar a receita estimada. Tente novamente.')
+      throw error
+    }
+  }
+
   const budgetSummary = calculateBudgetSummary(
     COLUMNS.map((column) => columnTotalBudget(column.key)),
-    monthlyIncome
+    estimatedIncome
   )
   const totalBudgeted = budgetSummary.totalBudgeted
   const pctBudgeted = budgetSummary.percentage
@@ -972,41 +1076,78 @@ function PlanejamentoInner() {
         </button>
       </div>
 
-      {/* Budget summary */}
-      {monthlyIncome > 0 && (
-        <div className="mb-5 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-4">
+      {/* Budget summary — sempre visível, mesmo sem receita cadastrada */}
+      <div className="mb-5 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex flex-wrap gap-6">
             <div>
-              <p className="text-xs font-semibold uppercase text-slate-500">Receita estimada do cliente</p>
-              <p className="mt-1 text-2xl font-bold text-[#253140]">{formatCurrency(monthlyIncome)}</p>
-            </div>
-            <div className="flex gap-4">
-              <div className="text-center">
-                <p className="text-xs font-semibold uppercase text-slate-500">Total orçado</p>
-                <p className="mt-1 text-xl font-bold text-[#253140]">{formatCurrency(totalBudgeted)}</p>
+              <p className="text-xs font-semibold uppercase text-slate-500">Receita estimada</p>
+              <div className="mt-1 flex items-center gap-1.5">
+                <p className="text-2xl font-bold text-[#253140]">{formatCurrency(estimatedIncome)}</p>
+                <button
+                  type="button"
+                  onClick={() => setEditingIncome(true)}
+                  className="grid h-6 w-6 shrink-0 place-items-center rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+                  title="Editar receita estimada"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
               </div>
-              {pctBudgeted != null && (
-                <div className="text-center">
-                  <p className="text-xs font-semibold uppercase text-slate-500">% da receita</p>
-                  <p className={['mt-1 text-xl font-bold', pctBudgeted > 100 ? 'text-red-600' : 'text-[#2F6E91]'].join(' ')}>
-                    {roundBudgetValue(pctBudgeted)}%
-                  </p>
-                </div>
-              )}
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase text-slate-500">Receita de fato</p>
+              <p className="mt-1 text-2xl font-bold text-slate-400">{formatCurrency(actualIncomeLast30Days)}</p>
+              <p className="text-[10px] text-slate-400">Últimos 30 dias</p>
             </div>
           </div>
-          {budgetSummary.exceedsIncome ? (
-            <p className="mt-3 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
-              <AlertTriangle className="h-4 w-4 shrink-0" />
-              O orçamento definido ultrapassa a receita estimada do cliente.
-            </p>
-          ) : budgetSummary.shouldWarn ? (
-            <p className="mt-3 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
-              <AlertTriangle className="h-4 w-4 shrink-0" />
-              Atenção: este planejamento já compromete 80% da receita estimada.
-            </p>
-          ) : null}
+          <div className="flex gap-4">
+            <div className="text-center">
+              <p className="text-xs font-semibold uppercase text-slate-500">Total orçado</p>
+              <p className="mt-1 text-xl font-bold text-[#253140]">{formatCurrency(totalBudgeted)}</p>
+            </div>
+            {pctBudgeted != null && (
+              <div className="text-center">
+                <p className="text-xs font-semibold uppercase text-slate-500">% da receita estimada</p>
+                <p className={['mt-1 text-xl font-bold', pctBudgeted > 100 ? 'text-red-600' : 'text-[#2F6E91]'].join(' ')}>
+                  {roundBudgetValue(pctBudgeted)}%
+                </p>
+              </div>
+            )}
+          </div>
         </div>
+
+        {estimatedIncome <= 0 && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#B9DAEA] bg-[#EAF4FA] px-3 py-2 text-xs font-semibold text-[#2F6E91]">
+            <span>Informe a receita estimada para usar limites percentuais.</span>
+            <button
+              type="button"
+              onClick={() => setEditingIncome(true)}
+              className="inline-flex h-7 shrink-0 items-center rounded-lg border border-[#4F98C2] bg-white px-3 text-xs font-semibold text-[#2F6E91] hover:bg-[#EAF4FA]"
+            >
+              Informar receita estimada
+            </button>
+          </div>
+        )}
+
+        {budgetSummary.exceedsIncome ? (
+          <p className="mt-3 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            O orçamento definido ultrapassa a receita estimada do cliente.
+          </p>
+        ) : budgetSummary.shouldWarn ? (
+          <p className="mt-3 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            Atenção: este planejamento já compromete 80% da receita estimada.
+          </p>
+        ) : null}
+      </div>
+
+      {editingIncome && (
+        <EstimatedIncomeModal
+          initialValue={estimatedIncome}
+          onSave={handleSaveIncome}
+          onClose={() => setEditingIncome(false)}
+        />
       )}
 
       {/* Kanban columns */}
@@ -1014,8 +1155,8 @@ function PlanejamentoInner() {
         {COLUMNS.map((col) => {
           const colCategories = getCategoriesByClass(col.key)
           const colBudget = columnTotalBudget(col.key)
-          const colPct = monthlyIncome > 0 && colBudget > 0
-            ? roundBudgetValue((colBudget / monthlyIncome) * 100)
+          const colPct = estimatedIncome > 0 && colBudget > 0
+            ? roundBudgetValue((colBudget / estimatedIncome) * 100)
             : null
           const classLimit = plan?.classLimits.find((l) => l.class === col.key)
 
@@ -1037,8 +1178,8 @@ function PlanejamentoInner() {
                     {classLimit && (classLimit.nominalLimit != null || classLimit.percentLimit != null) && (
                       <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600">
                         {classLimit.percentLimit != null
-                          ? `${roundBudgetValue(classLimit.percentLimit)}% · ${formatCurrency(resolveBudgetAmount(classLimit, monthlyIncome))}`
-                          : formatCurrency(resolveBudgetAmount(classLimit, monthlyIncome))}
+                          ? `${roundBudgetValue(classLimit.percentLimit)}% · ${formatCurrency(resolveBudgetAmount(classLimit, estimatedIncome))}`
+                          : formatCurrency(resolveBudgetAmount(classLimit, estimatedIncome))}
                       </span>
                     )}
                   </div>
@@ -1065,7 +1206,7 @@ function PlanejamentoInner() {
                     <CategoryCard
                       key={cat.id}
                       cat={{ ...cat, classification: localClassifications[cat.id] ?? cat.classification }}
-                      monthlyIncome={monthlyIncome}
+                      monthlyIncome={estimatedIncome}
                       onSetLimit={() => setModalCol(col.key)}
                       onEdit={(c) => setEditingCat(c)}
                       onDelete={handleDeleteCategory}
@@ -1093,7 +1234,7 @@ function PlanejamentoInner() {
           colLabel={CLASS_LABELS[modalCol]}
           categories={getCategoriesByClass(modalCol)}
           existingClassLimit={plan?.classLimits.find((l) => l.class === modalCol)}
-          monthlyIncome={monthlyIncome}
+          monthlyIncome={estimatedIncome}
           otherGroupsBudget={Math.max(0, totalBudgeted - columnTotalBudget(modalCol))}
           onSave={handleSaveLimits}
           onClose={() => setModalCol(null)}
