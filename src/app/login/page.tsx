@@ -20,7 +20,10 @@ import {
   syncBillingCheckoutSessionIdentity,
 } from '@/lib/authSession'
 import { sendLoginCode, verifyCode } from '@/services/auth'
-import { CleaveInput, Input, OtpInput } from '@/components/ui/input'
+import { Input, OtpInput } from '@/components/ui/input'
+import PhoneDdiField from '@/components/cadastro/PhoneDdiField'
+import { DEFAULT_PHONE_COUNTRY, toE164 } from '@/lib/phoneCountries'
+import type { CountryCode } from 'libphonenumber-js'
 import { WhatsappIcon } from '@/components/icon/whatsapp'
 import { getErrorMessage } from '@/lib/getErrorMessage'
 import clsx from 'clsx'
@@ -40,6 +43,7 @@ function toDisplayFirstName(value?: string | null) {
 function LoginContent() {
   const t = useTranslations('loginPage')
   const [code, setCode] = useState('')
+  const [loginCountry, setLoginCountry] = useState<CountryCode>(DEFAULT_PHONE_COUNTRY)
   const [step, setStep] = useState<'identifier' | 'code'>('identifier')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -100,6 +104,9 @@ function LoginContent() {
     }
   }
 
+  // WhatsApp em E.164 ("+DDI…"), respeitando o país selecionado no login.
+  const whatsappE164 = () => toE164(identifier, loginCountry) || identifier.trim()
+
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -112,7 +119,7 @@ function LoginContent() {
     setError('')
     try {
       await invalidateSession()
-      const body = method === 'email' ? { email: identifier.trim() } : { whatsappPhone: identifier.trim() }
+      const body = method === 'email' ? { email: identifier.trim() } : { whatsappPhone: whatsappE164() }
       await sendLoginCode(body)
       setStep('code')
     } catch (err: unknown) {
@@ -127,7 +134,7 @@ function LoginContent() {
     setLoading(true)
     setError('')
     try {
-      const body = method === 'email' ? { email: identifier.trim(), code } : { whatsappPhone: identifier.trim(), code }
+      const body = method === 'email' ? { email: identifier.trim(), code } : { whatsappPhone: whatsappE164(), code }
       await verifyCode(body)
 
       await fetchAccount()
@@ -137,7 +144,7 @@ function LoginContent() {
       const identifierMatches =
         method === 'email'
           ? normalizeAuthEmail(sessionUser?.email) === normalizeAuthEmail(identifier)
-          : normalizeAuthPhone(sessionUser?.phone) === normalizeAuthPhone(identifier)
+          : normalizeAuthPhone(sessionUser?.phone) === normalizeAuthPhone(whatsappE164())
 
       if (status !== 'authenticated' || !sessionUser?.id || !identifierMatches) {
         await invalidateSession()
@@ -169,7 +176,7 @@ function LoginContent() {
     setLoading(true)
     setError('')
     try {
-      const body = method === 'email' ? { email: identifier.trim() } : { whatsappPhone: identifier.trim() }
+      const body = method === 'email' ? { email: identifier.trim() } : { whatsappPhone: whatsappE164() }
       await sendLoginCode(body)
     } catch (err: unknown) {
       setError(getErrorMessage(err))
@@ -310,8 +317,8 @@ function LoginContent() {
                 </div>
 
                 <div className="flex flex-col gap-4">
-                  <div className="relative w-full">
-                    {method === 'email' ? (
+                  {method === 'email' ? (
+                    <div className="relative w-full">
                       <Input
                         type="email"
                         placeholder={t('emailPlaceholder')}
@@ -321,32 +328,22 @@ function LoginContent() {
                           error ? 'border-red-400 focus:ring-red-300' : 'border-gray-300 focus:ring-secondary'
                         }`}
                       />
-                    ) : (
-                      <CleaveInput
-                        type="tel"
-                        name="tel"
-                        options={{
-                          delimiters: ['(', ') ', '-'],
-                          blocks: [0, 2, 5, 4],
-                          numericOnly: true,
-                        }}
-                        value={identifier}
-                        onChange={(e) => handleIdentifierChange(e.target.value)}
-                        placeholder={t('whatsappPlaceholder')}
-                        className={`w-full pl-10 pr-4 py-3 border rounded-md focus:outline-none focus:ring-2 ${
-                          error ? 'border-red-400 focus:ring-red-300' : 'border-gray-300 focus:ring-secondary'
-                        }`}
-                      />
-                    )}
-
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
-                      {method === 'email' ? (
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
                         <Mail size={20} />
-                      ) : (
-                        <WhatsappIcon className="w-5 h-5 text-primary" fill="#6a7282" />
-                      )}
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <PhoneDdiField
+                      country={loginCountry}
+                      phone={identifier}
+                      onCountryChange={(iso) => {
+                        setLoginCountry(iso)
+                        handleIdentifierChange('')
+                      }}
+                      onPhoneChange={handleIdentifierChange}
+                      placeholder={t('whatsappPlaceholder')}
+                    />
+                  )}
 
                   {error && <p className="text-sm text-red-400 mt-2">{error}</p>}
 

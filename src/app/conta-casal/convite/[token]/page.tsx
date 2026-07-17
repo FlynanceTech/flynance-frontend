@@ -6,6 +6,8 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Toaster } from 'react-hot-toast'
 import { useTranslations } from 'next-intl'
 
+import type { CountryCode } from 'libphonenumber-js'
+
 import { useAcceptHouseInvite } from '@/hooks/query/useHouse'
 import {
   checkHouseInviteIdentity,
@@ -13,20 +15,14 @@ import {
   signupHouseInvite,
   type HouseInvitePreview,
 } from '@/services/houses'
+import PhoneDdiField from '@/components/cadastro/PhoneDdiField'
+import { DEFAULT_PHONE_COUNTRY, isValidPhoneForCountry, toE164 } from '@/lib/phoneCountries'
 import { useUserSession } from '@/stores/useUserSession'
 
 type InviteStep = 'identity' | 'existing-account' | 'signup' | 'signup-success'
 
 const LOGIN_METHOD_KEY = 'flynance_login_method'
 const LOGIN_IDENTIFIER_KEY = 'flynance_login_identifier'
-
-function formatWhatsApp(value: string) {
-  const digits = value.replace(/\D/g, '').slice(0, 11)
-  if (digits.length <= 2) return digits ? `(${digits}` : ''
-  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
-  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
-}
 
 function CoupleInviteAcceptContent() {
   const t = useTranslations('coupleInvitePage')
@@ -39,6 +35,7 @@ function CoupleInviteAcceptContent() {
   const [invitePreview, setInvitePreview] = useState<HouseInvitePreview | null>(null)
   const [step, setStep] = useState<InviteStep>('identity')
   const [whatsappPhone, setWhatsappPhone] = useState('')
+  const [phoneCountry, setPhoneCountry] = useState<CountryCode>(DEFAULT_PHONE_COUNTRY)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [acceptedTerms, setAcceptedTerms] = useState(false)
@@ -136,10 +133,13 @@ function CoupleInviteAcceptContent() {
     }
   }
 
+  // WhatsApp em E.164 ("+DDI…"), respeitando o país selecionado.
+  const whatsappE164 = () => toE164(whatsappPhone, phoneCountry) || whatsappPhone.trim()
+
   const persistLoginIdentifier = () => {
     if (typeof window === 'undefined') return
     window.sessionStorage.setItem(LOGIN_METHOD_KEY, 'whatsapp')
-    window.sessionStorage.setItem(LOGIN_IDENTIFIER_KEY, whatsappPhone)
+    window.sessionStorage.setItem(LOGIN_IDENTIFIER_KEY, whatsappE164())
   }
 
   const goToLogin = (href: string) => {
@@ -151,8 +151,7 @@ function CoupleInviteAcceptContent() {
     event.preventDefault()
     if (!isValidToken || checkingIdentity) return
 
-    const digits = whatsappPhone.replace(/\D/g, '')
-    if (digits.length < 10) {
+    if (!isValidPhoneForCountry(whatsappPhone, phoneCountry)) {
       setFlowError('Informe um WhatsApp valido para continuar.')
       return
     }
@@ -160,7 +159,7 @@ function CoupleInviteAcceptContent() {
     setCheckingIdentity(true)
     setFlowError('')
     try {
-      const result = await checkHouseInviteIdentity({ token, whatsappPhone })
+      const result = await checkHouseInviteIdentity({ token, whatsappPhone: whatsappE164() })
       setStep(result.exists ? 'existing-account' : 'signup')
     } catch (error) {
       setFlowError(error instanceof Error ? error.message : 'Nao foi possivel verificar o WhatsApp.')
@@ -181,7 +180,7 @@ function CoupleInviteAcceptContent() {
     setCreatingAccount(true)
     setFlowError('')
     try {
-      await signupHouseInvite({ token, name, email, whatsappPhone })
+      await signupHouseInvite({ token, name, email, whatsappPhone: whatsappE164() })
       setStep('signup-success')
       persistLoginIdentifier()
     } catch (error) {
@@ -251,15 +250,12 @@ function CoupleInviteAcceptContent() {
             <label className="block text-sm font-semibold text-[#333C4D] dark:text-white" htmlFor="invite-whatsapp">
               Informe seu WhatsApp para continuar
             </label>
-            <input
-              id="invite-whatsapp"
-              type="tel"
-              inputMode="numeric"
-              value={whatsappPhone}
-              onChange={(event) => setWhatsappPhone(formatWhatsApp(event.target.value))}
-              placeholder="(54) 99999-9999"
-              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-[#0065A4] dark:border-white/10 dark:bg-white/5 dark:text-white"
-              disabled={checkingIdentity}
+            <PhoneDdiField
+              country={phoneCountry}
+              phone={whatsappPhone}
+              onCountryChange={(iso) => { setPhoneCountry(iso); setWhatsappPhone('') }}
+              onPhoneChange={setWhatsappPhone}
+              placeholder="WhatsApp"
             />
             <button
               type="submit"
@@ -306,13 +302,12 @@ function CoupleInviteAcceptContent() {
               className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-[#0065A4] dark:border-white/10 dark:bg-white/5 dark:text-white"
               disabled={creatingAccount}
             />
-            <input
-              type="tel"
-              value={whatsappPhone}
-              onChange={(event) => setWhatsappPhone(formatWhatsApp(event.target.value))}
+            <PhoneDdiField
+              country={phoneCountry}
+              phone={whatsappPhone}
+              onCountryChange={(iso) => { setPhoneCountry(iso); setWhatsappPhone('') }}
+              onPhoneChange={setWhatsappPhone}
               placeholder="WhatsApp"
-              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-[#0065A4] dark:border-white/10 dark:bg-white/5 dark:text-white"
-              disabled={creatingAccount}
             />
             <label className="flex items-start gap-2 text-sm text-slate-600 dark:text-zinc-300">
               <input

@@ -16,6 +16,14 @@ import {
   doesBillingCheckoutSessionMatchIdentity,
 } from "@/lib/authSession";
 import { readOriginAttribution } from "@/utils/originAttribution";
+import { toE164Digits } from "@/lib/phone";
+import PhoneDdiField from "@/components/cadastro/PhoneDdiField";
+import {
+  DEFAULT_PHONE_COUNTRY,
+  isValidPhoneForCountry,
+  splitPhone,
+} from "@/lib/phoneCountries";
+import type { CountryCode } from "libphonenumber-js";
 import {
   createBillingCheckoutSetupIntent,
   createBillingCheckoutSubscription,
@@ -78,36 +86,13 @@ type LegalDocKey = "termos" | "privacidade" | "cookies";
 
 const normalizeDigits = (v?: string | null) => (v ?? "").replace(/\D/g, "");
 const normalizeEmail = (email?: string | null) => (email ?? "").trim().toLowerCase();
-const normalizePhoneIdentity = (phone?: string | null) => {
-  const digits = normalizeDigits(phone);
-  if (digits.startsWith("55") && digits.length >= 12) {
-    return digits.slice(2);
-  }
-  return digits;
-};
+// Identidade de telefone comparável: E.164 canônico (sem "+"), country-aware.
+const normalizePhoneIdentity = (phone?: string | null) => toE164Digits(phone);
 
-/** Normaliza para E.164 BR SEM + : 55 + DDD + número */
-const toE164BR = (phoneRaw?: string) => {
-  const d = normalizeDigits(phoneRaw);
-  if (!d) return "";
-  return d.startsWith("55") ? d : `55${d}`;
-};
-
-const isValidWhatsAppBR = (phone?: string) => {
-  const d = normalizeDigits(phone);
-  if (!d) return false;
-
-  const full = d.startsWith("55") ? d : `55${d}`;
-  if (full.length !== 12 && full.length !== 13) return false;
-
-  const ddd = full.slice(2, 4);
-  const subscriber = full.slice(4);
-
-  if (!/^[1-9]\d$/.test(ddd)) return false;
-  if (!/^\d{8,9}$/.test(subscriber)) return false;
-  if (subscriber.startsWith("0")) return false;
-
-  return true;
+/** Valida um telefone já em E.164 (dígitos, sem "+") de qualquer país. */
+const isValidWhatsAppBR = (phoneE164Digits?: string) => {
+  const d = normalizeDigits(phoneE164Digits);
+  return d ? isValidPhoneForCountry(`+${d}`, DEFAULT_PHONE_COUNTRY) : false;
 };
 
 const isValidEmail = (email?: string) =>
@@ -214,6 +199,7 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
   const [legalDoc, setLegalDoc] = useState<LegalDocKey>("termos");
 
   const [form, setForm] = useState<FormDTO>(initialForm);
+  const [phoneCountry, setPhoneCountry] = useState<CountryCode>(DEFAULT_PHONE_COUNTRY);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -272,12 +258,16 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
 
     if (!draft && !hasSignupSeed) return;
 
+    const seededPhone = draft?.phone ?? signupData.phone ?? "";
+    const { country, national } = splitPhone(seededPhone, phoneCountry);
+    if (seededPhone) setPhoneCountry(country);
+
     setForm((prev) => ({
       ...prev,
       ...draft,
       name: draft?.name ?? signupData.name ?? prev.name,
       email: normalizeEmail(draft?.email ?? signupData.email ?? prev.email),
-      phone: draft?.phone ?? signupData.phone ?? prev.phone,
+      phone: seededPhone ? national : prev.phone,
     }));
   }, [signupData.email, signupData.name, signupData.phone]);
 
@@ -293,7 +283,7 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
     const email = form.email?.trim() ?? "";
     const emailNorm = normalizeEmail(email);
 
-    const phoneE164 = toE164BR(form.phone);
+    const phoneE164 = toE164Digits(form.phone, phoneCountry);
     const cpfDigits = normalizeDigits(form.cpf);
 
     return {
@@ -305,7 +295,7 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
       phoneDigitsComparable: normalizePhoneIdentity(phoneE164),
       cpfDigits,
     };
-  }, [form.name, form.email, form.phone, form.cpf]);
+  }, [form.name, form.email, form.phone, form.cpf, phoneCountry]);
 
   const isMinDataValid = useMemo(() => {
     return (
@@ -334,11 +324,22 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
 
     hydratedSessionUserIdRef.current = sessionUserId;
 
+    const sessionPhone = (sessionUser as any).phone || "";
+    if (sessionPhone) {
+      // Detecta o país do telefone salvo (apenas quando o campo está vazio).
+      setForm((prev) => {
+        if (prev.phone) return prev;
+        const { country } = splitPhone(sessionPhone, phoneCountry);
+        setPhoneCountry(country);
+        return prev;
+      });
+    }
+
     setForm((prev) => ({
       ...prev,
       name: prev.name || sessionUser.name || "",
       email: prev.email || normalizeEmail((sessionUser as any).email ?? ""),
-      phone: prev.phone || (sessionUser as any).phone || "",
+      phone: prev.phone || splitPhone(sessionPhone, phoneCountry).national || "",
       cpf: prev.cpf || (sessionUser as any).cpfCnpj || "",
       postalCode: prev.postalCode || (sessionUser as any).postalCode || "",
       address: prev.address || (sessionUser as any).address || "",
@@ -795,13 +796,17 @@ function CheckoutStepperInner({ plan }: CheckoutProps) {
                     className={inputClasses}
                   />
 
-                  <input
-                    name="phone"
+                  <PhoneDdiField
+                    country={phoneCountry}
+                    phone={form.phone}
+                    onCountryChange={(iso) => {
+                      setPhoneCountry(iso);
+                      setForm((prev) => ({ ...prev, phone: "" }));
+                    }}
+                    onPhoneChange={(value) =>
+                      setForm((prev) => ({ ...prev, phone: value }))
+                    }
                     placeholder="(11) 91234-5678"
-                    value={form.phone}
-                    onChange={handleChange}
-                    className={inputClasses}
-                    inputMode="numeric"
                   />
 
                   <input

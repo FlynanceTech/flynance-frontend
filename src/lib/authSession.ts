@@ -1,4 +1,5 @@
 import api from '@/lib/axios'
+import { toE164Digits } from '@/lib/phone'
 
 export const AUTH_TOKEN_STORAGE_KEY = 'token'
 export const BILLING_CHECKOUT_SESSION_STORAGE_KEY = 'billingCheckoutSession'
@@ -21,11 +22,8 @@ export function normalizeAuthEmail(email?: string | null): string {
 }
 
 export function normalizeAuthPhone(phone?: string | null): string {
-  const digits = String(phone ?? '').replace(/\D/g, '')
-  if (digits.startsWith('55') && digits.length >= 12) {
-    return digits.slice(2)
-  }
-  return digits
+  // Identidade comparável: E.164 canônico (sem "+"), country-aware.
+  return toE164Digits(phone)
 }
 
 export function persistAuthToken(token: string): void {
