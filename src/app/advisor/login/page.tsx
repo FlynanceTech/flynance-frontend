@@ -6,9 +6,13 @@ import Link from 'next/link'
 import { Mail, Loader2, ShieldCheck, BarChart3, Users, TrendingUp } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
+import type { CountryCode } from 'libphonenumber-js'
+
 import { normalizeAuthEmail, normalizeAuthPhone, syncBillingCheckoutSessionIdentity } from '@/lib/authSession'
 import { sendLoginCode, verifyCode } from '@/services/auth'
-import { CleaveInput, Input, OtpInput } from '@/components/ui/input'
+import { Input, OtpInput } from '@/components/ui/input'
+import PhoneDdiField from '@/components/cadastro/PhoneDdiField'
+import { DEFAULT_PHONE_COUNTRY, toE164 } from '@/lib/phoneCountries'
 import { WhatsappIcon } from '@/components/icon/whatsapp'
 import { getErrorMessage } from '@/lib/getErrorMessage'
 import { useUserSession } from '@/stores/useUserSession'
@@ -36,6 +40,7 @@ function AdvisorLoginContent() {
 
   const [method, setMethod] = useState<LoginMethod>('whatsapp')
   const [identifier, setIdentifier] = useState('')
+  const [loginCountry, setLoginCountry] = useState<CountryCode>(DEFAULT_PHONE_COUNTRY)
   const [step, setStep] = useState<'identifier' | 'code'>('identifier')
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
@@ -77,6 +82,9 @@ function AdvisorLoginContent() {
     }
   }
 
+  // WhatsApp em E.164 ("+DDI…"), respeitando o país selecionado.
+  const whatsappE164 = () => toE164(identifier, loginCountry) || identifier.trim()
+
   async function handleSendCode(e: React.FormEvent) {
     e.preventDefault()
     if (!identifier.trim()) {
@@ -87,7 +95,7 @@ function AdvisorLoginContent() {
     setError('')
     try {
       await invalidateSession()
-      const body = method === 'email' ? { email: identifier.trim() } : { whatsappPhone: identifier.trim() }
+      const body = method === 'email' ? { email: identifier.trim() } : { whatsappPhone: whatsappE164() }
       await sendLoginCode(body)
       setStep('code')
     } catch (err) {
@@ -102,7 +110,7 @@ function AdvisorLoginContent() {
     setLoading(true)
     setError('')
     try {
-      const body = method === 'email' ? { email: identifier.trim(), code } : { whatsappPhone: identifier.trim(), code }
+      const body = method === 'email' ? { email: identifier.trim(), code } : { whatsappPhone: whatsappE164(), code }
       await verifyCode(body)
       await fetchAccount()
 
@@ -111,7 +119,7 @@ function AdvisorLoginContent() {
       const identifierMatches =
         method === 'email'
           ? normalizeAuthEmail(sessionUser?.email) === normalizeAuthEmail(identifier)
-          : normalizeAuthPhone(sessionUser?.phone) === normalizeAuthPhone(identifier)
+          : normalizeAuthPhone(sessionUser?.phone) === normalizeAuthPhone(whatsappE164())
 
       if (status !== 'authenticated' || !sessionUser?.id || !identifierMatches) {
         await invalidateSession()
@@ -148,7 +156,7 @@ function AdvisorLoginContent() {
     setLoading(true)
     setError('')
     try {
-      const body = method === 'email' ? { email: identifier.trim() } : { whatsappPhone: identifier.trim() }
+      const body = method === 'email' ? { email: identifier.trim() } : { whatsappPhone: whatsappE164() }
       await sendLoginCode(body)
     } catch (err) {
       setError(getErrorMessage(err))
@@ -260,13 +268,11 @@ function AdvisorLoginContent() {
                 </div>
 
                 {/* Input */}
-                <div className="relative">
-                  <div className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
-                    {method === 'email'
-                      ? <Mail className="h-4 w-4" />
-                      : <WhatsappIcon className="h-4 w-4" fill="#9ca3af" />}
-                  </div>
-                  {method === 'email' ? (
+                {method === 'email' ? (
+                  <div className="relative">
+                    <div className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                      <Mail className="h-4 w-4" />
+                    </div>
                     <Input
                       type="email"
                       placeholder="seu@email.com"
@@ -274,18 +280,16 @@ function AdvisorLoginContent() {
                       onChange={(e) => handleIdentifierChange(e.target.value)}
                       className="h-12 w-full rounded-xl border border-gray-300 bg-white pl-10 pr-4 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                     />
-                  ) : (
-                    <CleaveInput
-                      type="tel"
-                      name="tel"
-                      options={{ delimiters: ['(', ') ', '-'], blocks: [0, 2, 5, 4], numericOnly: true }}
-                      placeholder="(11) 99999-9999"
-                      value={identifier}
-                      onChange={(e) => handleIdentifierChange(e.target.value)}
-                      className="h-12 w-full rounded-xl border border-gray-300 bg-white pl-10 pr-4 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                    />
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <PhoneDdiField
+                    country={loginCountry}
+                    phone={identifier}
+                    onCountryChange={(iso) => { setLoginCountry(iso); handleIdentifierChange('') }}
+                    onPhoneChange={handleIdentifierChange}
+                    placeholder="WhatsApp"
+                  />
+                )}
 
                 {error && <p className="text-sm text-red-500">{error}</p>}
 

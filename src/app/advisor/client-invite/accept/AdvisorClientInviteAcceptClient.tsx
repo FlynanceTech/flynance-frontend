@@ -7,7 +7,11 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Toaster } from 'react-hot-toast'
 import toast from 'react-hot-toast'
 
+import type { CountryCode } from 'libphonenumber-js'
+
 import LegalDocsModal, { type LegalDocKey } from '@/components/ui/LegalDocsModal'
+import PhoneDdiField from '@/components/cadastro/PhoneDdiField'
+import { DEFAULT_PHONE_COUNTRY, isValidPhoneForCountry, toE164 } from '@/lib/phoneCountries'
 import { useUserSession } from '@/stores/useUserSession'
 import {
   useAcceptAdvisorGeneratedInvite,
@@ -51,20 +55,6 @@ function isInviteBlocked(invite: AdvisorGeneratedInvite | null | undefined) {
   return false
 }
 
-function validateBrazilianPhone(phone: string): boolean {
-  const digits = phone.replace(/\D/g, '')
-  if (digits.length === 10 || digits.length === 11) return true
-  if (digits.startsWith('55') && (digits.length === 12 || digits.length === 13)) return true
-  return false
-}
-
-function normalizeBrazilianPhone(phone: string): string {
-  const digits = phone.replace(/\D/g, '')
-  if (digits.startsWith('55') && digits.length >= 12) return `+${digits}`
-  if (digits.length === 10 || digits.length === 11) return `+55${digits}`
-  return phone
-}
-
 function resolveStripeErrorMessage(error: unknown): string {
   const msg = error instanceof Error ? error.message : 'Não foi possível aceitar o convite.'
   if (/incomplete_expired|cannot update a subscription that is/i.test(msg)) {
@@ -101,10 +91,12 @@ export default function AdvisorClientInviteAcceptClient() {
   const [prefillName, setPrefillName] = useState('')
   const [prefillEmail, setPrefillEmail] = useState('')
   const [prefillPhone, setPrefillPhone] = useState('')
+  const [phoneCountry, setPhoneCountry] = useState<CountryCode>(DEFAULT_PHONE_COUNTRY)
   // Couple: second person
   const [prefillName2, setPrefillName2] = useState('')
   const [prefillEmail2, setPrefillEmail2] = useState('')
   const [prefillPhone2, setPrefillPhone2] = useState('')
+  const [phoneCountry2, setPhoneCountry2] = useState<CountryCode>(DEFAULT_PHONE_COUNTRY)
   const [prefillError, setPrefillError] = useState<string | null>(null)
   const [prefillLoading, setPrefillLoading] = useState(false)
   const [autoAcceptAdvisorName, setAutoAcceptAdvisorName] = useState('')
@@ -250,15 +242,15 @@ export default function AdvisorClientInviteAcceptClient() {
     if (!prefillName.trim()) { setPrefillError('Informe o nome completo.'); return }
     if (!prefillEmail.trim()) { setPrefillError('Informe o e-mail.'); return }
     if (!prefillPhone.trim()) { setPrefillError('Informe o telefone/WhatsApp.'); return }
-    if (!validateBrazilianPhone(prefillPhone)) {
-      setPrefillError('Informe um telefone válido com DDD (ex: 11 91234-5678).')
+    if (!isValidPhoneForCountry(prefillPhone, phoneCountry)) {
+      setPrefillError('Informe um telefone válido para o país selecionado.')
       return
     }
     if (isCouple) {
       if (!prefillName2.trim()) { setPrefillError('Informe o nome da segunda pessoa.'); return }
       if (!prefillEmail2.trim()) { setPrefillError('Informe o e-mail da segunda pessoa.'); return }
       if (!prefillPhone2.trim()) { setPrefillError('Informe o telefone da segunda pessoa.'); return }
-      if (!validateBrazilianPhone(prefillPhone2)) {
+      if (!isValidPhoneForCountry(prefillPhone2, phoneCountry2)) {
         setPrefillError('Informe um telefone válido para a segunda pessoa.')
         return
       }
@@ -272,7 +264,7 @@ export default function AdvisorClientInviteAcceptClient() {
     try {
       const checkRes = await axios.post(`${API_BASE}/advisor/invites/${token}/check-prefill`, {
         email: prefillEmail.trim(),
-        phone: normalizeBrazilianPhone(prefillPhone),
+        phone: toE164(prefillPhone, phoneCountry) || prefillPhone.trim(),
       })
 
       const { userExists, conflictError, inviteAlreadyAccepted } = checkRes.data
@@ -302,7 +294,7 @@ export default function AdvisorClientInviteAcceptClient() {
         try {
           const acceptRes = await axios.post(`${API_BASE}/advisor/invites/${token}/auto-accept`, {
             email: prefillEmail.trim(),
-            phone: normalizeBrazilianPhone(prefillPhone),
+            phone: toE164(prefillPhone, phoneCountry) || prefillPhone.trim(),
           })
 
           const { ok, needsPayment, advisorName: aName } = acceptRes.data
@@ -354,7 +346,7 @@ export default function AdvisorClientInviteAcceptClient() {
       await axios.post(`${API_BASE}/auth/send-code`, {
         email: prefillEmail.trim(),
         register: true,
-        phone: normalizeBrazilianPhone(prefillPhone),
+        phone: toE164(prefillPhone, phoneCountry) || prefillPhone.trim(),
       })
       setStep('signup-otp')
     } catch (err: unknown) {
@@ -395,7 +387,7 @@ export default function AdvisorClientInviteAcceptClient() {
           email: prefillEmail.trim(),
           code: signupCode.trim(),
           name: prefillName.trim(),
-          phone: normalizeBrazilianPhone(prefillPhone),
+          phone: toE164(prefillPhone, phoneCountry) || prefillPhone.trim(),
         },
         { withCredentials: true }
       )
@@ -461,13 +453,12 @@ export default function AdvisorClientInviteAcceptClient() {
           disabled={isLoading}
           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#4F98C2] disabled:opacity-60"
         />
-        <input
-          type="tel"
-          placeholder="Telefone/WhatsApp com DDD * (ex: 11 91234-5678)"
-          value={prefillPhone}
-          onChange={(e) => setPrefillPhone(e.target.value)}
-          disabled={isLoading}
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#4F98C2] disabled:opacity-60"
+        <PhoneDdiField
+          country={phoneCountry}
+          phone={prefillPhone}
+          onCountryChange={(iso) => { setPhoneCountry(iso); setPrefillPhone('') }}
+          onPhoneChange={setPrefillPhone}
+          placeholder="Telefone/WhatsApp"
         />
 
         {isCouple && (
@@ -489,13 +480,12 @@ export default function AdvisorClientInviteAcceptClient() {
               disabled={isLoading}
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#4F98C2] disabled:opacity-60"
             />
-            <input
-              type="tel"
-              placeholder="Telefone/WhatsApp com DDD * (ex: 11 91234-5678)"
-              value={prefillPhone2}
-              onChange={(e) => setPrefillPhone2(e.target.value)}
-              disabled={isLoading}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#4F98C2] disabled:opacity-60"
+            <PhoneDdiField
+              country={phoneCountry2}
+              phone={prefillPhone2}
+              onCountryChange={(iso) => { setPhoneCountry2(iso); setPrefillPhone2('') }}
+              onPhoneChange={setPrefillPhone2}
+              placeholder="Telefone/WhatsApp"
             />
           </>
         )}

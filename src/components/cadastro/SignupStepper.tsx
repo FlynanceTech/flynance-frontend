@@ -4,25 +4,19 @@ import React, { useState } from 'react'
 import { User, Smartphone, Mail } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
+import type { CountryCode } from 'libphonenumber-js'
 import { clearBillingCheckoutSession, normalizeAuthEmail } from '@/lib/authSession'
 import { captureLead } from '@/services/leads'
 import { readOriginAttribution } from '@/utils/originAttribution'
 import { useSignupStore } from '@/stores/useSignupStore'
+import PhoneDdiField from '@/components/cadastro/PhoneDdiField'
+import { DEFAULT_PHONE_COUNTRY, isValidPhoneForCountry, toE164 } from '@/lib/phoneCountries'
 
 const initialForm = {
   name: '',
   phone: '',
   email: '',
   confirmEmail: '',
-}
-
-function formatPhone(value: string) {
-  const digits = value.replace(/\D/g, '')
-
-  if (digits.length <= 2) return `(${digits}`
-  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
-  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`
 }
 
 type Step = {
@@ -40,6 +34,7 @@ const steps: Step[] = [
 export default function SignupStepper() {
   const [step, setStep] = useState(0)
   const [error, setError] = useState('')
+  const [phoneCountry, setPhoneCountry] = useState<CountryCode>(DEFAULT_PHONE_COUNTRY)
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [loading, setLoading] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
@@ -61,8 +56,9 @@ export default function SignupStepper() {
         if (value.length < 2) return 'O nome deve ter pelo menos 2 letras.'
         break
       case 'phone': {
-        const digits = value.replace(/\D/g, '')
-        if (digits.length !== 11) return 'Digite um número de celular válido com DDD.'
+        if (!isValidPhoneForCountry(value, phoneCountry)) {
+          return 'Digite um número de WhatsApp válido para o país selecionado.'
+        }
         break
       }
       case 'email': {
@@ -111,7 +107,8 @@ export default function SignupStepper() {
       const body = {
         name: form.name,
         email: normalizedEmail,
-        phone: form.phone,
+        // Envia em E.164 ("+DDI…") para o backend detectar país/idioma/moeda.
+        phone: toE164(form.phone, phoneCountry) || form.phone,
         origin,
         originRef: originRef || undefined,
       }
@@ -164,11 +161,15 @@ export default function SignupStepper() {
           )}
 
           {step === 1 && (
-            <input
-              {...register('phone')}
-              onChange={(e) => setValue('phone', formatPhone(e.target.value))}
+            <PhoneDdiField
+              country={phoneCountry}
+              phone={form.phone}
+              onCountryChange={(iso) => {
+                setPhoneCountry(iso)
+                setValue('phone', '')
+              }}
+              onPhoneChange={(value) => setValue('phone', value)}
               placeholder='WhatsApp'
-              className='w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-secondary'
             />
           )}
 

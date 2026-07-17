@@ -1,42 +1,32 @@
 import { useState } from 'react'
-import { Loader2, Mail, Phone, User } from 'lucide-react'
+import { Loader2, Mail, User } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import toast from 'react-hot-toast'
+import type { CountryCode } from 'libphonenumber-js'
 
 import { useUsers } from '@/hooks/query/useUsers'
 import { useUserSession } from '@/stores/useUserSession'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import PhoneDdiField from '@/components/cadastro/PhoneDdiField'
+import { splitPhone, toE164 } from '@/lib/phoneCountries'
 
 const UserInfoCard = () => {
   const t = useTranslations('profile.userInfoCard')
   const { user, setUser } = useUserSession()
   const { updateMutation } = useUsers()
 
+  const initialPhone = splitPhone(user?.userData.user.phone)
   const [formData, setFormData] = useState({
     name: user?.userData.user.name || '',
     email: user?.userData.user.email || '',
-    whatsapp: user?.userData.user.phone || '',
+    whatsapp: initialPhone.national,
   })
+  const [phoneCountry, setPhoneCountry] = useState<CountryCode>(initialPhone.country)
   const [loading, setLoading] = useState(false)
 
   if (!user) return null
-
-  const formatWhatsApp = (value: string) => {
-    const numbers = value.replace(/\D/g, '')
-    if (numbers.length <= 11) {
-      return numbers
-        .replace(/(\d{2})(\d)/, '($1) $2')
-        .replace(/(\d{5})(\d)/, '$1-$2')
-    }
-    return value
-  }
-
-  const handleWhatsAppChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatWhatsApp(e.target.value)
-    setFormData({ ...formData, whatsapp: formatted })
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -48,12 +38,13 @@ const UserInfoCard = () => {
 
     try {
       setLoading(true)
+      const phoneE164 = toE164(formData.whatsapp, phoneCountry) || formData.whatsapp
       await updateMutation.mutateAsync({
         id: user.userData.user.id,
         data: {
           name: formData.name,
           email: formData.email,
-          phone: formData.whatsapp,
+          phone: phoneE164,
         },
       })
 
@@ -64,7 +55,7 @@ const UserInfoCard = () => {
             ...user.userData.user,
             name: formData.name,
             email: formData.email,
-            phone: formData.whatsapp,
+            phone: phoneE164,
           },
           signature: {
             id: user.userData.signature.id,
@@ -144,17 +135,13 @@ const UserInfoCard = () => {
 
         <div className="space-y-2">
           <Label htmlFor="whatsapp">{t('fields.whatsapp')}</Label>
-          <div className="relative">
-            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="whatsapp"
-              className="pl-10"
-              value={formData.whatsapp}
-              onChange={handleWhatsAppChange}
-              placeholder={t('placeholders.whatsapp')}
-              maxLength={15}
-            />
-          </div>
+          <PhoneDdiField
+            country={phoneCountry}
+            phone={formData.whatsapp}
+            onCountryChange={(iso) => { setPhoneCountry(iso); setFormData({ ...formData, whatsapp: '' }) }}
+            onPhoneChange={(value) => setFormData({ ...formData, whatsapp: value })}
+            placeholder={t('placeholders.whatsapp')}
+          />
         </div>
 
         <Button type="submit" className="w-full" size="lg" disabled={loading}>

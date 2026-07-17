@@ -5,7 +5,10 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Check, Instagram, Undo2, Youtube } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import type { CountryCode } from 'libphonenumber-js'
 import { saveWaitlistEntry } from '../../../data/WaitlistEntry/post'
+import PhoneDdiField from '@/components/cadastro/PhoneDdiField'
+import { DEFAULT_PHONE_COUNTRY, toE164 } from '@/lib/phoneCountries'
 import texture from '../../../../assets/teture.svg'
 import tiktok from '../../../../assets/icons/tiktok-icon.svg'
 
@@ -14,6 +17,7 @@ export default function Espera() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
+  const [phoneCountry, setPhoneCountry] = useState<CountryCode>(DEFAULT_PHONE_COUNTRY)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [result, setResult] = useState(false)
@@ -22,7 +26,11 @@ export default function Espera() {
     e.preventDefault()
     setLoading(true)
 
-    const response = await saveWaitlistEntry({ name, email, phone })
+    const response = await saveWaitlistEntry({
+      name,
+      email,
+      phone: toE164(phone, phoneCountry) || phone,
+    })
 
     setLoading(false)
     setMessage(response.message)
@@ -121,13 +129,12 @@ export default function Espera() {
                   required
                   className="border border-gray-300 rounded-md p-3 text-[#333C4D] placeholder-gray-400"
                 />
-                <input
-                  type="tel"
+                <PhoneDdiField
+                  country={phoneCountry}
+                  phone={phone}
+                  onCountryChange={(iso) => { setPhoneCountry(iso); setPhone('') }}
+                  onPhoneChange={setPhone}
                   placeholder={t('phonePlaceholder')}
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  required
-                  className="border border-gray-300 rounded-md p-3 text-[#333C4D] placeholder-gray-400"
                 />
                 <button
                   type="submit"
