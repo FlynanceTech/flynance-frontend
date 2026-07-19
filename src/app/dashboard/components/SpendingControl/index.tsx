@@ -10,6 +10,8 @@ import SpendingControlDrawer from '../SpendingControlDrawer'
 import { useCategories } from '@/hooks/query/useCategory'
 import MonthSelector from '../MonthSelector'
 import { formatCurrency } from '@/utils/formatter'
+import { useMyAdvisor } from '@/hooks/query/useAdvisorStatus'
+import { canCreateGoalControl } from '@/utils/controlWriteAccess'
 
 type Channel = 'IN_APP' | 'EMAIL' | 'WHATSAPP'
 
@@ -78,6 +80,8 @@ export function SpendingControl() {
   const {
     categoriesQuery: { data: categories = [] },
   } = useCategories()
+  const { hasAdvisor, isAdvisorActing, isLoading: advisorStatusLoading } = useMyAdvisor()
+  const canCreateControl = !advisorStatusLoading && canCreateGoalControl(hasAdvisor, isAdvisorActing)
 
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false)
 
@@ -161,10 +165,11 @@ export function SpendingControl() {
           </Link>
 
           <button
-            onClick={() => setDrawerOpen(true)}
-            className="inline-flex items-center gap-2 bg-secondary/30 text-primary font-semibold px-2 py-2 rounded-full text-sm hover:bg-secondary/35 cursor-pointer"
+            onClick={() => { if (canCreateControl) setDrawerOpen(true) }}
+            disabled={!canCreateControl}
+            className="inline-flex items-center gap-2 bg-secondary/30 text-primary font-semibold px-2 py-2 rounded-full text-sm hover:bg-secondary/35 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-secondary/30"
             aria-label={t('addControlAria')}
-            title={t('addControlTitle')}
+            title={!canCreateControl ? 'Seu planejamento é gerenciado pelo seu Advisor.' : t('addControlTitle')}
           >
             <Plus className="w-4 h-4" />
           </button>

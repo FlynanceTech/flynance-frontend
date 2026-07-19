@@ -40,6 +40,7 @@ export type ClassLimit = {
 export type BudgetPlan = {
   id: string
   monthYear: string
+  estimatedIncome: number
   totalBudget: number | null
   totalBudgetPct: number | null
   notes: string | null
@@ -50,6 +51,9 @@ export type BudgetPlan = {
 export type BudgetPlanResponse = {
   plan: BudgetPlan
   categories: BudgetCategory[]
+  estimatedIncome: number
+  actualIncomeLast30Days: number
+  /** @deprecated use estimatedIncome — mantido por compatibilidade, sempre igual a ele. */
   monthlyIncome: number
   monthYear: string
 }
@@ -134,7 +138,13 @@ export async function getBudgetPlan(clientUserId: string, monthYear?: string): P
 
 export async function upsertPlanSettings(
   clientUserId: string,
-  data: { monthYear?: string; totalBudget?: number | null; totalBudgetPct?: number | null; notes?: string | null }
+  data: {
+    monthYear?: string
+    estimatedIncome?: number | null
+    totalBudget?: number | null
+    totalBudgetPct?: number | null
+    notes?: string | null
+  }
 ): Promise<{ plan: BudgetPlan }> {
   try {
     const res = await api.put(`/advisor/clients/${clientUserId}/budget-plan`, data)
