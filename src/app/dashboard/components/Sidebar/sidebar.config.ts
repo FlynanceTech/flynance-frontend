@@ -3,9 +3,11 @@
 import type { LucideIcon } from 'lucide-react'
 import {
   BarChart3,
+  Bell,
   BookOpenCheck,
   ClipboardList,
   Clock3,
+  Globe,
   House,
   Landmark,
   LayoutDashboard,
@@ -53,6 +55,8 @@ type SidebarTranslations = {
   education: string
   clients: string
   profile: string
+  currencyLanguage: string
+  notifications: string
   admin: string
 }
 
@@ -214,6 +218,18 @@ export function buildSidebarSections(t: SidebarTranslations): SidebarSectionConf
           label: t.profile,
           icon: User,
           path: '/dashboard/perfil',
+        },
+        {
+          id: 'currency-language',
+          label: t.currencyLanguage,
+          icon: Globe,
+          path: '/dashboard/perfil#preferencias',
+        },
+        {
+          id: 'notifications-settings',
+          label: t.notifications,
+          icon: Bell,
+          path: '/dashboard/perfil#notificacoes',
         },
       ],
     },

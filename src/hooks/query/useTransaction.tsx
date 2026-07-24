@@ -11,6 +11,8 @@ import {
   TransactionDTO,
   TransactionFilters,
   updateTransaction,
+  convertTransactionToCharge,
+  type ConvertToChargeDTO,
 } from '@/services/transactions'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { cardKeys } from './cardkeys'
@@ -157,6 +159,21 @@ export function useTranscation(params: UseTransactionParams) {
     },
   })
 
+  const convertToChargeMutation = useMutation({
+    mutationFn: ({ transactionId, data }: { transactionId: string; data: ConvertToChargeDTO }) =>
+      convertTransactionToCharge(transactionId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      queryClient.invalidateQueries({ queryKey: ['credit-card-charges'] })
+      queryClient.invalidateQueries({ queryKey: ['financeStatus'] })
+      queryClient.invalidateQueries({ queryKey: ['controls', { withProgress: true }] })
+      queryClient.invalidateQueries({ queryKey: ['cards'] })
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Erro ao converter transação.')
+    },
+  })
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteTransaction(id),
     onSuccess: () => {
@@ -197,6 +214,7 @@ export function useTranscation(params: UseTransactionParams) {
     transactionsQuery,
     createMutation,
     updateMutation,
+    convertToChargeMutation,
     deleteMutation,
     importMutation,
     importPreviewMutation,

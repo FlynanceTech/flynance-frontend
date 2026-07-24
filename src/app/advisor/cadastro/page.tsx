@@ -3,12 +3,15 @@
 import React, { useState, useTransition } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Loader2, User, Building2, Mail, Phone, ChevronRight } from 'lucide-react'
+import { Loader2, User, Building2, Mail, ChevronRight } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import type { CountryCode } from 'libphonenumber-js'
 
 import { persistAuthToken } from '@/lib/authSession'
 import { registerAdvisor, registerOrganization } from '@/services/advisor'
-import { Input, CleaveInput } from '@/components/ui/input'
+import { Input } from '@/components/ui/input'
+import PhoneDdiField from '@/components/cadastro/PhoneDdiField'
+import { DEFAULT_PHONE_COUNTRY, toE164 } from '@/lib/phoneCountries'
 import { useUserSession } from '@/stores/useUserSession'
 
 import logo from '../../../../assets/Logo/PNG/Logo Fly branca 1.png'
@@ -19,6 +22,7 @@ function AdvisorForm({ onSuccess }: { onSuccess: () => void }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
+  const [phoneCountry, setPhoneCountry] = useState<CountryCode>(DEFAULT_PHONE_COUNTRY)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const { fetchAccount } = useUserSession()
@@ -31,7 +35,7 @@ function AdvisorForm({ onSuccess }: { onSuccess: () => void }) {
     setLoading(true)
     setError('')
     try {
-      const res = await registerAdvisor({ name: name.trim(), email: email.trim(), phone: phone.trim() })
+      const res = await registerAdvisor({ name: name.trim(), email: email.trim(), phone: toE164(phone, phoneCountry) || phone.trim() })
       persistAuthToken(res.token)
       await fetchAccount()
       onSuccess()
@@ -66,18 +70,13 @@ function AdvisorForm({ onSuccess }: { onSuccess: () => void }) {
         />
       </div>
 
-      <div className="relative">
-        <Phone className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-        <CleaveInput
-          type="tel"
-          name="tel"
-          options={{ delimiters: ['(', ') ', '-'], blocks: [0, 2, 5, 4], numericOnly: true }}
-          placeholder="(11) 99999-9999"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          className="h-12 w-full rounded-xl border border-gray-300 bg-white pl-10 pr-4 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-        />
-      </div>
+      <PhoneDdiField
+        country={phoneCountry}
+        phone={phone}
+        onCountryChange={(iso) => { setPhoneCountry(iso); setPhone('') }}
+        onPhoneChange={setPhone}
+        placeholder="WhatsApp"
+      />
 
       {error && <p className="text-sm text-red-500">{error}</p>}
 
@@ -98,6 +97,7 @@ function OrganizationForm({ onSuccess }: { onSuccess: () => void }) {
   const [responsibleName, setResponsibleName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
+  const [phoneCountry, setPhoneCountry] = useState<CountryCode>(DEFAULT_PHONE_COUNTRY)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const { fetchAccount } = useUserSession()
@@ -115,7 +115,7 @@ function OrganizationForm({ onSuccess }: { onSuccess: () => void }) {
         orgName: orgName.trim(),
         responsibleName: responsibleName.trim(),
         email: email.trim(),
-        phone: phone.trim(),
+        phone: toE164(phone, phoneCountry) || phone.trim(),
       })
       persistAuthToken(res.token)
       await fetchAccount()
@@ -162,18 +162,13 @@ function OrganizationForm({ onSuccess }: { onSuccess: () => void }) {
         />
       </div>
 
-      <div className="relative">
-        <Phone className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-        <CleaveInput
-          type="tel"
-          name="tel"
-          options={{ delimiters: ['(', ') ', '-'], blocks: [0, 2, 5, 4], numericOnly: true }}
-          placeholder="(11) 99999-9999"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          className="h-12 w-full rounded-xl border border-gray-300 bg-white pl-10 pr-4 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-        />
-      </div>
+      <PhoneDdiField
+        country={phoneCountry}
+        phone={phone}
+        onCountryChange={(iso) => { setPhoneCountry(iso); setPhone('') }}
+        onPhoneChange={setPhone}
+        placeholder="WhatsApp"
+      />
 
       {error && <p className="text-sm text-red-500">{error}</p>}
 

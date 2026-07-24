@@ -72,7 +72,7 @@ interface FiltroTransacoesStore {
 
 export const useTransactionFilter = create<FiltroTransacoesStore>((set) => ({
   selectedCategories: [],
-  dateRange: 30,
+  dateRange: 365,
   searchTerm: '',
   mode: 'days',
   includeFuture: false,
@@ -82,7 +82,7 @@ export const useTransactionFilter = create<FiltroTransacoesStore>((set) => ({
   rangeEnd: initialRange.end,
   typeFilter: 'ALL',
   appliedSelectedCategories: [],
-  appliedDateRange: 30,
+  appliedDateRange: 365,
   appliedSearchTerm: '',
   appliedMode: 'days',
   appliedIncludeFuture: false,
@@ -129,7 +129,7 @@ export const useTransactionFilter = create<FiltroTransacoesStore>((set) => ({
   limparFiltros: () =>
     set({
       selectedCategories: [],
-      dateRange: 30,
+      dateRange: 365,
       searchTerm: '',
       mode: 'days',
       includeFuture: false,
@@ -139,7 +139,7 @@ export const useTransactionFilter = create<FiltroTransacoesStore>((set) => ({
       rangeEnd: initialRange.end,
       typeFilter: 'ALL',
       appliedSelectedCategories: [],
-      appliedDateRange: 30,
+      appliedDateRange: 365,
       appliedSearchTerm: '',
       appliedMode: 'days',
       appliedIncludeFuture: false,

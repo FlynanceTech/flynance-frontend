@@ -212,6 +212,28 @@ export const updateTransaction = async (id: string, data: TransactionDTO): Promi
   }
 }
 
+export interface ConvertToChargeDTO {
+  cardId: string
+  installmentCount?: number
+  description?: string
+  categoryId?: string
+  value?: number
+  date?: string
+}
+
+export const convertTransactionToCharge = async (
+  transactionId: string,
+  data: ConvertToChargeDTO
+): Promise<unknown> => {
+  try {
+    const response = await api.post(`/transactions/${transactionId}/to-credit-charge`, data)
+    return response.data
+  } catch (e: unknown) {
+    const msg = getTransactionWriteErrorMessage(e, 'Erro ao converter para compra no cartão.')
+    throw new Error(msg)
+  }
+}
+
 export const deleteTransaction = async (id: string): Promise<{ message: string }> => {
   try {
     const response = await api.delete(`/transactions/${id}`)
@@ -304,6 +326,7 @@ export type ImportConfirmPayload<TTransaction = Transaction> = {
   mode: 'import'
   cardId?: string | null
   transactions: TTransaction[]
+  bypassDuplicateCheck?: boolean
   importKind?: 'BANK_ACCOUNT' | 'CREDIT_CARD_STATEMENT'
   sourceType?: 'BANK_ACCOUNT' | 'CREDIT_CARD_STATEMENT'
   creditCardStatement?: {

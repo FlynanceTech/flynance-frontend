@@ -2,7 +2,6 @@
 
 import Header from '../components/Header'
 import CyclePreferencesCard from '@/components/perfil/CyclePreferencesCard'
-import { ProfileSidebar } from '@/components/perfil/ProfileSidebar'
 import SubscriptionCard from '@/components/perfil/SubscriptionCard'
 import UserInfoCard from '@/components/perfil/UserInfoCard'
 import UserPreferencesCard from '@/components/perfil/UserPreferencesCard'
@@ -10,7 +9,6 @@ import { useUserSession } from '@/stores/useUserSession'
 import { LogOut } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
-import PageOnboardingTour, { type PageOnboardingStep } from '@/components/onboarding/PageOnboardingTour'
 import { useTranslations } from 'next-intl'
 
 export default function ProfilePage() {
@@ -21,11 +19,16 @@ export default function ProfilePage() {
   useEffect(() => {
     const scrollToHashTarget = (attempt = 0) => {
       const targetId = window.location.hash.replace('#', '')
-      if (!targetId) return
+
+      if (!targetId) {
+        const scrollRoot = document.getElementById('dashboard-scroll-root')
+        scrollRoot?.scrollTo({ top: 0, behavior: 'smooth' })
+        return
+      }
 
       const element = document.getElementById(targetId)
       if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' })
         return
       }
       if (attempt < 10) {
@@ -40,28 +43,6 @@ export default function ProfilePage() {
     return () => window.removeEventListener('hashchange', handleHashChange)
   }, [])
 
-  const profileOnboardingSteps: ReadonlyArray<PageOnboardingStep> = [
-    {
-      id: 'header',
-      selector: '[data-onboarding-target="perfil-header"]',
-      align: 'bottom',
-      title: t('onboarding.headerTitle'),
-      description: t('onboarding.headerDescription'),
-    },
-    {
-      id: 'sidebar',
-      selector: '[data-onboarding-target="perfil-sidebar"]',
-      title: t('onboarding.sidebarTitle'),
-      description: t('onboarding.sidebarDescription'),
-    },
-    {
-      id: 'cards',
-      selector: '[data-onboarding-target="perfil-cards"]',
-      title: t('onboarding.cardsTitle'),
-      description: t('onboarding.cardsDescription'),
-    },
-  ]
-
   const handleLogout = async () => {
     await logout()
     router.push('/login')
@@ -69,41 +50,32 @@ export default function ProfilePage() {
 
   return (
     <section className="w-full h-full min-h-0 overflow-hidden pt-8 px-4 lg:px-8 flex flex-col gap-8">
-      <div data-onboarding-target="perfil-header">
-        <Header
-          title={t('title')}
-          subtitle={t('subtitle')}
-          rightContent={
-            <PageOnboardingTour
-              steps={profileOnboardingSteps}
-              storageKeyBase="flynance:dashboard:onboarding:perfil:v1"
-              triggerLabel={t('guideButton')}
-            />
-          }
-        />
-      </div>
+      <Header
+        title={t('title')}
+        subtitle={t('subtitle')}
+        newTransation={false}
+      />
 
       <div className="flex flex-1 min-h-0 overflow-hidden gap-4 justify-center">
-        <div data-onboarding-target="perfil-sidebar">
-          <ProfileSidebar />
-        </div>
-
-        <main
-          className="flex-1 h-full min-h-0 overflow-y-auto max-w-4xl lg:pr-4 lg:pb-0 pb-24"
-          data-onboarding-target="perfil-cards"
-        >
-          <div className="space-y-6">
+        <main className="flex-1 h-full min-h-0 overflow-y-auto max-w-4xl lg:pr-4 lg:pb-0 pb-24">
+          <div className="space-y-4">
             <div id="user-info">
               <UserInfoCard />
             </div>
+
+            <hr className="border-slate-200" />
 
             <div id="subscription">
               <SubscriptionCard />
             </div>
 
+            <hr className="border-slate-200" />
+
             <div id="user-preferences">
               <UserPreferencesCard />
             </div>
+
+            <hr className="border-slate-200" />
 
             <div id="cycle-preferences">
               <CyclePreferencesCard />

@@ -9,13 +9,13 @@ import {
   Loader2,
   LogOut,
   Mail,
-  Phone,
   Save,
   Shield,
   User,
   UsersRound,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import type { CountryCode } from 'libphonenumber-js'
 
 import AdvisorGuard from '../components/AdvisorGuard'
 import { useUserSession } from '@/stores/useUserSession'
@@ -23,6 +23,8 @@ import { useAdvisorClients } from '@/hooks/query/useAdvisor'
 import { useUsers } from '@/hooks/query/useUsers'
 import { isOrgAdminRole, isAdvisorRole } from '@/utils/roles'
 import { leaveOrg } from '@/services/advisor'
+import PhoneDdiField from '@/components/cadastro/PhoneDdiField'
+import { DEFAULT_PHONE_COUNTRY, splitPhone, toE164 } from '@/lib/phoneCountries'
 
 function roleLabel(role: string): string {
   if (role === 'ORG_ADMIN') return 'Administrador da Organização'
@@ -36,14 +38,6 @@ function roleColor(role: string) {
   if (isOrgAdminRole(role)) return { bg: 'bg-purple-100', text: 'text-purple-700', border: 'border-purple-200' }
   if (isAdvisorRole(role)) return { bg: 'bg-[#EAF4FA]', text: 'text-[#2F6E91]', border: 'border-[#BFE0F5]' }
   return { bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' }
-}
-
-function formatPhone(value: string): string {
-  const n = value.replace(/\D/g, '')
-  if (n.length <= 11) {
-    return n.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d)/, '$1-$2')
-  }
-  return value
 }
 
 export default function AdvisorConfiguracoesPage() {
@@ -64,11 +58,13 @@ function AdvisorConfiguracoesInner() {
   const role = userData?.role ?? ''
   const roleStyle = roleColor(role)
 
+  const initialPhone = splitPhone(userData?.phone)
   const [form, setForm] = useState({
     name: userData?.name ?? '',
     email: userData?.email ?? '',
-    phone: userData?.phone ?? '',
+    phone: initialPhone.national,
   })
+  const [phoneCountry, setPhoneCountry] = useState<CountryCode>(initialPhone.country)
   const [saving, setSaving] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
   const [leavingOrg, setLeavingOrg] = useState(false)
@@ -80,15 +76,16 @@ function AdvisorConfiguracoesInner() {
     if (!userData?.id) return
     try {
       setSaving(true)
+      const phoneE164 = toE164(form.phone, phoneCountry) || form.phone
       await updateMutation.mutateAsync({
         id: userData.id,
-        data: { name: form.name, email: form.email, phone: form.phone },
+        data: { name: form.name, email: form.email, phone: phoneE164 },
       })
       setUser({
         ...user!,
         userData: {
           ...user!.userData,
-          user: { ...user!.userData.user, name: form.name, email: form.email, phone: form.phone },
+          user: { ...user!.userData.user, name: form.name, email: form.email, phone: phoneE164 },
         },
       })
       toast.success('Perfil atualizado com sucesso.')
@@ -192,18 +189,13 @@ function AdvisorConfiguracoesInner() {
                 <label htmlFor="adv-phone" className="text-sm font-medium text-slate-700">
                   WhatsApp / Telefone
                 </label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <input
-                    id="adv-phone"
-                    type="tel"
-                    value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: formatPhone(e.target.value) })}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm text-slate-800 outline-none transition focus:border-[#4F98C2] focus:bg-white focus:ring-2 focus:ring-[#4F98C2]/20"
-                    placeholder="(11) 99999-9999"
-                    maxLength={15}
-                  />
-                </div>
+                <PhoneDdiField
+                  country={phoneCountry}
+                  phone={form.phone}
+                  onCountryChange={(iso) => { setPhoneCountry(iso); setForm({ ...form, phone: '' }) }}
+                  onPhoneChange={(value) => setForm({ ...form, phone: value })}
+                  placeholder="WhatsApp / Telefone"
+                />
               </div>
 
               <button

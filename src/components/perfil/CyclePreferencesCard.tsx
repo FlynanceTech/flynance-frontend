@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { CalendarRange } from 'lucide-react'
+import { CalendarRange, HelpCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useTranslations } from 'next-intl'
 
@@ -46,6 +46,17 @@ function toFormState(input?: {
     cutoffDay: input?.cutoffDay != null ? String(input.cutoffDay) : '',
     timezone: input?.timezone?.trim() || 'America/Sao_Paulo',
   } as FormState
+}
+
+function InfoTooltip({ text }: { text: string }) {
+  return (
+    <span className="relative group ml-1.5 inline-flex">
+      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+      <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block w-64 text-xs bg-slate-800 text-white rounded-lg px-2.5 py-2 z-20 shadow-lg leading-relaxed whitespace-normal">
+        {text}
+      </span>
+    </span>
+  )
 }
 
 const CyclePreferencesCard = () => {
@@ -132,102 +143,97 @@ const CyclePreferencesCard = () => {
       )}
 
       <form onSubmit={handleSave} className="space-y-4">
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-foreground">{t('fields.cycleType')}</label>
-          <select
-            value={form.cycleMode}
-            onChange={(event) =>
-              setForm((prev) => ({
-                ...prev,
-                cycleMode: event.target.value as CycleMode,
-              }))
-            }
-            disabled={isBusy}
-            className="w-full rounded-xl border border-border/25 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
-          >
-            <option value="fixed_payday">{t('options.fixedPayday')}</option>
-            <option value="autonomous">{t('options.autonomous')}</option>
-          </select>
-        </div>
-
-        {isFixedPayday && (
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-foreground">{t('fields.paydayDay')}</label>
-            <input
-              value={form.paydayDay}
-              onChange={(event) =>
-                setForm((prev) => ({
-                  ...prev,
-                  paydayDay: event.target.value,
-                }))
-              }
-              type="number"
-              min={1}
-              max={31}
-              disabled={isBusy}
-              className="w-full rounded-xl border border-border/25 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
-              placeholder={t('placeholders.paydayDay')}
-            />
-          </div>
-        )}
-
-        {form.cycleMode === 'autonomous' && (
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-foreground">{t('fields.autonomousType')}</label>
+        {/* Como seu ciclo financeiro começa */}
+        <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
+          <label className="flex flex-col gap-2">
+            <span className="inline-flex items-center text-sm font-medium text-foreground">
+              {t('fields.cycleType')}
+              <InfoTooltip text={t('tooltips.cycleType')} />
+            </span>
             <select
-              value={form.autonomousCycleKind}
+              value={form.cycleMode}
               onChange={(event) =>
                 setForm((prev) => ({
                   ...prev,
-                  autonomousCycleKind: event.target.value as AutonomousCycleKind,
+                  cycleMode: event.target.value as CycleMode,
                 }))
               }
               disabled={isBusy}
               className="w-full rounded-xl border border-border/25 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
             >
-              <option value="calendar_month">{t('options.calendarMonth')}</option>
-              <option value="cutoff_day">{t('options.cutoffDay')}</option>
+              <option value="fixed_payday">{t('options.fixedPayday')}</option>
+              <option value="autonomous">{t('options.autonomous')}</option>
             </select>
-          </div>
-        )}
+          </label>
 
-        {isCutoffDay && (
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-foreground">{t('fields.cutoffDay')}</label>
-            <input
-              value={form.cutoffDay}
-              onChange={(event) =>
-                setForm((prev) => ({
-                  ...prev,
-                  cutoffDay: event.target.value,
-                }))
-              }
-              type="number"
-              min={1}
-              max={31}
-              disabled={isBusy}
-              className="w-full rounded-xl border border-border/25 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
-              placeholder={t('placeholders.cutoffDay')}
-            />
-          </div>
-        )}
-
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-foreground">{t('fields.timezone')}</label>
-          <input
-            value={form.timezone}
-            onChange={(event) =>
-              setForm((prev) => ({
-                ...prev,
-                timezone: event.target.value,
-              }))
-            }
-            type="text"
-            disabled={isBusy}
-            className="w-full rounded-xl border border-border/25 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
-            placeholder={t('placeholders.timezone')}
-          />
+          {isFixedPayday && (
+            <div className="mt-3 flex flex-col gap-2">
+              <label className="text-sm font-medium text-foreground">{t('fields.paydayDay')}</label>
+              <input
+                value={form.paydayDay}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    paydayDay: event.target.value,
+                  }))
+                }
+                type="number"
+                min={1}
+                max={31}
+                disabled={isBusy}
+                className="w-full rounded-xl border border-border/25 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
+                placeholder={t('placeholders.paydayDay')}
+              />
+            </div>
+          )}
         </div>
+
+        {/* Como a Fly fecha o ciclo autônomo */}
+        {form.cycleMode === 'autonomous' && (
+          <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
+            <label className="flex flex-col gap-2">
+              <span className="inline-flex items-center text-sm font-medium text-foreground">
+                {t('fields.autonomousType')}
+                <InfoTooltip text={t('tooltips.autonomousType')} />
+              </span>
+              <select
+                value={form.autonomousCycleKind}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    autonomousCycleKind: event.target.value as AutonomousCycleKind,
+                  }))
+                }
+                disabled={isBusy}
+                className="w-full rounded-xl border border-border/25 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
+              >
+                <option value="calendar_month">{t('options.calendarMonth')}</option>
+                <option value="cutoff_day">{t('options.cutoffDay')}</option>
+              </select>
+            </label>
+
+            {isCutoffDay && (
+              <div className="mt-3 flex flex-col gap-2">
+                <label className="text-sm font-medium text-foreground">{t('fields.cutoffDay')}</label>
+                <input
+                  value={form.cutoffDay}
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      cutoffDay: event.target.value,
+                    }))
+                  }
+                  type="number"
+                  min={1}
+                  max={31}
+                  disabled={isBusy}
+                  className="w-full rounded-xl border border-border/25 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
+                  placeholder={t('placeholders.cutoffDay')}
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         <p className="text-xs text-muted-foreground">{helperText}</p>
 
@@ -247,7 +253,6 @@ const CyclePreferencesCard = () => {
           type="submit"
           variant="default"
           disabled={isBusy}
-         
         >
           {updatePreferencesMutation.isPending ? t('actions.saving') : t('actions.save')}
         </Button>

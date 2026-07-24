@@ -27,6 +27,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       clients: 'Clientes',
       profile: 'Perfil',
       notifications: 'Notificações',
+      currencyLanguage: 'Moeda & Idioma',
       admin: 'Admin',
       more: 'Mais',
       moreOptions: 'Mais opcoes',
@@ -118,6 +119,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         categoriesTitle: 'Para onde seu dinheiro foi',
         categoriesDescription:
           'Veja a distribuição do seu dinheiro por período, e por categoria. Organize como quiser, e veja onde mais está gastando. Clique em uma categoria para expandir mais detalhes.',
+        guideButtonTitle: 'Volte neste tutorial sempre que tiver dúvidas!',
+        guideButtonDescription:
+          'Basta clicar no guia do dashboard para ativá-lo novamente.',
       },
     },
     pageOnboarding: {
@@ -258,20 +262,20 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       title: 'Suas movimentações',
       subtitle:
         'O que entrou e o que saiu da sua conta, atualizado sempre que você adicionar uma nova transação.',
-      errorLoading: 'Erro ao carregar transacoes.',
+      errorLoading: 'Erro ao carregar transações.',
       guideButton: 'Ver guia de transações',
       readOnlyBanner:
         'Você está atuando com permissão somente leitura para este cliente.',
       csvTip:
         'Indicamos pedir ao aplicativo do banco o arquivo .csv para a importacao dos dados',
       close: 'Fechar',
-      refreshing: 'Atualizando transacoes...',
-      showingRange: 'Exibindo {start}-{end} de {total} transacoes',
+      refreshing: 'Atualizando transações...',
+      showingRange: 'Exibindo {start}–{end} de {total} transações',
       noneFound: 'Nenhuma transação encontrada',
       ofTotal: '(de {total} no total)',
       deleteSelection: 'Deletar selecao ({count})',
       deleteSingleTitle: 'Excluir transação',
-      deleteBulkTitle: 'Excluir transacoes',
+      deleteBulkTitle: 'Excluir transações',
       deleteSingleDescription: 'Tem certeza que deseja excluir esta transação?',
       deleteBulkDescription:
         'Tem certeza que deseja excluir {count} transação(oes)?',
@@ -345,6 +349,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         listTitle: 'Lista de transações',
         listDescription:
           'Navegue entre as abas Pix/Débito/Dinheiro e Cartão de Crédito. Use o botão Atualizar para ver as últimas movimentações.',
+        guideButtonTitle: 'Volte neste tutorial sempre que tiver dúvidas!',
+        guideButtonDescription:
+          'Basta clicar no guia de transações para ativá-lo novamente.',
       },
       authorFilter: {
         label: 'Quem realizou',
@@ -534,18 +541,27 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         unmarkSuccess: 'Pagamento desmarcado com sucesso.',
       },
       onboarding: {
-        headerTitle: 'Visao geral de contas fixas',
-        headerDescription:
-          'Nessa seção você cadastra as suas contas fixas.',
-        summaryTitle: 'Resumo mensal e filtros',
+        welcomeTitle: 'Gestão de Contas Fixas',
+        welcomeDescription:
+          'Seja bem-vindo(a) à tela de Contas Fixas! Aqui você cadastra contas fixas (boletos), como telefone, água, luz, gás, internet e outras, e pode acompanhar a sua evolução em cada uma delas.',
+        newAccountTitle: 'Cadastre quantas contas fixas quiser',
+        newAccountDescription:
+          'Você pode adicionar uma conta fixa sempre que precisar através deste botão.',
+        summaryTitle: 'Resumo geral',
         summaryDescription:
-          'Acompanhe um resumo das suas contas fixas no mês. As opções permitem alterar o mês de observação, e filtrar por status para focar no que importa.',
+          'Acompanhe um resumo das suas contas fixas no mês. Veja o que foi pago, o que falta pagar e qual o total estimado para o mês atual.',
+        listContainerTitle: 'Lista de contas',
+        listContainerDescription:
+          'Cada card mostra o status por conta, e permite editar, remover, ou marcar como pago. Quando você marcar como pago, poderá informar o valor exato da conta daquele mês.',
         listTitle: 'Lista de contas',
         listDescription:
-          'Cada card mostra o status por conta, e permite editar, remover, ou marcar como pago.',
-        cardTitle: 'Detalhe da conta',
+          'Cada card mostra o status por conta, e permite editar, remover, ou marcar como pago. Quando você marcar como pago, poderá informar o valor exato da conta daquele mês. Se o card ainda não aparece pra você, basta cadastrar uma nova conta.',
+        cardTitle: 'Acompanhe a sua evolução',
         cardDescription:
-          'Se você clicar no card, ele te leva ao histórico de pagamento - te permitindo acompanhar a evolução mensal de cada conta.',
+          'Se você clicar em um dos cards, conseguirá ver a evolução histórica dos seus gastos, mês a mês, com aquela competência.',
+        guideButtonTitle: 'Volte neste tutorial sempre que tiver dúvidas!',
+        guideButtonDescription:
+          'Basta clicar no guia de contas fixas para ativá-lo novamente.',
       },
     },
     reports: {
@@ -662,18 +678,24 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       expenseTab: 'Despesas',
       incomeTab: 'Receitas',
       onboarding: {
-        headerTitle: 'Gestão de categorias',
-        headerDescription:
-          'Esta área centraliza a criação e manutenção das categorias usadas nas suas transações (receita ou despesa).',
-        tabsTitle: 'Separação por tipo',
+        welcomeTitle: 'Gestão de categorias',
+        welcomeDescription:
+          'Seja bem-vindo(a) à gestão das suas categorias! Aqui você cria, edita e apaga categorias relativas à receitas ou despesas.',
+        tabsTitle: 'Despesa ou Receita',
         tabsDescription:
-          'Alterne entre despesas e receitas para organizar melhor o conjunto de categorias.',
-        formListTitle: 'Cadastro e lista',
-        formListDescription:
-          'Através dos cards abaixo, você edita categorias existentes e pode remover o que não faz mais sentido para seu fluxo.',
-        organizeTitle: 'Organize como quiser',
-        organizeDescription:
-          'Além disso, você pode organizar as categorias como quiser. Basta arrastar os cards para cima, para baixo e/ou para os lados.',
+          'Primeiro, selecione se quer gerenciar as categorias de despesas ou receitas.',
+        createTitle: 'Adicione novas categorias',
+        createDescription:
+          'Clicando neste botão, você pode adicionar quantas categorias quiser. Digite o nome da categoria e a palavra-chave que você quer usar para a Fly entender e registrar certinho.',
+        listTitle: 'Cadastro e lista',
+        listDescription:
+          'Através dos cards, você edita categorias existentes e pode remover o que não faz mais sentido para seu fluxo.',
+        cardTitle: 'Personalize as suas categorias',
+        cardDescription:
+          'Segure e arraste um card para movê-lo. Clique na cor para mudar a cor da categoria. Clique no lápis para editar nome ou adicionar/excluir uma palavra-chave. Exclua uma categoria clicando na lixeira.',
+        guideButtonTitle: 'Volte neste tutorial sempre que tiver dúvidas!',
+        guideButtonDescription:
+          'Basta clicar no guia de categorias para ativá-lo novamente.',
       },
       classification: {
         title: 'As suas categorias',
@@ -774,24 +796,24 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       guideButton: 'Ver guia de perfil',
       logout: 'Sair',
       onboarding: {
-        headerTitle: 'Area de perfil',
+        headerTitle: 'Área de perfil',
         headerDescription:
-          'Use esta tela para gerenciar seus dados, assinatura e preferencias da conta.',
-        sidebarTitle: 'Navegacao lateral',
+          'Use esta tela para gerenciar seus dados, assinatura e preferências da conta.',
+        sidebarTitle: 'Navegação lateral',
         sidebarDescription:
-          'A barra lateral leva direto para cada secao do perfil para facilitar ajustes rapidos.',
-        cardsTitle: 'Cards de configuracao',
+          'A barra lateral leva direto para cada seção do perfil para facilitar ajustes rápidos.',
+        cardsTitle: 'Cards de configuração',
         cardsDescription:
-          'Atualize informacoes pessoais, assinatura, preferencias da conta e ciclo financeiro nesta area.',
+          'Atualize informações pessoais, assinatura, preferências da conta e ciclo financeiro nesta área.',
       },
       sections: {
-        personalInfo: 'Informacoes pessoais',
+        personalInfo: 'Informações pessoais',
         subscription: 'Assinatura e plano',
-        preferences: 'Preferencias',
+        preferences: 'Preferências',
         cycle: 'Ciclo financeiro',
       },
       userInfoCard: {
-        title: 'Informacoes do usuario',
+        title: 'Informações do Usuário',
         fields: {
           fullName: 'Nome completo',
           email: 'E-mail',
@@ -803,38 +825,42 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           whatsapp: '(00) 00000-0000',
         },
         actions: {
-          save: 'Salvar alteracoes',
+          save: 'Salvar Alterações',
           saving: 'Salvando...',
         },
         errors: {
-          userNotIdentified: 'Usuario nao identificado.',
+          userNotIdentified: 'Usuário não identificado.',
         },
         toasts: {
-          updatedTitle: 'Informacoes atualizadas com sucesso!',
-          updatedDescription: 'Suas alteracoes foram salvas.',
-          updateErrorTitle: 'Falha ao atualizar informacoes.',
+          updatedTitle: 'Informações atualizadas com sucesso!',
+          updatedDescription: 'Suas alterações foram salvas.',
+          updateErrorTitle: 'Falha ao atualizar informações.',
           updateErrorDescription: 'Tente novamente mais tarde.',
         },
       },
       cyclePreferencesCard: {
         title: 'Ciclo financeiro',
-        subtitle: 'Defina como a competencia mensal deve ser calculada.',
+        subtitle: 'Defina como a competência mensal deve ser calculada.',
         helper: {
-          fixedPayday: 'Periodo do dia de recebimento ate o dia anterior no mes seguinte.',
-          cutoffDay: 'Periodo do dia seguinte ao fechamento ate o dia de fechamento do mes seguinte.',
-          calendarMonth: 'Periodo alinhado ao mes calendario.',
+          fixedPayday: 'Período do dia de recebimento até o dia anterior no mês seguinte.',
+          cutoffDay: 'Período do dia seguinte ao fechamento até o dia de fechamento do mês seguinte.',
+          calendarMonth: 'Se quiser deixar o padrão recomendado pela Fly, basta não mexer nesta opção.',
         },
         fields: {
-          cycleType: 'Tipo de ciclo',
+          cycleType: 'Como seu ciclo financeiro começa',
           paydayDay: 'Dia fixo de recebimento (1-31)',
-          autonomousType: 'Tipo do ciclo autonomo',
+          autonomousType: 'Como a Fly fecha o ciclo autônomo',
           cutoffDay: 'Dia de fechamento (1-31)',
-          timezone: 'Fuso horario',
+          timezone: 'Fuso Horário',
+        },
+        tooltips: {
+          cycleType: 'Autônomo: você configura quando o ciclo fecha. Dia fixo de recebimento: o ciclo começa no seu dia de salário e termina no dia anterior do mês seguinte (ex: dia 5 → do dia 5 ao dia 4).',
+          autonomousType: 'Mês calendário: o ciclo vai de 1º ao último dia de cada mês (ex: 1 jan – 31 jan). Dia de fechamento: você escolhe o dia que o ciclo encerra (ex: dia 10 → do dia 11 ao dia 10 do mês seguinte).',
         },
         options: {
           fixedPayday: 'Dia fixo de recebimento',
-          autonomous: 'Autonomo',
-          calendarMonth: 'Mes calendario',
+          autonomous: 'Autônomo',
+          calendarMonth: 'Mês calendário',
           cutoffDay: 'Dia de fechamento',
         },
         placeholders: {
@@ -843,17 +869,17 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           timezone: 'America/Sao_Paulo',
         },
         actions: {
-          save: 'Salvar preferencias',
+          save: 'Salvar preferências',
           saving: 'Salvando...',
         },
         errors: {
-          load: 'Erro ao carregar preferencias de ciclo.',
-          invalidPaydayDay: 'Informe um dia de recebimento valido entre 1 e 31.',
-          invalidCutoffDay: 'Informe um dia de fechamento valido entre 1 e 31.',
-          saveFallback: 'Nao foi possivel salvar as preferencias de ciclo.',
+          load: 'Erro ao carregar preferências de ciclo.',
+          invalidPaydayDay: 'Informe um dia de recebimento válido entre 1 e 31.',
+          invalidCutoffDay: 'Informe um dia de fechamento válido entre 1 e 31.',
+          saveFallback: 'Não foi possível salvar as preferências de ciclo.',
         },
         toasts: {
-          saved: 'Preferencias de ciclo salvas com sucesso.',
+          saved: 'Preferências de ciclo salvas com sucesso.',
         },
       },
       subscriptionCard: {
@@ -861,41 +887,57 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         loading: 'Carregando dados da assinatura...',
         planFallback: 'Plano Flynance',
         emptyState:
-          'Voce ainda nao possui assinatura ativa. Quando contratar um plano, os detalhes aparecerao aqui.',
-        valueWithSource: 'Valor: {value} - Fonte: {source}',
+          'Você ainda não possui assinatura ativa. Quando contratar um plano, os detalhes aparecerão aqui.',
+        valueWithSource: 'Valor: {value}',
         valueOnly: 'Valor: {value}',
         nextBilling: 'Próxima cobrança: {date}',
         cancelAtPeriodEndLabel: 'Cancelamento no fim do periodo: {value}',
         endedAt: 'Encerrada em: {date}',
         common: {
           yes: 'Sim',
-          no: 'Nao',
+          no: 'Não',
         },
         loadError: {
-          title: 'Nao foi possivel carregar os dados da assinatura.',
+          title: 'Não foi possível carregar os dados da assinatura.',
           description: 'Tente novamente em instantes.',
         },
         badges: {
-          cancelAtPeriodEnd: 'Cancelara no fim do periodo',
+          cancelAtPeriodEnd: 'Cancelará no fim do período',
+          currentPlan: 'Plano atual',
         },
         card: {
-          currentTitle: 'Cartao atual',
-          fallbackBrand: 'Cartao',
+          currentTitle: 'Cartão atual',
+          fallbackBrand: 'Cartão',
           expiry: 'Validade: {value}',
-          noCard: 'Nenhum cartao vinculado a assinatura no momento.',
-          changeButton: 'Trocar cartao',
-          changeHint: 'Atualiza apenas as proximas faturas.',
+          noCard: 'Nenhum cartão vinculado à assinatura no momento.',
+          changeButton: 'Trocar cartão',
+          changeHint: 'Atualiza apenas as próximas faturas.',
         },
         scheduledCancel: {
-          description: 'Sua assinatura esta programada para cancelar no fim do periodo.',
+          description: 'Sua assinatura está programada para cancelar no fim do período.',
         },
         cancelConfirm: {
-          description: 'Ao confirmar, sua assinatura sera cancelada no fim do periodo atual.',
+          description: 'Ao confirmar, sua assinatura será cancelada no fim do período atual.',
           keepSubscription: 'Manter assinatura',
           confirm: 'Confirmar cancelamento',
         },
         cancelled: {
-          description: 'Sua assinatura esta cancelada. Voce pode reativar selecionando um novo plano.',
+          description: 'Sua assinatura está cancelada. Você pode reativar selecionando um novo plano.',
+        },
+        annualLabel: 'À vista ou parcelado',
+        personalizeModal: {
+          title: 'Personalizar assinatura',
+          changeCard: 'Trocar o Cartão',
+          cancelSub: 'Cancelar a Assinatura',
+          undoCancel: 'Desfazer cancelamento',
+          reactivate: 'Reativar assinatura',
+          scheduledCancelNote: 'Sua assinatura está programada para cancelar no fim do período.',
+          cancelledNote: 'Sua assinatura está cancelada.',
+          close: 'Fechar',
+          confirmCancelTitle: 'Confirmar cancelamento',
+          confirmCancelNote: 'Ao confirmar, sua assinatura será cancelada no fim do período atual.',
+          confirmCancelButton: 'Confirmar cancelamento',
+          back: 'Voltar',
         },
         actions: {
           retry: 'Tentar novamente',
@@ -906,6 +948,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           redirecting: 'Redirecionando...',
           reactivateSubscription: 'Reativar assinatura',
           changeSubscription: 'Alterar assinatura',
+          changePlan: 'Alterar Assinatura',
+          personalize: 'Personalizar assinatura',
+          changePlanButton: 'Mudar meu plano',
         },
         status: {
           active: 'Ativa',
@@ -914,37 +959,37 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           canceled: 'Cancelada',
           incomplete: 'Incompleta',
           incomplete_expired: 'Incompleta (expirada)',
-          unpaid: 'Nao paga',
+          unpaid: 'Não paga',
           paused: 'Pausada',
           inactive: 'Inativa',
           unknown: 'Indefinido',
         },
         toasts: {
-          subscriptionIdNotFoundCancel: 'Nao foi possivel identificar a assinatura para cancelar.',
+          subscriptionIdNotFoundCancel: 'Não foi possível identificar a assinatura para cancelar.',
           cancelError: 'Erro ao cancelar assinatura.',
           cancelRequested: 'Cancelamento solicitado com sucesso.',
-          subscriptionIdNotFoundReactivate: 'Nao foi possivel identificar a assinatura para reativar.',
+          subscriptionIdNotFoundReactivate: 'Não foi possível identificar a assinatura para reativar.',
           reactivateError: 'Erro ao reativar assinatura.',
           cancelUndoSuccess: 'Cancelamento desfeito com sucesso.',
           cancelUndoError: 'Erro ao desfazer cancelamento.',
           stripeMissingFrontendKey:
-            'Stripe nao configurado no frontend (NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY).',
-          sessionExpired: 'Sessao expirada. Faca login novamente para alterar a assinatura.',
+            'Stripe não configurado no frontend (NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY).',
+          sessionExpired: 'Sessão expirada. Faça login novamente para alterar a assinatura.',
         },
         changeCardModal: {
-          title: 'Trocar cartao',
-          description: 'O novo cartao sera usado nas proximas faturas da assinatura.',
+          title: 'Trocar cartão',
+          description: 'O novo cartão será usado nas próximas faturas da assinatura.',
           actions: {
             cancel: 'Cancelar',
             updating: 'Atualizando...',
-            saveCard: 'Salvar cartao',
+            saveCard: 'Salvar cartão',
           },
           success: {
-            updated: 'Cartao atualizado para as proximas faturas.',
+            updated: 'Cartão atualizado para as próximas faturas.',
           },
           errors: {
-            stripeNotLoaded: 'Stripe ainda nao carregou. Tente novamente.',
-            cardFieldNotLoaded: 'Nao foi possivel carregar o campo de cartao.',
+            stripeNotLoaded: 'Stripe ainda não carregou. Tente novamente.',
+            cardFieldNotLoaded: 'Não foi possível carregar o campo de cartão.',
             cardValidationFailed: 'Falha ao validar o cartao.',
             paymentMethodMissing: 'Nao foi possivel identificar o metodo de pagamento.',
             updateFailed: 'Erro ao trocar cartao.',
@@ -953,12 +998,12 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       },
     },
     preferences: {
-      title: 'Preferencias',
-      subtitle: 'Personalize idioma, moeda, fuso, notificacoes e preferencia de login.',
-      loadError: 'Nao foi possivel carregar preferencias.',
+      title: 'Preferências',
+      subtitle: 'Personalize idioma, moeda, fuso, tema, aplicativo e preferências de login.',
+      loadError: 'Não foi possível carregar preferências.',
       currency: 'Moeda',
       language: 'Idioma',
-      timezone: 'Fuso horario',
+      timezone: 'Fuso Horário',
       theme: {
         title: 'Tema',
         light: 'Claro',
@@ -966,39 +1011,39 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         lightHint: 'Tema claro ativo para melhor visibilidade durante o dia.',
         darkHint: 'Tema escuro ativo para reduzir brilho em ambientes noturnos.',
         saving: 'Salvando tema...',
-        saveFailed: 'Nao foi possivel salvar o tema.',
+        saveFailed: 'Não foi possível salvar o tema.',
       },
       currencyOptions: {
         BRL: 'Real brasileiro (BRL)',
-        USD: 'Dolar americano (USD)',
+        USD: 'Dólar americano (USD)',
         EUR: 'Euro (EUR)',
         GBP: 'Libra esterlina (GBP)',
         ARS: 'Peso argentino (ARS)',
       },
       languageOptions: {
-        'pt-BR': 'Portugues (Brasil) - pt-BR',
+        'pt-BR': 'Português (Brasil) - pt-BR',
         'en-US': 'English (United States) - en-US',
-        'es-ES': 'Espanol (Espana) - es-ES',
+        'es-ES': 'Español (España) - es-ES',
       },
       pwa: {
-        title: 'PWA instalado',
-        notDetected: 'Nao detectado',
+        title: 'Instalar aplicativo no computador',
+        notDetected: 'Não detectado',
         installed: 'Instalado',
         installedAt: 'Instalado em {date}',
         autoUpdate:
-          'Esse campo e atualizado automaticamente quando o app e instalado.',
-        installButton: 'Instalar app',
+          'Esse campo é atualizado automaticamente quando o app é instalado no seu computador.',
+        installButton: 'Instalar aplicativo',
         installHelp:
-          'Se o navegador nao abrir o instalador, use o menu e escolha instalar app.',
-        alreadyInstalled: 'App ja instalado neste dispositivo.',
-        noPrompt: 'Use o menu do navegador para instalar o app ou adicionar a tela inicial.',
-        installStarted: 'Instalacao iniciada. Confirme no navegador.',
-        installCanceled: 'Instalacao cancelada.',
-        installFailed: 'Nao foi possivel iniciar a instalacao da PWA.',
+          'Se o navegador não abrir o instalador, use o menu e escolha instalar o aplicativo.',
+        alreadyInstalled: 'Aplicativo já instalado neste dispositivo.',
+        noPrompt: 'Use o menu do navegador para instalar o aplicativo ou adicionar à tela inicial.',
+        installStarted: 'Instalação iniciada. Confirme no navegador.',
+        installCanceled: 'Instalação cancelada.',
+        installFailed: 'Não foi possível iniciar a instalação do aplicativo.',
       },
       notifications: {
-        title: 'Notificacoes',
-        description: 'Gerencie e-mail, WhatsApp e push nativo do navegador.',
+        title: 'Notificações',
+        description: 'Gerencie a comunicação da Fly via e-mail ou WhatsApp.',
         email: 'E-mail',
         whatsapp: 'WhatsApp',
         push: 'Push no navegador',
@@ -1006,9 +1051,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         dailyReminderHint:
           'Receba um lembrete pelo WhatsApp para registrar suas transações do dia. Pode ser ativado ou desativado aqui ou pelo próprio WhatsApp.',
         pushHelp:
-          'O Web Push entrega alertas mesmo com a Flynance em segundo plano, quando o navegador suportar.',
-        permissionLabel: 'Permissao do navegador',
-        subscriptionLabel: 'Subscription ativa',
+          'Receba alertas mesmo com a Flynance em segundo plano, quando o navegador suportar.',
+        permissionLabel: 'Permissão do navegador',
+        subscriptionLabel: 'Push ativo',
         permission: {
           default: 'Pendente',
           granted: 'Permitida',
@@ -1016,39 +1061,38 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           unsupported: 'Sem suporte',
         },
         subscription: {
-          active: 'Ativa',
-          inactive: 'Inativa',
+          active: 'Ativo',
+          inactive: 'Inativo',
         },
         unsupportedHint:
-          'Este navegador nao suporta Push API ou Service Worker para notificacoes nativas.',
+          'Este navegador não suporta notificações push nativas.',
         deniedHint:
-          'As notificacoes estao bloqueadas. Reative em Notificacoes nas permissoes do site e recarregue a pagina.',
+          'As notificações estão bloqueadas. Reative nas permissões do site e recarregue a página.',
         pendingHint:
-          'Ative a permissao do navegador para concluir o Web Push neste dispositivo.',
-        activeHint: 'Ja existe uma subscription ativa neste navegador.',
-        inactiveHint: 'Nenhuma subscription ativa foi encontrada neste navegador.',
-        ctaHint:
-          'A ativacao cria ou reaproveita a subscription atual e sincroniza com o backend.',
-        activateAction: 'Ativar notificacoes',
+          'Permita as notificações no navegador para ativar o push neste dispositivo.',
+        activeHint: 'Notificações push ativas neste navegador.',
+        inactiveHint: 'Nenhuma notificação push ativa neste navegador.',
+        ctaHint: '',
+        activateAction: 'Ativar notificações',
         activating: 'Ativando...',
-        statusSyncing: 'Sincronizando navegador...',
-        activationSuccess: 'Notificacoes push ativadas neste navegador.',
-        activationPending: 'A permissao do navegador ainda nao foi concedida.',
-        activationDenied: 'As notificacoes seguem bloqueadas neste navegador.',
+        statusSyncing: 'Sincronizando...',
+        activationSuccess: 'Notificações push ativadas neste navegador.',
+        activationPending: 'Permissão do navegador ainda não concedida.',
+        activationDenied: 'As notificações seguem bloqueadas neste navegador.',
         syncError:
-          'As preferencias foram salvas, mas a sincronizacao do navegador falhou.',
+          'Preferências salvas, mas a sincronização do navegador falhou.',
       },
       login: {
-        title: 'Preferencia de login',
+        title: 'Preferência de Login',
         AUTO: 'AUTO',
-        EMAIL: 'EMAIL',
-        WHATSAPP: 'WHATSAPP',
+        EMAIL: 'E-mail',
+        WHATSAPP: 'WhatsApp',
       },
       actions: {
-        noChanges: 'Sem alteracoes para salvar.',
-        saveSuccess: 'Preferencias salvas com sucesso.',
-        saveFailed: 'Nao foi possivel salvar preferencias.',
-        save: 'Salvar preferencias',
+        noChanges: 'Sem alterações para salvar.',
+        saveSuccess: 'Preferências salvas com sucesso.',
+        saveFailed: 'Não foi possível salvar preferências.',
+        save: 'Salvar Preferências',
         saving: 'Salvando...',
       },
     },
@@ -2511,6 +2555,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       clients: 'Clients',
       profile: 'Profile',
       notifications: 'Notifications',
+      currencyLanguage: 'Change currency & language',
       admin: 'Admin',
       more: 'More',
       moreOptions: 'More options',
@@ -2602,6 +2647,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         categoriesTitle: 'Category distribution',
         categoriesDescription:
           'See how your money is distributed by period and category. Organize as you like and see where you are spending the most. Click a category to expand more details.',
+        guideButtonTitle: 'Come back to this guide whenever you have questions!',
+        guideButtonDescription:
+          'Just click the dashboard guide button to open it again.',
       },
     },
     pageOnboarding: {
@@ -2826,6 +2874,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         listTitle: 'Transaction list',
         listDescription:
           'Switch between the Pix/Debit/Cash and Credit Card tabs. Use the Refresh button to see the latest movements.',
+        guideButtonTitle: 'Come back to this guide whenever you have questions!',
+        guideButtonDescription:
+          'Just click the transactions guide button to open it again.',
       },
       authorFilter: {
         label: 'Who made it',
@@ -3010,15 +3061,27 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         unmarkSuccess: 'Payment unmarked successfully.',
       },
       onboarding: {
-        headerTitle: 'Fixed bills overview',
-        headerDescription:
-          'Here you create new fixed bills and access the page general filters.',
-        summaryTitle: 'Monthly summary and filters',
+        welcomeTitle: 'Fixed Bills',
+        welcomeDescription:
+          'Welcome to Fixed Bills! Here you register recurring bills such as phone, water, electricity, gas, internet and more, and track their evolution over time.',
+        newAccountTitle: 'Add as many fixed bills as you need',
+        newAccountDescription:
+          'You can add a new fixed bill at any time using this button.',
+        summaryTitle: 'Overall summary',
         summaryDescription:
-          'Track month totals, change cycle and filter by status to focus on what matters.',
+          'Track a summary of your fixed bills for the month. See what has been paid, what is still pending, and the estimated total for the current month.',
+        listContainerTitle: 'Bills list',
+        listContainerDescription:
+          'Each card shows the bill status, and lets you edit, remove or mark it as paid. When you mark it as paid, you can enter the exact amount for that month.',
         listTitle: 'Bills list',
         listDescription:
-          'Each card shows cycle status and allows edit, remove and payment actions.',
+          'Each card shows the bill status, and lets you edit, remove or mark it as paid. If the card is not showing yet, just register a new bill.',
+        cardTitle: 'Track your progress',
+        cardDescription:
+          'Clicking on a card opens the payment history, letting you follow the monthly evolution of each bill.',
+        guideButtonTitle: 'Come back to this guide whenever you have questions!',
+        guideButtonDescription:
+          'Just click the fixed bills guide button to open it again.',
       },
     },
     reports: {
@@ -3135,15 +3198,24 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       expenseTab: 'Expenses',
       incomeTab: 'Income',
       onboarding: {
-        headerTitle: 'Category management',
-        headerDescription:
-          'This area centralizes creation and maintenance of categories used in your transactions.',
-        tabsTitle: 'Split by type',
+        welcomeTitle: 'Category management',
+        welcomeDescription:
+          'Welcome to your category management! Here you create, edit and delete categories for income or expenses.',
+        tabsTitle: 'Expense or Income',
         tabsDescription:
-          'Switch between expenses and income to better organize your category set.',
-        formListTitle: 'Create and list',
-        formListDescription:
-          'Create new categories, edit existing ones and remove what no longer fits your flow.',
+          'First, select whether you want to manage expense or income categories.',
+        createTitle: 'Add new categories',
+        createDescription:
+          'By clicking this button you can add as many categories as you want. Enter the category name and the keyword you want Fly to use to identify and log it correctly.',
+        listTitle: 'Create and list',
+        listDescription:
+          'Through the cards, you can edit existing categories and remove what no longer fits your flow.',
+        cardTitle: 'Personalise your categories',
+        cardDescription:
+          'Hold and drag a card to move it. Click the colour to change the category colour. Click the pencil to edit the name or add/remove a keyword. Delete a category by clicking the bin.',
+        guideButtonTitle: 'Come back to this guide whenever you have questions!',
+        guideButtonDescription:
+          'Just click the category guide button to open it again.',
       },
       classification: {
         title: 'Your categories',
@@ -3295,11 +3367,15 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           calendarMonth: 'Period aligned with the calendar month.',
         },
         fields: {
-          cycleType: 'Cycle type',
+          cycleType: 'How your financial cycle starts',
           paydayDay: 'Fixed payday (1-31)',
-          autonomousType: 'Autonomous cycle type',
+          autonomousType: 'How Fly closes the autonomous cycle',
           cutoffDay: 'Cutoff day (1-31)',
           timezone: 'Timezone',
+        },
+        tooltips: {
+          cycleType: 'Autonomous: you configure when the cycle closes. Fixed payday: the cycle starts on your salary day and ends the day before in the following month (e.g. day 5 → from day 5 to day 4).',
+          autonomousType: 'Calendar month: cycle runs from the 1st to the last day of the month (e.g. Jan 1–31). Cutoff day: you choose the closing day (e.g. day 10 → from day 11 to day 10 of next month).',
         },
         options: {
           fixedPayday: 'Fixed payday',
@@ -3347,6 +3423,22 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         },
         badges: {
           cancelAtPeriodEnd: 'Will cancel at period end',
+          currentPlan: 'Current plan',
+        },
+        annualLabel: 'Upfront or installments',
+        personalizeModal: {
+          title: 'Manage subscription',
+          changeCard: 'Change Card',
+          cancelSub: 'Cancel Subscription',
+          undoCancel: 'Undo cancellation',
+          reactivate: 'Reactivate subscription',
+          scheduledCancelNote: 'Your subscription is scheduled to cancel at the end of the period.',
+          cancelledNote: 'Your subscription is canceled.',
+          close: 'Close',
+          confirmCancelTitle: 'Confirm cancellation',
+          confirmCancelNote: 'If confirmed, your subscription will cancel at the end of the current period.',
+          confirmCancelButton: 'Confirm cancellation',
+          back: 'Back',
         },
         card: {
           currentTitle: 'Current card',
@@ -3376,6 +3468,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           redirecting: 'Redirecting...',
           reactivateSubscription: 'Reactivate subscription',
           changeSubscription: 'Change subscription',
+          personalize: 'Manage subscription',
+          changePlanButton: 'Change plan',
         },
         status: {
           active: 'Active',
@@ -3424,7 +3518,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     },
     preferences: {
       title: 'Preferences',
-      subtitle: 'Customize language, currency, timezone, notifications and login preference.',
+      subtitle: 'Customize language, currency, timezone, theme, app and login preferences.',
       loadError: 'Could not load preferences.',
       currency: 'Currency',
       language: 'Language',
@@ -4972,6 +5066,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       clients: 'Clientes',
       profile: 'Perfil',
       notifications: 'Notificaciones',
+      currencyLanguage: 'Cambiar moneda e idioma',
       admin: 'Admin',
       more: 'Mas',
       moreOptions: 'Mas opciones',
@@ -5063,6 +5158,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         categoriesTitle: 'Distribucion por categoria',
         categoriesDescription:
           'Mira como se distribuye tu dinero por periodo y por categoria. Organiza como quieras y descubre donde mas estas gastando. Haz clic en una categoria para ver mas detalles.',
+        guideButtonTitle: 'Vuelve a este tutorial cuando tengas dudas',
+        guideButtonDescription:
+          'Solo haz clic en el guia del dashboard para abrirlo de nuevo.',
       },
     },
     pageOnboarding: {
@@ -5290,6 +5388,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         listTitle: 'Lista de transacciones',
         listDescription:
           'Navega entre las pestanas Pix/Debito/Efectivo y Tarjeta de Credito. Usa Actualizar para ver los ultimos movimientos.',
+        guideButtonTitle: 'Vuelve a este tutorial cuando tengas dudas',
+        guideButtonDescription:
+          'Solo haz clic en el guia de transacciones para abrirlo de nuevo.',
       },
       authorFilter: {
         label: 'Quien la hizo',
@@ -5476,15 +5577,27 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         unmarkSuccess: 'Pago desmarcado con exito.',
       },
       onboarding: {
-        headerTitle: 'Vista general de cuentas fijas',
-        headerDescription:
-          'Aqui creas nuevas cuentas fijas y accedes a los filtros generales de la pantalla.',
-        summaryTitle: 'Resumen mensual y filtros',
+        welcomeTitle: 'Cuentas Fijas',
+        welcomeDescription:
+          'Bienvenido(a) a Cuentas Fijas! Aqui registras cuentas recurrentes como telefono, agua, luz, gas, internet y otras, y puedes seguir su evolucion en cada una.',
+        newAccountTitle: 'Agrega todas las cuentas fijas que necesites',
+        newAccountDescription:
+          'Puedes agregar una cuenta fija cuando lo necesites usando este boton.',
+        summaryTitle: 'Resumen general',
         summaryDescription:
-          'Acompana totales del mes, cambia competencia y filtra por estado para enfocarte.',
+          'Acompana un resumen de tus cuentas fijas del mes. Ve lo que fue pagado, lo que falta y el total estimado para el mes actual.',
+        listContainerTitle: 'Lista de cuentas',
+        listContainerDescription:
+          'Cada tarjeta muestra el estado por cuenta y permite editar, quitar o marcar como pagada. Al marcar como pagada podras ingresar el monto exacto de ese mes.',
         listTitle: 'Lista de cuentas',
         listDescription:
-          'Cada tarjeta muestra el estado de competencia y permite editar, quitar y marcar pago.',
+          'Cada tarjeta muestra el estado por cuenta y permite editar, quitar o marcar como pagada. Si la tarjeta aun no aparece, solo registra una nueva cuenta.',
+        cardTitle: 'Sigue tu evolucion',
+        cardDescription:
+          'Al hacer clic en una tarjeta veras el historial de pagos, permitiendote seguir la evolucion mensual de cada cuenta.',
+        guideButtonTitle: 'Vuelve a este tutorial cuando tengas dudas',
+        guideButtonDescription:
+          'Solo haz clic en el guia de cuentas fijas para abrirlo de nuevo.',
       },
     },
     reports: {
@@ -5601,15 +5714,24 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       expenseTab: 'Gastos',
       incomeTab: 'Ingresos',
       onboarding: {
-        headerTitle: 'Gestion de categorias',
-        headerDescription:
-          'Esta area centraliza la creacion y mantenimiento de categorias usadas en tus transacciones.',
-        tabsTitle: 'Separacion por tipo',
+        welcomeTitle: 'Gestion de categorias',
+        welcomeDescription:
+          'Bienvenido(a) a la gestion de tus categorias! Aqui creas, editas y eliminas categorias de ingresos o gastos.',
+        tabsTitle: 'Gasto o Ingreso',
         tabsDescription:
-          'Alterna entre gastos e ingresos para organizar mejor el conjunto de categorias.',
-        formListTitle: 'Alta y listado',
-        formListDescription:
-          'Crea nuevas categorias, edita las existentes y elimina lo que ya no tiene sentido para tu flujo.',
+          'Primero, selecciona si quieres gestionar categorias de gastos o ingresos.',
+        createTitle: 'Agrega nuevas categorias',
+        createDescription:
+          'Al hacer clic en este boton puedes agregar todas las categorias que quieras. Escribe el nombre y la palabra clave para que Fly la identifique y registre correctamente.',
+        listTitle: 'Alta y listado',
+        listDescription:
+          'Desde las tarjetas puedes editar categorias existentes y eliminar las que ya no tienen sentido para tu flujo.',
+        cardTitle: 'Personaliza tus categorias',
+        cardDescription:
+          'Mantén y arrastra una tarjeta para moverla. Haz clic en el color para cambiarlo. Haz clic en el lapiz para editar el nombre o agregar/eliminar una palabra clave. Elimina una categoria con el icono de papelera.',
+        guideButtonTitle: 'Vuelve a este tutorial cuando tengas dudas',
+        guideButtonDescription:
+          'Solo haz clic en el guia de categorias para abrirlo de nuevo.',
       },
       classification: {
         title: 'Tus categorías',
@@ -5761,11 +5883,15 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           calendarMonth: 'Periodo alineado al mes calendario.',
         },
         fields: {
-          cycleType: 'Tipo de ciclo',
+          cycleType: 'Cómo empieza tu ciclo financiero',
           paydayDay: 'Dia fijo de cobro (1-31)',
-          autonomousType: 'Tipo de ciclo autonomo',
+          autonomousType: 'Cómo Fly cierra el ciclo autónomo',
           cutoffDay: 'Dia de cierre (1-31)',
           timezone: 'Zona horaria',
+        },
+        tooltips: {
+          cycleType: 'Autónomo: tú configuras cuándo cierra el ciclo. Día fijo de cobro: el ciclo empieza en tu día de cobro y termina el día anterior del mes siguiente (ej: día 5 → del día 5 al día 4).',
+          autonomousType: 'Mes calendario: el ciclo va del día 1 al último del mes (ej: 1 ene – 31 ene). Día de cierre: tú eliges el día de corte (ej: día 10 → del día 11 al día 10 del mes siguiente).',
         },
         options: {
           fixedPayday: 'Dia fijo de cobro',
@@ -5813,6 +5939,22 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         },
         badges: {
           cancelAtPeriodEnd: 'Se cancelara al final del periodo',
+          currentPlan: 'Plan actual',
+        },
+        annualLabel: 'Al contado o en cuotas',
+        personalizeModal: {
+          title: 'Personalizar suscripcion',
+          changeCard: 'Cambiar tarjeta',
+          cancelSub: 'Cancelar suscripcion',
+          undoCancel: 'Deshacer cancelacion',
+          reactivate: 'Reactivar suscripcion',
+          scheduledCancelNote: 'Tu suscripcion esta programada para cancelarse al final del periodo.',
+          cancelledNote: 'Tu suscripcion esta cancelada.',
+          close: 'Cerrar',
+          confirmCancelTitle: 'Confirmar cancelacion',
+          confirmCancelNote: 'Al confirmar, tu suscripcion se cancelara al final del periodo actual.',
+          confirmCancelButton: 'Confirmar cancelacion',
+          back: 'Volver',
         },
         card: {
           currentTitle: 'Tarjeta actual',
@@ -5842,6 +5984,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           redirecting: 'Redirigiendo...',
           reactivateSubscription: 'Reactivar suscripcion',
           changeSubscription: 'Cambiar suscripcion',
+          personalize: 'Personalizar suscripcion',
+          changePlanButton: 'Cambiar plan',
         },
         status: {
           active: 'Activa',
@@ -5890,7 +6034,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
     },
     preferences: {
       title: 'Preferencias',
-      subtitle: 'Personaliza idioma, moneda, zona horaria, notificaciones y preferencia de login.',
+      subtitle: 'Personaliza idioma, moneda, zona horaria, tema, app y preferencias de login.',
       loadError: 'No se pudieron cargar las preferencias.',
       currency: 'Moneda',
       language: 'Idioma',

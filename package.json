@@ -61,6 +61,7 @@
     "googleapis": "^148.0.0",
     "input-otp": "^1.4.2",
     "keen-slider": "^6.8.6",
+    "libphonenumber-js": "^1.13.8",
     "lodash": "4.17.21",
     "lottie-react": "^2.4.1",
     "lucide-react": "^0.487.0",

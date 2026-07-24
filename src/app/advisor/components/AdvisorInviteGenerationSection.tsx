@@ -79,7 +79,6 @@ type PaymentAction =
 
 type GeneratedNotice = {
   message: string
-  description?: string
   invite?: AdvisorGeneratedInvite | null
 }
 
@@ -287,8 +286,7 @@ export default function AdvisorInviteGenerationSection({
         },
       })
       setNotice({
-        message: `Convite atualizado em nome de ${getInviteDisplayName(invite)}.`,
-        description: 'O link foi mantido e o status continua pendente.',
+        message: 'Convite atualizado com sucesso.',
         invite,
       })
       setEditingInvite(null)
@@ -307,8 +305,7 @@ export default function AdvisorInviteGenerationSection({
         planSlug: nameAction.option.planSlug,
       })
       setNotice({
-        message: `Convite gerado em nome de ${getInviteDisplayName(invite)}.`,
-        description: 'O cliente seguirá para o pagamento padrão ao aceitar o convite.',
+        message: 'Convite gerado com sucesso.',
         invite,
       })
       setNameAction(null)
@@ -338,8 +335,7 @@ export default function AdvisorInviteGenerationSection({
         paymentMethodId,
       })
       setNotice({
-        message: `Convite gerado em nome de ${getInviteDisplayName(invite)}.`,
-        description: 'O cartão do consultor só deve ser cobrado quando o cliente aceitar e fizer o primeiro acesso.',
+        message: 'Convite gerado com sucesso.',
         invite,
       })
       setPaymentAction(null)
@@ -354,8 +350,7 @@ export default function AdvisorInviteGenerationSection({
       planSlug: paymentAction.option.planSlug,
     })
     setNotice({
-      message: `${response.invites.length} convites gerados para o pacote ${accountTypeLabel(paymentAction.option.accountType)}.`,
-      description: 'Cada convite tem link próprio, validade de 3 dias e uso único.',
+      message: `${response.invites.length} convites gerados com sucesso.`,
       invite: response.invites[0] ?? null,
     })
     setPaymentAction(null)
@@ -560,30 +555,26 @@ export default function AdvisorInviteGenerationSection({
 
       {notice && (
         <article className="rounded-2xl border border-[#D7EAF5] bg-[#F3FAFF] p-5">
-          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-base font-semibold text-[#333C4D]">{notice.message}</h2>
-              {notice.description && <p className="mt-1 text-sm text-slate-600">{notice.description}</p>}
-              </div>
+              <h2 className="text-base font-semibold text-[#333C4D]">
+                {notice.message}
+              </h2>
+              {notice.invite && (
+                <p className="mt-1 text-sm text-slate-600">
+                  {getInviteDisplayName(notice.invite)}
+                </p>
+              )}
+            </div>
             {notice.invite && (
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => copyInviteLink(notice.invite!)}
-                  className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                >
-                  <Copy className="h-4 w-4" />
-                  Copiar link
-                </button>
-                <button
-                  type="button"
-                  onClick={() => openEditDialog(notice.invite!)}
-                  className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                >
-                  <Edit3 className="h-4 w-4" />
-                  Editar nome
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => copyInviteLink(notice.invite!)}
+                className="inline-flex h-9 w-fit items-center gap-2 rounded-lg border border-[#D7EAF5] bg-white px-4 text-xs font-semibold text-[#2F6E91] hover:bg-[#EAF4FA]"
+              >
+                <Copy className="h-4 w-4" />
+                Copiar Link
+              </button>
             )}
           </div>
         </article>
@@ -601,9 +592,11 @@ export default function AdvisorInviteGenerationSection({
           <button
             type="button"
             onClick={() => invitesQuery.refetch()}
-            className="h-9 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            disabled={invitesQuery.isFetching}
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
           >
-            Atualizar
+            <RefreshCw className={['h-3.5 w-3.5', invitesQuery.isFetching ? 'animate-spin' : ''].join(' ')} />
+            {invitesQuery.isFetching ? 'Atualizando...' : 'Atualizar'}
           </button>
         </div>
 

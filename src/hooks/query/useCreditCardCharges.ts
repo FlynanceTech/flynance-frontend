@@ -7,6 +7,7 @@ import {
   createCreditCardCharge,
   updateCreditCardCharge,
   deleteCreditCardCharge,
+  convertChargeToTransaction,
   type CreateCreditCardChargeDTO,
   type UpdateCreditCardChargeDTO,
 } from '@/services/creditCardCharges'
@@ -58,6 +59,18 @@ export function useCreditCardCharges(params: UseCreditCardChargesParams = {}) {
     },
   })
 
+  const convertToTransactionMutation = useMutation({
+    mutationFn: ({ chargeId, data }: { chargeId: string; data: { paymentType: string; description?: string; categoryId?: string } }) =>
+      convertChargeToTransaction(chargeId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['credit-card-charges'] })
+      qc.invalidateQueries({ queryKey: ['transactions'] })
+      qc.invalidateQueries({ queryKey: ['financeStatus'] })
+      qc.invalidateQueries({ queryKey: ['controls', { withProgress: true }] })
+      qc.invalidateQueries({ queryKey: ['cards'] })
+    },
+  })
+
   const deleteChargeMutation = useMutation({
     mutationFn: (chargeId: string) => deleteCreditCardCharge(chargeId),
     onSuccess: () => {
@@ -72,6 +85,7 @@ export function useCreditCardCharges(params: UseCreditCardChargesParams = {}) {
     chargesQuery,
     createChargeMutation,
     updateChargeMutation,
+    convertToTransactionMutation,
     deleteChargeMutation,
   }
 }

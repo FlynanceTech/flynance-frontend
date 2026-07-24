@@ -20,6 +20,7 @@ import {
   buildSidebarSections,
   filterSidebarSections,
   isSidebarPathActive,
+  normalizeSidebarPath,
 } from './sidebar.config'
 
 type SidebarProps = {
@@ -64,6 +65,7 @@ export default function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) 
   const [internalCollapsed, setInternalCollapsed] = useState(false)
   const [viewportHeight, setViewportHeight] = useState(1080)
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({})
+  const [currentHash, setCurrentHash] = useState('')
   const sectionsCollapsed = collapsed ?? internalCollapsed
 
   const setSectionsCollapsed = (next: boolean | ((current: boolean) => boolean)) => {
@@ -86,6 +88,8 @@ export default function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) 
       education: t('education'),
       clients: t('clients'),
       profile: t('profile'),
+      currencyLanguage: t('currencyLanguage'),
+      notifications: t('notifications'),
       admin: t('admin'),
     }), {
       isAdmin,
@@ -141,6 +145,24 @@ export default function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) 
     window.addEventListener('resize', syncViewportHeight)
     return () => window.removeEventListener('resize', syncViewportHeight)
   }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const syncHash = () => setCurrentHash(window.location.hash)
+    syncHash()
+    window.addEventListener('hashchange', syncHash)
+    window.addEventListener('popstate', syncHash)
+    return () => {
+      window.removeEventListener('hashchange', syncHash)
+      window.removeEventListener('popstate', syncHash)
+    }
+  }, [])
+
+  // Re-sync hash on cross-page navigation (hashchange won't fire when pathname changes)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    setCurrentHash(window.location.hash)
+  }, [pathname])
 
   const openSection = (sectionId: string) => {
     setOpenSections((current) => ({
@@ -229,11 +251,61 @@ export default function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) 
                     active={isSectionActive}
                     onToggle={section.collapsible ? () => handleToggleSection(section.id) : undefined}
                     onCollapsedClick={() => handleCollapsedSectionClick(section.id)}
-                    items={section.items.map((item) => ({
-                      ...item,
-                      active: isSidebarPathActive(pathname ?? '', item.path),
-                      onClick: item.path ? () => router.push(item.path!) : undefined,
-                    }))}
+                    items={section.items.map((item) => {
+                      const hasHash = item.path?.includes('#') ?? false
+                      const hashIdx = hasHash && item.path ? item.path.indexOf('#') : -1
+                      const itemPathname = hashIdx > -1 ? item.path!.slice(0, hashIdx) : (item.path ?? '')
+                      const hashFrag = hashIdx > -1 ? item.path!.slice(hashIdx + 1) : ''
+                      const itemHash = hashFrag ? `#${hashFrag}` : ''
+
+                      let isActive: boolean
+                      if (hasHash && hashFrag) {
+                        isActive = normalizeSidebarPath(pathname ?? '') === normalizeSidebarPath(itemPathname) && currentHash === itemHash
+                      } else {
+                        const anyHashSiblingActive = section.items.some((sibling) => {
+                          if (!sibling.path?.includes('#')) return false
+                          const sHashIdx = sibling.path.indexOf('#')
+                          const sibPathname = sibling.path.slice(0, sHashIdx)
+                          const sibHash = `#${sibling.path.slice(sHashIdx + 1)}`
+                          return normalizeSidebarPath(pathname ?? '') === normalizeSidebarPath(sibPathname) && currentHash === sibHash
+                        })
+                        isActive = anyHashSiblingActive ? false : isSidebarPathActive(pathname ?? '', item.path)
+                      }
+
+                      const handleClick = item.path ? () => {
+                        if (hasHash && hashFrag) {
+                          // Hash-based item
+                          const onSamePage = normalizeSidebarPath(pathname ?? '') === normalizeSidebarPath(itemPathname)
+                          if (onSamePage) {
+                            if (window.location.hash === `#${hashFrag}`) {
+                              // Hash already set — re-dispatch so page re-scrolls
+                              window.dispatchEvent(new Event('hashchange'))
+                            } else {
+                              window.location.hash = hashFrag
+                            }
+                          } else {
+                            router.push(item.path!)
+                          }
+                        } else {
+                          // Non-hash item (e.g. "Perfil")
+                          const onSamePage = normalizeSidebarPath(pathname ?? '') === normalizeSidebarPath(item.path!)
+                          if (onSamePage) {
+                            // router.push is a no-op when pathname is unchanged; use history API instead
+                            // to cleanly remove any hash and trigger our hashchange listener
+                            history.pushState(null, '', item.path!)
+                            window.dispatchEvent(new Event('hashchange'))
+                          } else {
+                            router.push(item.path!)
+                          }
+                        }
+                      } : undefined
+
+                      return {
+                        ...item,
+                        active: isActive,
+                        onClick: handleClick,
+                      }
+                    })}
                   />
                 )
               })}

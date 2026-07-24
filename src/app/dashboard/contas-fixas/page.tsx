@@ -68,29 +68,42 @@ function createFixedAccountsOnboardingSteps(
 ): ReadonlyArray<PageOnboardingStep> {
   return [
     {
-      id: 'header',
-      selector: '[data-onboarding-target="contas-fixas-header"]',
-      align: 'bottom',
-      title: t('onboarding.headerTitle'),
-      description: t('onboarding.headerDescription'),
+      id: 'welcome',
+      selector: '[data-onboarding-target="contas-fixas-welcome"]',
+      title: t('onboarding.welcomeTitle'),
+      description: t('onboarding.welcomeDescription'),
     },
     {
-      id: 'summary-filters',
+      id: 'new-account',
+      selector: '[data-onboarding-target="contas-fixas-nova-conta"]',
+      align: 'bottom',
+      title: t('onboarding.newAccountTitle'),
+      description: t('onboarding.newAccountDescription'),
+    },
+    {
+      id: 'summary',
       selector: '[data-onboarding-target="contas-fixas-resumo"]',
       title: t('onboarding.summaryTitle'),
       description: t('onboarding.summaryDescription'),
     },
     {
-      id: 'list',
+      id: 'list-container',
       selector: '[data-onboarding-target="contas-fixas-lista"]',
-      title: t('onboarding.listTitle'),
-      description: t('onboarding.listDescription'),
+      title: t('onboarding.listContainerTitle'),
+      description: t('onboarding.listContainerDescription'),
     },
     {
       id: 'card',
       selector: '[data-onboarding-target="contas-fixas-card"]',
       title: t('onboarding.cardTitle'),
       description: t('onboarding.cardDescription'),
+    },
+    {
+      id: 'guide-button',
+      selector: '[data-onboarding-target="contas-fixas-guia-botao"]',
+      align: 'bottom',
+      title: t('onboarding.guideButtonTitle'),
+      description: t('onboarding.guideButtonDescription'),
     },
   ]
 }
@@ -689,20 +702,24 @@ export default function FixedBillsPage() {
           newTransation={false}
           rightContent={
             <div className="flex items-center gap-2">
-              <PageOnboardingTour
-                steps={onboardingSteps}
-                storageKeyBase="flynance:dashboard:onboarding:contas-fixas:v1"
-                triggerLabel={t('guideButton')}
-              />
-              <ActionTriggerButton
-                onClick={() => {
-                  resetForm()
-                  setDrawerOpen(true)
-                }}
-                label={t('newButton')}
-                icon={Plus}
-                size="sm"
-              />
+              <div data-onboarding-target="contas-fixas-guia-botao">
+                <PageOnboardingTour
+                  steps={onboardingSteps}
+                  storageKeyBase="flynance:dashboard:onboarding:contas-fixas:v1"
+                  triggerLabel={t('guideButton')}
+                />
+              </div>
+              <div data-onboarding-target="contas-fixas-nova-conta">
+                <ActionTriggerButton
+                  onClick={() => {
+                    resetForm()
+                    setDrawerOpen(true)
+                  }}
+                  label={t('newButton')}
+                  icon={Plus}
+                  size="sm"
+                />
+              </div>
             </div>
           }
         />
