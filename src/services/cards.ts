@@ -154,11 +154,12 @@ export const deleteCard = async (id: string): Promise<DeleteCardResponse> => {
 
 /** Mark statement as paid */
 export const payCreditCardStatement = async (
+  cardId: string,
   statementId: string,
   data?: PayCreditCardStatementDTO
 ): Promise<PayCreditCardStatementResponse> => {
   try {
-    const res = await api.put(`/cards/statements/${statementId}/pay`, data ?? {})
+    const res = await api.post(`/cards/${cardId}/statements/${statementId}/pay`, data ?? {})
     return res.data && typeof res.data === 'object' ? res.data : { ok: true }
   } catch (e: unknown) {
     const msg = getErrorMessage(e, 'Erro ao pagar fatura do cartao.')

@@ -115,8 +115,8 @@ export function useCardMutations(cardId?: string, tz?: string) {
     })
 
     const payStatementMutation = useMutation({
-        mutationFn: ({ statementId, data }: { statementId: string; data?: PayCreditCardStatementDTO }) =>
-        payCreditCardStatement(statementId, data),
+        mutationFn: ({ cardId, statementId, data }: { cardId: string; statementId: string; data?: PayCreditCardStatementDTO }) =>
+        payCreditCardStatement(cardId, statementId, data),
         onSuccess: () => {
         qc.invalidateQueries({ queryKey: ['cards'] })
         qc.invalidateQueries({ queryKey: ['cards', 'statements'] })
