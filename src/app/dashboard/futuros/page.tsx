@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Dialog, DialogPanel, DialogTitle, Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -99,6 +99,15 @@ const STATEMENT_PAYMENT_TYPE_OPTIONS: Array<{ value: StatementPaymentType; label
   { value: 'CASH', label: 'Especie' },
 ]
 
+/** Recorrencia de uma receita futura, em meses entre um recebimento e o proximo. */
+const RECURRENCE_OPTIONS: Array<{ value: number; label: string }> = [
+  { value: 1, label: 'Mensal' },
+  { value: 2, label: 'Bimestral' },
+  { value: 3, label: 'Trimestral' },
+  { value: 6, label: 'Semestral' },
+  { value: 12, label: 'Anual' },
+]
+
 const PERIOD_LABELS: Record<PeriodOption, string> = {
   '30d': '30 dias',
   '60d': '60 dias',
@@ -169,14 +178,6 @@ function buildStatusOptions(t: TranslatorFn): { value: '' | FutureStatus; label:
     { value: 'overdue', label: t('options.statusFilter.overdue') },
     { value: 'settled', label: t('options.statusFilter.settled') },
     { value: 'canceled', label: t('options.statusFilter.canceled') },
-  ]
-}
-
-function buildTypeOptions(t: TranslatorFn): { value: '' | FutureType; label: string }[] {
-  return [
-    { value: '', label: t('options.typeFilter.all') },
-    { value: 'EXPENSE', label: t('options.typeFilter.expense') },
-    { value: 'INCOME', label: t('options.typeFilter.income') },
   ]
 }
 
@@ -388,35 +389,6 @@ function getStatementDisplayStatus(statement: InvoiceGroup['statement'] | null |
   return 'open'
 }
 
-function addMonths(base: Date, months: number) {
-  const next = new Date(base)
-  next.setMonth(next.getMonth() + months)
-  return next
-}
-
-function getPlanMonthlyAmount(plan: FutureInstallmentPlan) {
-  const count = Math.max(1, Number(plan.installmentCount || 1))
-  return Number(plan.totalAmount || 0) / count
-}
-
-function getPlanProgress(plan: FutureInstallmentPlan) {
-  const count = Math.max(1, Number(plan.installmentCount || 1))
-  const interval = Math.max(1, Number(plan.intervalMonths || 1))
-  const first = new Date(plan.firstDueDate)
-  if (Number.isNaN(first.getTime())) {
-    return { installmentNumber: 1, nextDueDate: plan.firstDueDate }
-  }
-
-  const now = new Date()
-  const monthDiff = (now.getFullYear() - first.getFullYear()) * 12 + (now.getMonth() - first.getMonth())
-  const zeroBased = Math.max(0, Math.floor(monthDiff / interval))
-  const installmentNumber = Math.min(count, zeroBased + 1)
-  return {
-    installmentNumber,
-    nextDueDate: addMonths(first, (installmentNumber - 1) * interval).toISOString(),
-  }
-}
-
 function getCurrentMonthRange() {
   const now = new Date()
   const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
@@ -424,12 +396,10 @@ function getCurrentMonthRange() {
   return { from: start, to: end }
 }
 
-function isWithinCurrentMonth(iso: string | null | undefined) {
-  if (!iso) return false
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return false
+/** Rotulo curto do mes corrente, ex.: "07/2026". */
+function getCurrentMonthLabel() {
   const now = new Date()
-  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+  return `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`
 }
 
 function buildCreditDistribution(
@@ -695,6 +665,26 @@ function summarizeCardNames(names: string[]) {
   return `${names.slice(0, 2).join(', ')} +${names.length - 2}`
 }
 
+/**
+ * Cartoes distintos podem ter o mesmo nome. Quando isso acontece, anexamos o
+ * final do cartao (ou um indice) para o usuario conseguir diferencia-los.
+ */
+function disambiguateCardLabels(
+  cards: Array<{ id: string; name: string; last4?: string | null }>
+) {
+  const countByName = cards.reduce<Record<string, number>>((acc, card) => {
+    acc[card.name] = (acc[card.name] ?? 0) + 1
+    return acc
+  }, {})
+  const seen: Record<string, number> = {}
+
+  return cards.map((card) => {
+    if ((countByName[card.name] ?? 0) < 2) return card.name
+    seen[card.name] = (seen[card.name] ?? 0) + 1
+    return card.last4 ? `${card.name} •${card.last4}` : `${card.name} (${seen[card.name]})`
+  })
+}
+
 function ForecastTabs({
   active,
   onChange,
@@ -955,28 +945,6 @@ function CommitmentCard({
         </MenuItems>
       </Menu>
     </article>
-  )
-}
-
-function ForecastEmptyState({ onCreate }: { onCreate: () => void }) {
-  return (
-    <div className={`flex min-h-[220px] flex-col items-center justify-center px-6 py-10 text-center sm:py-12 ${futurosUi.surfaceDashed}`}>
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-primary">
-        <CalendarDays className="h-6 w-6" />
-      </div>
-      <h3 className="mt-4 text-base font-semibold text-gray-900 dark:text-white">Nenhum compromisso futuro no período selecionado</h3>
-      <p className="mt-2 max-w-md text-sm text-gray-500 dark:text-slate-400">
-        Quando você registrar uma despesa futura, parcelamento ou compra no cartão, ela aparecerá aqui.
-      </p>
-      <button
-        type="button"
-        onClick={onCreate}
-        className={`mt-5 ${futurosUi.btnPrimary}`}
-      >
-        <Plus className="h-4 w-4" />
-        Registrar despesa futura
-      </button>
-    </div>
   )
 }
 
@@ -1264,39 +1232,47 @@ function CreditPurchaseRow({
   )
 }
 
-function InstallmentPlanRow({
-  plan,
-  onEdit,
-  onDelete,
-  nextDueDate,
-}: {
-  plan: FutureInstallmentPlan
-  onEdit: (plan: FutureInstallmentPlan) => void
-  onDelete: (plan: FutureInstallmentPlan) => void
-  nextDueDate?: string | null
-}) {
-  const progress = getPlanProgress(plan)
-  const status = normalizePlanStatus(plan.status ?? null)
-  const monthly = getPlanMonthlyAmount(plan)
-  const effectiveNextDue = nextDueDate ?? progress.nextDueDate
+/** Compra parcelada no cartao, consolidada para exibicao na HUD. */
+type CardChargeInstallmentSummary = {
+  id: string
+  description: string
+  categoryName: string | null
+  installmentCount: number
+  currentInstallment: number
+  installmentAmount: number
+  totalAmount: number
+  nextDueDate: string | null
+  settled: boolean
+}
 
+function CreditInstallmentRow({ charge }: { charge: CardChargeInstallmentSummary }) {
   return (
-    <div className="grid gap-3 border-t border-slate-100 px-4 py-3 first:border-t-0 md:grid-cols-[1.2fr_0.75fr_0.9fr_0.9fr_0.8fr_34px] md:items-center">
+    <div className="grid gap-3 border-t border-slate-100 px-4 py-3 first:border-t-0 md:grid-cols-[1.3fr_0.8fr_0.9fr_0.9fr_0.8fr] md:items-center">
       <div className="min-w-0">
-        <p className="truncate text-sm font-extrabold text-slate-900">{plan.description}</p>
-        <p className="mt-1 text-xs font-bold text-slate-500">Parcela {progress.installmentNumber} de {Number(plan.installmentCount || 1)}</p>
+        <p className="truncate text-sm font-extrabold text-slate-900">{charge.description}</p>
+        <p className="mt-1 text-xs font-bold text-slate-500">
+          {charge.categoryName ?? 'Sem categoria'}
+        </p>
       </div>
-      <span className={`w-fit rounded-full px-2.5 py-1 text-[11px] font-extrabold ${status === 'active' ? 'bg-sky-100 text-sky-700' : status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700'}`}>{status === 'active' ? 'Ativo' : status === 'completed' ? 'Concluido' : 'Cancelado'}</span>
-      <div><p className="text-sm font-extrabold text-slate-950">{formatCurrencyBRL(plan.totalAmount)}</p><p className="mt-1 text-xs font-medium text-slate-500">Total</p></div>
-      <div><p className="text-sm font-extrabold text-slate-950">{formatDateShort(effectiveNextDue)}</p><p className="mt-1 text-xs font-medium text-slate-500">Proximo vencimento</p></div>
-      <div><p className="text-sm font-extrabold text-slate-950">{formatCurrencyBRL(monthly)}</p><p className="mt-1 text-xs font-medium text-slate-500">Por mes</p></div>
-      <Menu as="div" className="relative">
-        <MenuButton className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"><MoreHorizontal className="h-4 w-4" /></MenuButton>
-        <MenuItems anchor="bottom end" className="z-20 w-40 rounded-xl border border-slate-200 bg-white p-1 text-sm shadow-xl outline-none">
-          <MenuItem>{({ focus }) => <button type="button" onClick={() => onEdit(plan)} className={`w-full rounded-lg px-3 py-2 text-left font-medium ${focus ? 'bg-slate-50 text-slate-900' : 'text-slate-700'}`}>Editar</button>}</MenuItem>
-          <MenuItem>{({ focus }) => <button type="button" onClick={() => onDelete(plan)} className={`w-full rounded-lg px-3 py-2 text-left font-medium ${focus ? 'bg-red-50 text-red-700' : 'text-red-600'}`}>Excluir</button>}</MenuItem>
-        </MenuItems>
-      </Menu>
+      <span
+        className={`w-fit rounded-full px-2.5 py-1 text-[11px] font-extrabold ${
+          charge.settled ? 'bg-emerald-100 text-emerald-700' : 'bg-sky-100 text-sky-700'
+        }`}
+      >
+        {charge.settled ? 'Quitado' : `${charge.currentInstallment}/${charge.installmentCount}`}
+      </span>
+      <div>
+        <p className="text-sm font-extrabold text-slate-950">{formatCurrencyBRL(charge.totalAmount)}</p>
+        <p className="mt-1 text-xs font-medium text-slate-500">Total</p>
+      </div>
+      <div>
+        <p className="text-sm font-extrabold text-slate-950">{formatDateShort(charge.nextDueDate)}</p>
+        <p className="mt-1 text-xs font-medium text-slate-500">Proximo vencimento</p>
+      </div>
+      <div>
+        <p className="text-sm font-extrabold text-slate-950">{formatCurrencyBRL(charge.installmentAmount)}</p>
+        <p className="mt-1 text-xs font-medium text-slate-500">Por parcela</p>
+      </div>
     </div>
   )
 }
@@ -1320,8 +1296,6 @@ function SelectedCardHud({
   onOpenHistory,
   onEditPurchase,
   onDeletePurchase,
-  onEditPlan,
-  onDeletePlan,
   readOnly,
 }: {
   card: CreditCardResponse | null
@@ -1329,7 +1303,7 @@ function SelectedCardHud({
   cardColor: string
   invoiceGroup: InvoiceGroup | null
   purchases: Array<{ item: FutureItem; charge?: CreditCardChargeItem | null }>
-  installments: FutureInstallmentPlan[]
+  installments: CardChargeInstallmentSummary[]
   distribution: CreditDistributionItem[]
   loadingPurchases: boolean
   payingStatement: boolean
@@ -1342,8 +1316,6 @@ function SelectedCardHud({
   onOpenHistory: () => void
   onEditPurchase: (charge: CreditCardChargeItem) => void
   onDeletePurchase: (charge: CreditCardChargeItem) => void
-  onEditPlan: (plan: FutureInstallmentPlan) => void
-  onDeletePlan: (plan: FutureInstallmentPlan) => void
   readOnly: boolean
 }) {
   if (!card) {
@@ -1477,22 +1449,17 @@ function SelectedCardHud({
 
           <article className={futurosUi.surface}>
             <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-3.5 dark:border-white/5 sm:px-5 sm:py-4">
-              <div><h3 className={futurosUi.sectionTitle}>Parcelamentos</h3><p className={futurosUi.sectionSubtitle}>Planos vinculados a este cartao.</p></div>
+              <div><h3 className={futurosUi.sectionTitle}>Parcelamentos</h3><p className={futurosUi.sectionSubtitle}>Compras parceladas neste cartao.</p></div>
               {installments.length > 7 && <button type="button" onClick={onOpenInstallments} className="text-xs font-extrabold text-primary hover:text-secondary">Ver todos os {installments.length}</button>}
             </div>
             {visibleInstallments.length ? (
               <div className={installments.length > 5 ? futurosUi.listScrollSm : undefined}>
-              {visibleInstallments.map((plan) => (
-                <InstallmentPlanRow
-                  key={plan.id}
-                  plan={plan}
-                  onEdit={onEditPlan}
-                  onDelete={onDeletePlan}
-                />
+              {visibleInstallments.map((charge) => (
+                <CreditInstallmentRow key={charge.id} charge={charge} />
               ))}
               </div>
             ) : (
-              <div className="px-5 py-8 text-sm text-gray-500">Nenhum parcelamento ativo neste cartao.</div>
+              <div className="px-5 py-8 text-sm text-gray-500">Nenhuma compra parcelada neste cartao.</div>
             )}
           </article>
         </div>
@@ -1594,20 +1561,14 @@ function PurchasesModal({
 
 function InstallmentPlansModal({
   open,
-  plans,
+  charges,
   onClose,
-  onEdit,
-  onDelete,
-  onOpenManagement,
-  nextDueDate,
+  onOpenPurchases,
 }: {
   open: boolean
-  plans: FutureInstallmentPlan[]
+  charges: CardChargeInstallmentSummary[]
   onClose: () => void
-  onEdit: (plan: FutureInstallmentPlan) => void
-  onDelete: (plan: FutureInstallmentPlan) => void
-  onOpenManagement: () => void
-  nextDueDate?: string | null
+  onOpenPurchases: () => void
 }) {
   return (
     <Dialog open={open} onClose={onClose} className="relative z-50">
@@ -1615,16 +1576,16 @@ function InstallmentPlansModal({
       <div className={futurosUi.modalShell}>
         <DialogPanel className={futurosUi.modalPanel}>
           <div className={futurosUi.modalHeader}>
-            <div><DialogTitle className="text-lg font-semibold text-gray-900">Gerenciamento de parcelamentos</DialogTitle><p className="mt-1 text-sm text-gray-500">Parcelamentos vinculados ao cartao selecionado.</p></div>
+            <div><DialogTitle className="text-lg font-semibold text-gray-900">Parcelamentos do cartao</DialogTitle><p className="mt-1 text-sm text-gray-500">Compras parceladas vinculadas ao cartao selecionado.</p></div>
             <button type="button" onClick={onClose} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100" aria-label="Fechar"><X className="h-5 w-5" /></button>
           </div>
           <div className={futurosUi.modalBody}>
-            {plans.length ? plans.map((plan) => (
-              <InstallmentPlanRow key={plan.id} plan={plan} onEdit={onEdit} onDelete={onDelete} nextDueDate={nextDueDate} />
-            )) : <div className="px-6 py-10 text-center text-sm text-gray-500">Nenhum parcelamento ativo neste cartao.</div>}
+            {charges.length ? charges.map((charge) => (
+              <CreditInstallmentRow key={charge.id} charge={charge} />
+            )) : <div className="px-6 py-10 text-center text-sm text-gray-500">Nenhuma compra parcelada neste cartao.</div>}
           </div>
           <div className={futurosUi.modalFooter}>
-            <button type="button" onClick={onOpenManagement} className={futurosUi.btnPrimary}>Abrir gerenciamento completo</button>
+            <button type="button" onClick={onOpenPurchases} className={futurosUi.btnPrimary}>Ver compras da fatura</button>
           </div>
         </DialogPanel>
       </div>
@@ -1812,7 +1773,6 @@ function FuturosPageContent() {
   const installmentEditSchema = useMemo(() => buildInstallmentEditSchema(t), [t])
   const paymentTypeOptions = useMemo(() => buildPaymentTypeOptions(t), [t])
   const statusOptions = useMemo(() => buildStatusOptions(t), [t])
-  const typeOptions = useMemo(() => buildTypeOptions(t), [t])
   const planStatusOptions = useMemo(() => buildPlanStatusOptions(t), [t])
   const installmentEditableStatusOptions = useMemo(() => buildInstallmentEditableStatusOptions(t), [t])
 
@@ -1896,6 +1856,7 @@ function FuturosPageContent() {
   }, [filters.from, filters.to, period])
   const forecastQuery = useFutureForecast(forecastParams)
   const currentMonthForecastParams = useMemo(() => getCurrentMonthRange(), [])
+  const currentMonthLabel = useMemo(() => getCurrentMonthLabel(), [])
   const currentMonthForecastQuery = useFutureForecast(currentMonthForecastParams)
   const {
     chargesQuery: selectedCardChargesQuery,
@@ -1907,10 +1868,11 @@ function FuturosPageContent() {
     enabled: Boolean(selectedCardId),
   })
 
+  // Planos e parcelas so existem como RECEITA futura nesta tela.
   const plansQuery = useFuturePlans({
     from: filters.from || undefined,
     to: filters.to || undefined,
-    type: filters.type || undefined,
+    type: 'INCOME',
     page: planPage,
     limit: 10,
   })
@@ -1920,7 +1882,7 @@ function FuturosPageContent() {
       planId: selectedPlanId || undefined,
       from: filters.from || undefined,
       to: filters.to || undefined,
-      type: filters.type || undefined,
+      type: 'INCOME',
       status: filters.status || undefined,
       page: filters.page,
       limit: filters.limit,
@@ -1938,46 +1900,34 @@ function FuturosPageContent() {
     () => (forecastQuery.data?.upcoming ?? []) as FutureItem[],
     [forecastQuery.data]
   )
-  const filteredUpcoming = useMemo(
-    () =>
-      upcoming.filter((item) => {
-        const matchesType =
-          !filters.type ||
-          item.type === filters.type ||
-          (filters.type === 'EXPENSE' && item.sourceType === 'credit_card_statement_installment')
-        const matchesStatus =
-          !filters.status ||
-          item.status === filters.status ||
-          (filters.status === 'pending' && item.status === 'open')
-
-        return matchesType && matchesStatus
-      }),
-    [filters.status, filters.type, upcoming]
+  // As duas fontes sao derivadas de forma independente: a aba DESPESA vive so
+  // de cartao de credito e a aba RECEITA so de planos de receita futura.
+  // Nenhum filtro cruza as duas.
+  const matchesStatusFilter = useCallback(
+    (item: FutureItem) =>
+      !filters.status ||
+      item.status === filters.status ||
+      (filters.status === 'pending' && item.status === 'open'),
+    [filters.status]
   )
-  const creditCardGroups = useMemo(() => groupCreditCardInvoices(filteredUpcoming), [filteredUpcoming])
-  const allCreditCardGroups = useMemo(() => groupCreditCardInvoices(upcoming), [upcoming])
 
-  const otherCommitments = useMemo(
-    () =>
-      filteredUpcoming
-        .filter((i) => i.sourceType === 'installment_plan' && i.type !== 'INCOME')
-        .sort(
-          (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
-        ),
-    [filteredUpcoming]
+  const creditItems = useMemo(
+    () => upcoming.filter((i) => i.sourceType === 'credit_card_statement_installment'),
+    [upcoming]
   )
+  const creditCardGroups = useMemo(
+    () => groupCreditCardInvoices(creditItems.filter(matchesStatusFilter)),
+    [creditItems, matchesStatusFilter]
+  )
+  const allCreditCardGroups = useMemo(() => groupCreditCardInvoices(creditItems), [creditItems])
 
   const incomeItems = useMemo(
     () =>
-      filteredUpcoming
+      upcoming
         .filter((i) => i.sourceType === 'installment_plan' && i.type === 'INCOME')
+        .filter(matchesStatusFilter)
         .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()),
-    [filteredUpcoming]
-  )
-
-  const limitedOtherCommitments = useMemo(
-    () => otherCommitments.slice(0, Math.max(1, Number(filters.limit || 10))),
-    [filters.limit, otherCommitments]
+    [matchesStatusFilter, upcoming]
   )
 
   const limitedIncomeItems = useMemo(
@@ -1985,8 +1935,6 @@ function FuturosPageContent() {
     [filters.limit, incomeItems]
   )
 
-  const hasExpenseItems = creditCardGroups.length > 0 || otherCommitments.length > 0
-  const hasAnyForecastItem = filteredUpcoming.length > 0
 
   const cards = useMemo(
     () => (cardQuery.data ?? []).filter((card) => card.isActive !== false),
@@ -2024,25 +1972,36 @@ function FuturosPageContent() {
     () => currentMonthCreditGroups.reduce((sum, group) => sum + Number(group.totalAmount || 0), 0),
     [currentMonthCreditGroups]
   )
+  // "A pagar" e exclusivamente a consolidacao das faturas vigentes. O total do
+  // backend ja vem so de cartao; o fallback local usa os grupos de fatura.
   const toPayTotalThisMonth = useMemo(
     () =>
       typeof currentMonthTotals?.toPay === 'number'
         ? currentMonthTotals.toPay
-        : currentMonthUpcoming
-            .filter((item) => item.type !== 'INCOME')
-            .reduce((sum, item) => sum + Number(item.amount || 0), 0),
-    [currentMonthTotals?.toPay, currentMonthUpcoming]
+        : creditInvoiceTotalThisMonth,
+    [creditInvoiceTotalThisMonth, currentMonthTotals?.toPay]
   )
-  const creditInvoiceCardNames = useMemo(() => {
-    const names = new Set<string>()
+  // Deduplicamos por id, nao por nome: cartoes homonimos ("Teste", "Teste")
+  // colapsavam num so e a contagem saia menor que a real.
+  const creditInvoiceCards = useMemo(() => {
+    const byId = new Map<string, { id: string; name: string; last4?: string | null }>()
     currentMonthCreditGroups.forEach((group) => {
-      if (group.card?.name) names.add(group.card.name)
+      const card = group.card
+      if (!card?.id || byId.has(card.id)) return
+      byId.set(card.id, { id: card.id, name: card.name ?? 'Cartao', last4: card.last4 ?? null })
     })
-    return Array.from(names)
+    return Array.from(byId.values())
   }, [currentMonthCreditGroups])
-  const creditInvoiceCardCount = creditInvoiceCardNames.length
+  const creditInvoiceCardCount = creditInvoiceCards.length
+  const creditInvoiceCardLabels = useMemo(
+    () => disambiguateCardLabels(creditInvoiceCards),
+    [creditInvoiceCards]
+  )
   const incomeCurrentMonthItems = useMemo(
-    () => currentMonthUpcoming.filter((item) => item.type === 'INCOME'),
+    () =>
+      currentMonthUpcoming.filter(
+        (item) => item.sourceType === 'installment_plan' && item.type === 'INCOME'
+      ),
     [currentMonthUpcoming]
   )
   const incomeTotalThisMonth = useMemo(
@@ -2052,53 +2011,55 @@ function FuturosPageContent() {
         : incomeCurrentMonthItems.reduce((sum, item) => sum + Number(item.amount || 0), 0),
     [currentMonthTotals?.toReceive, incomeCurrentMonthItems]
   )
-  const incomeCardNames = useMemo(() => {
-    const names = new Set<string>()
-    incomeCurrentMonthItems.forEach((item) => {
-      if (item.card?.name) names.add(item.card.name)
-    })
-    return Array.from(names)
-  }, [incomeCurrentMonthItems])
-  const incomeCardCount = incomeCardNames.length
-  const installmentPlanTotalThisMonth = useMemo(
+  const incomeSourceCount = useMemo(
+    () => new Set(incomeCurrentMonthItems.map((item) => item.description ?? item.id)).size,
+    [incomeCurrentMonthItems]
+  )
+  const nextIncomeItem = useMemo(
     () =>
-      currentMonthUpcoming
-        .filter(
-          (item) =>
-            item.sourceType === 'installment_plan' &&
-            item.type !== 'INCOME' &&
-            isWithinCurrentMonth(item.dueDate)
-        )
-        .reduce((sum, item) => sum + Number(item.amount || 0), 0),
-    [currentMonthUpcoming]
+      [...incomeCurrentMonthItems].sort(
+        (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+      )[0] ?? null,
+    [incomeCurrentMonthItems]
+  )
+  // Parcelamentos = parcelas de compras parceladas (installmentCount > 1) que
+  // caem na fatura vigente, somando todos os cartoes. Antes lia planos futuros,
+  // por isso uma compra parcelada no cartao nunca sensibilizava o card.
+  const creditInstallmentTotalThisMonth = useMemo(
+    () =>
+      typeof currentMonthTotals?.creditCardInstallmentTotal === 'number'
+        ? currentMonthTotals.creditCardInstallmentTotal
+        : currentMonthCreditItems
+            .filter((item) => Number(item.installmentCount || 1) > 1)
+            .reduce((sum, item) => sum + Number(item.amount || 0), 0),
+    [currentMonthCreditItems, currentMonthTotals?.creditCardInstallmentTotal]
+  )
+  const creditInstallmentChargeCount = useMemo(
+    () => currentMonthCreditItems.filter((item) => Number(item.installmentCount || 1) > 1).length,
+    [currentMonthCreditItems]
   )
   const activeCreditCardCount = cards.length
-  const cardMetricsById = useMemo(() => {
-    const acc = allCreditCardGroups.reduce<Record<string, CreditCardMetrics>>((metrics, group) => {
-      const cardId = group.card?.id
-      if (!cardId) return metrics
+  // Metrica de cartao le apenas faturas e parcelas de cartao; planos futuros
+  // (receita) nao entram aqui.
+  const cardMetricsById = useMemo(
+    () =>
+      allCreditCardGroups.reduce<Record<string, CreditCardMetrics>>((metrics, group) => {
+        const cardId = group.card?.id
+        if (!cardId) return metrics
 
-      const current = metrics[cardId] ?? { openInvoices: 0, futureInstallments: 0 }
-      metrics[cardId] = {
-        openInvoices:
-          current.openInvoices +
-          (String(group.statement?.status ?? '').toLowerCase() === 'open' ? 1 : 0),
-        futureInstallments: current.futureInstallments,
-      }
-      return metrics
-    }, {})
-
-    ;(plansQuery.data?.plans ?? []).forEach((plan) => {
-      if (!plan.cardId || normalizePlanStatus(plan.status ?? null) === 'canceled') return
-      const current = acc[plan.cardId] ?? { openInvoices: 0, futureInstallments: 0 }
-      acc[plan.cardId] = {
-        ...current,
-        futureInstallments: current.futureInstallments + 1,
-      }
-    })
-
-    return acc
-  }, [allCreditCardGroups, plansQuery.data?.plans])
+        const current = metrics[cardId] ?? { openInvoices: 0, futureInstallments: 0 }
+        metrics[cardId] = {
+          openInvoices:
+            current.openInvoices +
+            (String(group.statement?.status ?? '').toLowerCase() === 'open' ? 1 : 0),
+          futureInstallments:
+            current.futureInstallments +
+            group.items.filter((item) => Number(item.installmentCount || 1) > 1).length,
+        }
+        return metrics
+      }, {}),
+    [allCreditCardGroups]
+  )
 
   useEffect(() => {
     if (!cards.length) {
@@ -2154,15 +2115,44 @@ function FuturosPageContent() {
       })),
     [chargeByStatementInstallmentId, selectedInvoiceGroup?.items]
   )
-  const selectedCardInstallmentPlans = useMemo(
+  // Parcelamentos do cartao vem das COMPRAS parceladas (installmentCount > 1),
+  // nao de planos futuros. Antes lia plansQuery e por isso uma compra em 5x
+  // aparecia como "nenhum parcelamento ativo".
+  const selectedCardChargeInstallments = useMemo<CardChargeInstallmentSummary[]>(
     () =>
-      (plansQuery.data?.plans ?? []).filter(
-        (plan) =>
-          normalizePlanStatus(plan.status ?? null) !== 'canceled' &&
-          plan.paymentType === 'CREDIT_CARD' &&
-          plan.cardId === selectedCardId
-      ),
-    [plansQuery.data?.plans, selectedCardId]
+      selectedCardCharges
+        .filter(
+          (charge) =>
+            Number(charge.installmentCount || 1) > 1 &&
+            !['voided', 'refunded'].includes(String(charge.status ?? '').toLowerCase())
+        )
+        .map((charge) => {
+          const installments = [...(charge.installments ?? [])].sort(
+            (a, b) => Number(a.installmentNumber || 0) - Number(b.installmentNumber || 0)
+          )
+          const remaining = installments.filter(
+            (installment) => !['paid', 'canceled'].includes(String(installment.status ?? '').toLowerCase())
+          )
+          const current = remaining[0] ?? installments[installments.length - 1] ?? null
+          const paidCount = installments.length - remaining.length
+
+          return {
+            id: charge.id,
+            description: charge.description,
+            categoryName: charge.category?.name ?? null,
+            installmentCount: Number(charge.installmentCount || 1),
+            currentInstallment: Number(current?.installmentNumber ?? paidCount + 1),
+            installmentAmount: Number(current?.amount ?? 0),
+            totalAmount: Number(charge.amountTotal || 0),
+            nextDueDate: current?.statementDueAt ?? null,
+            settled: remaining.length === 0,
+          }
+        })
+        .sort((a, b) => {
+          if (a.settled !== b.settled) return a.settled ? 1 : -1
+          return new Date(a.nextDueDate ?? 0).getTime() - new Date(b.nextDueDate ?? 0).getTime()
+        }),
+    [selectedCardCharges]
   )
 
   const selectedCardDistribution = useMemo(
@@ -2199,13 +2189,6 @@ function FuturosPageContent() {
       .slice(-12)
       .map(([month, total]) => ({ month: formatCycleKey(month).replace('Fatura ', ''), total }))
   }, [selectedCardCharges, selectedCardGroups])
-
-  useEffect(() => {
-    if (forecastQuery.isLoading) return
-    if (!hasExpenseItems && incomeItems.length > 0) {
-      setTypeTab('income')
-    }
-  }, [forecastQuery.isLoading, hasExpenseItems, incomeItems.length])
 
   // ── Forms ────────────────────────────────────────────────────────────────────
   const {
@@ -2353,14 +2336,6 @@ function FuturosPageContent() {
     setCardManagerOpen(true)
   }
 
-  const openInstallmentsManagement = () => {
-    setShowManagement(true)
-    setInstallmentPlansModalOpen(false)
-    window.setTimeout(() => {
-      managementSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 80)
-  }
-
   const openChargeDrawer = (charge?: CreditCardChargeItem | null) => {
     setEditingCharge(charge ?? null)
     setChargeDrawerOpen(true)
@@ -2416,19 +2391,32 @@ function FuturosPageContent() {
     }
   }
 
+  // Faturas ainda nao materializadas vem do forecast com um id sintetico
+  // ("virtual_2026-06") que nao existe no banco — pagar levaria a um 404.
+  const canPaySelectedStatement = Boolean(
+    selectedCard?.id &&
+      selectedInvoiceGroup?.statement?.id &&
+      !String(selectedInvoiceGroup.statement.id).startsWith('virtual_')
+  )
+
   const requestPaySelectedStatement = () => {
-    if (!selectedInvoiceGroup?.statement?.id) return
+    if (!canPaySelectedStatement) {
+      toast.error('Esta fatura ainda nao foi fechada e nao pode ser paga.')
+      return
+    }
     setPayStatementConfirmOpen(true)
   }
 
   const confirmPaySelectedStatement = async () => {
     if (payStatementMutation.isPending) return
 
+    const cardId = selectedCard?.id
     const statementId = selectedInvoiceGroup?.statement?.id
-    if (!statementId) return
+    if (!cardId || !statementId || !canPaySelectedStatement) return
 
     try {
       await payStatementMutation.mutateAsync({
+        cardId,
         statementId,
         data: {
           paidAt: new Date().toISOString(),
@@ -2448,7 +2436,7 @@ function FuturosPageContent() {
     setPlanModalMode('create')
     setEditingPlan(null)
     resetPlan({
-      description: '', type: 'EXPENSE', paymentType: 'PIX', categoryId: '', cardId: '',
+      description: '', type: 'INCOME', paymentType: 'PIX', categoryId: '', cardId: '',
       totalAmount: 0, installmentCount: 1, intervalMonths: 1, firstDueDate: '',
       status: 'active', recalculateRemaining: true, notes: '',
     })
@@ -2647,7 +2635,7 @@ function FuturosPageContent() {
       <div className="flex flex-col gap-3 border-b border-gray-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className={futurosUi.sectionTitle}>Filtros</h2>
-          <p className={futurosUi.sectionSubtitle}>Refine periodo, tipo e status.</p>
+          <p className={futurosUi.sectionSubtitle}>Refine periodo e status.</p>
         </div>
         <button
           type="button"
@@ -2684,19 +2672,7 @@ function FuturosPageContent() {
             className={futurosUi.input}
           />
         </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-gray-600">{t('filters.type')}</span>
-          <select
-            value={filters.type}
-            onChange={(e) => {
-              setPlanPage(1)
-              setFilters((p) => ({ ...p, type: e.target.value as '' | FutureType, page: 1 }))
-            }}
-            className={futurosUi.select}
-          >
-            {typeOptions.map((opt) => <option key={opt.label} value={opt.value}>{opt.label}</option>)}
-          </select>
-        </label>
+        {/* O tipo (despesa x receita) e definido pela aba, nao por filtro. */}
         <label className="flex flex-col gap-1.5">
           <span className="text-xs font-semibold text-gray-600">{t('filters.installmentStatus')}</span>
           <select
@@ -2759,27 +2735,34 @@ function FuturosPageContent() {
             </div>
           </div>
 
+          {/* Cada aba tem uma unica acao primaria: cartao na aba de despesa,
+              receita futura na aba de receita. */}
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-            <Button
-              type="button"
-              variant="default"
-              onClick={handleNewCreditPurchase}
-              disabled={isAdvisorReadOnly}
-              className="h-10 w-full rounded-full px-4 text-sm font-semibold sm:w-auto"
-              title={isAdvisorReadOnly ? 'Acesso somente leitura' : undefined}
-            >
-              <CreditCard className="h-4 w-4" />
-              Compra no credito
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={openCreatePlanModal}
-              className="h-10 w-full rounded-full px-4 text-sm font-semibold sm:w-auto"
-            >
-              <Plus className="h-4 w-4" />
-              Transacao futura
-            </Button>
+            {typeTab === 'expense' ? (
+              <Button
+                type="button"
+                variant="default"
+                onClick={handleNewCreditPurchase}
+                disabled={isAdvisorReadOnly}
+                className="h-10 w-full rounded-full px-4 text-sm font-semibold sm:w-auto"
+                title={isAdvisorReadOnly ? 'Acesso somente leitura' : undefined}
+              >
+                <CreditCard className="h-4 w-4" />
+                Compra no credito
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="default"
+                onClick={openCreatePlanModal}
+                disabled={isAdvisorReadOnly}
+                className="h-10 w-full rounded-full px-4 text-sm font-semibold sm:w-auto"
+                title={isAdvisorReadOnly ? 'Acesso somente leitura' : undefined}
+              >
+                <Plus className="h-4 w-4" />
+                Nova receita futura
+              </Button>
+            )}
           </div>
         </header>
 
@@ -2818,87 +2801,120 @@ function FuturosPageContent() {
           )}
         </div>
 
-        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
-          <SummaryCard
-            title="A pagar"
-            value={formatCurrencyBRL(toPayTotalThisMonth)}
-            details={creditInvoiceCardNames.length ? summarizeCardNames(creditInvoiceCardNames) : 'Compromissos de despesa no mes atual'}
-            subtext={`${creditInvoiceCardCount} ${creditInvoiceCardCount === 1 ? 'cartao' : 'cartoes'} com fatura`}
-            icon={ArrowDownRight}
-            tone="red"
-            loading={currentMonthForecastQuery.isLoading}
-          />
-          <SummaryCard
-            title="A receber"
-            value={formatCurrencyBRL(incomeTotalThisMonth)}
-            details={incomeCardNames.length ? summarizeCardNames(incomeCardNames) : 'Recebimentos vigentes no periodo atual'}
-            subtext={
-              incomeCardNames.length
-                ? `${incomeCardNames.length} ${incomeCardNames.length === 1 ? 'cartao' : 'cartoes'}`
-                : 'Recebimentos vigentes'
-            }
-            icon={ArrowUpRight}
-            tone="green"
-            loading={currentMonthForecastQuery.isLoading}
-          />
-          <SummaryCard
-            title="Cartao de credito"
-            value={activeCreditCardCount}
-            subtext="Gerenciar cartoes"
-            icon={WalletCards}
-            tone="blue"
-            loading={cardQuery.isLoading}
-            onClick={openCardManagerList}
-          />
-          <SummaryCard
-            title="Parcelamentos"
-            value={formatCurrencyBRL(installmentPlanTotalThisMonth)}
-            subtext={`Parcelas de planos no mes: ${formatCurrencyBRL(installmentPlanTotalThisMonth)}.`}
-            icon={LayoutGrid}
-            tone="purple"
-            loading={currentMonthForecastQuery.isLoading}
-            onClick={openInstallmentsManagement}
-          />
-        </section>
+        <ForecastTabs active={typeTab} onChange={setTypeTab} />
 
-        <CreditMonthDistributionCard
-          total={creditInvoiceTotalThisMonth}
-          items={currentMonthCreditDistributionItems}
-          loading={currentMonthForecastQuery.isLoading}
-          onOpen={() => setDistributionModalOpen(true)}
-        />
+        {typeTab === 'expense' ? (
+          <>
+            <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
+              <SummaryCard
+                title="A pagar"
+                value={formatCurrencyBRL(toPayTotalThisMonth)}
+                details={
+                  creditInvoiceCardLabels.length
+                    ? summarizeCardNames(creditInvoiceCardLabels)
+                    : 'Nenhuma fatura vigente no mes atual'
+                }
+                subtext={`${creditInvoiceCardCount} ${creditInvoiceCardCount === 1 ? 'cartao' : 'cartoes'} com fatura`}
+                icon={ArrowDownRight}
+                tone="red"
+                loading={currentMonthForecastQuery.isLoading}
+              />
+              <SummaryCard
+                title="Cartao de credito"
+                value={activeCreditCardCount}
+                subtext="Gerenciar cartoes"
+                icon={WalletCards}
+                tone="blue"
+                loading={cardQuery.isLoading}
+                onClick={openCardManagerList}
+              />
+              <SummaryCard
+                title={`Parcelamentos da atual fatura (ate ${currentMonthLabel})`}
+                value={formatCurrencyBRL(creditInstallmentTotalThisMonth)}
+                subtext={
+                  creditInstallmentChargeCount
+                    ? `${creditInstallmentChargeCount} ${creditInstallmentChargeCount === 1 ? 'parcela' : 'parcelas'} de compras parceladas.`
+                    : 'Nenhuma compra parcelada nesta fatura.'
+                }
+                icon={LayoutGrid}
+                tone="purple"
+                loading={currentMonthForecastQuery.isLoading}
+              />
+            </section>
 
-        <CardFilterRail
-          cardOwnerSections={cardOwnerSections}
-          selectedCardId={selectedCardId}
-          cardColors={cardColors}
-          onSelect={setSelectedCardId}
-          onNewCard={openNewCardForm}
-        />
+            <CreditMonthDistributionCard
+              total={creditInvoiceTotalThisMonth}
+              items={currentMonthCreditDistributionItems}
+              loading={currentMonthForecastQuery.isLoading}
+              onOpen={() => setDistributionModalOpen(true)}
+            />
 
-        <SelectedCardHud
-          card={selectedCard}
-          ownerLabel={selectedCardOwnerLabel}
-          cardColor={getCardAccentColor(selectedCard?.id, cardColors)}
-          invoiceGroup={selectedInvoiceGroup}
-          purchases={selectedInvoicePurchases}
-          installments={selectedCardInstallmentPlans}
-          distribution={selectedCardDistribution}
-          loadingPurchases={selectedCardChargesQuery.isLoading}
-          payingStatement={payStatementMutation.isPending}
-          onCreateCard={openNewCardForm}
-          onCreateCharge={handleNewCreditPurchase}
-          onManageCard={openEditCardForm}
-          onPayStatement={requestPaySelectedStatement}
-          onOpenPurchases={() => setPurchasesModalOpen(true)}
-          onOpenInstallments={() => setInstallmentPlansModalOpen(true)}
-          onOpenHistory={() => setHistoryModalOpen(true)}
-          onEditPurchase={handleOpenChargeDrawer}
-          onDeletePurchase={handleRequestDeleteCharge}
-          onEditPlan={openEditPlanModal}
-          onDeletePlan={setDeletePlanTarget}
-          readOnly={isAdvisorReadOnly}
-        />
+            <CardFilterRail
+              cardOwnerSections={cardOwnerSections}
+              selectedCardId={selectedCardId}
+              cardColors={cardColors}
+              onSelect={setSelectedCardId}
+              onNewCard={openNewCardForm}
+            />
+          </>
+        ) : (
+          <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
+            <SummaryCard
+              title="A receber"
+              value={formatCurrencyBRL(incomeTotalThisMonth)}
+              details="Receitas futuras previstas para o mes atual"
+              subtext={`${incomeCurrentMonthItems.length} ${incomeCurrentMonthItems.length === 1 ? 'recebimento' : 'recebimentos'} no mes`}
+              icon={ArrowUpRight}
+              tone="green"
+              loading={currentMonthForecastQuery.isLoading}
+            />
+            <SummaryCard
+              title="Fontes de receita"
+              value={incomeSourceCount}
+              subtext={incomeSourceCount === 1 ? 'Origem cadastrada' : 'Origens cadastradas'}
+              icon={WalletCards}
+              tone="blue"
+              loading={currentMonthForecastQuery.isLoading}
+            />
+            <SummaryCard
+              title="Proximo recebimento"
+              value={nextIncomeItem ? formatCurrencyBRL(Number(nextIncomeItem.amount || 0)) : '—'}
+              details={nextIncomeItem?.description ?? undefined}
+              subtext={
+                nextIncomeItem
+                  ? `Previsto para ${formatDateBR(nextIncomeItem.dueDate)}`
+                  : 'Nenhum recebimento previsto'
+              }
+              icon={LayoutGrid}
+              tone="purple"
+              loading={currentMonthForecastQuery.isLoading}
+            />
+          </section>
+        )}
+
+        {typeTab === 'expense' && (
+          <SelectedCardHud
+            card={selectedCard}
+            ownerLabel={selectedCardOwnerLabel}
+            cardColor={getCardAccentColor(selectedCard?.id, cardColors)}
+            invoiceGroup={selectedInvoiceGroup}
+            purchases={selectedInvoicePurchases}
+            installments={selectedCardChargeInstallments}
+            distribution={selectedCardDistribution}
+            loadingPurchases={selectedCardChargesQuery.isLoading}
+            payingStatement={payStatementMutation.isPending}
+            onCreateCard={openNewCardForm}
+            onCreateCharge={handleNewCreditPurchase}
+            onManageCard={openEditCardForm}
+            onPayStatement={requestPaySelectedStatement}
+            onOpenPurchases={() => setPurchasesModalOpen(true)}
+            onOpenInstallments={() => setInstallmentPlansModalOpen(true)}
+            onOpenHistory={() => setHistoryModalOpen(true)}
+            onEditPurchase={handleOpenChargeDrawer}
+            onDeletePurchase={handleRequestDeleteCharge}
+            readOnly={isAdvisorReadOnly}
+          />
+        )}
 
         {forecastQuery.isError && (
           <div className="flex flex-col gap-3 rounded-[18px] border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700 sm:flex-row sm:items-center sm:justify-between">
@@ -2915,43 +2931,8 @@ function FuturosPageContent() {
 
         {(loadingCards ? (
           <ForecastSkeleton />
-        ) : !hasAnyForecastItem ? (
-          <>
-            <section className="space-y-3">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <h2 className="flex items-center gap-2 text-sm font-extrabold text-slate-900">
-                  <CreditCard className="h-4 w-4 text-slate-500" />
-                  Faturas de cartão de crédito
-                </h2>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={openNewCardForm}
-                    className={futurosUi.btnPrimary}
-                  >
-                    <Plus className="h-4 w-4" />
-                    Novo cartão
-                  </button>
-                  <button
-                    type="button"
-                    onClick={openCardManagerList}
-                    className={futurosUi.btnOutline}
-                  >
-                    <WalletCards className="h-4 w-4" />
-                    Gerenciar cartões
-                  </button>
-                </div>
-              </div>
-              <div className={`px-4 py-6 text-sm text-gray-500 sm:px-5 ${futurosUi.surfaceFlat}`}>
-                Nenhuma fatura de cartão neste período.
-              </div>
-            </section>
-            <ForecastEmptyState onCreate={openCreatePlanModal} />
-          </>
         ) : (
           <>
-            <ForecastTabs active={typeTab} onChange={setTypeTab} />
-
             {typeTab === 'expense' ? (
               <div className={futurosUi.forecastScroll}>
                 <section className="space-y-3">
@@ -3001,35 +2982,6 @@ function FuturosPageContent() {
                     </div>
                   )}
                 </section>
-
-                {otherCommitments.length > 0 ? (
-                  <section className={futurosUi.surface}>
-                    <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-3.5 dark:border-white/5 sm:px-5 sm:py-4">
-                      <CalendarDays className="h-4 w-4 text-gray-500" />
-                      <h2 className={futurosUi.sectionTitle}>Outros compromissos futuros</h2>
-                    </div>
-                    <div className={otherCommitments.length > 8 ? futurosUi.listScroll : undefined}>
-                    {limitedOtherCommitments.map((item) => (
-                      <CommitmentCard
-                        key={item.id}
-                        item={item}
-                        onSettle={openSettleModal}
-                        onEdit={openEditInstallmentModal}
-                        onDelete={setDeleteInstallmentTarget}
-                      />
-                    ))}
-                    {otherCommitments.length > limitedOtherCommitments.length && (
-                      <div className="border-t border-gray-100 px-4 py-3 text-center text-xs font-semibold text-primary sm:px-5">
-                        Exibindo {limitedOtherCommitments.length} de {otherCommitments.length} compromissos
-                      </div>
-                    )}
-                    </div>
-                  </section>
-                ) : creditCardGroups.length === 0 ? (
-                  <p className="rounded-[18px] border border-slate-200 bg-white px-5 py-6 text-sm font-medium text-slate-500">
-                    Nenhum outro compromisso futuro neste período.
-                  </p>
-                ) : null}
               </div>
             ) : (
               <section className={futurosUi.surface}>
@@ -3067,9 +3019,10 @@ function FuturosPageContent() {
         ))}
 
       {/* ────────────────────────────────────────────────────────────────────── */}
-      {/* MANAGEMENT SECTION */}
+      {/* MANAGEMENT SECTION — exclusiva da aba RECEITA */}
       {/* ────────────────────────────────────────────────────────────────────── */}
 
+        {typeTab === 'income' && (
         <section ref={managementSectionRef} className={futurosUi.surfacePadding}>
           <button
             type="button"
@@ -3077,7 +3030,7 @@ function FuturosPageContent() {
             className="flex w-full items-center justify-between gap-4 text-left"
           >
             <div>
-              <h2 className="text-sm font-extrabold text-slate-900">Gerenciamento de parcelamentos</h2>
+              <h2 className="text-sm font-extrabold text-slate-900">Gerenciamento de receitas futuras</h2>
               <p className="mt-1 text-xs font-medium text-slate-500">Edição, baixa e exclusão continuam disponíveis em uma área secundária.</p>
             </div>
             <ChevronDown className={`h-5 w-5 shrink-0 text-slate-500 transition-transform ${showManagement ? 'rotate-180' : ''}`} />
@@ -3341,6 +3294,7 @@ function FuturosPageContent() {
             </div>
           )}
         </section>
+        )}
       </div>
 
       <CreditCardManagerDrawer
@@ -3391,14 +3345,12 @@ function FuturosPageContent() {
 
       <InstallmentPlansModal
         open={installmentPlansModalOpen}
-        plans={selectedCardInstallmentPlans}
+        charges={selectedCardChargeInstallments}
         onClose={() => setInstallmentPlansModalOpen(false)}
-        onEdit={(plan) => {
+        onOpenPurchases={() => {
           setInstallmentPlansModalOpen(false)
-          openEditPlanModal(plan)
+          setPurchasesModalOpen(true)
         }}
-        onDelete={setDeletePlanTarget}
-        onOpenManagement={openInstallmentsManagement}
       />
 
       <CardHistoryModal
@@ -3440,13 +3392,8 @@ function FuturosPageContent() {
                 <input {...registerPlan('description')} className={futurosUi.input} />
                 {planErrors.description && <span className="text-xs text-red-400">{planErrors.description.message}</span>}
               </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-xs text-gray-600">{t('forms.type')}</span>
-                <select {...registerPlan('type')} className={futurosUi.select}>
-                  <option value="EXPENSE">{t('labels.expense')}</option>
-                  <option value="INCOME">{t('labels.income')}</option>
-                </select>
-              </label>
+              {/* A tela de Futuros so cadastra receita futura; o tipo fica fixo. */}
+              <input type="hidden" {...registerPlan('type')} value="INCOME" />
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-gray-600">{t('forms.payment')}</span>
                 <select {...registerPlan('paymentType')} className={futurosUi.select}>
@@ -3472,8 +3419,15 @@ function FuturosPageContent() {
                 {planErrors.firstDueDate && <span className="text-xs text-red-400">{planErrors.firstDueDate.message}</span>}
               </label>
               <label className="flex flex-col gap-1">
-                <span className="text-xs text-gray-600">{t('forms.intervalMonths')}</span>
-                <input type="number" min="1" {...registerPlan('intervalMonths')} className={futurosUi.input} />
+                <span className="text-xs text-gray-600">Recorrencia</span>
+                <select {...registerPlan('intervalMonths')} className={futurosUi.select}>
+                  {RECURRENCE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+                <span className="text-[11px] text-gray-500">
+                  A cada quantos meses este recebimento se repete.
+                </span>
                 {planErrors.intervalMonths && <span className="text-xs text-red-400">{planErrors.intervalMonths.message}</span>}
               </label>
               {planModalMode === 'edit' && (

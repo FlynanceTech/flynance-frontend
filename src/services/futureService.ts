@@ -178,7 +178,12 @@ export interface FutureForecastTotals {
   toReceive: number
   pendingCount: number
   // new fields from /future/forecast
+  /** quantidade de cartoes distintos com fatura no periodo */
   creditCardCount?: number
+  /** quantidade de parcelas de fatura no periodo */
+  creditCardInstallmentCount?: number
+  /** soma das parcelas de compras parceladas (installmentCount > 1) no periodo */
+  creditCardInstallmentTotal?: number
   installmentPlanCount?: number
   // backward-compat fields (may not be present in new API)
   overdueToPay?: number
