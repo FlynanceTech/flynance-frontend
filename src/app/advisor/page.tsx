@@ -508,7 +508,7 @@ function AdvisorPageInner() {
             >
               <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                 <div>
-                  <p className="text-xs font-semibold uppercase text-[#2F6E91]">Flynance Advisor</p>
+                  <p className="text-xs font-semibold uppercase text-[#2F6E91]">Flynance Planner</p>
                   <h1 className="mt-1 text-2xl font-semibold text-[#253140]">Olá, {advisorName}</h1>
                   <p className="mt-1 text-sm text-slate-600">
                     Você acompanha {activeClients} clientes ativos em tempo real.
@@ -1328,7 +1328,7 @@ function ClientQuickViewDrawer({
             <SheetHeader>
               <SheetTitle className="text-xl text-[#253140]">{client.name}</SheetTitle>
               <SheetDescription>
-                Visualização rápida operacional do cliente no painel Advisor.
+                Visualização rápida operacional do cliente no painel Planejador.
               </SheetDescription>
             </SheetHeader>
 

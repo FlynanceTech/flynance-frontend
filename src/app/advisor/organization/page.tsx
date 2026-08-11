@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -96,7 +96,7 @@ export default function AdvisorOrganizationPage() {
       const data = await getOrgAdvisors()
       setAdvisors(data.map(fromOrgAdvisor))
     } catch (err: any) {
-      toast.error(err?.message || 'Erro ao carregar advisors.')
+      toast.error(err?.message || 'Erro ao carregar planejadores.')
     } finally {
       setLoading(false)
     }
@@ -106,7 +106,7 @@ export default function AdvisorOrganizationPage() {
 
   function handleViewCarteira(advisor: MockAdvisor) {
     if (!advisor.userId) {
-      toast('Este advisor ainda não aceitou o convite.', { icon: '⚠️' })
+      toast('Este planejador ainda não aceitou o convite.', { icon: '⚠️' })
       return
     }
     setActionAdvisor(null)
@@ -120,7 +120,7 @@ export default function AdvisorOrganizationPage() {
 
   function handleDelegateInvite(advisor: MockAdvisor) {
     if (!advisor.userId) {
-      toast('Este advisor ainda não aceitou o convite da organização.', { icon: '⚠️' })
+      toast('Este planejador ainda não aceitou o convite da organização.', { icon: '⚠️' })
       return
     }
     setActionAdvisor(null)
@@ -146,7 +146,7 @@ export default function AdvisorOrganizationPage() {
       setActionAdvisor(null)
       toast.success(`${advisor.name} removido da organização.`)
     } catch (err: any) {
-      toast.error(err?.message || 'Erro ao remover advisor.')
+      toast.error(err?.message || 'Erro ao remover planejador.')
     }
   }
 
@@ -163,7 +163,7 @@ export default function AdvisorOrganizationPage() {
   const activeAdvisors = advisors.filter((a) => a.status === 'active').length
 
   const kpis = [
-    { label: 'Advisors ativos', value: activeAdvisors, detail: `${advisors.length} no total`, Icon: UserCheck },
+    { label: 'Planejadores ativos', value: activeAdvisors, detail: `${advisors.length} no total`, Icon: UserCheck },
     { label: 'Clientes totais', value: totalActiveClients, detail: `${totalActiveClients} vinculados`, Icon: UsersRound },
     { label: 'Clientes críticos', value: totalCritical, detail: `${totalInactive} sem movimentação`, Icon: ShieldAlert },
     { label: 'Convites pendentes', value: totalPendingInvites, detail: 'aguardando aceite', Icon: ClipboardList },
@@ -183,7 +183,7 @@ export default function AdvisorOrganizationPage() {
                   <Building2 className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase text-[#2F6E91]">Fly Advisory — Organização</p>
+                  <p className="text-xs font-semibold uppercase text-[#2F6E91]">Fly Planner — Organização</p>
                   <h1 className="text-xl font-semibold text-[#253140]">Painel de {orgName}</h1>
                 </div>
               </div>
@@ -194,7 +194,7 @@ export default function AdvisorOrganizationPage() {
                   className="inline-flex h-9 items-center gap-2 rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground hover:bg-[#3f86b0]"
                 >
                   <Plus className="h-4 w-4" />
-                  Novo Advisor
+                  Novo Planejador
                 </button>
               </div>
             </div>
@@ -225,8 +225,8 @@ export default function AdvisorOrganizationPage() {
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-base font-semibold text-[#253140]">Gestão de Advisors</h2>
-                <p className="mt-0.5 text-sm text-slate-600">Monitore, ative e gerencie os advisors da organização.</p>
+                <h2 className="text-base font-semibold text-[#253140]">Gestão de Planejadores</h2>
+                <p className="mt-0.5 text-sm text-slate-600">Monitore, ative e gerencie os planejadores da organização.</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 {(['ALL', 'active', 'pending', 'inactive', 'blocked'] as const).map((s) => (
@@ -253,7 +253,7 @@ export default function AdvisorOrganizationPage() {
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Buscar advisor por nome ou e-mail"
+                  placeholder="Buscar planejador por nome ou e-mail"
                   className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-3 text-sm outline-none focus:border-[#7CB8D8] focus:bg-white"
                 />
               </label>
@@ -275,7 +275,7 @@ export default function AdvisorOrganizationPage() {
                     />
                   ))}
                   {filtered.length === 0 && (
-                    <p className="py-8 text-center text-sm text-slate-500">Nenhum advisor encontrado.</p>
+                    <p className="py-8 text-center text-sm text-slate-500">Nenhum planejador encontrado.</p>
                   )}
                 </div>
 
@@ -284,7 +284,7 @@ export default function AdvisorOrganizationPage() {
                   <table className="w-full min-w-[900px] text-sm">
                     <thead>
                       <tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase text-slate-500">
-                        <th className="pb-3 font-semibold">Advisor</th>
+                        <th className="pb-3 font-semibold">Planejador</th>
                         <th className="pb-3 font-semibold">Status</th>
                         <th className="pb-3 font-semibold">Clientes</th>
                         <th className="pb-3 font-semibold">Críticos</th>
@@ -326,7 +326,7 @@ export default function AdvisorOrganizationPage() {
                                 type="button"
                                 onClick={() => setActionAdvisor(advisor)}
                                 className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
-                                title="Ver advisor"
+                                title="Ver planejador"
                               >
                                 <Eye className="h-4 w-4" />
                               </button>
@@ -345,7 +345,7 @@ export default function AdvisorOrganizationPage() {
                       {filtered.length === 0 && (
                         <tr>
                           <td colSpan={7} className="py-8 text-center text-sm text-slate-500">
-                            Nenhum advisor encontrado.
+                            Nenhum planejador encontrado.
                           </td>
                         </tr>
                       )}
@@ -420,7 +420,7 @@ function AdvisorCard({ advisor, onView }: { advisor: MockAdvisor; onView: () => 
           className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50"
         >
           <Eye className="h-3.5 w-3.5" />
-          Visualizar Advisor
+          Visualizar Planejador
         </button>
       </div>
     </article>
@@ -455,15 +455,15 @@ function AdvisorDetailDialog({
     { label: 'Delegar Assinatura', Icon: Gift, variant: 'outline', onClick: () => onDelegateInvite(advisor) },
     { label: 'Transferir Clientes', Icon: ArrowUpRight, variant: 'outline', onClick: () => onTransferClients(advisor) },
     { label: 'Redefinir Acesso', Icon: UserCheck, variant: 'outline', onClick: () => onResetAccess(advisor) },
-    { label: isBlocked ? 'Ativar Advisor' : 'Bloquear Advisor', Icon: isBlocked ? UserCheck : UserX, variant: 'danger', onClick: () => onToggleBlock(advisor) },
-    { label: 'Remover Advisor', Icon: UserMinus, variant: 'danger', onClick: () => onRemove(advisor) },
+    { label: isBlocked ? 'Ativar Planejador' : 'Bloquear Planejador', Icon: isBlocked ? UserCheck : UserX, variant: 'danger', onClick: () => onToggleBlock(advisor) },
+    { label: 'Remover Planejador', Icon: UserMinus, variant: 'danger', onClick: () => onRemove(advisor) },
   ]
 
   return (
     <Dialog open={Boolean(advisor)} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="border-slate-200 bg-white sm:max-w-lg sm:rounded-2xl">
         <DialogHeader>
-          <DialogTitle className="text-[#253140]">Advisor: {advisor.name}</DialogTitle>
+          <DialogTitle className="text-[#253140]">Planejador: {advisor.name}</DialogTitle>
           <DialogDescription>{advisor.email} · Último acesso: {daysAgo(advisor.lastAccess ?? '')}</DialogDescription>
         </DialogHeader>
 
@@ -598,7 +598,7 @@ function DelegateInviteDialog({
         <DialogHeader>
           <DialogTitle className="text-[#253140]">Delegar Assinatura</DialogTitle>
           <DialogDescription>
-            Crie um convite de assinatura para o advisor <strong>{advisor?.name}</strong> enviar ao cliente.
+            Crie um convite de assinatura para o planejador <strong>{advisor?.name}</strong> enviar ao cliente.
           </DialogDescription>
         </DialogHeader>
 
@@ -607,7 +607,7 @@ function DelegateInviteDialog({
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
               <p className="text-sm font-semibold text-emerald-800">Convite gerado com sucesso!</p>
               <p className="mt-1 text-xs text-emerald-700">
-                O advisor <strong>{advisor?.name}</strong> verá este convite em seu painel e poderá
+                O planejador <strong>{advisor?.name}</strong> verá este convite em seu painel e poderá
                 compartilhá-lo com o cliente.
               </p>
             </div>
@@ -733,7 +733,7 @@ function DelegateInviteDialog({
             </label>
 
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-600">
-              O link será gerado para o advisor <strong>{advisor?.name}</strong> compartilhar com o cliente. A cobrança fica por conta da organização.
+              O link será gerado para o planejador <strong>{advisor?.name}</strong> compartilhar com o cliente. A cobrança fica por conta da organização.
             </div>
 
             <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
@@ -770,7 +770,7 @@ function AddAdvisorDialog({ open, onClose, onAdded }: { open: boolean; onClose: 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!email.trim()) {
-      toast.error('Informe o e-mail do advisor.')
+      toast.error('Informe o e-mail do planejador.')
       return
     }
     setLoading(true)
@@ -793,7 +793,7 @@ function AddAdvisorDialog({ open, onClose, onAdded }: { open: boolean; onClose: 
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="border-slate-200 bg-white sm:rounded-2xl">
         <DialogHeader>
-          <DialogTitle className="text-[#253140]">Novo advisor</DialogTitle>
+          <DialogTitle className="text-[#253140]">Novo planejador</DialogTitle>
           <DialogDescription>
             Preencha os dados e o convite de acesso será enviado por e-mail.
           </DialogDescription>
@@ -817,7 +817,7 @@ function AddAdvisorDialog({ open, onClose, onAdded }: { open: boolean; onClose: 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              placeholder="advisor@escritorio.com"
+              placeholder="planejador@escritorio.com"
               className="h-10 rounded-xl border border-slate-200 px-3 outline-none focus:border-[#7CB8D8]"
             />
           </label>
@@ -828,7 +828,7 @@ function AddAdvisorDialog({ open, onClose, onAdded }: { open: boolean; onClose: 
               onChange={(e) => setFuncao(e.target.value)}
               className="h-10 rounded-xl border border-slate-200 px-3 outline-none focus:border-[#7CB8D8]"
             >
-              <option value="ADVISOR">Advisor</option>
+              <option value="ADVISOR">Planejador</option>
               <option value="ORG_ADMIN">Administrador</option>
             </select>
           </label>

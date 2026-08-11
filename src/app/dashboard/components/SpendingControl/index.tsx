@@ -74,6 +74,7 @@ function compareClosestToGoal(a: ControlWithProgress, b: ControlWithProgress) {
 
 export function SpendingControl() {
   const t = useTranslations('spendingControl')
+  const tNav = useTranslations('nav')
   const locale = useLocale()
   const [selectedDate, setSelectedDate] = useState(new Date())
   const { controlsQuery, favoritesQuery } = useControls(undefined, selectedDate)
@@ -169,7 +170,7 @@ export function SpendingControl() {
             disabled={!canCreateControl}
             className="inline-flex items-center gap-2 bg-secondary/30 text-primary font-semibold px-2 py-2 rounded-full text-sm hover:bg-secondary/35 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-secondary/30"
             aria-label={t('addControlAria')}
-            title={!canCreateControl ? 'Seu planejamento é gerenciado pelo seu Advisor.' : t('addControlTitle')}
+            title={!canCreateControl ? `Seu planejamento é gerenciado pelo seu ${tNav('planner')}.` : t('addControlTitle')}
           >
             <Plus className="w-4 h-4" />
           </button>

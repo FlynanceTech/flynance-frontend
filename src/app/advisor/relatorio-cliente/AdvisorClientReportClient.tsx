@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -322,7 +322,7 @@ export default function AdvisorClientReportClient() {
 
   async function shareReport() {
     if (!report) return
-    const text = `Relatório consultivo de ${report.name} na Flynance Advisor.`
+    const text = `Relatório consultivo de ${report.name} na Flynance Planner.`
     try {
       if (navigator.share) {
         await navigator.share({ title: 'Relatório do Cliente', text, url: window.location.href })
@@ -355,7 +355,7 @@ export default function AdvisorClientReportClient() {
                 className="mb-3 inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50"
               >
                 <ArrowLeft className="h-4 w-4" />
-                Voltar ao Advisor
+                Voltar ao Planejador
               </button>
               <p className="text-xs font-semibold uppercase text-[#2F6E91]">Relatórios</p>
               <h1 className="mt-1 text-2xl font-semibold text-[#253140]">Selecione um cliente</h1>
@@ -434,7 +434,7 @@ export default function AdvisorClientReportClient() {
                     className="mb-3 inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50"
                   >
                     <ArrowLeft className="h-4 w-4" />
-                    Voltar ao Advisor
+                    Voltar ao Planejador
                   </button>
                   <p className="text-xs font-semibold uppercase text-[#2F6E91]">Visualizando</p>
                   <h1 className="mt-1 text-2xl font-semibold text-[#253140]">
@@ -697,7 +697,7 @@ export default function AdvisorClientReportClient() {
                       <QuickAction label="Criar planejamento" Icon={CalendarDays} onClick={() => openDashboard('/dashboard/futuros')} />
                       <QuickAction label="Abrir WhatsApp" Icon={MessageCircle} onClick={() => openWhatsApp(report.phone)} />
                       <QuickAction label="Abrir Dashboard" Icon={LayoutDashboard} onClick={() => openDashboard()} />
-                      <QuickAction label="Agendar reunião" Icon={CalendarDays} onClick={() => toast.success('A agenda será conectada ao módulo Advisor.')} />
+                      <QuickAction label="Agendar reunião" Icon={CalendarDays} onClick={() => toast.success('A agenda será conectada ao módulo Planejador.')} />
                     </div>
                   </SectionCard>
                 </section>
@@ -989,7 +989,7 @@ function EmptyState() {
       <UserRound className="mx-auto h-10 w-10 text-slate-400" />
       <h2 className="mt-3 text-base font-semibold text-[#253140]">Nenhum cliente conectado</h2>
       <p className="mt-1 text-sm text-slate-600">
-        O relatório consultivo ficará disponível quando houver clientes ativos no Advisor.
+        O relatório consultivo ficará disponível quando houver clientes ativos no Planejador.
       </p>
     </section>
   )

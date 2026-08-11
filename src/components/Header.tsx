@@ -4,8 +4,10 @@ import Link from "next/link";
 import logo from '../../assets/Logo/PNG/Logo Fly principal colorida.png'
 import React, { useState, useEffect, useRef } from "react";
 import { LogIn } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 const Header = () => {
+  const tNav = useTranslations("nav");
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
@@ -130,7 +132,7 @@ const Header = () => {
               href="/advisor/login"
               className="px-5 py-2 font-bold flex items-center gap-2 text-[#1a3050] bg-[#F0C040] rounded-lg hover:bg-[#E8B830] transition"
             >
-              Sou Advisor
+              {tNav("plannerCta")}
             </Link>
             <Link
               href="/login"
@@ -246,7 +248,7 @@ const Header = () => {
               className="px-6 py-2 font-bold flex items-center justify-center gap-2 text-[#1a3050] bg-[#F0C040] rounded-lg hover:bg-[#E8B830] transition"
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              Sou Advisor
+              {tNav("plannerCta")}
             </Link>
             <Link
               href="/login"

@@ -56,7 +56,7 @@ export default function AdvisorGuard({ children }: { children: React.ReactNode }
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[hsl(var(--background))] text-[hsl(var(--foreground))] transition-colors">
         <Loader2 className="h-8 w-8 animate-spin text-[#4F98C2]" />
-        <p className="mt-3 text-sm text-slate-500">Validando acesso ao Fly Advisory...</p>
+        <p className="mt-3 text-sm text-slate-500">Validando acesso ao Fly Planner...</p>
       </div>
     )
   }

@@ -54,6 +54,7 @@ type SidebarTranslations = {
   coupleAccount: string
   education: string
   clients: string
+  planner: string
   profile: string
   currencyLanguage: string
   notifications: string
@@ -198,7 +199,7 @@ export function buildSidebarSections(t: SidebarTranslations): SidebarSectionConf
       items: [
         {
           id: 'clients',
-          label: 'Advisor',
+          label: t.planner,
           icon: Users,
           path: '/advisor',
           requiresAdvisor: true,

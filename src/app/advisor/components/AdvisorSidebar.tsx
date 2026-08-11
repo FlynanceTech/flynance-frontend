@@ -47,7 +47,7 @@ const NAV_ITEMS: NavItem[] = [
 
 const NAV_ITEMS_ORG: NavItem[] = [
   { id: 'org-dashboard', label: 'Dashboard', Icon: LayoutDashboard, path: '/advisor/organization/dashboard' },
-  { id: 'org-advisors', label: 'Gestão de Advisors', Icon: UsersRound, path: '/advisor/organization' },
+  { id: 'org-advisors', label: 'Gestão de Planejadores', Icon: UsersRound, path: '/advisor/organization' },
   { id: 'settings', label: 'Configurações', Icon: Settings, path: '/advisor/configuracoes' },
 ]
 
@@ -91,7 +91,7 @@ export default function AdvisorSidebar({ collapsed, onCollapsedChange }: Advisor
 
   return (
     <nav
-      aria-label="Navegação Advisor"
+      aria-label="Navegação Planejador"
       className={[
         'fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-slate-200 bg-white shadow-sm transition-[width] duration-200',
         collapsed ? 'w-[5rem]' : 'w-[17rem]',
@@ -103,7 +103,7 @@ export default function AdvisorSidebar({ collapsed, onCollapsedChange }: Advisor
           <div className="flex w-full items-center justify-center">
             <Image
               src={logoCollapsed}
-              alt="Fly Advisory"
+              alt="Fly Planner"
               width={32}
               height={32}
               className="object-contain"
@@ -113,13 +113,13 @@ export default function AdvisorSidebar({ collapsed, onCollapsedChange }: Advisor
           <div className="flex items-center gap-2">
             <Image
               src={logoExpanded}
-              alt="Fly Advisory"
+              alt="Fly Planner"
               width={110}
               height={24}
               className="object-contain"
             />
             <span className="rounded-full border border-[#4F98C2]/40 bg-[#EAF4FA] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#2F6E91]">
-              Advisory
+              Planner
             </span>
           </div>
         )}
@@ -134,10 +134,10 @@ export default function AdvisorSidebar({ collapsed, onCollapsedChange }: Advisor
         </button>
       </div>
 
-      {/* Advisory label */}
+      {/* Planner label */}
       {!collapsed && (
         <div className="mx-4 mb-2 rounded-xl border border-[#D7EAF5] bg-[#F3FAFF] px-3 py-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#2F6E91]">Fly Advisory</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#2F6E91]">Fly Planner</p>
           <p className="text-xs text-slate-500">Plataforma profissional</p>
         </div>
       )}

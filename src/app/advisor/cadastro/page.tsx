@@ -216,15 +216,15 @@ export default function AdvisorCadastroPage() {
             para seus clientes.
           </h1>
           <p className="mt-5 text-lg text-white/70 leading-relaxed">
-            Plataforma gratuita para advisors e escritórios.<br />
+            Plataforma gratuita para planejadores e escritórios.<br />
             Seus clientes pagam apenas pelo que usam.
           </p>
 
           <div className="mt-10 grid grid-cols-2 gap-4">
             {[
-              { title: 'Advisor independente', desc: 'Gerencie sua carteira de clientes com liberdade.' },
+              { title: 'Planejador independente', desc: 'Gerencie sua carteira de clientes com liberdade.' },
               { title: 'Escritório / organização', desc: 'Centralize consultores e clientes em um painel.' },
-              { title: 'Sem mensalidade', desc: 'A plataforma é gratuita para o advisor.' },
+              { title: 'Sem mensalidade', desc: 'A plataforma é gratuita para o planejador.' },
               { title: 'Acesso imediato', desc: 'Cadastro aprovado automaticamente. Sem burocracia.' },
             ].map(({ title, desc }) => (
               <div key={title} className="rounded-2xl border border-white/20 bg-white/10 p-4">
@@ -265,7 +265,7 @@ export default function AdvisorCadastroPage() {
               ].join(' ')}
             >
               <User className="h-4 w-4" />
-              Advisor independente
+              Planejador independente
             </button>
             <button
               type="button"

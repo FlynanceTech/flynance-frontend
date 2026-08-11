@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import chatFly from "../../../assets/chat-fly.jpeg";
 import dashboardMobile from "../../../assets/dashboard-mobile.png";
@@ -16,6 +17,7 @@ type Slide =
   | { type: "image"; key: string; src: any; alt: string };
 
 const HeroSection = () => {
+  const tNav = useTranslations("nav");
   const slides: Slide[] = useMemo(
     () => [
       {
@@ -57,7 +59,7 @@ const HeroSection = () => {
               href="/advisor/login"
               className="rounded-full border-2 border-[#1a3050] bg-[#1a3050] px-8 py-4 text-base font-semibold text-[#F0C040] shadow-lg transition hover:bg-[#253140]"
             >
-              Sou Advisor
+              {tNav("plannerCta")}
             </Link>
           </div>
         </div>
