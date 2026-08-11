@@ -25,6 +25,10 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       education: 'Educacao',
       coupleAccount: 'Conta de casal',
       clients: 'Clientes',
+      planner: 'Planejador',
+      plannerLower: 'planejador',
+      plannerCta: 'Sou Planejador',
+      backToPlanner: 'Voltar ao Planejador',
       profile: 'Perfil',
       notifications: 'Notificações',
       currencyLanguage: 'Moeda & Idioma',
@@ -1097,9 +1101,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       },
     },
     connectAdvisorPage: {
-      title: 'Conectar com Advisor',
-      subtitle: 'Voce esta iniciando a conexao com um advisor na Flynance.',
-      permissionsTitle: 'Ao aceitar, o advisor podera:',
+      title: 'Conectar com Planejador',
+      subtitle: 'Voce esta iniciando a conexao com um planejador na Flynance.',
+      permissionsTitle: 'Ao aceitar, o planejador podera:',
       permissions: {
         viewReports: 'visualizar seus relatorios e indicadores financeiros;',
         actOnDashboard: 'atuar no seu dashboard conforme o nivel de permissao concedido;',
@@ -1107,7 +1111,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       },
       invalidLink: 'Link de conexao invalido.',
       errors: {
-        acceptFailed: 'Nao foi possivel concluir a conexao com o advisor.',
+        acceptFailed: 'Nao foi possivel concluir a conexao com o planejador.',
       },
       successRedirecting: 'Conexao confirmada com sucesso. Redirecionando...',
       confirming: 'Confirmando...',
@@ -1116,8 +1120,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       back: 'Voltar',
     },
     advisorInvitePage: {
-      title: 'Convite para Advisor',
-      subtitle: 'Voce foi convidado para atuar como advisor na Flynance.',
+      title: 'Convite para Planejador',
+      subtitle: 'Voce foi convidado para atuar como planejador na Flynance.',
       termsTitle: 'Ao aceitar, voce confirma que:',
       terms: {
         actWithinPermissions: 'vai agir em nome do cliente apenas dentro das permissoes concedidas;',
@@ -1412,8 +1416,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           edit: 'Editar',
           delete: 'Excluir',
         },
-        advisor: 'Advisor',
-        advisorLocked: 'Gerenciado pelo seu advisor — edição bloqueada',
+        advisor: 'Planejador',
+        advisorLocked: 'Gerenciado pelo seu planejador — edição bloqueada',
       },
       toasts: {
         controlRemoved: 'Controle removido',
@@ -1464,7 +1468,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         quickLinkCopyError: 'Nao foi possivel copiar automaticamente. Copie manualmente.',
       },
       header: {
-        title: 'Painel do Advisor',
+        title: 'Painel do Planejador',
         subtitle: 'Convide clientes e selecione um cliente para atuar no dashboard.',
         guideButton: 'Guia rapido',
         inviteClient: 'Convidar cliente',
@@ -1566,7 +1570,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       },
       drawer: {
         title: 'Convidar cliente',
-        description: 'Gere um link para conectar um cliente ao seu painel de advisor.',
+        description: 'Gere um link para conectar um cliente ao seu painel de planejador.',
         emailsLabel: 'E-mails dos clientes (opcional)',
         emailsPlaceholder: 'cliente1@exemplo.com, cliente2@exemplo.com',
         emailsHint: 'Separe por virgula ou quebra de linha.',
@@ -1583,7 +1587,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         generate: 'Gerar convite',
       },
       onboarding: {
-        headerTitle: 'Painel do advisor',
+        headerTitle: 'Painel do planejador',
         headerDescription: 'Use este painel para convidar clientes e gerenciar os vinculos ativos.',
         clientsTitle: 'Clientes conectados',
         clientsDescription: 'Aqui voce acompanha clientes vinculados e pode entrar no dashboard de cada um.',
@@ -2043,11 +2047,11 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         maxUses: 'Maximo 1000 usos',
       },
       form: {
-        title: 'Gerar convite de advisor',
-        emailLabel: 'E-mail do advisor (opcional)',
+        title: 'Gerar convite de planejador',
+        emailLabel: 'E-mail do planejador (opcional)',
         emailTip:
           'Se informado, o convite fica vinculado a este e-mail. Se vazio, o link pode ser usado por qualquer e-mail valido.',
-        emailPlaceholder: 'advisor@flynance.com',
+        emailPlaceholder: 'planejador@flynance.com',
         expiresInDaysLabel: 'Validade do convite (dias)',
         expiresInDaysTip:
           'Quantidade de dias ate o link expirar. Exemplo: 7 significa que o convite vale por 7 dias a partir da criacao.',
@@ -2505,7 +2509,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       cards: {
         totalUsers: 'Total usuarios',
         totalClients: 'Total clientes',
-        totalAdvisors: 'Total advisors',
+        totalAdvisors: 'Total planejadores',
         capturedLeads: 'Leads capturados',
         new7d: 'Novos 7d',
         new30d: 'Novos 30d',
@@ -2513,7 +2517,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       chartLabels: {
         users: 'Usuarios',
         clients: 'Clientes',
-        advisors: 'Advisors',
+        advisors: 'Planejadores',
         leads: 'Leads',
         total: 'Total',
       },
@@ -2553,6 +2557,10 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       education: 'Education',
       coupleAccount: 'Couple account',
       clients: 'Clients',
+      planner: 'Planner',
+      plannerLower: 'planner',
+      plannerCta: 'I am a Planner',
+      backToPlanner: 'Back to Planner',
       profile: 'Profile',
       notifications: 'Notifications',
       currencyLanguage: 'Change currency & language',
@@ -3613,9 +3621,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       },
     },
     connectAdvisorPage: {
-      title: 'Connect with Advisor',
-      subtitle: 'You are starting a connection with an advisor at Flynance.',
-      permissionsTitle: 'By accepting, the advisor can:',
+      title: 'Connect with Planner',
+      subtitle: 'You are starting a connection with a planner at Flynance.',
+      permissionsTitle: 'By accepting, the planner can:',
       permissions: {
         viewReports: 'view your financial reports and indicators;',
         actOnDashboard: 'act on your dashboard according to granted permission level;',
@@ -3623,7 +3631,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       },
       invalidLink: 'Invalid connection link.',
       errors: {
-        acceptFailed: 'Could not complete the advisor connection.',
+        acceptFailed: 'Could not complete the planner connection.',
       },
       successRedirecting: 'Connection confirmed successfully. Redirecting...',
       confirming: 'Confirming...',
@@ -3632,8 +3640,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       back: 'Back',
     },
     advisorInvitePage: {
-      title: 'Advisor Invitation',
-      subtitle: 'You were invited to act as an advisor at Flynance.',
+      title: 'Planner Invitation',
+      subtitle: 'You were invited to act as a planner at Flynance.',
       termsTitle: 'By accepting, you confirm that:',
       terms: {
         actWithinPermissions: 'you will act on behalf of the client only within granted permissions;',
@@ -3926,8 +3934,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           edit: 'Edit',
           delete: 'Delete',
         },
-        advisor: 'Advisor',
-        advisorLocked: 'Managed by your advisor — editing locked',
+        advisor: 'Planner',
+        advisorLocked: 'Managed by your planner — editing locked',
       },
       toasts: {
         controlRemoved: 'Control removed',
@@ -3978,7 +3986,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         quickLinkCopyError: 'Could not copy automatically. Copy it manually.',
       },
       header: {
-        title: 'Advisor Panel',
+        title: 'Planner Panel',
         subtitle: 'Invite clients and select a client to act on the dashboard.',
         guideButton: 'Quick guide',
         inviteClient: 'Invite client',
@@ -4080,7 +4088,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       },
       drawer: {
         title: 'Invite client',
-        description: 'Generate a link to connect a client to your advisor panel.',
+        description: 'Generate a link to connect a client to your planner panel.',
         emailsLabel: 'Client e-mails (optional)',
         emailsPlaceholder: 'client1@example.com, client2@example.com',
         emailsHint: 'Separate by comma or line break.',
@@ -4097,7 +4105,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         generate: 'Generate invite',
       },
       onboarding: {
-        headerTitle: 'Advisor panel',
+        headerTitle: 'Planner panel',
         headerDescription: 'Use this screen to invite clients and manage active links.',
         clientsTitle: 'Connected clients',
         clientsDescription: 'Track linked clients here and enter each client dashboard.',
@@ -4557,11 +4565,11 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         maxUses: 'Maximum 1000 uses',
       },
       form: {
-        title: 'Generate advisor invite',
-        emailLabel: 'Advisor email (optional)',
+        title: 'Generate planner invite',
+        emailLabel: 'Planner email (optional)',
         emailTip:
           'If informed, the invite is tied to this email. If empty, the link can be used by any valid email.',
-        emailPlaceholder: 'advisor@flynance.com',
+        emailPlaceholder: 'planner@flynance.com',
         expiresInDaysLabel: 'Invite expiration (days)',
         expiresInDaysTip:
           'Number of days until the link expires. Example: 7 means the invite is valid for 7 days from creation.',
@@ -5016,7 +5024,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       cards: {
         totalUsers: 'Total users',
         totalClients: 'Total clients',
-        totalAdvisors: 'Total advisors',
+        totalAdvisors: 'Total planners',
         capturedLeads: 'Captured leads',
         new7d: 'New 7d',
         new30d: 'New 30d',
@@ -5024,7 +5032,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       chartLabels: {
         users: 'Users',
         clients: 'Clients',
-        advisors: 'Advisors',
+        advisors: 'Planners',
         leads: 'Leads',
         total: 'Total',
       },
@@ -5064,6 +5072,10 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       education: 'Educacion',
       coupleAccount: 'Cuenta en pareja',
       clients: 'Clientes',
+      planner: 'Planificador',
+      plannerLower: 'planificador',
+      plannerCta: 'Soy Planificador',
+      backToPlanner: 'Volver al Planificador',
       profile: 'Perfil',
       notifications: 'Notificaciones',
       currencyLanguage: 'Cambiar moneda e idioma',
@@ -6133,9 +6145,9 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       },
     },
     connectAdvisorPage: {
-      title: 'Conectar con Advisor',
-      subtitle: 'Estas iniciando una conexion con un advisor en Flynance.',
-      permissionsTitle: 'Al aceptar, el advisor podra:',
+      title: 'Conectar con Planificador',
+      subtitle: 'Estas iniciando una conexion con un planificador en Flynance.',
+      permissionsTitle: 'Al aceptar, el planificador podra:',
       permissions: {
         viewReports: 'ver tus reportes e indicadores financieros;',
         actOnDashboard: 'actuar en tu dashboard segun el nivel de permiso concedido;',
@@ -6143,7 +6155,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       },
       invalidLink: 'Link de conexion invalido.',
       errors: {
-        acceptFailed: 'No se pudo completar la conexion con el advisor.',
+        acceptFailed: 'No se pudo completar la conexion con el planificador.',
       },
       successRedirecting: 'Conexion confirmada con exito. Redirigiendo...',
       confirming: 'Confirmando...',
@@ -6152,8 +6164,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       back: 'Volver',
     },
     advisorInvitePage: {
-      title: 'Invitacion para Advisor',
-      subtitle: 'Fuiste invitado para actuar como advisor en Flynance.',
+      title: 'Invitacion para Planificador',
+      subtitle: 'Fuiste invitado para actuar como planificador en Flynance.',
       termsTitle: 'Al aceptar, confirmas que:',
       terms: {
         actWithinPermissions: 'actuaras en nombre del cliente solo dentro de los permisos concedidos;',
@@ -6446,8 +6458,8 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
           edit: 'Editar',
           delete: 'Eliminar',
         },
-        advisor: 'Asesor',
-        advisorLocked: 'Gestionado por tu asesor — edición bloqueada',
+        advisor: 'Planificador',
+        advisorLocked: 'Gestionado por tu planificador — edición bloqueada',
       },
       toasts: {
         controlRemoved: 'Control eliminado',
@@ -6498,7 +6510,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         quickLinkCopyError: 'No fue posible copiar automaticamente. Copialo manualmente.',
       },
       header: {
-        title: 'Panel del Advisor',
+        title: 'Panel del Planificador',
         subtitle: 'Invita clientes y selecciona un cliente para actuar en el dashboard.',
         guideButton: 'Guia rapido',
         inviteClient: 'Invitar cliente',
@@ -6600,7 +6612,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       },
       drawer: {
         title: 'Invitar cliente',
-        description: 'Genera un link para conectar un cliente a tu panel de advisor.',
+        description: 'Genera un link para conectar un cliente a tu panel de planificador.',
         emailsLabel: 'E-mails de clientes (opcional)',
         emailsPlaceholder: 'cliente1@ejemplo.com, cliente2@ejemplo.com',
         emailsHint: 'Separa por coma o salto de linea.',
@@ -6617,7 +6629,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         generate: 'Generar invitacion',
       },
       onboarding: {
-        headerTitle: 'Panel del advisor',
+        headerTitle: 'Panel del planificador',
         headerDescription: 'Usa esta pantalla para invitar clientes y gestionar vinculos activos.',
         clientsTitle: 'Clientes conectados',
         clientsDescription: 'Aqui acompanhas clientes vinculados y puedes entrar al dashboard de cada uno.',
@@ -7077,11 +7089,11 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
         maxUses: 'Maximo 1000 usos',
       },
       form: {
-        title: 'Generar invitacion de advisor',
-        emailLabel: 'Email del advisor (opcional)',
+        title: 'Generar invitacion de planificador',
+        emailLabel: 'Email del planificador (opcional)',
         emailTip:
           'Si se informa, la invitacion queda vinculada a este email. Si esta vacio, el link puede usarse con cualquier email valido.',
-        emailPlaceholder: 'advisor@flynance.com',
+        emailPlaceholder: 'planificador@flynance.com',
         expiresInDaysLabel: 'Validez de la invitacion (dias)',
         expiresInDaysTip:
           'Cantidad de dias hasta que el link expire. Ejemplo: 7 significa que la invitacion vale por 7 dias desde la creacion.',
@@ -7538,7 +7550,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       cards: {
         totalUsers: 'Total usuarios',
         totalClients: 'Total clientes',
-        totalAdvisors: 'Total advisors',
+        totalAdvisors: 'Total planificadores',
         capturedLeads: 'Leads capturados',
         new7d: 'Nuevos 7d',
         new30d: 'Nuevos 30d',
@@ -7546,7 +7558,7 @@ export const APP_MESSAGES: Record<AppLocale, any> = {
       chartLabels: {
         users: 'Usuarios',
         clients: 'Clientes',
-        advisors: 'Advisors',
+        advisors: 'Planificadores',
         leads: 'Leads',
         total: 'Total',
       },

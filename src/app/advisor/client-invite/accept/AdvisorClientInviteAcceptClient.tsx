@@ -649,7 +649,7 @@ export default function AdvisorClientInviteAcceptClient() {
             </ul>
 
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <p className="font-medium text-[#333C4D]">Limites de acesso do Advisor</p>
+              <p className="font-medium text-[#333C4D]">Limites de acesso do Planejador</p>
               <p className="mt-1">{advisorName} não terá acesso a:</p>
               <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-slate-700">
                 <li>senhas;</li>

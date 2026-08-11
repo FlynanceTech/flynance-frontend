@@ -64,7 +64,7 @@ function OrgAdvisorCarteiraInner() {
     const clientsPromise = getOrgAdvisorClients(advisorUserId).then((data) => {
       setClients(data)
     }).catch((err: any) => {
-      toast.error(err?.message || 'Erro ao carregar clientes do advisor.')
+      toast.error(err?.message || 'Erro ao carregar clientes do planejador.')
     })
 
     await Promise.allSettled([namePromise, clientsPromise])
@@ -83,7 +83,7 @@ function OrgAdvisorCarteiraInner() {
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div>
-          <p className="text-xs font-semibold uppercase text-[#2F6E91]">Carteira do Advisor</p>
+          <p className="text-xs font-semibold uppercase text-[#2F6E91]">Carteira do Planejador</p>
           <h1 className="text-xl font-semibold text-[#253140]">
             {advisorName || 'Carregando…'}
           </h1>
@@ -110,7 +110,7 @@ function OrgAdvisorCarteiraInner() {
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-5 py-4">
           <h2 className="text-base font-semibold text-[#253140]">Clientes vinculados</h2>
-          <p className="mt-0.5 text-sm text-slate-500">Carteira atual do advisor — somente leitura.</p>
+          <p className="mt-0.5 text-sm text-slate-500">Carteira atual do planejador — somente leitura.</p>
         </div>
 
         {loading ? (
@@ -119,7 +119,7 @@ function OrgAdvisorCarteiraInner() {
           </div>
         ) : clients.length === 0 ? (
           <div className="py-16 text-center text-sm text-slate-500">
-            Este advisor ainda não possui clientes vinculados.
+            Este planejador ainda não possui clientes vinculados.
           </div>
         ) : (
           <>

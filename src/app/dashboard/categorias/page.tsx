@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import clsx from 'clsx'
@@ -922,6 +922,7 @@ function IncomeSection({
 
 export default function CategoriasPage() {
   const t = useTranslations('categoriesPage')
+  const tNav = useTranslations('nav')
   const tForm = useTranslations('categoryForm')
   const tList = useTranslations('categoryList')
   const onboardingSteps = useMemo(() => createCategoriesOnboardingSteps(t), [t])
@@ -1125,7 +1126,7 @@ export default function CategoriasPage() {
 
   const openCreateDrawer = () => {
     if (clientIsReadOnly) {
-      toast.error('Esse planejamento é acompanhado pelo seu Advisor. Para criar categorias, fale com ele.')
+      toast.error(`Esse planejamento é acompanhado pelo seu ${tNav('planner')}. Para criar categorias, fale com ele.`)
       return
     }
     setEditingCategory(null)
@@ -1474,7 +1475,7 @@ export default function CategoriasPage() {
     setActiveCategoryId(null)
 
     if (clientIsReadOnly) {
-      toast.error('Esse planejamento é acompanhado pelo seu Advisor. Para reorganizar categorias, fale com ele.')
+      toast.error(`Esse planejamento é acompanhado pelo seu ${tNav('planner')}. Para reorganizar categorias, fale com ele.`)
       return
     }
 
@@ -1542,7 +1543,9 @@ export default function CategoriasPage() {
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           </span>
           <div>
-            <p className="text-sm font-semibold text-[#2F6E91]">Planejamento acompanhado pelo seu Advisor</p>
+            <p className="text-sm font-semibold text-[#2F6E91]">
+              Planejamento acompanhado pelo seu {tNav('planner')}
+            </p>
             <p className="text-xs text-[#3a7da0]">
               {myAdvisor.advisorName} gerencia suas categorias. Para fazer alterações, entre em contato com ele.
             </p>

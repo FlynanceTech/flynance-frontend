@@ -2,12 +2,14 @@
 
 import { useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { useUserSession } from '@/stores/useUserSession'
 import { useAdvisorActing } from '@/stores/useAdvisorActing'
 import { canAccessAdvisorRole, getAdvisorHomePath } from '@/utils/roles'
 
 export default function AdvisorActingPill() {
   const router = useRouter()
+  const tNav = useTranslations('nav')
   const { user } = useUserSession()
   const role = user?.userData?.user?.role
   const isAdvisor = canAccessAdvisorRole(role)
@@ -39,7 +41,7 @@ export default function AdvisorActingPill() {
           }}
           className="whitespace-nowrap rounded-full border border-[#94C9E7] bg-white px-3 py-1 text-xs font-semibold text-[#1E5F86] hover:bg-[#F4FAFF]"
         >
-          ← Voltar ao Advisor
+          &larr; {tNav('backToPlanner')}
         </button>
       </div>
     </div>

@@ -70,7 +70,7 @@ export default function AdvisorOnboardingPage() {
         <div className="flex items-center gap-2">
           <Image src={logo} alt="Flynance" width={90} height={20} className="object-contain" />
           <span className="rounded-full border border-[#F0C040]/40 bg-[#F0C040]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#F0C040]">
-            Advisory
+            Planner
           </span>
         </div>
         <span className="text-xs text-slate-600">Passo {step} de {totalSteps}</span>
@@ -98,7 +98,7 @@ export default function AdvisorOnboardingPage() {
                   selected={state.profileType === 'independent'}
                   onSelect={() => update('profileType', 'independent')}
                   Icon={User}
-                  title="Advisor independente"
+                  title="Planejador independente"
                   desc="Trabalho sozinho e gerencie minha própria carteira de clientes."
                 />
                 <OptionCard
@@ -106,7 +106,7 @@ export default function AdvisorOnboardingPage() {
                   onSelect={() => update('profileType', 'office')}
                   Icon={Building2}
                   title="Escritório / Corporação"
-                  desc="Tenho ou faço parte de uma equipe com múltiplos advisors."
+                  desc="Tenho ou faço parte de uma equipe com múltiplos planejadores."
                 />
               </div>
             </StepWrapper>
@@ -123,7 +123,7 @@ export default function AdvisorOnboardingPage() {
                   <input
                     value={state.officeName}
                     onChange={(e) => update('officeName', e.target.value)}
-                    placeholder="Ex: Capital Wealth Advisory"
+                    placeholder="Ex: Capital Wealth Planner"
                     className="mt-2 h-11 w-full rounded-xl border border-white/12 bg-white/6 px-4 text-sm text-white placeholder:text-slate-600 outline-none focus:border-[#F0C040]/50"
                   />
                 </label>
@@ -162,10 +162,10 @@ export default function AdvisorOnboardingPage() {
             >
               <div className="grid gap-3 sm:grid-cols-2">
                 {([
-                  { id: 'solo', label: 'Trabalho sozinho', desc: 'Sou o único advisor.' },
-                  { id: 'small', label: 'Pequena equipe', desc: '2 a 5 advisors.' },
-                  { id: 'medium', label: 'Equipe média', desc: '6 a 20 advisors.' },
-                  { id: 'large', label: 'Grande escritório', desc: 'Mais de 20 advisors.' },
+                  { id: 'solo', label: 'Trabalho sozinho', desc: 'Sou o único planejador.' },
+                  { id: 'small', label: 'Pequena equipe', desc: '2 a 5 planejadores.' },
+                  { id: 'medium', label: 'Equipe média', desc: '6 a 20 planejadores.' },
+                  { id: 'large', label: 'Grande escritório', desc: 'Mais de 20 planejadores.' },
                 ] as const).map(({ id, label, desc }) => (
                   <button
                     key={id}
@@ -247,7 +247,7 @@ export default function AdvisorOnboardingPage() {
                 className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#F0C040] px-6 text-sm font-bold text-[#060E1C] transition hover:bg-[#E8B830] disabled:opacity-40"
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                {loading ? 'Configurando...' : 'Entrar no Advisory'}
+                {loading ? 'Configurando...' : 'Entrar no Planner'}
               </button>
             )}
           </div>

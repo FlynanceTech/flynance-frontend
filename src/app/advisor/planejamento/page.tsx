@@ -46,7 +46,7 @@ function PlanejamentoIndex() {
             <SlidersHorizontal className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase text-[#2F6E91]">Fly Advisory</p>
+            <p className="text-xs font-semibold uppercase text-[#2F6E91]">Fly Planner</p>
             <h1 className="text-xl font-semibold text-[#253140]">Planejamento Orçamentário</h1>
           </div>
         </div>

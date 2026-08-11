@@ -97,6 +97,7 @@ export default function ControlePage({
   params: Promise<{ id: string }>
 }) {
   const t = useTranslations('controlDetailsPage')
+  const tNav = useTranslations('nav')
   const locale = useLocale()
   const currentUserId = useUserSession((state) => state.user?.userData?.user?.id ?? '')
   const { isAdvisorActing } = useMyAdvisor()
@@ -196,7 +197,7 @@ export default function ControlePage({
             <FinancialScopeSwitcher />
           </div>
           {lockedForClient ? (
-            <span title="Esse planejamento é gerenciado pelo seu Advisor." aria-label="Advisor">
+            <span title={`Esse planejamento e gerenciado pelo seu ${tNav('planner')}.`} aria-label={tNav('planner')}>
               <Lock className="h-5 w-5" />
             </span>
           ) : (

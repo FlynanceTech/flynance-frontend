@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -51,7 +51,7 @@ export default function OrgDashboardPage() {
   const kpis = data
     ? [
         {
-          label: 'Advisors ativos',
+          label: 'Planejadores ativos',
           value: data.kpis.activeAdvisors,
           detail: `${data.kpis.totalAdvisors} no total`,
           sub: data.kpis.pendingAdvisors > 0 ? `${data.kpis.pendingAdvisors} convite(s) pendente(s)` : null,
@@ -69,7 +69,7 @@ export default function OrgDashboardPage() {
           bg: 'bg-[#EAF4FA]',
         },
         {
-          label: 'Novos advisors este mês',
+          label: 'Novos planejadores este mês',
           value: data.kpis.newAdvisorsThisMonth,
           detail: 'entraram este mês',
           sub: null,
@@ -113,7 +113,7 @@ export default function OrgDashboardPage() {
                   className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                 >
                   <Users className="h-4 w-4" />
-                  Gerenciar advisors
+                  Gerenciar planejadores
                 </button>
               </div>
             </div>
@@ -148,7 +148,7 @@ export default function OrgDashboardPage() {
               <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
                 <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
                   <div>
-                    <h2 className="text-base font-semibold text-[#253140]">Advisors da organização</h2>
+                    <h2 className="text-base font-semibold text-[#253140]">Planejadores da organização</h2>
                     <p className="mt-0.5 text-sm text-slate-500">Visão consolidada de desempenho.</p>
                   </div>
                   <button
@@ -166,14 +166,14 @@ export default function OrgDashboardPage() {
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
                       <UserPlus className="h-5 w-5 text-slate-400" />
                     </div>
-                    <p className="text-sm font-medium text-slate-600">Nenhum advisor na organização ainda.</p>
+                    <p className="text-sm font-medium text-slate-600">Nenhum planejador na organização ainda.</p>
                     <button
                       type="button"
                       onClick={() => router.push('/advisor/organization')}
                       className="inline-flex h-9 items-center gap-2 rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground hover:bg-[#3f86b0]"
                     >
                       <UserPlus className="h-4 w-4" />
-                      Adicionar advisor
+                      Adicionar planejador
                     </button>
                   </div>
                 ) : (
@@ -202,7 +202,7 @@ export default function OrgDashboardPage() {
                       <table className="w-full min-w-[700px] text-sm">
                         <thead>
                           <tr className="border-b border-slate-100 text-left text-xs font-semibold uppercase text-slate-500">
-                            <th className="px-5 pb-3 pt-4">Advisor</th>
+                            <th className="px-5 pb-3 pt-4">Planejador</th>
                             <th className="pb-3 pt-4">Status</th>
                             <th className="pb-3 pt-4">Clientes ativos</th>
                             <th className="pb-3 pt-4">Convites pendentes</th>

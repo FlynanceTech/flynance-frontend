@@ -30,7 +30,7 @@ function roleLabel(role: string): string {
   if (role === 'ORG_ADMIN') return 'Administrador da Organização'
   if (role === 'MASTER') return 'Master'
   if (role === 'CONSULTANT_MANAGER') return 'Gerente de Consultores'
-  if (role === 'ADVISOR') return 'Advisor Independente'
+  if (role === 'ADVISOR') return 'Planejador Independente'
   return role
 }
 
@@ -107,7 +107,7 @@ function AdvisorConfiguracoesInner() {
   }
 
   async function handleLeaveOrg() {
-    if (!confirm('Tem certeza que deseja sair da organização? Você voltará a ser um advisor independente.')) return
+    if (!confirm('Tem certeza que deseja sair da organização? Você voltará a ser um planejador independente.')) return
     try {
       setLeavingOrg(true)
       await leaveOrg()
@@ -132,7 +132,7 @@ function AdvisorConfiguracoesInner() {
       {/* Page header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-slate-800 lg:text-3xl">Configurações</h1>
-        <p className="mt-1 text-sm text-slate-500">Gerencie seu perfil e preferências da conta Advisor.</p>
+        <p className="mt-1 text-sm text-slate-500">Gerencie seu perfil e preferências da conta Planejador.</p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -277,7 +277,7 @@ function AdvisorConfiguracoesInner() {
                 </div>
                 <div>
                   <h2 className="text-base font-semibold text-slate-800">Sair da organização</h2>
-                  <p className="text-xs text-slate-500">Você voltará a ser um advisor independente</p>
+                  <p className="text-xs text-slate-500">Você voltará a ser um planejador independente</p>
                 </div>
               </div>
 

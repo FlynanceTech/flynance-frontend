@@ -41,6 +41,7 @@ export default function BottomMenu() {
       coupleAccount: t('coupleAccount'),
       education: t('education'),
       clients: t('clients'),
+      planner: t('planner'),
       profile: t('profile'),
       currencyLanguage: t('currencyLanguage'),
       notifications: t('notifications'),

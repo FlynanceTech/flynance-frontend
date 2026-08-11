@@ -129,7 +129,7 @@ function AdvisorLoginContent() {
       }
 
       if (!canAccessAdvisorRole(sessionUser.role)) {
-        setError('Esta conta não possui acesso ao Fly Advisory. Use o login padrão.')
+        setError('Esta conta não possui acesso ao Fly Planner. Use o login padrão.')
         await invalidateSession()
         setLoading(false)
         return
@@ -182,7 +182,7 @@ function AdvisorLoginContent() {
         <div className="relative z-10 max-w-xl">
           <h1 className="text-4xl font-bold leading-tight text-white xl:text-5xl">
             A plataforma profissional<br />
-            para <span className="text-white/80">advisors</span>,<br />
+            para <span className="text-white/80">planejadores</span>,<br />
             escritórios e consultores<br />
             financeiros.
           </h1>
