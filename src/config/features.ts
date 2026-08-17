@@ -2,7 +2,7 @@ const APP_ENV = process.env.NEXT_PUBLIC_APP_ENV ?? process.env.NEXT_PUBLIC_VERCE
 const isDevHost = typeof window !== 'undefined' && window.location.hostname.startsWith('dev.')
 const isNonProduction = APP_ENV !== 'production' || isDevHost
 
-export const FEATURE_COUPLE_ACCOUNT = isNonProduction
+export const FEATURE_COUPLE_ACCOUNT = true
 export const FEATURE_EDUCATION = false
 export const FEATURE_FUTURES = isNonProduction
 export const FEATURE_REPORTS_V1 = false
